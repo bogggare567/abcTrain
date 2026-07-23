@@ -2,13 +2,6 @@
 
 namespace
 {
-    juce::String formatFrequency (float hz)
-    {
-        if (hz >= 1000.0f)
-            return juce::String (hz / 1000.0f, 1) + "k";
-        return juce::String ((int) hz);
-    }
-
     const juce::Colour correctColour { juce::Colours::limegreen };
     const juce::Colour wrongColour { juce::Colours::orangered };
 }
@@ -16,28 +9,26 @@ namespace
 EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    titleLabel.setText ("Guess the Band", juce::dontSendNotification);
+    titleLabel.setText ("Ear Trainer", juce::dontSendNotification);
     titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
     titleLabel.setJustificationType (juce::Justification::centred);
     titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
 
-    instructionLabel.setText ("Listen, then click the band you think was boosted or cut.",
-                               juce::dontSendNotification);
+    auto& gameManager = processor.getGameManager();
+    const auto names = gameManager.getGameNames();
+    for (int i = 0; i < names.size(); ++i)
+        gameSelector.addItem (names[i], i + 1); // ComboBox item IDs are 1-based
+    gameSelector.setSelectedId (gameManager.getActiveGameIndex() + 1, juce::dontSendNotification);
+    gameSelector.onChange = [this] { gameSelected(); };
+    addAndMakeVisible (gameSelector);
+
     instructionLabel.setJustificationType (juce::Justification::centred);
     instructionLabel.setFont (juce::Font (14.0f));
     instructionLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (instructionLabel);
 
-    for (int i = 0; i < EQGame::numBands; ++i)
-    {
-        auto* button = bandButtons.add (
-            new juce::TextButton (formatFrequency (EQGame::bandFrequenciesHz[(size_t) i]) + " Hz"));
-        button->onClick = [this, i] { bandButtonClicked (i); };
-        addAndMakeVisible (button);
-    }
-
-    newRoundButton.onClick = [this] { processor.getGame().newRound(); };
+    newRoundButton.onClick = [this] { processor.getGameManager().getActiveGame().newRound(); };
     addAndMakeVisible (newRoundButton);
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
@@ -50,15 +41,16 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     feedbackLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (feedbackLabel);
 
-    processor.getGame().addChangeListener (this);
+    gameManager.getActiveGame().addChangeListener (this);
+    rebuildChoiceButtons();
     refreshFromGameState();
 
-    setSize (640, 320);
+    setSize (640, 360);
 }
 
 EarTrainerEditor::~EarTrainerEditor()
 {
-    processor.getGame().removeChangeListener (this);
+    processor.getGameManager().getActiveGame().removeChangeListener (this);
 }
 
 void EarTrainerEditor::paint (juce::Graphics& g)
@@ -71,6 +63,8 @@ void EarTrainerEditor::resized()
     auto area = getLocalBounds().reduced (16);
 
     titleLabel.setBounds (area.removeFromTop (32));
+    gameSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (280, 24));
+    area.removeFromTop (8);
     instructionLabel.setBounds (area.removeFromTop (24));
     area.removeFromTop (8);
 
@@ -78,9 +72,12 @@ void EarTrainerEditor::resized()
     area.removeFromTop (8);
 
     auto buttonRow = area.removeFromTop (56);
-    const auto buttonWidth = buttonRow.getWidth() / bandButtons.size();
-    for (auto* button : bandButtons)
-        button->setBounds (buttonRow.removeFromLeft (buttonWidth).reduced (4));
+    if (! choiceButtons.isEmpty())
+    {
+        const auto buttonWidth = buttonRow.getWidth() / choiceButtons.size();
+        for (auto* button : choiceButtons)
+            button->setBounds (buttonRow.removeFromLeft (buttonWidth).reduced (4));
+    }
 
     area.removeFromTop (16);
 
@@ -89,9 +86,35 @@ void EarTrainerEditor::resized()
     scoreLabel.setBounds (bottomRow.reduced (8, 0));
 }
 
-void EarTrainerEditor::bandButtonClicked (int bandIndex)
+void EarTrainerEditor::gameSelected()
 {
-    processor.getGame().submitAnswer (bandIndex);
+    auto& gameManager = processor.getGameManager();
+    gameManager.getActiveGame().removeChangeListener (this);
+
+    gameManager.setActiveGameIndex (gameSelector.getSelectedId() - 1);
+
+    gameManager.getActiveGame().addChangeListener (this);
+    rebuildChoiceButtons();
+    refreshFromGameState();
+    resized();
+}
+
+void EarTrainerEditor::rebuildChoiceButtons()
+{
+    choiceButtons.clear();
+
+    auto& game = processor.getGameManager().getActiveGame();
+    for (int i = 0; i < game.getNumChoices(); ++i)
+    {
+        auto* button = choiceButtons.add (new juce::TextButton (game.getChoiceLabel (i)));
+        button->onClick = [this, i] { choiceButtonClicked (i); };
+        addAndMakeVisible (button);
+    }
+}
+
+void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
+{
+    processor.getGameManager().getActiveGame().submitAnswer (choiceIndex);
 }
 
 void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
@@ -101,30 +124,27 @@ void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 
 void EarTrainerEditor::refreshFromGameState()
 {
-    auto& game = processor.getGame();
+    auto& game = processor.getGameManager().getActiveGame();
+
+    instructionLabel.setText (game.getInstructions(), juce::dontSendNotification);
 
     scoreLabel.setText ("Score: " + juce::String (game.getScore()) + " / " + juce::String (game.getRoundsPlayed()),
                          juce::dontSendNotification);
 
-    for (auto* button : bandButtons)
+    for (auto* button : choiceButtons)
     {
-        button->setEnabled (! game.hasAnswered());
         button->setColour (juce::TextButton::buttonColourId, juce::Colours::darkgrey);
+        button->setEnabled (! game.hasAnswered());
     }
 
     if (game.hasAnswered())
     {
-        bandButtons[game.getCorrectBandIndex()]->setColour (juce::TextButton::buttonColourId, correctColour);
+        choiceButtons[game.getCorrectChoiceIndex()]->setColour (juce::TextButton::buttonColourId, correctColour);
 
         if (! game.wasLastAnswerCorrect())
-            bandButtons[game.getChosenBandIndex()]->setColour (juce::TextButton::buttonColourId, wrongColour);
+            choiceButtons[game.getChosenChoiceIndex()]->setColour (juce::TextButton::buttonColourId, wrongColour);
 
-        const juce::String direction = game.wasBoost() ? "boosted" : "cut";
-        feedbackLabel.setText ((game.wasLastAnswerCorrect() ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-                                    + "It was " + direction + " at "
-                                    + formatFrequency (EQGame::bandFrequenciesHz[(size_t) game.getCorrectBandIndex()])
-                                    + " Hz.",
-                                juce::dontSendNotification);
+        feedbackLabel.setText (game.getFeedbackText(), juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? correctColour : wrongColour);
     }
     else

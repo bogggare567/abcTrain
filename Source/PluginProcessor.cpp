@@ -25,7 +25,7 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.maximumBlockSize = (juce::uint32) samplesPerBlock;
     spec.numChannels = (juce::uint32) getTotalNumOutputChannels();
 
-    game.prepare (spec);
+    gameManager.prepare (spec);
 }
 
 void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -33,7 +33,7 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     juce::ScopedNoDenormals noDenormals;
 
     // The trainer ignores whatever the host feeds in and generates its own test signal.
-    game.process (buffer);
+    gameManager.process (buffer);
 }
 
 juce::AudioProcessorEditor* EarTrainerProcessor::createEditor()

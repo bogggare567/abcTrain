@@ -22,6 +22,8 @@ Standalone build directly to test without a DAW.
 
 ## Status
 
-MVP: one exercise implemented — "guess the boosted/cut band" (8 octave
-bands, 100 Hz–12.8 kHz). See [CLAUDE.md](CLAUDE.md) for architecture notes
-and the rest of the roadmap.
+Two exercises implemented: "guess the boosted/cut band" (8 octave bands,
+100 Hz–12.8 kHz) and "guess the compression strength" (weak/medium/
+strong). Both share a common `Game` interface driving one generic UI —
+see [docs/architecture.md](docs/architecture.md) for the design and
+[CLAUDE.md](CLAUDE.md) for the rest of the roadmap.

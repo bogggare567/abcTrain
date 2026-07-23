@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "EQGame.h"
+#include "GameManager.h"
 
 class EarTrainerProcessor : public juce::AudioProcessor
 {
@@ -32,10 +32,10 @@ public:
     void getStateInformation (juce::MemoryBlock&) override {}
     void setStateInformation (const void*, int) override {}
 
-    EQGame& getGame() noexcept { return game; }
+    GameManager& getGameManager() noexcept { return gameManager; }
 
 private:
-    EQGame game;
+    GameManager gameManager;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerProcessor)
 };

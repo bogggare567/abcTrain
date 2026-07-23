@@ -33,7 +33,9 @@ target_sources(EarTrainer
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
-        Source/EQGame.cpp
+        Source/GameManager.cpp
+        Source/Games/EQGame.cpp
+        Source/Games/CompressionGame.cpp
 )
 
 target_compile_definitions(EarTrainer
