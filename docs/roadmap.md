@@ -15,19 +15,19 @@ vs. not.
 | `Game` interface + `GameManager` (see [decisions/001](decisions/001-game-interface.md)) | ✓ |
 | EQGame ("guess the boosted/cut band") | ✓ |
 | CompressionGame ("guess the compression strength") | ✓ |
+| ReverbGame ("guess the reverb type": room/hall/plate/spring) | ✓ |
 | Generic `PluginEditor` (game selector + dynamic choice buttons) | ✓ |
 | LearnerEQ: real 4-band EQ, host-automatable, live spectrum + response curve | ✓ |
 | LearnerEQ: contextual tooltip per frequency range while dragging | ✓ |
 | Unit test infra (`EarTrainerTests`, `juce::UnitTestRunner`) | ✓ |
-| Unit tests: game scoring/state logic | ✓ |
+| Unit tests: game scoring/state logic (all 3 games) | ✓ |
 | DSP regression test: LearnerEQ band boost raises measured RMS | ✓ |
-| CI: build + run tests on push/PR | ⏳ |
+| CI: build + run tests on push/PR | 🚧 workflow written, not yet confirmed passing on GitHub |
 
 ## Beta — round out the trainer, second teaching plugin
 
 | Feature | Status |
 |---|---|
-| ReverbGame ("guess the reverb type": room/hall/plate/spring) | ⏳ |
 | Score persistence (`juce::PropertiesFile`) | ⏳ |
 | LearnerComp (compressor: envelope visualization, gain-reduction meter, A/B) | ⏳ |
 | Shared visualization/hint components factored out for reuse across Learner plugins | ⏳ |

@@ -36,6 +36,7 @@ target_sources(EarTrainer
         Source/GameManager.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
+        Source/Games/ReverbGame.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -109,11 +110,13 @@ target_sources(EarTrainerTests
         tests/TestRunner.cpp
         tests/EQGameTest.cpp
         tests/CompressionGameTest.cpp
+        tests/ReverbGameTest.cpp
         tests/GameManagerTest.cpp
         tests/LearnerEQTest.cpp
         Source/GameManager.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
+        Source/Games/ReverbGame.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp

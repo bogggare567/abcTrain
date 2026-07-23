@@ -38,7 +38,9 @@ classDiagram
     }
 
     class ReverbGame {
-        <<planned>>
+        4 types: Room, Hall, Plate, Spring
+        Room/Hall/Plate: dsp::Reverb presets
+        Spring: cascaded allpass filters
     }
 
     Game <|.. EQGame

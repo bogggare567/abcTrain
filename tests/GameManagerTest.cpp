@@ -8,10 +8,10 @@ public:
 
     void runTest() override
     {
-        beginTest ("registers both games");
+        beginTest ("registers all games");
         {
             GameManager manager;
-            expectEquals (manager.getGameNames().size(), 2);
+            expectEquals (manager.getGameNames().size(), 3);
             expectEquals (manager.getActiveGameIndex(), 0);
         }
 

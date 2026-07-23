@@ -17,12 +17,16 @@ cmake --build build --target EarTrainerTests --config Release
 Two kinds of test currently exist, deliberately kept separate:
 
 **Logic-level tests** (`EQGameTest.cpp`, `CompressionGameTest.cpp`,
-`GameManagerTest.cpp`) assert on game *state*, not audio content: choice
-counts, scoring after a correct/incorrect answer, that a second answer in
-the same round is a no-op, that switching games in `GameManager` updates
-the active index, that an out-of-range index is ignored. These are fast,
-deterministic, and would fail immediately if a refactor broke the `Game`
-contract.
+`ReverbGameTest.cpp`, `GameManagerTest.cpp`) assert on game *state*, not
+audio content: choice counts, scoring after a correct/incorrect answer,
+that a second answer in the same round is a no-op, that switching games in
+`GameManager` updates the active index, that an out-of-range index is
+ignored. These are fast, deterministic, and would fail immediately if a
+refactor broke the `Game` contract. `ReverbGameTest` additionally checks
+the output buffer isn't silent after a round starts — a cheap smoke test
+that both DSP paths (the `dsp::Reverb`-based types and the allpass-cascade
+Spring type) actually produce sound, given they're structurally different
+code paths inside `ReverbGame::process`.
 
 **One DSP regression test** (`LearnerEQTest.cpp`) processes a real sine
 wave through the real `LearnerEQProcessor` and asserts the *output level*
@@ -47,13 +51,15 @@ so asserting on output level is meaningful and repeatable.
 
 ## Not yet built
 
-- **CI** (`docs/diagrams/ci-pipeline.md`): none of this runs automatically
-  yet. Every test run so far has been a manual, careful read of the code
-  against JUCE's API, not an actual compile+run, since the environment
-  these plugins were written in had no CMake/compiler available. This is
-  the single biggest risk in the current codebase — get CI running before
-  trusting any of the DSP code without a human rebuilding and listening to
-  it first.
+- **Confirmed-passing CI**: `.github/workflows/build_and_test.yml` exists
+  (matrix: ubuntu-latest/macos-latest/windows-latest, builds every target,
+  runs `EarTrainerTests`) but hasn't been observed passing yet — it was
+  written in the same environment that has no CMake/compiler available, so
+  it's unverified YAML, not a confirmed-working pipeline. Every test run so
+  far has been a manual, careful read of the code against JUCE's API, not
+  an actual compile+run. This is the single biggest risk in the current
+  codebase — get an actual green run before trusting any of the DSP code
+  without a human rebuilding and listening to it first.
 - **Integration tests**: nothing exercises `PluginEditor` (button clicks
   changing `GameManager` state end-to-end) or the `SliderAttachment` wiring
   in `LearnerEQEditor`. JUCE's `UnitTest` framework can run headless GUI
@@ -70,5 +76,4 @@ so asserting on output level is meaningful and repeatable.
   constructor seeds from system entropy; none of the game classes expose a
   way to inject a seed. If deterministic game-round tests are ever needed
   (e.g. "the 3rd round after seed X always picks band 5"), that requires
-  adding a seed parameter to `EQGame`/`CompressionGame`, which doesn't
-  exist today.
+  adding a seed parameter to the games, which doesn't exist today.

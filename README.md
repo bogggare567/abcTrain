@@ -1,5 +1,7 @@
 # Ear Trainer / Learner EQ
 
+[![Build and Test](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
+
 Two VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
 
 - **Ear Trainer** — ear-training games. It feeds you pink noise through a
@@ -29,12 +31,14 @@ flowchart TB
         GameIface["Game interface"]
         EQGame["EQGame"]
         CompGame["CompressionGame"]
+        RevGame["ReverbGame"]
 
         ETProc --> GM
         ETEdit --> GM
         GM --> GameIface
         GameIface --> EQGame
         GameIface --> CompGame
+        GameIface --> RevGame
     end
 
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
@@ -52,17 +56,16 @@ flowchart TB
         Runner["TestRunner (juce::UnitTestRunner)"]
     end
 
-    ReverbGame["ReverbGame"]
     LearnerComp["LearnerComp plugin"]
 
     Runner -. "compiles & runs directly" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
+    Runner -. "compiles & runs directly" .-> RevGame
     Runner -. "compiles & runs directly" .-> LEProc
-    GameIface -.-> ReverbGame
     LEProc -.-> LearnerComp
 
     classDef planned stroke-dasharray:4 3,opacity:0.55;
-    class ReverbGame,LearnerComp planned;
+    class LearnerComp planned;
 ```
 
 ## Building
@@ -95,16 +98,18 @@ cmake --build build --target EarTrainerTests --config Release
 
 Exits non-zero if any test fails. Covers the games' scoring/state logic
 (`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
-`tests/GameManagerTest.cpp`) and one real DSP regression check for
-LearnerEQ (`tests/LearnerEQTest.cpp` — boosting a band actually raises
-measured output level at that frequency).
+`tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp`) and one real DSP
+regression check for LearnerEQ (`tests/LearnerEQTest.cpp` — boosting a
+band actually raises measured output level at that frequency). Also runs
+on push/PR via `.github/workflows/build_and_test.yml` (badge above).
 
 ## Status
 
-**Ear Trainer:** two exercises implemented, "guess the boosted/cut band"
-(8 octave bands, 100 Hz–12.8 kHz) and "guess the compression strength"
-(weak/medium/strong), sharing a common `Game` interface driving one
-generic UI — see [docs/architecture.md](docs/architecture.md).
+**Ear Trainer:** three exercises implemented — "guess the boosted/cut
+band" (8 octave bands, 100 Hz–12.8 kHz), "guess the compression strength"
+(weak/medium/strong), and "guess the reverb type" (room/hall/plate/
+spring) — sharing a common `Game` interface driving one generic UI — see
+[docs/architecture.md](docs/architecture.md).
 
 **Learner EQ:** 4-band EQ (low shelf, 2 bells, high shelf) processing real
 host audio, host-automatable via `AudioProcessorValueTreeState`, live

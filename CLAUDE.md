@@ -8,12 +8,13 @@ Two JUCE plugins in one repo/CMake build, both VST3/AU/Standalone:
   tooltips while dragging a band's frequency knob (new).
 
 Longer-term product direction (not all built): a learning ecosystem of
-"teaching" plugins (EQ done, compressor/reverb/saturation planned) paired
-with the trainer games and a lightweight in-plugin knowledge base, plus a
-phase-2 AI module that analyzes a reference track and suggests which
-teaching plugins to try. Treat any specific market-size/competitor claims
-from prior planning conversations as unverified marketing copy, not fact
-— re-check before making decisions that depend on them.
+"teaching" plugins (LearnerEQ done, LearnerComp/LearnerVerb/LearnerSat
+planned) paired with the trainer games and a lightweight in-plugin
+knowledge base, plus a phase-2 AI module that analyzes a reference track
+and suggests which teaching plugins to try. Treat any specific
+market-size/competitor claims from prior planning conversations as
+unverified marketing copy, not fact — re-check before making decisions
+that depend on them.
 
 ## Docs directory
 
@@ -51,8 +52,17 @@ full rationale.
   of 3 fixed threshold/ratio presets (weak/medium/strong), with a fixed
   makeup-gain compensation per preset (tuned by ear, not measured) so
   loudness alone isn't a tell.
+- `Source/Games/ReverbGame.{h,cpp}` — "guess the reverb type": repeating
+  percussive noise burst (period long enough for tails to decay audibly)
+  through one of 4 types. Room/Hall/Plate are `juce::dsp::Reverb`
+  (Freeverb-derived) with different roomSize/damping/width presets — an
+  approximation tuned by ear, not physically modeled per type, same
+  approach as `CompressionGame`'s presets. Spring is built separately as a
+  cascade of 4 resonant allpass `IIR` filters, since Freeverb-style
+  algorithms don't produce the metallic comb/allpass "boing" character a
+  spring tank has.
 - `Source/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
-  economy algorithm) used by both games above.
+  economy algorithm) used by all three games above.
 - `Source/GameManager.{h,cpp}` — owns all registered `Game`s, tracks the
   active one, prepares *all* games up front in `prepare()` so switching
   games never needs an audio-thread re-prepare.
@@ -122,10 +132,13 @@ plugin targets), so no plugin host or GUI is needed to run it.
 - `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
   audio-domain assertions.
 - `tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
-  `tests/GameManagerTest.cpp` — logic-level: scoring, answer/round state
-  transitions, choice-count/label contracts. Deliberately don't assert on
-  actual audio content (the games generate random noise), since that
-  would be either flaky or trivial.
+  `tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp` — logic-level:
+  scoring, answer/round state transitions, choice-count/label contracts.
+  Deliberately don't assert on actual audio content (the games generate
+  random noise), since that would be either flaky or trivial —
+  `ReverbGameTest` is the partial exception, it does check the output
+  buffer isn't silent (a decent smoke test given the type-specific DSP
+  paths: `dsp::Reverb` vs. the allpass cascade).
 - `tests/LearnerEQTest.cpp` — the one test that touches real DSP output:
   boosts a band via `apvts.getRawParameterValue(...)->store(...)` and
   checks measured RMS actually goes up at that frequency. This is the
@@ -140,7 +153,11 @@ linking both into one binary would collide. The game logic under test
 doesn't need the `AudioProcessor` wrapper anyway — only `LearnerEQTest`
 needs a real `AudioProcessor`, and it gets one from LearnerEQ.
 
-CI (GitHub Actions running this on push/PR) is planned but not set up.
+CI: `.github/workflows/build_and_test.yml` builds all targets and runs
+`EarTrainerTests` on push/PR across ubuntu-latest/macos-latest/
+windows-latest. Written but not yet confirmed green on GitHub — treat any
+DSP change as unverified until you've seen an actual passing run, not just
+the workflow file existing.
 
 ## Conventions
 
@@ -152,14 +169,13 @@ CI (GitHub Actions running this on push/PR) is planned but not set up.
 
 ## Roadmap (not yet built)
 
-- More EarTrainer exercises (reverb type, delay type, stereo width, ...).
+- More EarTrainer exercises (delay type, stereo width, distortion type, ...).
 - More teaching plugins: LearnerComp, LearnerVerb, LearnerSat — same
   pattern as LearnerEQ (own `juce_add_plugin` target, APVTS params, a
   visualization + contextual guide text).
 - Score persistence via `juce::PropertiesFile`.
 - LearnerEQ "analyze reference" mode + richer knowledge base/micro-lessons.
-- GitHub Actions CI running `EarTrainerTests` + building Win/Mac artifacts
-  on push/PR/tag.
+- Confirm CI is actually green on GitHub (workflow exists, unverified).
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
   unstarted; see prior conversation history for the full plan if picked
   up later.

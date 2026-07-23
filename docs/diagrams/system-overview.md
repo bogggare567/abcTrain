@@ -13,6 +13,7 @@ flowchart TB
         GameIface["Game interface"]
         EQGame["EQGame"]
         CompGame["CompressionGame"]
+        RevGame["ReverbGame"]
         Pink["PinkNoiseGenerator"]
 
         ETProc --> GM
@@ -20,8 +21,10 @@ flowchart TB
         GM --> GameIface
         GameIface --> EQGame
         GameIface --> CompGame
+        GameIface --> RevGame
         EQGame --> Pink
         CompGame --> Pink
+        RevGame --> Pink
     end
 
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
@@ -46,22 +49,21 @@ flowchart TB
         TestUtils["shared/TestUtils.h"]
     end
 
-    ReverbGame["ReverbGame"]
     LearnerComp["LearnerComp plugin"]
     LearnerVerb["LearnerVerb plugin"]
 
     Runner -. "compiles & runs directly, no host/GUI" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
+    Runner -. "compiles & runs directly" .-> RevGame
     Runner -. "compiles & runs directly" .-> GM
     Runner -. "compiles & runs directly" .-> LEProc
     Runner --> TestUtils
 
-    GameIface -.-> ReverbGame
     LEProc -.-> LearnerComp
     LEProc -.-> LearnerVerb
 
     classDef planned stroke-dasharray:4 3,opacity:0.55;
-    class ReverbGame,LearnerComp,LearnerVerb planned;
+    class LearnerComp,LearnerVerb planned;
 ```
 
 **Key structural fact:** `EarTrainerTests` links the game/processor `.cpp`

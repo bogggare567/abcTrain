@@ -1,11 +1,13 @@
 #include "GameManager.h"
 #include "Games/EQGame.h"
 #include "Games/CompressionGame.h"
+#include "Games/ReverbGame.h"
 
 GameManager::GameManager()
 {
     games.add (new EQGame());
     games.add (new CompressionGame());
+    games.add (new ReverbGame());
 }
 
 void GameManager::prepare (const juce::dsp::ProcessSpec& spec)
