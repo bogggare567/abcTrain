@@ -54,3 +54,42 @@ target_link_libraries(EarTrainer
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+juce_add_plugin(LearnerEQ
+    COMPANY_NAME "EarSnap"
+    PLUGIN_MANUFACTURER_CODE Esnp
+    PLUGIN_CODE Leq1
+    FORMATS AU VST3 Standalone
+    PRODUCT_NAME "Learner EQ"
+    IS_SYNTH FALSE
+    NEEDS_MIDI_INPUT FALSE
+    NEEDS_MIDI_OUTPUT FALSE
+    IS_MIDI_EFFECT FALSE
+    EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+    VST3_CATEGORIES Fx EQ
+    AU_MAIN_TYPE kAudioUnitType_Effect
+)
+
+target_sources(LearnerEQ
+    PRIVATE
+        LearnerEQ/Source/PluginProcessor.cpp
+        LearnerEQ/Source/PluginEditor.cpp
+        LearnerEQ/Source/SpectrumAnalyser.cpp
+)
+
+target_compile_definitions(LearnerEQ
+    PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_VST3_CAN_REPLACE_VST2=0
+)
+
+target_link_libraries(LearnerEQ
+    PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
