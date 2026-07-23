@@ -1,0 +1,8 @@
+build/
+build-*/
+cmake-build-*/
+.DS_Store
+*.xcodeproj
+*.xcworkspace
+.vs/
+out/
