@@ -100,6 +100,38 @@ restore with the session (`getStateInformation`/`setStateInformation`).
 Not yet built for LearnerEQ: "analyze reference" mode, knowledge-base
 tooltips beyond the one-line frequency description, micro-lessons.
 
+## Testing (`tests/`, `shared/`)
+
+`EarTrainerTests` is a plain console app (`juce_add_console_app`, not a
+plugin) built from the same root `CMakeLists.txt`:
+`cmake --build build --target EarTrainerTests`, then run the produced
+binary directly — it uses `juce::UnitTestRunner` and exits non-zero on any
+failure. It compiles the game/processor source files directly (not the
+plugin targets), so no plugin host or GUI is needed to run it.
+
+- `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
+  audio-domain assertions.
+- `tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
+  `tests/GameManagerTest.cpp` — logic-level: scoring, answer/round state
+  transitions, choice-count/label contracts. Deliberately don't assert on
+  actual audio content (the games generate random noise), since that
+  would be either flaky or trivial.
+- `tests/LearnerEQTest.cpp` — the one test that touches real DSP output:
+  boosts a band via `apvts.getRawParameterValue(...)->store(...)` and
+  checks measured RMS actually goes up at that frequency. This is the
+  kind of check that would have caught a broken filter chain, which
+  mattered here because LearnerEQ's DSP code could not be compiled/run at
+  all in the environment it was originally written in.
+
+`EarTrainerTests`' `target_sources` intentionally excludes
+`Source/PluginProcessor.cpp` (EarTrainer's, not LearnerEQ's): both it and
+`LearnerEQ/Source/PluginProcessor.cpp` define `createPluginFilter()`, and
+linking both into one binary would collide. The game logic under test
+doesn't need the `AudioProcessor` wrapper anyway — only `LearnerEQTest`
+needs a real `AudioProcessor`, and it gets one from LearnerEQ.
+
+CI (GitHub Actions running this on push/PR) is planned but not set up.
+
 ## Conventions
 
 - JUCE house style formatting (space before parens: `if (x)`, not `if(x)`).
@@ -116,7 +148,8 @@ tooltips beyond the one-line frequency description, micro-lessons.
   visualization + contextual guide text).
 - Score persistence via `juce::PropertiesFile`.
 - LearnerEQ "analyze reference" mode + richer knowledge base/micro-lessons.
-- GitHub Actions CI building Win/Mac artifacts on tag push.
+- GitHub Actions CI running `EarTrainerTests` + building Win/Mac artifacts
+  on push/PR/tag.
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
   unstarted; see prior conversation history for the full plan if picked
   up later.

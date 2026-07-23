@@ -27,6 +27,22 @@ under `build/EarTrainer_artefacts/Release/` and
 your system plugin folder, or run the Standalone build directly to test
 without a DAW.
 
+## Testing
+
+Same build also produces a console `EarTrainerTests` target
+(`juce::UnitTestRunner`-based; no plugin host or GUI needed to run it):
+
+```bash
+cmake --build build --target EarTrainerTests --config Release
+./build/EarTrainerTests_artefacts/Release/EarTrainerTests
+```
+
+Exits non-zero if any test fails. Covers the games' scoring/state logic
+(`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
+`tests/GameManagerTest.cpp`) and one real DSP regression check for
+LearnerEQ (`tests/LearnerEQTest.cpp` — boosting a band actually raises
+measured output level at that frequency).
+
 ## Status
 
 **Ear Trainer:** two exercises implemented, "guess the boosted/cut band"
