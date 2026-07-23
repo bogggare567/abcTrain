@@ -52,6 +52,20 @@ public:
             game.submitAnswer (game.getCorrectChoiceIndex());
             expect (game.getFeedbackText().isNotEmpty());
         }
+
+        beginTest ("a second answer in the same round is ignored");
+        {
+            CompressionGame game;
+            const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
+            game.prepare (spec);
+
+            const auto correct = game.getCorrectChoiceIndex();
+            game.submitAnswer (correct);
+            game.submitAnswer ((correct + 1) % CompressionGame::numLevels);
+
+            expectEquals (game.getRoundsPlayed(), 1);
+            expectEquals (game.getChosenChoiceIndex(), correct);
+        }
     }
 };
 

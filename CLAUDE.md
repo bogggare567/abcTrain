@@ -15,6 +15,16 @@ teaching plugins to try. Treat any specific market-size/competitor claims
 from prior planning conversations as unverified marketing copy, not fact
 — re-check before making decisions that depend on them.
 
+## Docs directory
+
+`docs/roadmap.md` (status of everything, done vs. planned),
+`docs/diagrams/` (mermaid: system overview, game-engine class diagram,
+learner-plugin component diagram, proposed CI pipeline),
+`docs/decisions/` (ADRs — currently just 001, the `Game` interface
+choice), `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the
+per-file breakdown; `docs/` is the higher-level/visual layer — keep both
+in sync when the architecture changes rather than letting one drift.
+
 ## Build
 
 CMake + JUCE via `FetchContent` (pinned to tag `8.0.15` in

@@ -1,5 +1,23 @@
 # Architecture: multi-game ear trainer
 
+> This is the original design doc written before the `Game`/`GameManager`
+> refactor, kept as-is for the rationale. It describes the *plan* — the
+> code was built to match it closely, with one deliberate deviation noted
+> below. For diagrams, current status, and the ADR, see:
+>
+> - [diagrams/system-overview.md](diagrams/system-overview.md) — whole repo
+> - [diagrams/game-engine.md](diagrams/game-engine.md) — this `Game`/`GameManager` design, as built
+> - [diagrams/learner-plugin.md](diagrams/learner-plugin.md) — LearnerEQ, a different shape of plugin this doc doesn't cover
+> - [decisions/001-game-interface.md](decisions/001-game-interface.md) — why this interface shape was chosen over the alternatives
+> - [roadmap.md](roadmap.md) — what's done vs. planned
+> - [testing-strategy.md](testing-strategy.md)
+>
+> **Deviation from this doc:** the "`GameManager` re-prepares the newly
+> active game on switch" design below wasn't built. The implementation
+> instead prepares *every* registered game up front in `prepare()`, so
+> switching games never needs an audio-thread re-prepare at all — simpler
+> than what's described here, and it fully replaces the need for it.
+
 ## Problem with the current code
 
 `EQGame` currently owns both the DSP/state logic (filter, scoring, random
