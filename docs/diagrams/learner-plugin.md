@@ -24,9 +24,13 @@ flowchart LR
         Sliders["4 columns of freq/gain/Q rotary sliders"]
         Spectrum["SpectrumAnalyserComponent"]
         Guide["guideLabel (contextual tooltip)"]
+        LessonBtn["Lesson button"]
+        Lesson["shared/LessonController\n(Vocal EQ Basics, VocalEqLesson.h)"]
         Edit --> Sliders
         Edit --> Spectrum
         Edit --> Guide
+        Edit --> LessonBtn
+        LessonBtn -- "showAndStart()" --> Lesson
     end
 
     Coeffs["EQCoefficients\n(band index -> filter type + coefficients)"]
@@ -38,6 +42,7 @@ flowchart LR
     Spectrum -- "response curve" --> Coeffs
     Spectrum -- "x-axis mapping" --> FreqGuide
     Guide -- "describe(freq)" --> FreqGuide
+    Lesson -- "setValueNotifyingHost\nper step" --> APVTS
 ```
 
 **Why `EQCoefficients` and `FrequencyGuide` are separate headers, shared by
@@ -72,10 +77,14 @@ flowchart LR
         Waveform["shared/WaveformDisplay"]
         Presets["4 preset buttons"]
         Guide2["guideLabel (contextual tooltip)"]
+        LessonBtn2["Lesson button"]
+        Lesson2["shared/LessonController\n(Vocal Compression, VocalCompressionLesson.h)"]
         Edit --> Knobs
         Edit --> Waveform
         Edit --> Presets
         Edit --> Guide2
+        Edit --> LessonBtn2
+        LessonBtn2 -- "showAndStart()" --> Lesson2
     end
 
     ParamGuide["CompressorGuide\n(tooltip text + preset table)"]
@@ -85,6 +94,7 @@ flowchart LR
     Proc -- "pushSample(in, out, gainReductionDb)\naudio thread" --> Waveform
     Presets -- "processor.applyPreset(i)" --> ParamGuide
     Guide2 -- "describe(paramId)" --> ParamGuide
+    Lesson2 -- "setValueNotifyingHost\nper step" --> APVTS
 ```
 
 **Why detection and gain application are separate steps in
@@ -119,10 +129,14 @@ flowchart LR
         Waveform2["shared/WaveformDisplay"]
         Presets2["4 preset buttons"]
         Guide3["guideLabel (contextual tooltip)"]
+        LessonBtn3["Lesson button"]
+        Lesson3["shared/LessonController\n(Space for Vocals, VocalSpaceLesson.h)"]
         Edit --> TypeBox
         Edit --> Waveform2
         Edit --> Presets2
         Edit --> Guide3
+        Edit --> LessonBtn3
+        LessonBtn3 -- "showAndStart()" --> Lesson3
     end
 
     ParamGuide2["ReverbGuide\n(tooltip text + preset table)"]
@@ -132,6 +146,7 @@ flowchart LR
     Proc -- "pushSample(dry, blended)\naudio thread" --> Waveform2
     Presets2 -- "processor.applyPreset(i)" --> ParamGuide2
     Guide3 -- "describe(paramId)" --> ParamGuide2
+    Lesson3 -- "setValueNotifyingHost\nper step" --> APVTS
 ```
 
 **Why `PluginProcessor` makes a wet-only copy of the block instead of
@@ -156,3 +171,15 @@ second time (see [decisions/004](../decisions/004-learnerverb-scope.md)).
 `SpectrumAnalyserComponent` (LearnerEQ) is *not* part of this — it's
 FFT-based, a fundamentally different data shape from time-domain peak
 tracking, so there's nothing to unify there.
+
+`shared/MicroLesson.h` + `shared/LessonController.{h,cpp}` — the guided-
+lesson machinery used by all three editors above, one lesson each. See
+[decisions/005](../decisions/005-microlesson-architecture.md).
+`MicroLesson` is pure step-sequence data/state with no APVTS or UI
+dependency; `LessonController` is the `Component` that owns one, applies
+each step's target parameters via `setValueNotifyingHost` (same idiom as
+`applyPreset` above), and is added as a full-size hidden child toggled by
+each editor's "Lesson" button. The lesson *content* itself
+(`VocalEqLesson.h`, `VocalCompressionLesson.h`, `VocalSpaceLesson.h`)
+stays per-plugin, not in `shared/`, since it references that plugin's own
+parameter IDs — only the machinery above is shared.

@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "../../shared/WaveformDisplay.h"
+#include "../../shared/LessonController.h"
 #include <array>
 #include <memory>
 
@@ -40,6 +41,9 @@ private:
     std::array<KnobControl, 6> knobs;
 
     juce::OwnedArray<juce::TextButton> presetButtons;
+
+    juce::TextButton lessonButton { "Lesson" };
+    LessonController lessonController;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerVerbEditor)
 };

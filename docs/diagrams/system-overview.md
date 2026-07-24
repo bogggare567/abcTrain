@@ -71,7 +71,10 @@ flowchart TB
 
     subgraph Shared["shared/"]
         Waveform["WaveformDisplay"]
+        MicroLesson["MicroLesson\n(pure state machine)"]
+        LessonController["LessonController\n(APVTS + UI)"]
         TestUtils["TestUtils.h"]
+        LessonController --> MicroLesson
     end
 
     subgraph Tests["EarTrainerTests (console app)"]
@@ -82,6 +85,9 @@ flowchart TB
 
     LCEdit --> Waveform
     LVEdit --> Waveform
+    LEEdit --> LessonController
+    LCEdit --> LessonController
+    LVEdit --> LessonController
 
     Runner -. "compiles & runs directly, no host/GUI" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
@@ -90,6 +96,7 @@ flowchart TB
     Runner -. "compiles & runs directly" .-> LEProc
     Runner -. "compiles & runs directly" .-> LCProc
     Runner -. "compiles & runs directly" .-> LVProc
+    Runner -. "compiles & runs directly" .-> MicroLesson
     Runner --> TestUtils
 
     LVProc -.-> LearnerSat

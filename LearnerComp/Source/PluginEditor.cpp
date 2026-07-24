@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "ParameterGuide.h"
+#include "VocalCompressionLesson.h"
 #include <array>
 
 namespace
@@ -24,7 +25,8 @@ namespace
 }
 
 LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
-    : AudioProcessorEditor (&p), processor (p)
+    : AudioProcessorEditor (&p), processor (p),
+      lessonController (p.apvts, buildVocalCompressionLesson())
 {
     titleLabel.setText ("Learner Comp", juce::dontSendNotification);
     titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
@@ -96,6 +98,12 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
 
     processor.setWaveformDisplay (&waveform);
 
+    lessonButton.onClick = [this] { lessonController.showAndStart(); };
+    addAndMakeVisible (lessonButton);
+
+    addChildComponent (lessonController);
+    lessonController.onClosed = [this] { resized(); };
+
     startTimerHz (30);
     setSize (820, 620);
 }
@@ -112,9 +120,14 @@ void LearnerCompEditor::paint (juce::Graphics& g)
 
 void LearnerCompEditor::resized()
 {
+    lessonController.setBounds (getLocalBounds());
+
     auto area = getLocalBounds().reduced (16);
 
-    titleLabel.setBounds (area.removeFromTop (32));
+    auto titleRow = area.removeFromTop (32);
+    lessonButton.setBounds (titleRow.removeFromRight (80));
+    titleLabel.setBounds (titleRow);
+
     guideLabel.setBounds (area.removeFromTop (20));
     area.removeFromTop (8);
 

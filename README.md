@@ -10,18 +10,20 @@ Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
   level (1-10, which scales the games' difficulty up as you improve), a
   daily login streak, and a daily challenge.
 - **Learner EQ** — a real 4-band EQ for your own tracks, with a live
-  spectrum display, a response-curve overlay, and a one-line plain-
-  language explanation of what a frequency region does while you drag it.
+  spectrum display, a response-curve overlay, a one-line plain-language
+  explanation of what a frequency region does while you drag it, and a
+  step-by-step "Lesson" walkthrough (Vocal EQ Basics).
 - **Learner Comp** — a real compressor for your own tracks, with a
   scrolling input/output waveform that highlights in red wherever the
   compressor is actively reducing gain, a live gain-reduction meter,
-  input/output peak meters, a one-line explanation per control, and 4
+  input/output peak meters, a one-line explanation per control, 4
   presets to learn from (Vocal Smoothing, Punchy Drums, Bass Control,
-  Limiter).
+  Limiter), and a step-by-step "Lesson" walkthrough (Vocal Compression).
 - **Learner Verb** — a real reverb for your own tracks (Room/Hall/Plate/
   Spring), with the same scrolling waveform + peak-meter view, a one-line
-  explanation per control, and 4 presets (Vocal Ambience, Concert Hall,
-  Small Room, Spring Tank).
+  explanation per control, 4 presets (Vocal Ambience, Concert Hall,
+  Small Room, Spring Tank), and a step-by-step "Lesson" walkthrough
+  (Space for Vocals).
 
 Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
@@ -86,6 +88,7 @@ flowchart TB
 
     subgraph Shared["shared/"]
         Waveform["WaveformDisplay"]
+        LessonController["MicroLesson + LessonController"]
     end
 
     subgraph Tests["EarTrainerTests (console app)"]
@@ -96,6 +99,9 @@ flowchart TB
 
     LCEdit --> Waveform
     LVEdit --> Waveform
+    LEEdit --> LessonController
+    LCEdit --> LessonController
+    LVEdit --> LessonController
 
     Runner -. "compiles & runs directly" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
@@ -148,8 +154,10 @@ behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
 `tests/LearnerCompTest.cpp` — closed-form compression/makeup-gain math,
 bypass passthrough, preset application; `tests/LearnerVerbTest.cpp` — a
 tail persists after the input stops, `dryWet=0` is an exact passthrough,
-every reverb type produces sound, preset application). Also runs on
-push/PR via `.github/workflows/build_and_test.yml` (badge above).
+every reverb type produces sound, preset application), and the
+step-navigation logic behind the "Lesson" feature
+(`tests/MicroLessonTest.cpp`). Also runs on push/PR via
+`.github/workflows/build_and_test.yml` (badge above).
 
 ## Status
 
@@ -184,6 +192,14 @@ teaching presets — see
 for what was deliberately trimmed from the initial build (impulse-response
 visualization, decay-vs-frequency graph, stereo correlometer) and why.
 
+**Micro-lessons:** each Learner plugin has one guided "Lesson" — a
+step-by-step walkthrough that jumps its own parameters to a taught value
+at each step (Learner EQ: Vocal EQ Basics; Learner Comp: Vocal
+Compression; Learner Verb: Space for Vocals) via shared
+`MicroLesson`/`LessonController` machinery — see
+[docs/decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md)
+for the split and what was trimmed (per-control highlighting).
+
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — the `Game`/`GameManager`
@@ -198,6 +214,8 @@ visualization, decay-vs-frequency graph, stereo correlometer) and why.
   why LearnerComp has a custom compressor engine
 - [docs/decisions/004-learnerverb-scope.md](docs/decisions/004-learnerverb-scope.md) —
   LearnerVerb's trimmed visualization scope and the decay-to-`roomSize` approximation
+- [docs/decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md) —
+  `MicroLesson`/`LessonController` split and why per-control highlighting was cut
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

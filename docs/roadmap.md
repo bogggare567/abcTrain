@@ -39,7 +39,9 @@ vs. not.
 | LearnerVerb: Room/Hall/Plate (`juce::dsp::Reverb`) + Spring (custom allpass cascade) via one `ReverbEngine`, pre-delay, waveform visualization, 4 teaching presets (see [decisions/004](decisions/004-learnerverb-scope.md)) | ✓ — **scope trimmed**: no impulse-response "cloud," no decay-vs-frequency graph, no stereo correlometer/vectorscope. Just the live wet/dry waveform + peak meters, matching LearnerComp's shape. Those three visualizations are each a real feature in their own right, not something to bolt on by default — see the ADR. |
 | Unit tests: `LearnerVerbTest` (behavioral/smoke: tail persists after input stops, dryWet=0 is exact passthrough, every type produces sound, preset application) — no closed-form target the way compression has | ✓ |
 | Shared visualization component factored out for reuse across Learner plugins | ✓ `shared/WaveformDisplay.{h,cpp}`, extracted from LearnerComp once LearnerVerb needed the identical shape. `SpectrumAnalyserComponent` (LearnerEQ) is still separate — it's FFT-based, a fundamentally different data shape from the time-domain peak-tracking the other two share, so there's nothing to unify there. |
-| Integration-level tests (editor button clicks -> GameManager state) | ⏳ |
+| Micro-lessons: `MicroLesson`/`LessonController` (see [decisions/005](decisions/005-microlesson-architecture.md)), one lesson per Learner plugin (Vocal EQ Basics / Vocal Compression / Space for Vocals), a "Lesson" button in each editor | ✓ — per-control UI highlighting was cut (the parameter's own `SliderAttachment`/`ComboBoxAttachment` already makes the knob visibly move when a step sets it, which does the same job), see the ADR |
+| Unit tests: `MicroLessonTest` (step navigation state machine — pure logic, no APVTS/GUI needed) | ✓ |
+| Integration-level tests (editor button clicks -> GameManager state, or a lesson step actually landing on the right APVTS values through `LessonController`) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins
 
@@ -49,7 +51,8 @@ vs. not.
 | LearnerSat | ⏳ |
 | LearnerVerb: impulse-response visualization, decay-vs-frequency graph, stereo correlometer/vectorscope | ⏳ trimmed from the initial LearnerVerb build, see [decisions/004](decisions/004-learnerverb-scope.md) |
 | In-plugin contextual tooltips beyond one-liners (LearnerEQ, LearnerComp, and LearnerVerb all have one-liners today) | ⏳ |
-| Micro-lessons (step-by-step guided parameter changes with explanation) | ⏳ |
+| Per-control lesson-step highlighting (beyond the moving-knob cue) | ⏳ trimmed from the initial MicroLesson build, see [decisions/005](decisions/005-microlesson-architecture.md) |
+| More lessons per plugin (each Learner plugin has exactly one today) | ⏳ |
 | Glossary with audio examples | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |
 | Packaging/installer, code signing, licensing | ⏳ |

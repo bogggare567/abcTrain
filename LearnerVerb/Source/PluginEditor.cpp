@@ -1,5 +1,6 @@
 #include "PluginEditor.h"
 #include "ReverbGuide.h"
+#include "VocalSpaceLesson.h"
 #include <array>
 
 namespace
@@ -23,7 +24,8 @@ namespace
 }
 
 LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
-    : AudioProcessorEditor (&p), processor (p)
+    : AudioProcessorEditor (&p), processor (p),
+      lessonController (p.apvts, buildVocalSpaceLesson())
 {
     titleLabel.setText ("Learner Verb", juce::dontSendNotification);
     titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
@@ -98,6 +100,12 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
     processor.setWaveformDisplay (&waveform);
 
+    lessonButton.onClick = [this] { lessonController.showAndStart(); };
+    addAndMakeVisible (lessonButton);
+
+    addChildComponent (lessonController);
+    lessonController.onClosed = [this] { resized(); };
+
     startTimerHz (30);
     setSize (760, 560);
 }
@@ -114,9 +122,14 @@ void LearnerVerbEditor::paint (juce::Graphics& g)
 
 void LearnerVerbEditor::resized()
 {
+    lessonController.setBounds (getLocalBounds());
+
     auto area = getLocalBounds().reduced (16);
 
-    titleLabel.setBounds (area.removeFromTop (32));
+    auto titleRow = area.removeFromTop (32);
+    lessonButton.setBounds (titleRow.removeFromRight (80));
+    titleLabel.setBounds (titleRow);
+
     typeSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (200, 24));
     area.removeFromTop (8);
     guideLabel.setBounds (area.removeFromTop (20));

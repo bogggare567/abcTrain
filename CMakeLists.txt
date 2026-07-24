@@ -78,6 +78,7 @@ target_sources(LearnerEQ
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
         LearnerEQ/Source/PluginEntry.cpp
+        shared/LessonController.cpp
 )
 
 target_compile_definitions(LearnerEQ
@@ -117,6 +118,7 @@ target_sources(LearnerComp
         LearnerComp/Source/PluginProcessor.cpp
         LearnerComp/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
+        shared/LessonController.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
 
@@ -157,6 +159,7 @@ target_sources(LearnerVerb
         LearnerVerb/Source/PluginProcessor.cpp
         LearnerVerb/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
+        shared/LessonController.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
 
@@ -200,6 +203,7 @@ target_sources(EarTrainerTests
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
         tests/LearnerVerbTest.cpp
+        tests/MicroLessonTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
         Source/Games/EQGame.cpp
@@ -213,6 +217,7 @@ target_sources(EarTrainerTests
         LearnerVerb/Source/PluginProcessor.cpp
         LearnerVerb/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
+        shared/LessonController.cpp
 )
 
 target_compile_definitions(EarTrainerTests

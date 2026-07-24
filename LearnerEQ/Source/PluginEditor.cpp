@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "EQCoefficients.h"
 #include "FrequencyGuide.h"
+#include "VocalEqLesson.h"
 
 namespace
 {
@@ -8,7 +9,8 @@ namespace
 }
 
 LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
-    : AudioProcessorEditor (&p), processor (p)
+    : AudioProcessorEditor (&p), processor (p),
+      lessonController (p.apvts, buildVocalEqLesson())
 {
     titleLabel.setText ("Learner EQ", juce::dontSendNotification);
     titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
@@ -73,6 +75,12 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     processor.setSpectrumAnalyser (&spectrum);
 
+    lessonButton.onClick = [this] { lessonController.showAndStart(); };
+    addAndMakeVisible (lessonButton);
+
+    addChildComponent (lessonController);
+    lessonController.onClosed = [this] { resized(); };
+
     startTimerHz (30);
     setSize (760, 480);
 }
@@ -89,9 +97,14 @@ void LearnerEQEditor::paint (juce::Graphics& g)
 
 void LearnerEQEditor::resized()
 {
+    lessonController.setBounds (getLocalBounds());
+
     auto area = getLocalBounds().reduced (16);
 
-    titleLabel.setBounds (area.removeFromTop (32));
+    auto titleRow = area.removeFromTop (32);
+    lessonButton.setBounds (titleRow.removeFromRight (80));
+    titleLabel.setBounds (titleRow);
+
     guideLabel.setBounds (area.removeFromTop (24));
     area.removeFromTop (8);
 

@@ -31,10 +31,11 @@ proposed CI pipeline), `docs/decisions/` (ADRs: 001 is the `Game`
 interface choice, 002 is `setDifficulty`/`ProgressManager`, 003 is why
 LearnerComp has a custom compressor engine instead of
 `juce::dsp::Compressor`, 004 is LearnerVerb's trimmed visualization scope
-and its decay-to-`roomSize` approximation), `docs/testing-strategy.md`.
-This file (`CLAUDE.md`) stays the per-file breakdown; `docs/` is the
-higher-level/visual layer — keep both in sync when the architecture
-changes rather than letting one drift.
+and its decay-to-`roomSize` approximation, 005 is the `MicroLesson`/
+`LessonController` split and why per-control highlighting was cut),
+`docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
+breakdown; `docs/` is the higher-level/visual layer — keep both in sync
+when the architecture changes rather than letting one drift.
 
 ## Build
 
@@ -159,9 +160,13 @@ restore with the session (`getStateInformation`/`setStateInformation`).
 - `LearnerEQ/Source/PluginEntry.cpp` — just `createPluginFilter()`,
   deliberately split out of `PluginProcessor.cpp` (see the Testing section
   below for why).
+- `LearnerEQ/Source/VocalEqLesson.h` — `buildVocalEqLesson()`, one
+  `MicroLesson` (flat → boost 3 kHz presence → cut 250 Hz mud → boost
+  10 kHz air → compare) driving a "Lesson" button/`LessonController`
+  overlay in the editor. See the Microlessons section below.
 
 Not yet built for LearnerEQ: "analyze reference" mode, knowledge-base
-tooltips beyond the one-line frequency description, micro-lessons.
+tooltips beyond the one-line frequency description, more than one lesson.
 
 ## Architecture — LearnerComp (`LearnerComp/Source/`)
 
@@ -207,9 +212,12 @@ for why it doesn't use `juce::dsp::Compressor`.
   `onDragStart`/`onDragEnd` on each knob, same pattern as LearnerEQ.
 - `LearnerComp/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as LearnerEQ's.
+- `LearnerComp/Source/VocalCompressionLesson.h` — `buildVocalCompressionLesson()`,
+  one `MicroLesson` (bypass → threshold -18 dB → ratio 3:1 → attack 5 ms →
+  release 150 ms → makeup +4 dB).
 
 Not yet built for LearnerComp: knowledge-base content beyond the one-line
-tooltips, micro-lessons, any automated coverage of attack/release
+tooltips, more than one lesson, any automated coverage of attack/release
 *transient* behavior (only steady-state math is tested).
 
 ## Architecture — LearnerVerb (`LearnerVerb/Source/`)
@@ -253,11 +261,44 @@ knob isn't a precise physical measurement.
   two Learner plugins.
 - `LearnerVerb/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as the other two.
+- `LearnerVerb/Source/VocalSpaceLesson.h` — `buildVocalSpaceLesson()`, one
+  `MicroLesson` (dry → Plate 1.5 s/20% wet → pre-delay 40 ms → damping
+  70% → compare with Hall 2.5 s).
 
 Not yet built for LearnerVerb (deliberately trimmed, see ADR 004):
 impulse-response "cloud" visualization, decay-vs-frequency graph, stereo
 correlometer/vectorscope, knowledge-base content beyond one-line tooltips,
-micro-lessons.
+more than one lesson.
+
+## Architecture — Microlessons (`shared/`, per-plugin lesson content)
+
+See [decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md)
+for the full rationale; summary here.
+
+- `shared/MicroLesson.h` — pure state machine, no APVTS/UI dependency:
+  a title, a `std::vector<LessonStep>` (`explanationText` +
+  `(parameterID, value)` pairs, a plain aggregate), and a step cursor
+  (`start`/`nextStep`/`previousStep`). This is what `tests/MicroLessonTest.cpp`
+  exercises directly, with none of the message-loop/GUI-instantiation
+  concerns documented in the Testing section below.
+- `shared/LessonController.{h,cpp}` — the only thing that touches APVTS or
+  draws anything. A `juce::Component` owning one `MicroLesson` and an
+  `AudioProcessorValueTreeState&`; on every step change it calls
+  `setValueNotifyingHost` for that step's target parameters (same pattern
+  `applyPreset` already uses) and updates its text/progress labels.
+  Meant to be added as a full-size child of a Learner editor and toggled
+  visible via a "Lesson" button — every editor's `resized()` sets its
+  bounds to `getLocalBounds()` unconditionally, whether visible or not.
+- Lesson **content** (the three `build...Lesson()` files listed in each
+  plugin's section above) lives per-plugin, not in `shared/` — only the
+  machinery is shared, since the content is inherently tied to that
+  plugin's own parameter IDs. Same reasoning as `CompressorGuide`/
+  `ReverbGuide`'s preset tables.
+- **Per-control highlighting was cut from this pass.** Every target
+  parameter already has a `SliderAttachment`/`ComboBoxAttachment`, so
+  setting it via `LessonController` makes the matching knob visibly move
+  on its own — that motion is the highlight. No highlight-drawing code
+  was added to any of the three editors for this.
 
 ## Testing (`tests/`, `shared/`)
 
@@ -307,6 +348,11 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `0 * wet + 1 * dry` is exact in floating point; every one of the 4 types
   should produce non-silent output without crashing; `applyPreset` and the
   out-of-range-index guard are tested the same way as LearnerComp's.
+- `tests/MicroLessonTest.cpp` — step-navigation state machine tests
+  against `MicroLesson` directly: inactive until `start()`, `nextStep`/
+  `previousStep` stop at the ends and no-op before `start()`, `stop()`
+  deactivates, `getCurrentStep()` exposes the right text/target params.
+  No APVTS, no `LessonController`, no `Component` involved at all.
 
 **`juce::ChangeBroadcaster::sendChangeMessage()` is asynchronous** (needs
 a running JUCE message loop to deliver), and `EarTrainerTests` never pumps
@@ -334,14 +380,15 @@ targets (`juce_add_plugin`) link both `PluginProcessor.cpp` *and*
 CI: `.github/workflows/build_and_test.yml` builds all targets and runs
 `EarTrainerTests` on push/PR across ubuntu-latest/macos-latest/
 windows-latest. **Confirmed green on all three as of commit `a2f2944`**,
-and again on `dd207d1` (LearnerComp, added afterward) — checked directly
-against the GitHub Actions API, not assumed. Two real bugs were caught and
-fixed getting to the first green run (see `docs/diagrams/ci-pipeline.md`
-for both) — that was the first actual compile+run this codebase had ever
-gotten, so treat that history as a reminder to keep watching CI on every
-push, not evidence the code is now bulletproof. **LearnerVerb was added
-after `dd207d1` and is not yet confirmed to build/pass** — watch the next
-CI run on this branch before trusting it.
+again on `dd207d1` (LearnerComp), and again on `8932b84` (LearnerVerb) —
+each checked directly against the GitHub Actions API, not assumed. Two
+real bugs were caught and fixed getting to the first green run (see
+`docs/diagrams/ci-pipeline.md` for both) — that was the first actual
+compile+run this codebase had ever gotten, so treat that history as a
+reminder to keep watching CI on every push, not evidence the code is now
+bulletproof. **MicroLesson/LessonController was added after `8932b84` and
+is not yet confirmed to build/pass** — watch the next CI run on this
+branch before trusting it.
 
 ## Conventions
 
@@ -365,12 +412,19 @@ CI run on this branch before trusting it.
   contextual guide text, its own `PluginEntry.cpp` split).
 - LearnerVerb's trimmed-for-now visualizations: impulse-response "cloud,"
   decay-vs-frequency graph, stereo correlometer/vectorscope (see ADR 004).
-- LearnerEQ "analyze reference" mode + richer knowledge base/micro-lessons.
+- LearnerEQ "analyze reference" mode + richer knowledge base beyond one-
+  line tooltips.
+- Per-control lesson-step highlighting, trimmed from the initial
+  MicroLesson build (see ADR 005) — the moving-knob cue from each step's
+  own `SliderAttachment`/`ComboBoxAttachment` stands in for it today.
+- More lessons per plugin (each Learner plugin has exactly one today).
 - Golden-file / transient-behavior audio regression tests for LearnerEQ,
   LearnerComp, and LearnerVerb (each currently has only steady-state or
   behavioral assertions, no golden-file comparison).
 - Integration test for the real `Game → ProgressManager` `ChangeListener`
-  wiring (needs a pumped message loop, not set up yet — see Testing).
+  wiring (needs a pumped message loop, not set up yet — see Testing), and
+  similarly no automated test of `LessonController`'s actual
+  APVTS-setting behavior (see ADR 005).
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
   unstarted; see prior conversation history for the full plan if picked
   up later.

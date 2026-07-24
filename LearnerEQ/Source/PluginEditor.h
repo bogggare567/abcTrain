@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "SpectrumAnalyser.h"
+#include "../../shared/LessonController.h"
 #include <array>
 #include <memory>
 
@@ -33,6 +34,9 @@ private:
     juce::Label titleLabel;
     juce::Label guideLabel;
     std::array<BandControls, LearnerEQProcessor::numBands> bands;
+
+    juce::TextButton lessonButton { "Lesson" };
+    LessonController lessonController;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEQEditor)
 };
