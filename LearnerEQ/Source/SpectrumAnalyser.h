@@ -13,6 +13,13 @@
 class SpectrumAnalyserComponent : public SpectrumAnalyzerComponent
 {
 public:
+    // Explicit and defaulted: JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR
+    // below declares a deleted copy constructor, and a class with *any*
+    // user-declared constructor (deleted or not) gets no implicit default
+    // constructor - this class needs one since all the real construction
+    // work now happens in the base class (shared/SpectrumAnalyzer.h).
+    SpectrumAnalyserComponent() = default;
+
     // Called from the message thread once per frame with the current
     // parameter values, so the response curve tracks knob movement even
     // when no audio is playing.
