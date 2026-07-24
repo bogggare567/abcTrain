@@ -113,13 +113,16 @@ logic is not, and can only be checked by actually running the plugin.
 ## Not yet built
 
 - **CI is green, but confirm it stays that way.** All three OSes passed on
-  commit `a2f2944`, catching two real bugs first (see
-  `docs/diagrams/ci-pipeline.md`), again on `dd207d1` (LearnerComp), and
-  again on `8932b84` (LearnerVerb) — each checked directly against the
-  GitHub Actions API, not assumed. The MicroLesson/LessonController commit
-  and the visualization-unification commit after it have not been
-  confirmed yet as of this writing. Every change still needs to actually
-  go through CI, not just look correct on read-through.
+  commit `a2f2944`, again on `dd207d1` (LearnerComp), `8932b84`
+  (LearnerVerb), `dd0ef5a` (MicroLesson/LessonController), and `7accd19`
+  (visualization unification, after `b3c2f88` actually failed CI with a
+  real compile error — see `docs/diagrams/ci-pipeline.md` for all three
+  bugs caught this way) — each checked directly against the GitHub Actions
+  API or web UI, not assumed. Every change still needs to actually go
+  through CI, not just look correct on read-through — and this environment
+  turned out to have `cmake`/`clang++` available via Homebrew, so a local
+  build is worth trying before pushing on any non-trivial change, not just
+  after CI catches something.
 - **Integration tests**: nothing exercises `PluginEditor` (button clicks
   changing `GameManager` state end-to-end), the `SliderAttachment`/
   `ComboBoxAttachment` wiring in any Learner editor, or the real

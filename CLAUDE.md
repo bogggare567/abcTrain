@@ -427,16 +427,20 @@ targets (`juce_add_plugin`) link both `PluginProcessor.cpp` *and*
 CI: `.github/workflows/build_and_test.yml` builds all targets and runs
 `EarTrainerTests` on push/PR across ubuntu-latest/macos-latest/
 windows-latest. **Confirmed green on all three as of commit `a2f2944`**,
-again on `dd207d1` (LearnerComp), and again on `8932b84` (LearnerVerb) —
-each checked directly against the GitHub Actions API, not assumed. Two
-real bugs were caught and fixed getting to the first green run (see
-`docs/diagrams/ci-pipeline.md` for both) — that was the first actual
-compile+run this codebase had ever gotten, so treat that history as a
+again on `dd207d1` (LearnerComp), `8932b84` (LearnerVerb), `dd0ef5a`
+(MicroLesson/LessonController), and `7accd19` (visualization unification,
+see below) — each checked directly against the GitHub Actions API or web
+UI, not assumed. Three real bugs have been caught and fixed getting here
+(see `docs/diagrams/ci-pipeline.md` for all three) — that history is a
 reminder to keep watching CI on every push, not evidence the code is now
-bulletproof. **The MicroLesson/LessonController commit and the
-visualization-unification commit after it (this one) have not yet been
-confirmed to build/pass** — watch the next CI run on this branch before
-trusting them.
+bulletproof. **The visualization-unification commit `b3c2f88` actually
+failed CI on all three OSes** — a real compile error (a derived Component
+class silently losing its implicit default constructor once
+`JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR` was in play with no
+constructor of its own declared), not a false alarm — reproduced and fixed
+locally in `7accd19` by actually installing `cmake` and building (this
+sandbox has Homebrew + `clang++`, so a local build is possible here, not
+CI-only as earlier work in this project assumed).
 
 ## Conventions
 
