@@ -22,7 +22,7 @@ vs. not.
 | Unit test infra (`EarTrainerTests`, `juce::UnitTestRunner`) | ✓ |
 | Unit tests: game scoring/state logic (all 3 games) | ✓ |
 | DSP regression test: LearnerEQ band boost raises measured RMS | ✓ |
-| CI: build + run tests on push/PR | 🚧 Windows confirmed green; Ubuntu OOM'd on unbounded `make -j`, fix pushed unverified; macOS unconfirmed |
+| CI: build + run tests on push/PR | ✓ confirmed green on all 3 OSes (commit `a2f2944`), including `EarTrainerTests` actually running and passing, not just building |
 
 ## Beta — round out the trainer, second teaching plugin
 

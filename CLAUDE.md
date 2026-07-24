@@ -155,9 +155,12 @@ needs a real `AudioProcessor`, and it gets one from LearnerEQ.
 
 CI: `.github/workflows/build_and_test.yml` builds all targets and runs
 `EarTrainerTests` on push/PR across ubuntu-latest/macos-latest/
-windows-latest. Written but not yet confirmed green on GitHub — treat any
-DSP change as unverified until you've seen an actual passing run, not just
-the workflow file existing.
+windows-latest. **Confirmed green on all three as of commit `a2f2944`.**
+Two real bugs were caught and fixed getting here (see
+`docs/diagrams/ci-pipeline.md` for both) — this was the first actual
+compile+run this codebase had ever gotten, so treat that history as a
+reminder to keep watching CI on every push, not evidence the code is now
+bulletproof.
 
 ## Conventions
 
@@ -175,7 +178,6 @@ the workflow file existing.
   visualization + contextual guide text).
 - Score persistence via `juce::PropertiesFile`.
 - LearnerEQ "analyze reference" mode + richer knowledge base/micro-lessons.
-- Confirm CI is actually green on GitHub (workflow exists, unverified).
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
   unstarted; see prior conversation history for the full plan if picked
   up later.

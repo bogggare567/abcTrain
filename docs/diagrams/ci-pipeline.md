@@ -1,15 +1,23 @@
 # CI pipeline
 
 `.github/workflows/build_and_test.yml` exists and runs this on every push/
-PR. Status as of the first real runs: **Windows confirmed green**.
-**Ubuntu OOM-killed** (exit 143) on the first attempt — `--parallel` with
-no number, on the Unix Makefiles generator, means unlimited concurrent
-`make` jobs, not "one per core"; building three targets' worth of JUCE
-unity-build translation units at once exhausted the runner's memory. Fixed
-by capping it (`--parallel 2`) — pushed, not yet re-confirmed. **macOS**
-status not yet confirmed either way. Don't trust this pipeline as a merge
-gate until all three have an observed green run, not just "the workflow
-exists."
+PR. **Confirmed green on all three OSes** as of commit `a2f2944`
+(2026-07-24) — Windows, macOS, and Ubuntu all built every target and ran
+`EarTrainerTests` to completion successfully. This was not the first
+attempt: two real bugs surfaced and got fixed along the way, both worth
+knowing about if the build ever regresses:
+
+1. `LearnerEQProcessor::getName()` returned the `JucePlugin_Name` macro,
+   which JUCE only defines for real `juce_add_plugin` targets. It's
+   undefined for `EarTrainerTests` (a `juce_add_console_app` that compiles
+   `LearnerEQ/Source/PluginProcessor.cpp` directly), so every compiler
+   failed there with an undeclared-identifier error. Fixed by returning a
+   literal string instead.
+2. `cmake --build ... --parallel` with no number, on the Unix Makefiles
+   generator (the default on Linux/macOS), means unlimited concurrent
+   `make` jobs, not "one per core." Building three targets' worth of JUCE
+   unity-build translation units at once OOM-killed the Ubuntu runner
+   (exit 143). Fixed by capping it explicitly (`--parallel 2`).
 
 ```mermaid
 flowchart TD
