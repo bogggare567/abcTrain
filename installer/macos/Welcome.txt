@@ -1,0 +1,13 @@
+Welcome to the abcTrain installer.
+
+This installs the Ear Trainer / Learner EQ / Learner Comp / Learner Verb
+plugins. On the next screen you can choose which plugins to install and,
+for each one, which plugin format(s): VST3 (for Ableton Live, Cubase,
+Reaper, Studio One, and most other DAWs), Audio Unit/AU (for Logic Pro
+and GarageBand), or the Standalone app (runs on its own, no DAW needed).
+
+After choosing your components, you'll be able to pick whether to
+install for every user of this Mac or just your own account.
+
+This is a pre-release build for private testing - see the license
+agreement on the next screen.

@@ -41,17 +41,48 @@ vs. built so far.
 
 ## Download
 
-Pre-release builds only — see [LICENSE](LICENSE) before distributing
-anything built from this repo.
+Pre-release, **unsigned** builds only — see [LICENSE](LICENSE) before
+distributing anything built from this repo. Unsigned means macOS
+Gatekeeper will show an "unidentified developer" block (right-click the
+installer → Open, or allow it in System Settings → Privacy & Security)
+and Windows SmartScreen will show a "Windows protected your PC" warning
+(click "More info" → "Run anyway") — code signing/notarization is real,
+separate future work, not done yet.
 
-- **Latest build from any push:** [Actions](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml) →
+- **Tagged releases (recommended):** pushing a `vX.Y.Z` tag publishes a
+  [GitHub Release](https://github.com/bogggare567/abcTrain/releases) with
+  a real installer for each OS:
+  - **macOS** — `abcTrain-macOS-X.Y.Z.dmg`. Open it, run the `.pkg`
+    inside, and you'll get a real component-selection installer: check
+    which of the four plugins you want, and under each, which format(s)
+    (VST3/AU/Standalone) with a one-line explanation of what each format
+    is for; then choose "install for all users of this Mac" or "just me"
+    for the VST3/AU locations (Apple's installer offers this natively).
+    A README, the LICENSE, and an "Open Plugins Folder.command" helper
+    are on the same DMG.
+  - **Windows** — `abcTrain-Windows-X.Y.Z-setup.exe`. Same
+    plugin/format checkbox tree, then a folder-location page for the
+    Standalone apps (default `Program Files\abcTrain`) and a second,
+    separate page just for the VST3 folder (default
+    `Common Files\VST3`) — both are plain text fields you can retype to
+    anywhere you like. Creates Start Menu shortcuts and a normal
+    Add/Remove Programs entry.
+  - **Linux** — `abcTrain-Linux-X.Y.Z.tar.gz`. Extract it and run
+    `./install.sh` inside: it asks which plugins to install and where
+    VST3s should go (`$HOME/.vst3`, `/usr/lib/vst3` via `sudo`, or a path
+    you type), same as the other two OSes, just as a terminal prompt
+    instead of a GUI wizard.
+
+  See [docs/decisions/008-installers.md](docs/decisions/008-installers.md)
+  for exactly what each installer can and can't do (macOS's system
+  installer has no free-text custom path, unlike Windows/Linux — a real
+  platform limitation, not an oversight).
+- **Latest raw build from any push** (no installer, just the built
+  plugins): [Actions](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml) →
   the most recent green run → **Artifacts** at the bottom of the run page
   → download `plugins-ubuntu-latest`/`plugins-macos-latest`/
   `plugins-windows-latest` (each is a zip of that OS's VST3/AU/Standalone
-  builds for all four plugins).
-- **Tagged releases:** pushing a `vX.Y.Z` tag publishes a
-  [GitHub Release](https://github.com/bogggare567/abcTrain/releases) with
-  all three OS builds attached.
+  builds for all four plugins, for manually copying into place).
 - **In-plugin update check:** each plugin has an "Updates" button that
   checks GitHub for a newer tagged release and offers to open the release
   page — manual only, no background network calls. See
@@ -277,6 +308,10 @@ Bypass next to Lesson in the title row) via the newly-extracted
 - [docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md) —
   CI artifacts/releases, the manual-only "Check for Updates" button, and
   why it needs `NEEDS_CURL TRUE` on Linux
+- [docs/decisions/008-installers.md](docs/decisions/008-installers.md) —
+  the real per-OS installers (`.pkg`/DMG, Inno Setup, `tar.gz`), and why
+  macOS can't offer a free-text custom install path the way
+  Windows/Linux can
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

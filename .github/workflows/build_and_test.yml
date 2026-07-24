@@ -81,6 +81,64 @@ jobs:
         shell: pwsh
         run: ./build/EarTrainerTests_artefacts/Release/EarTrainerTests.exe
 
+      # Real, per-OS installers - one component pkg/.dmg for macOS
+      # (component-selection + system/user choice via productbuild's
+      # native domains toggle), one Inno Setup .exe for Windows (adds a
+      # free-text custom path for VST3, unlike macOS), one tar.gz +
+      # interactive install.sh for Linux. See
+      # decisions/008-installers.md for the whole design and its honest
+      # limitations (these builds are unsigned - see that ADR).
+      - name: Build installer (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          VERSION=$(grep -oE 'VERSION [0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1 | awk '{print $2}')
+          bash installer/macos/build_installer.sh build "abcTrain-macOS-${VERSION}.dmg"
+
+      - name: Upload macOS installer
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-macos
+          path: abcTrain-macOS-*.dmg
+          if-no-files-found: error
+
+      # GitHub-hosted Windows runners have Chocolatey pre-installed and on
+      # PATH; `choco install innosetup` shims `iscc` onto PATH too, so it's
+      # callable directly in the next step without knowing its install path.
+      - name: Install Inno Setup
+        if: runner.os == 'Windows'
+        run: choco install innosetup -y
+
+      - name: Build installer (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'VERSION (\d+\.\d+\.\d+)').Matches[0].Groups[1].Value
+          iscc "installer\windows_setup.iss" "/DMyAppVersion=$version"
+          Move-Item "installer\abcTrain-$version-setup.exe" "abcTrain-Windows-$version-setup.exe"
+
+      - name: Upload Windows installer
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: abcTrain-Windows-*-setup.exe
+          if-no-files-found: error
+
+      - name: Build installer (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          VERSION=$(grep -oE 'VERSION [0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1 | awk '{print $2}')
+          bash installer/linux/package_tar.sh build "abcTrain-Linux-${VERSION}.tar.gz"
+
+      - name: Upload Linux installer
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-linux
+          path: abcTrain-Linux-*.tar.gz
+          if-no-files-found: error
+
   # Only runs on a `vX.Y.Z` tag push, after all three OSes have built and
   # tested successfully (`needs:` + the matrix job's own default fail
   # behavior means a failing OS blocks the release). `push:` with no
@@ -98,10 +156,14 @@ jobs:
         with:
           path: artifacts
 
-      - name: Zip each OS's artifacts for release
+      # Only the raw plugins-* build output gets re-zipped here - the
+      # three real installers (installer-macos/-windows/-linux) are
+      # already packaged appropriately (.dmg/.exe/.tar.gz) and get
+      # attached to the release as-is below.
+      - name: Zip each OS's raw plugin artifacts for release
         run: |
           cd artifacts
-          for dir in */; do
+          for dir in plugins-*/; do
             name="${dir%/}"
             (cd "$name" && zip -r "../${name}.zip" .)
           done
@@ -109,5 +171,9 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: |
+            artifacts/plugins-*.zip
+            artifacts/installer-macos/*.dmg
+            artifacts/installer-windows/*.exe
+            artifacts/installer-linux/*.tar.gz
           generate_release_notes: true

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+    <title>abcTrain</title>
+    <welcome file="Welcome.txt" mime-type="text/plain"/>
+    <readme file="ReadMe.txt" mime-type="text/plain"/>
+    <license file="LICENSE.txt" mime-type="text/plain"/>
+    <options customize="always" require-scripts="false" rootVolumeOnly="false"/>
+
+    <!-- Lets Installer.app offer its native "Install for all users of this
+         computer" (system, /Library/...) vs "Install for me only"
+         (relocates to ~/Library/...) toggle for every component whose
+         install-location falls under /Library - this is what actually
+         satisfies the "system vs. user folder" choice for VST3/AU below,
+         with no custom scripting. See decisions/008-installers.md for why
+         a free-text custom path (also asked for) isn't something the
+         stock Installer.app UI supports at all, unlike Windows. -->
+    <domains enable_currentUserHome="true" enable_localSystem="true" enable_anywhere="false"/>
+
+    <choices-outline>
+        <line choice="choice_eartrainer">
+            <line choice="choice_eartrainer_vst3"/>
+            <line choice="choice_eartrainer_au"/>
+            <line choice="choice_eartrainer_app"/>
+        </line>
+        <line choice="choice_learnereq">
+            <line choice="choice_learnereq_vst3"/>
+            <line choice="choice_learnereq_au"/>
+            <line choice="choice_learnereq_app"/>
+        </line>
+        <line choice="choice_learnercomp">
+            <line choice="choice_learnercomp_vst3"/>
+            <line choice="choice_learnercomp_au"/>
+            <line choice="choice_learnercomp_app"/>
+        </line>
+        <line choice="choice_learnerverb">
+            <line choice="choice_learnerverb_vst3"/>
+            <line choice="choice_learnerverb_au"/>
+            <line choice="choice_learnerverb_app"/>
+        </line>
+    </choices-outline>
+
+    <!-- Ear Trainer -->
+    <choice id="choice_eartrainer" title="Ear Trainer" description="Ear-training games: guess the boosted/cut band, the compression strength, the reverb type. Points, levels, daily streak."/>
+    <choice id="choice_eartrainer_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.eartrainer.vst3"/>
+    </choice>
+    <choice id="choice_eartrainer_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.eartrainer.au"/>
+    </choice>
+    <choice id="choice_eartrainer_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+        <pkg-ref id="com.earsnap.abctrain.eartrainer.app"/>
+    </choice>
+
+    <!-- Learner EQ -->
+    <choice id="choice_learnereq" title="Learner EQ" description="A real 4-band EQ with a live spectrum + response curve, a scrolling waveform, contextual tooltips, a Bypass toggle, and a guided Lesson."/>
+    <choice id="choice_learnereq_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.learnereq.vst3"/>
+    </choice>
+    <choice id="choice_learnereq_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.learnereq.au"/>
+    </choice>
+    <choice id="choice_learnereq_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+        <pkg-ref id="com.earsnap.abctrain.learnereq.app"/>
+    </choice>
+
+    <!-- Learner Comp -->
+    <choice id="choice_learnercomp" title="Learner Comp" description="A real compressor with a live spectrum, a scrolling waveform with gain-reduction highlighting, GR/peak meters, 4 teaching presets, a Bypass toggle, and a guided Lesson."/>
+    <choice id="choice_learnercomp_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.learnercomp.vst3"/>
+    </choice>
+    <choice id="choice_learnercomp_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.learnercomp.au"/>
+    </choice>
+    <choice id="choice_learnercomp_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+        <pkg-ref id="com.earsnap.abctrain.learnercomp.app"/>
+    </choice>
+
+    <!-- Learner Verb -->
+    <choice id="choice_learnerverb" title="Learner Verb" description="A real reverb (Room/Hall/Plate/Spring) with the same live spectrum + scrolling waveform view as Learner Comp, 4 teaching presets, a Bypass toggle, and a guided Lesson."/>
+    <choice id="choice_learnerverb_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.learnerverb.vst3"/>
+    </choice>
+    <choice id="choice_learnerverb_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
+        <pkg-ref id="com.earsnap.abctrain.learnerverb.au"/>
+    </choice>
+    <choice id="choice_learnerverb_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+        <pkg-ref id="com.earsnap.abctrain.learnerverb.app"/>
+    </choice>
+
+    <pkg-ref id="com.earsnap.abctrain.eartrainer.vst3" onConclusion="none">eartrainer_vst3.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.eartrainer.au" onConclusion="none">eartrainer_au.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.eartrainer.app" onConclusion="none">eartrainer_app.pkg</pkg-ref>
+
+    <pkg-ref id="com.earsnap.abctrain.learnereq.vst3" onConclusion="none">learnereq_vst3.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.learnereq.au" onConclusion="none">learnereq_au.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.learnereq.app" onConclusion="none">learnereq_app.pkg</pkg-ref>
+
+    <pkg-ref id="com.earsnap.abctrain.learnercomp.vst3" onConclusion="none">learnercomp_vst3.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.learnercomp.au" onConclusion="none">learnercomp_au.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.learnercomp.app" onConclusion="none">learnercomp_app.pkg</pkg-ref>
+
+    <pkg-ref id="com.earsnap.abctrain.learnerverb.vst3" onConclusion="none">learnerverb_vst3.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.learnerverb.au" onConclusion="none">learnerverb_au.pkg</pkg-ref>
+    <pkg-ref id="com.earsnap.abctrain.learnerverb.app" onConclusion="none">learnerverb_app.pkg</pkg-ref>
+</installer-gui-script>

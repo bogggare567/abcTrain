@@ -44,6 +44,7 @@ vs. not.
 | Unified visualization across Learner plugins: `shared/SpectrumAnalyzer` (extracted from LearnerEQ), Waveform+Spectrum in all three, Bypass/A-B toggle in all three next to Lesson (see [decisions/006](decisions/006-unified-visualization.md)) | ✓ |
 | Downloadable builds: CI uploads a per-OS artifact on every push, publishes a GitHub Release with all three OS builds when a `vX.Y.Z` tag is pushed, and each plugin has a manual "Check for Updates" button (`shared/UpdateChecker`, see [decisions/007](decisions/007-update-checker.md)) | ✓ — no background daily timer, manual only; see the ADR for why |
 | Unit tests: `UpdateCheckerTest` (version-comparison + JSON-parsing logic — pure, no real network call) | ✓ |
+| Real per-OS installers: component/format-selectable `.pkg`/DMG (macOS), Inno Setup `.exe` with a free-text VST3 path (Windows), `tar.gz` + interactive `install.sh` (Linux) — see [decisions/008](decisions/008-installers.md) | ✓ — macOS/Linux verified locally end-to-end; Windows `.iss` not yet compiled anywhere (no Windows in this sandbox), CI is its first real test |
 | Integration-level tests (editor button clicks -> GameManager state, or a lesson step actually landing on the right APVTS values through `LessonController`) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins
@@ -58,7 +59,8 @@ vs. not.
 | More lessons per plugin (each Learner plugin has exactly one today) | ⏳ |
 | Glossary with audio examples | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |
-| Packaging/installer, code signing, licensing | 🚧 a basic all-rights-reserved `LICENSE` and downloadable per-OS build artifacts/tagged releases now exist; a real installer and code signing/notarization are still unstarted |
+| Code signing, notarization (macOS)/authenticode (Windows) | ⏳ — per-OS installers now exist (see the Beta row above) but are unsigned: macOS shows an "unidentified developer" Gatekeeper block, Windows shows a SmartScreen warning, until this is done |
+| Real licensing/monetization beyond the current all-rights-reserved `LICENSE` | ⏳ — a "free for GitHub stargazers" social-license idea was considered and explicitly deferred until there's real user traction to protect; see conversation history if picked up later |
 
 ## 2.0 — AI assistant, B2B
 

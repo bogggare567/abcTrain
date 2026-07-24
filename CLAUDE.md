@@ -49,7 +49,9 @@ and its decay-to-`roomSize` approximation, 005 is the `MicroLesson`/
 unifying the spectrum/waveform/bypass shape across all three Learner
 plugins and why that's not tested with a real `SpectrumAnalyzerComponent`,
 007 is CI artifacts/releases plus the manual-only "Check for Updates"
-button and why it needs `NEEDS_CURL TRUE` on Linux),
+button and why it needs `NEEDS_CURL TRUE` on Linux, 008 is the per-OS
+installers (`.pkg`/DMG, Inno Setup, `tar.gz`) and why macOS can't offer a
+free-text custom install path the way Windows/Linux can),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -400,6 +402,55 @@ for the full rationale; summary here.
   or frown on unexpected plugin network activity. Revisit if manual
   checking turns out to be too easy to forget.
 
+## Architecture — Installers (`installer/`, all four plugins)
+
+See [decisions/008-installers.md](docs/decisions/008-installers.md) for
+the full rationale; summary here. CI builds these on every push (see the
+CI section below) and attaches them to a GitHub Release when a `vX.Y.Z`
+tag is pushed. These package the *already-built* `*_artefacts/Release`
+tree — none of the three scripts below build anything themselves.
+
+- `installer/macos/build_installer.sh` — builds one `pkgbuild` component
+  package per (plugin × format), 12 total, then `productbuild
+  --distribution installer/macos/distribution.xml` combines them into one
+  product `.pkg` wrapped in a `.dmg` alongside a double-clickable
+  `Open Plugins Folder.command`. `distribution.xml`'s `<domains
+  enable_currentUserHome="true">` gets `Installer.app`'s native "install
+  for all users" vs. "install for me only" toggle for free on every
+  `/Library`-rooted component (VST3/AU) — no custom scripting. A
+  free-text custom install path is *not* supported here: that's a real
+  limitation of the stock `Installer.app` UI (it only lets you pick a
+  disk/volume, not an arbitrary folder), not something this project chose
+  to skip. Verified end-to-end locally (this sandbox has
+  `pkgbuild`/`productbuild`/`hdiutil`) — `pkgutil --expand` on the actual
+  built `.pkg` confirmed all 12 components' identifiers/install-locations.
+- `installer/windows_setup.iss` — Inno Setup 6. Same plugin/format
+  `[Components]` tree as macOS, the standard directory page for `{app}`
+  (Standalone `.exe`s, default `{pf}\abcTrain`), *plus* a second custom
+  directory page (`CreateInputDirPage`, anchored after
+  `wpSelectComponents` — anchoring after `wpSelectDir` instead was a real
+  bug caught on read-through, since that page comes *before*
+  `wpSelectComponents` in Inno's default order and would've read stale
+  component selections) specifically for VST3, default `{commoncf}\VST3`
+  — this is the one platform that got a genuine free-text custom path,
+  since Inno's directory widgets support it natively where macOS's don't.
+  **Not compiled anywhere yet** (no Windows in this sandbox) — CI is its
+  first real test.
+- `installer/linux/package_tar.sh` + `install.sh` — lays out
+  `<Plugin>/VST3/` + `<Plugin>/Standalone/` per plugin in the `tar.gz`,
+  plus an interactive `install.sh` that asks which plugins to install and
+  where (VST3: `$HOME/.vst3`, `/usr/lib/vst3` via `sudo`, or a typed
+  path). Verified by actually running `install.sh` with piped answers
+  under a fake `$HOME`.
+- CI installs Inno Setup via `choco install innosetup` on the Windows
+  runner (pre-installed Chocolatey shims `iscc` onto `PATH`, no need to
+  hardcode its install path) and `libcurl4-openssl-dev` on Linux is
+  already covered by the update-checker's own CI step (see the CI section
+  below).
+- **These builds are unsigned.** macOS Gatekeeper and Windows SmartScreen
+  will both warn on them until code signing/notarization is done — that's
+  separate, unstarted future work, not a bug in the installer scripts.
+
 ## Testing (`tests/`, `shared/`)
 
 `EarTrainerTests` is a plain console app (`juce_add_console_app`, not a
@@ -510,17 +561,24 @@ constructor of its own declared), not a false alarm — reproduced and fixed
 locally in `7accd19` by actually installing `cmake` and building (this
 sandbox has Homebrew + `clang++`, so a local build is possible here, not
 CI-only as earlier work in this project assumed). Confirmed green again on
-`6331f89` (docs-only). The CI-artifacts/tag-release/update-checker commit
-has not been confirmed on CI as of this writing — it was, however,
-verified with a full local build of all four plugin targets plus
-`EarTrainerTests` beforehand (see [decisions/007](docs/decisions/007-update-checker.md)),
+`6331f89` (docs-only), and again on `148d984` (CI artifacts, tag releases,
+the manual update checker, and `NEEDS_CURL`/libcurl on Linux all verified
+on real CI runners, not just locally) — it was, however, also verified
+with a full local build of all four plugin targets plus `EarTrainerTests`
+beforehand (see [decisions/007](docs/decisions/007-update-checker.md)),
 which is also how a real use-after-free in `UpdateChecker::parseReleaseJson`
 (a temporary `var`'s `DynamicObject` read after the temporary was already
 destroyed) and a pre-existing, previously-invisible flakiness in
 `ProgressManagerTest` (its `PropertiesFile`-backed tests persisted state
 across separate runs of the same binary on the same machine, since CI's
 containers are always fresh but this was the first time the binary had
-ever been run twice locally) were both found and fixed.
+ever been run twice locally) were both found and fixed. **The per-OS
+installer commit (macOS `.pkg`/DMG, Windows Inno Setup, Linux
+`tar.gz`/`install.sh`) has not been confirmed on CI as of this writing** —
+macOS and Linux were verified locally end-to-end (this sandbox can
+actually run `pkgbuild`/`productbuild`/`hdiutil`), but the Windows `.iss`
+has never been compiled anywhere; CI is its first real test, watch it
+closely (see [decisions/008](docs/decisions/008-installers.md)).
 
 ## Conventions
 
@@ -566,10 +624,17 @@ ever been run twice locally) were both found and fixed.
 - Background daily update-check timer, trimmed from the initial
   `UpdateChecker` build in favor of a manual "Check for Updates" button
   (see ADR 007) — revisit if manual checking turns out too easy to forget.
-- Real installer/packaging and code signing/notarization — a basic
-  all-rights-reserved `LICENSE` and downloadable CI artifacts/tagged
-  releases exist now (see ADR 007), but the builds themselves are still
-  unsigned.
+- Code signing and notarization (macOS)/authenticode (Windows) — real
+  per-OS installers exist now (`.pkg`/DMG, Inno Setup `.exe`,
+  `tar.gz`/`install.sh`, see ADR 008), but the builds themselves are still
+  unsigned: Gatekeeper and SmartScreen will both warn until this is done.
+- Real licensing/monetization beyond the current all-rights-reserved
+  `LICENSE` — a "free license for GitHub stargazers" idea was proposed
+  and explicitly deferred (no real users yet to justify the added
+  friction, and the client-side HMAC-signing approach that was proposed
+  wouldn't have provided real protection anyway — trivially extractable
+  from the shipped binary). Revisit once there's real user traction worth
+  protecting.
 - Phase 2 (AI detector) and phase 3 (sales site/B2B licensing beyond the
   current `LICENSE` file) are unstarted; see prior conversation history
   for the full plan if picked up later.
