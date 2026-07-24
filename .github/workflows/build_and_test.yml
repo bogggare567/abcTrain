@@ -43,8 +43,14 @@ jobs:
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
+      # --parallel with no number passed to the Unix Makefiles generator
+      # means "make -j" with no limit at all, not "one job per core" -
+      # that's what OOM-killed the Ubuntu runner building three targets'
+      # worth of JUCE unity-build translation units at once. Capping it
+      # explicitly is the actual fix; a bigger runner or splitting the
+      # build wouldn't address the root cause.
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel 2
 
       - name: Run tests (Unix)
         if: runner.os != 'Windows'

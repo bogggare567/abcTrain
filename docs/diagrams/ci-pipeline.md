@@ -1,8 +1,15 @@
-# CI pipeline (proposed — not implemented yet)
+# CI pipeline
 
-No `.github/workflows/` exists in this repo yet. This is the proposed
-shape for when it's built (task 0.2 in [../roadmap.md](../roadmap.md)),
-not a description of something running today.
+`.github/workflows/build_and_test.yml` exists and runs this on every push/
+PR. Status as of the first real runs: **Windows confirmed green**.
+**Ubuntu OOM-killed** (exit 143) on the first attempt — `--parallel` with
+no number, on the Unix Makefiles generator, means unlimited concurrent
+`make` jobs, not "one per core"; building three targets' worth of JUCE
+unity-build translation units at once exhausted the runner's memory. Fixed
+by capping it (`--parallel 2`) — pushed, not yet re-confirmed. **macOS**
+status not yet confirmed either way. Don't trust this pipeline as a merge
+gate until all three have an observed green run, not just "the workflow
+exists."
 
 ```mermaid
 flowchart TD
