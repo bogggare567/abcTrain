@@ -30,11 +30,32 @@ Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
 All three Learner plugins share the same visualization shape and Bypass/
 Lesson button placement now — see
 [docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md).
+All four plugins (EarTrainer included) also have an "Updates" button that
+checks GitHub for a newer release on request — see the Download section
+below.
 
 Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
 base — see [docs/roadmap.md](docs/roadmap.md) for what's actually planned
 vs. built so far.
+
+## Download
+
+Pre-release builds only — see [LICENSE](LICENSE) before distributing
+anything built from this repo.
+
+- **Latest build from any push:** [Actions](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml) →
+  the most recent green run → **Artifacts** at the bottom of the run page
+  → download `plugins-ubuntu-latest`/`plugins-macos-latest`/
+  `plugins-windows-latest` (each is a zip of that OS's VST3/AU/Standalone
+  builds for all four plugins).
+- **Tagged releases:** pushing a `vX.Y.Z` tag publishes a
+  [GitHub Release](https://github.com/bogggare567/abcTrain/releases) with
+  all three OS builds attached.
+- **In-plugin update check:** each plugin has an "Updates" button that
+  checks GitHub for a newer tagged release and offers to open the release
+  page — manual only, no background network calls. See
+  [docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md).
 
 ## Architecture
 
@@ -96,6 +117,7 @@ flowchart TB
         Waveform["WaveformDisplay"]
         SpectrumBase["SpectrumAnalyzerComponent"]
         LessonController["MicroLesson + LessonController"]
+        UpdateChecker["UpdateChecker"]
     end
 
     subgraph Tests["EarTrainerTests (console app)"]
@@ -113,6 +135,10 @@ flowchart TB
     LEEdit --> LessonController
     LCEdit --> LessonController
     LVEdit --> LessonController
+    ETEdit --> UpdateChecker
+    LEEdit --> UpdateChecker
+    LCEdit --> UpdateChecker
+    LVEdit --> UpdateChecker
 
     Runner -. "compiles & runs directly" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
@@ -146,6 +172,12 @@ under `build/EarTrainer_artefacts/Release/`,
 your system plugin folder, or run the Standalone build directly to test
 without a DAW.
 
+On Linux, building locally also needs `libcurl4-openssl-dev` (or your
+distro's equivalent) installed — the in-plugin update checker needs
+libcurl for HTTPS there, since JUCE's non-curl Linux networking has no
+TLS support at all. See
+[docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md).
+
 ## Testing
 
 Same build also produces a console `EarTrainerTests` target
@@ -166,9 +198,14 @@ behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
 bypass passthrough, preset application; `tests/LearnerVerbTest.cpp` — a
 tail persists after the input stops, `dryWet=0` is an exact passthrough,
 bypass forces an exact dry passthrough without clobbering `Dry/Wet`, every
-reverb type produces sound, preset application), and the step-navigation
-logic behind the "Lesson" feature (`tests/MicroLessonTest.cpp`). Also runs
-on push/PR via `.github/workflows/build_and_test.yml` (badge above).
+reverb type produces sound, preset application), the step-navigation
+logic behind the "Lesson" feature (`tests/MicroLessonTest.cpp`), and the
+pure version-comparison/JSON-parsing logic behind the "Check for Updates"
+button (`tests/UpdateCheckerTest.cpp` — the real network call itself
+isn't tested, see
+[docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md)).
+Also runs on push/PR via `.github/workflows/build_and_test.yml` (badge
+above).
 
 ## Status
 
@@ -237,6 +274,9 @@ Bypass next to Lesson in the title row) via the newly-extracted
 - [docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md) —
   unifying spectrum/waveform/bypass across all three Learner plugins, and
   why it isn't tested with a real `SpectrumAnalyzerComponent`
+- [docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md) —
+  CI artifacts/releases, the manual-only "Check for Updates" button, and
+  why it needs `NEEDS_CURL TRUE` on Linux
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

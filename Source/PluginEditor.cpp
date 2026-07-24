@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "../shared/Version.h"
 
 namespace
 {
@@ -61,6 +62,34 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     gameManager.getActiveGame().addChangeListener (this);
     processor.getProgressManager().addChangeListener (this);
 
+    updateButton.onClick = [this]
+    {
+        juce::Component::SafePointer<juce::Component> safeThis (this);
+
+        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        {
+            if (! foundNewer || safeThis == nullptr)
+                return;
+
+            const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
+                juce::MessageBoxIconType::InfoIcon,
+                "Update Available",
+                "Version " + release.tagName + " is available - you're on " + juce::String (CurrentVersion::string) + ".",
+                "Open Release Page", "Later",
+                safeThis.getComponent());
+
+            juce::AlertWindow::showAsync (options, [release] (int result)
+            {
+                // makeOptionsOkCancel adds two buttons; per AlertWindow's
+                // documented N-button result mapping, button[0] ("Open
+                // Release Page") returns 1, button[1] ("Later") returns 0.
+                if (result == 1)
+                    juce::URL (release.htmlUrl).launchInDefaultBrowser();
+            });
+        });
+    };
+    addAndMakeVisible (updateButton);
+
     rebuildChoiceButtons();
     refreshFromGameState();
     refreshFromProgressState();
@@ -83,7 +112,10 @@ void EarTrainerEditor::resized()
 {
     auto area = getLocalBounds().reduced (16);
 
-    titleLabel.setBounds (area.removeFromTop (32));
+    auto titleRow = area.removeFromTop (32);
+    updateButton.setBounds (titleRow.removeFromRight (80));
+    titleRow.removeFromRight (8);
+    titleLabel.setBounds (titleRow);
     gameSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (280, 24));
     area.removeFromTop (8);
     instructionLabel.setBounds (area.removeFromTop (24));

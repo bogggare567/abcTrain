@@ -42,7 +42,13 @@ functions), streak increment/reset, daily challenge generation and
 completion, and a persistence round-trip through a real (temp-named)
 `juce::PropertiesFile`. None of it goes through the real
 `Game → ChangeListener → ProgressManager` wiring — see the note on
-`registerAnswer` below.
+`registerAnswer` below. Its `makeTempOptions()` helper deletes any existing
+file at that path before returning the options - `PropertiesFile` persists
+to disk by design, so without this, a second local run of the same test
+binary on the same machine loads the *first* run's leftover score/streak
+state instead of starting fresh (CI's containers are always clean, so this
+was invisible there; it only surfaced the first time this binary was ever
+run twice on the same machine locally).
 
 **`LearnerCompTest.cpp`** processes real sine waves through a real
 `LearnerCompProcessor` (same approach as `LearnerEQTest`) and checks
@@ -77,6 +83,17 @@ wouldn't); `dryWet = 0` should be an *exact* passthrough (not just close —
 check, not a tolerance fudge); every one of the 4 types should produce
 non-silent output without crashing; `applyPreset`/out-of-range-index are
 tested the same way as LearnerComp's.
+
+**`UpdateCheckerTest.cpp`** tests `isNewerVersion` (newer patch/minor/
+major, equal/older, with or without a leading `v`, mismatched component
+counts, malformed input returning false rather than a guess) and
+`parseReleaseJson` (a well-formed GitHub API response, malformed JSON,
+valid-JSON-but-not-an-object, GitHub's own 404 response shape) directly -
+both are pure functions with no networking or message-thread dependency.
+`checkForUpdatesAsync`'s real network call to GitHub is not tested, for
+the same "no real network/GUI in this console binary" reasoning as
+`SpectrumAnalyzerComponent` above - see
+[decisions/007-update-checker.md](decisions/007-update-checker.md).
 
 ## Why game logic and DSP output are tested differently
 
@@ -114,15 +131,19 @@ logic is not, and can only be checked by actually running the plugin.
 
 - **CI is green, but confirm it stays that way.** All three OSes passed on
   commit `a2f2944`, again on `dd207d1` (LearnerComp), `8932b84`
-  (LearnerVerb), `dd0ef5a` (MicroLesson/LessonController), and `7accd19`
+  (LearnerVerb), `dd0ef5a` (MicroLesson/LessonController), `7accd19`
   (visualization unification, after `b3c2f88` actually failed CI with a
   real compile error — see `docs/diagrams/ci-pipeline.md` for all three
-  bugs caught this way) — each checked directly against the GitHub Actions
-  API or web UI, not assumed. Every change still needs to actually go
-  through CI, not just look correct on read-through — and this environment
-  turned out to have `cmake`/`clang++` available via Homebrew, so a local
-  build is worth trying before pushing on any non-trivial change, not just
-  after CI catches something.
+  bugs caught this way), and `6331f89` (docs-only) — each checked directly
+  against the GitHub Actions API or web UI, not assumed. The
+  artifacts/tag-release/update-checker commit (`NEEDS_CURL TRUE`, the new
+  `release` job) has not been confirmed on CI as of this writing, though a
+  full local build of all four plugin targets plus `EarTrainerTests` was
+  run first. Every change still needs to actually go through CI, not just
+  look correct on read-through — and this environment turned out to have
+  `cmake`/`clang++` available via Homebrew, so a local build is worth
+  trying before pushing on any non-trivial change, not just after CI
+  catches something.
 - **Integration tests**: nothing exercises `PluginEditor` (button clicks
   changing `GameManager` state end-to-end), the `SliderAttachment`/
   `ComboBoxAttachment` wiring in any Learner editor, or the real

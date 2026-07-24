@@ -1,0 +1,15 @@
+Copyright (c) 2026 bogggare567. All rights reserved.
+
+This software and associated documentation files (the "Software") are
+proprietary and confidential. No license, express or implied, is granted
+to any person to use, copy, modify, merge, publish, distribute, sublicense,
+or sell copies of the Software, in whole or in part, without the prior
+written permission of the copyright holder.
+
+This is a pre-release build provided for private testing only. It is not
+licensed for public distribution or production use.
+
+Third-party components (JUCE, fetched via CMake FetchContent, and libcurl
+on Linux builds) remain licensed under their own respective terms; see
+https://juce.com/legal/juce-8-licence/ and your distribution's libcurl
+license for details. Nothing in this file affects those licenses.

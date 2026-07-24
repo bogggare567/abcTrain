@@ -27,6 +27,7 @@ juce_add_plugin(EarTrainer
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     VST3_CATEGORIES Tools
     AU_MAIN_TYPE kAudioUnitType_Effect
+    NEEDS_CURL TRUE
 )
 
 target_sources(EarTrainer
@@ -38,12 +39,12 @@ target_sources(EarTrainer
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
+        shared/UpdateChecker.cpp
 )
 
 target_compile_definitions(EarTrainer
     PUBLIC
         JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
@@ -70,6 +71,7 @@ juce_add_plugin(LearnerEQ
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     VST3_CATEGORIES Fx EQ
     AU_MAIN_TYPE kAudioUnitType_Effect
+    NEEDS_CURL TRUE
 )
 
 target_sources(LearnerEQ
@@ -81,12 +83,12 @@ target_sources(LearnerEQ
         shared/SpectrumAnalyzer.cpp
         shared/WaveformDisplay.cpp
         shared/LessonController.cpp
+        shared/UpdateChecker.cpp
 )
 
 target_compile_definitions(LearnerEQ
     PUBLIC
         JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
@@ -113,6 +115,7 @@ juce_add_plugin(LearnerComp
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     VST3_CATEGORIES Fx Dynamics
     AU_MAIN_TYPE kAudioUnitType_Effect
+    NEEDS_CURL TRUE
 )
 
 target_sources(LearnerComp
@@ -122,13 +125,13 @@ target_sources(LearnerComp
         shared/WaveformDisplay.cpp
         shared/SpectrumAnalyzer.cpp
         shared/LessonController.cpp
+        shared/UpdateChecker.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
 
 target_compile_definitions(LearnerComp
     PUBLIC
         JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
@@ -155,6 +158,7 @@ juce_add_plugin(LearnerVerb
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     VST3_CATEGORIES Fx Reverb
     AU_MAIN_TYPE kAudioUnitType_Effect
+    NEEDS_CURL TRUE
 )
 
 target_sources(LearnerVerb
@@ -164,13 +168,13 @@ target_sources(LearnerVerb
         shared/WaveformDisplay.cpp
         shared/SpectrumAnalyzer.cpp
         shared/LessonController.cpp
+        shared/UpdateChecker.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
 
 target_compile_definitions(LearnerVerb
     PUBLIC
         JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
 
@@ -208,6 +212,7 @@ target_sources(EarTrainerTests
         tests/LearnerCompTest.cpp
         tests/LearnerVerbTest.cpp
         tests/MicroLessonTest.cpp
+        tests/UpdateCheckerTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
         Source/Games/EQGame.cpp
@@ -223,12 +228,18 @@ target_sources(EarTrainerTests
         shared/WaveformDisplay.cpp
         shared/SpectrumAnalyzer.cpp
         shared/LessonController.cpp
+        shared/UpdateChecker.cpp
 )
 
+# JUCE_USE_CURL is deliberately left at its default (0) here: this test
+# binary only exercises UpdateChecker's pure isNewerVersion()/
+# parseReleaseJson() functions (see tests/UpdateCheckerTest.cpp), never
+# checkForUpdatesAsync()'s real network call, so it doesn't need libcurl -
+# unlike the four real plugin targets above, which pass NEEDS_CURL TRUE to
+# juce_add_plugin() for that reason (see decisions/007-update-checker.md).
 target_compile_definitions(EarTrainerTests
     PUBLIC
         JUCE_WEB_BROWSER=0
-        JUCE_USE_CURL=0
 )
 
 target_link_libraries(EarTrainerTests

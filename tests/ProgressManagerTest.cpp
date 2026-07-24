@@ -186,6 +186,16 @@ private:
         options.filenameSuffix = "settings";
         options.folderName = "EarTrainerTests_" + uniqueSuffix;
         options.commonToAllUsers = false;
+
+        // PropertiesFile persists to disk by design (that's the whole
+        // point for real use) - so without this, leftover state from a
+        // previous run of this same test binary on this same machine
+        // leaks into "a correct answer awards points" et al, which all
+        // assume a fresh/empty file. CI always runs in a fresh container,
+        // so this never surfaced there; it only showed up the first time
+        // this binary was ever run twice locally, in this same session.
+        options.getDefaultFile().deleteFile();
+
         return options;
     }
 };

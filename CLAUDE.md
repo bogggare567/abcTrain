@@ -19,6 +19,12 @@ Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 All three Learner plugins now share the same visualization shape (live
 spectrum, then waveform + peak meters) and the same Bypass/Lesson button
 placement — see [decisions/006](docs/decisions/006-unified-visualization.md).
+All four plugins also have an "Updates" button (manual, no background
+timer) that checks GitHub for a newer release — see
+[decisions/007](docs/decisions/007-update-checker.md). CI now uploads a
+downloadable build artifact per OS on every push, and publishes a GitHub
+Release when a `vX.Y.Z` tag is pushed — see
+[docs/diagrams/ci-pipeline.md](docs/diagrams/ci-pipeline.md).
 
 Longer-term product direction (not all built): a learning ecosystem of
 "teaching" plugins (LearnerEQ/LearnerComp/LearnerVerb done, LearnerSat
@@ -41,7 +47,9 @@ LearnerComp has a custom compressor engine instead of
 and its decay-to-`roomSize` approximation, 005 is the `MicroLesson`/
 `LessonController` split and why per-control highlighting was cut, 006 is
 unifying the spectrum/waveform/bypass shape across all three Learner
-plugins and why that's not tested with a real `SpectrumAnalyzerComponent`),
+plugins and why that's not tested with a real `SpectrumAnalyzerComponent`,
+007 is CI artifacts/releases plus the manual-only "Check for Updates"
+button and why it needs `NEEDS_CURL TRUE` on Linux),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -52,7 +60,16 @@ CMake + JUCE via `FetchContent` (pinned to tag `8.0.15` in
 `CMakeLists.txt` — no local JUCE checkout needed). `cmake -B build &&
 cmake --build build` builds all four plugin targets (`EarTrainer`,
 `LearnerEQ`, `LearnerComp`, `LearnerVerb`) from the one root
-`CMakeLists.txt`.
+`CMakeLists.txt`. This sandbox actually has Homebrew + `clang++` (and
+`brew install cmake` works), so a full local build is possible here, not
+CI-only — worth doing on any non-trivial change; see
+[decisions/007](docs/decisions/007-update-checker.md) for a case where it
+caught a real bug CI's logs couldn't be inspected for (no GitHub auth
+token in this environment, and GitHub refuses raw Actions logs to an
+unauthenticated request even on a public repo). All four `juce_add_plugin`
+targets pass `NEEDS_CURL TRUE` (needed on Linux only, for the update
+checker's HTTPS call — see the same ADR); `EarTrainerTests` deliberately
+doesn't, since it never makes the real network call.
 
 ## Architecture — EarTrainer (`Source/`)
 
@@ -118,7 +135,8 @@ full rationale.
   fresh round's choice count no longer matches the current button count
   (needed once `ReverbGame`'s choice count became difficulty-dependent),
   no per-game editor code. Also shows level/progress-bar/streak/daily-
-  challenge from `ProgressManager`.
+  challenge from `ProgressManager`, and an "Updates" button
+  (`shared/UpdateChecker`, see [decisions/007](docs/decisions/007-update-checker.md)).
 
 Adding a new exercise: create `Source/Games/NewGame.{h,cpp}` implementing
 `Game` (including a real `setDifficulty` — there's no default), register
@@ -168,8 +186,9 @@ restore with the session (`getStateInformation`/`setStateInformation`).
   `shared/SpectrumAnalyzer.{h,cpp}`.
 - `LearnerEQ/Source/PluginEditor.{h,cpp}` — 4 columns of freq/gain/Q
   rotary sliders bound with `SliderAttachment`, a `WaveformDisplay` +
-  input/output peak labels below the spectrum, and a Bypass `ToggleButton`
-  (`ButtonAttachment`) placed next to the Lesson button in the title row.
+  input/output peak labels below the spectrum, a Bypass `ToggleButton`
+  (`ButtonAttachment`), and an "Updates" button (`shared/UpdateChecker`) —
+  both placed next to the Lesson button in the title row.
   `onDragStart`/`onValueChange`/`onDragEnd` on each band's freq slider
   drive the guide label text (via `FrequencyGuide::describe`) and
   `spectrum.setHighlightedBand`. A 30 Hz editor timer pushes current
@@ -238,10 +257,10 @@ for why it doesn't use `juce::dsp::Compressor`.
   by LearnerComp and LearnerVerb.
 - `LearnerComp/Source/PluginEditor.{h,cpp}` — a `SpectrumAnalyzerComponent`
   above the waveform, 7 rotary knobs (one per float param), a Bypass
-  `ToggleButton` next to the Lesson button in the title row, and 4 preset
-  buttons, each preset button just calling `processor.applyPreset(i)`.
-  Guide label updates via `onDragStart`/`onDragEnd` on each knob, same
-  pattern as LearnerEQ.
+  `ToggleButton` and an "Updates" button (`shared/UpdateChecker`) next to
+  the Lesson button in the title row, and 4 preset buttons, each preset
+  button just calling `processor.applyPreset(i)`. Guide label updates via
+  `onDragStart`/`onDragEnd` on each knob, same pattern as LearnerEQ.
 - `LearnerComp/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as LearnerEQ's.
 - `LearnerComp/Source/VocalCompressionLesson.h` — `buildVocalCompressionLesson()`,
@@ -296,8 +315,9 @@ knob isn't a precise physical measurement.
   above the waveform, a `ComboBox` for Type (`ComboBoxAttachment`, items
   added manually to match the choice parameter — attachments don't
   auto-populate the combo box) + 6 rotary knobs, a Bypass `ToggleButton`
-  next to the Lesson button in the title row, and 4 preset buttons. Same
-  guide-label/tooltip pattern as the other two Learner plugins.
+  and an "Updates" button (`shared/UpdateChecker`) next to the Lesson
+  button in the title row, and 4 preset buttons. Same guide-label/tooltip
+  pattern as the other two Learner plugins.
 - `LearnerVerb/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as the other two.
 - `LearnerVerb/Source/VocalSpaceLesson.h` — `buildVocalSpaceLesson()`, one
@@ -338,6 +358,47 @@ for the full rationale; summary here.
   setting it via `LessonController` makes the matching knob visibly move
   on its own — that motion is the highlight. No highlight-drawing code
   was added to any of the three editors for this.
+
+## Architecture — Update checking (`shared/`, all four plugins)
+
+See [decisions/007-update-checker.md](docs/decisions/007-update-checker.md)
+for the full rationale; summary here.
+
+- `shared/UpdateChecker.h/cpp` — `isNewerVersion(latest, current)` (dotted-
+  integer version comparison, with or without a leading `v`) and
+  `parseReleaseJson(json)` (pulls `tag_name`/`html_url` out of GitHub's
+  "get latest release" API response) are pure functions with no
+  networking or message-thread dependency — this is what
+  `tests/UpdateCheckerTest.cpp` exercises directly.
+  `checkForUpdatesAsync(currentVersion, callback)` is the one impure
+  piece: fetches `.../releases/latest` on a background thread
+  (`juce::Thread::launch`) and posts the result back via
+  `juce::MessageManager::callAsync`; any failure (no internet, rate
+  limiting, an unexpected response shape) just means the callback never
+  fires — no error UI, ever.
+- `shared/Version.h` — `CurrentVersion::string`, a plain literal (not
+  `JucePlugin_VersionString`/`ProjectInfo::versionString`) bumped by hand
+  alongside `project(EarTrainer VERSION ...)` in `CMakeLists.txt`. A plain
+  literal specifically because the three Learner `PluginEditor.cpp` files
+  that use it are also compiled into `EarTrainerTests`, where
+  `JucePlugin_*` macros aren't defined — the same reason
+  `LearnerEQProcessor::getName()` returns a literal instead of
+  `JucePlugin_Name` (see `docs/diagrams/ci-pipeline.md`, bug 1).
+- Each editor wires its own "Updates" `TextButton` directly (duplicated
+  across all four editors rather than pulled into a shared UI helper, so
+  `shared/UpdateChecker.h` itself stays free of any GUI dependency — same
+  reasoning as the Bypass-button wiring already being duplicated across
+  the three Learner editors instead of shared). A
+  `juce::Component::SafePointer` guards each callback against the editor
+  having been closed while the network request was still in flight.
+  `juce::AlertWindow::showAsync` with `MessageBoxOptions::makeOptionsOkCancel`
+  shows the "Open Release Page" / "Later" prompt only when a newer version
+  was actually found.
+- **Manual only, no background daily timer** — a deliberate cut from the
+  original ask. A plugin making its own unsolicited network calls is a
+  bigger step than a button the user chooses to press; some hosts sandbox
+  or frown on unexpected plugin network activity. Revisit if manual
+  checking turns out to be too easy to forget.
 
 ## Testing (`tests/`, `shared/`)
 
@@ -400,6 +461,14 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `previousStep` stop at the ends and no-op before `start()`, `stop()`
   deactivates, `getCurrentStep()` exposes the right text/target params.
   No APVTS, no `LessonController`, no `Component` involved at all.
+- `tests/UpdateCheckerTest.cpp` — `isNewerVersion` (newer patch/minor/
+  major, equal/older, with or without a leading `v`, mismatched component
+  counts, malformed input returns false rather than guessing) and
+  `parseReleaseJson` (well-formed GitHub response, malformed JSON,
+  valid-JSON-but-not-an-object, GitHub's 404 shape) tested directly.
+  `checkForUpdatesAsync`'s real network call is not tested — no network
+  access assumed in this console test binary, see
+  [decisions/007](docs/decisions/007-update-checker.md).
 
 **`juce::ChangeBroadcaster::sendChangeMessage()` is asynchronous** (needs
 a running JUCE message loop to deliver), and `EarTrainerTests` never pumps
@@ -440,7 +509,18 @@ class silently losing its implicit default constructor once
 constructor of its own declared), not a false alarm — reproduced and fixed
 locally in `7accd19` by actually installing `cmake` and building (this
 sandbox has Homebrew + `clang++`, so a local build is possible here, not
-CI-only as earlier work in this project assumed).
+CI-only as earlier work in this project assumed). Confirmed green again on
+`6331f89` (docs-only). The CI-artifacts/tag-release/update-checker commit
+has not been confirmed on CI as of this writing — it was, however,
+verified with a full local build of all four plugin targets plus
+`EarTrainerTests` beforehand (see [decisions/007](docs/decisions/007-update-checker.md)),
+which is also how a real use-after-free in `UpdateChecker::parseReleaseJson`
+(a temporary `var`'s `DynamicObject` read after the temporary was already
+destroyed) and a pre-existing, previously-invisible flakiness in
+`ProgressManagerTest` (its `PropertiesFile`-backed tests persisted state
+across separate runs of the same binary on the same machine, since CI's
+containers are always fresh but this was the first time the binary had
+ever been run twice locally) were both found and fixed.
 
 ## Conventions
 
@@ -478,10 +558,18 @@ CI-only as earlier work in this project assumed).
 - Integration test for the real `Game → ProgressManager` `ChangeListener`
   wiring (needs a pumped message loop, not set up yet — see Testing), and
   similarly no automated test of `LessonController`'s actual
-  APVTS-setting behavior (see ADR 005) or `SpectrumAnalyzerComponent`'s
-  FFT/timer logic directly (see ADR 006) — all three would need
+  APVTS-setting behavior (see ADR 005), `SpectrumAnalyzerComponent`'s
+  FFT/timer logic directly (see ADR 006), or `UpdateChecker`'s real
+  network call/`AlertWindow` (see ADR 007) — all four would need
   `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, which is a
   real but deliberately deferred setup cost (see `docs/testing-strategy.md`).
-- Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
-  unstarted; see prior conversation history for the full plan if picked
-  up later.
+- Background daily update-check timer, trimmed from the initial
+  `UpdateChecker` build in favor of a manual "Check for Updates" button
+  (see ADR 007) — revisit if manual checking turns out too easy to forget.
+- Real installer/packaging and code signing/notarization — a basic
+  all-rights-reserved `LICENSE` and downloadable CI artifacts/tagged
+  releases exist now (see ADR 007), but the builds themselves are still
+  unsigned.
+- Phase 2 (AI detector) and phase 3 (sales site/B2B licensing beyond the
+  current `LICENSE` file) are unstarted; see prior conversation history
+  for the full plan if picked up later.

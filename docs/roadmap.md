@@ -42,6 +42,8 @@ vs. not.
 | Micro-lessons: `MicroLesson`/`LessonController` (see [decisions/005](decisions/005-microlesson-architecture.md)), one lesson per Learner plugin (Vocal EQ Basics / Vocal Compression / Space for Vocals), a "Lesson" button in each editor | ✓ — per-control UI highlighting was cut (the parameter's own `SliderAttachment`/`ComboBoxAttachment` already makes the knob visibly move when a step sets it, which does the same job), see the ADR |
 | Unit tests: `MicroLessonTest` (step navigation state machine — pure logic, no APVTS/GUI needed) | ✓ |
 | Unified visualization across Learner plugins: `shared/SpectrumAnalyzer` (extracted from LearnerEQ), Waveform+Spectrum in all three, Bypass/A-B toggle in all three next to Lesson (see [decisions/006](decisions/006-unified-visualization.md)) | ✓ |
+| Downloadable builds: CI uploads a per-OS artifact on every push, publishes a GitHub Release with all three OS builds when a `vX.Y.Z` tag is pushed, and each plugin has a manual "Check for Updates" button (`shared/UpdateChecker`, see [decisions/007](decisions/007-update-checker.md)) | ✓ — no background daily timer, manual only; see the ADR for why |
+| Unit tests: `UpdateCheckerTest` (version-comparison + JSON-parsing logic — pure, no real network call) | ✓ |
 | Integration-level tests (editor button clicks -> GameManager state, or a lesson step actually landing on the right APVTS values through `LessonController`) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins
@@ -56,7 +58,7 @@ vs. not.
 | More lessons per plugin (each Learner plugin has exactly one today) | ⏳ |
 | Glossary with audio examples | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |
-| Packaging/installer, code signing, licensing | ⏳ |
+| Packaging/installer, code signing, licensing | 🚧 a basic all-rights-reserved `LICENSE` and downloadable per-OS build artifacts/tagged releases now exist; a real installer and code signing/notarization are still unstarted |
 
 ## 2.0 — AI assistant, B2B
 

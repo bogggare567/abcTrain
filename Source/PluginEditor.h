@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
+#include "../shared/UpdateChecker.h"
 
 // Generic multiple-choice UI driven entirely by the active Game's
 // interface (name/instructions/choice count/labels/feedback). Adding a
@@ -62,6 +63,8 @@ private:
     LevelProgressBar levelProgressBar;
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;
+
+    juce::TextButton updateButton { "Updates" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerEditor)
 };

@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "ReverbGuide.h"
 #include "VocalSpaceLesson.h"
+#include "../../shared/Version.h"
 #include <array>
 
 namespace
@@ -114,6 +115,34 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     addChildComponent (lessonController);
     lessonController.onClosed = [this] { resized(); };
 
+    updateButton.onClick = [this]
+    {
+        juce::Component::SafePointer<juce::Component> safeThis (this);
+
+        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        {
+            if (! foundNewer || safeThis == nullptr)
+                return;
+
+            const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
+                juce::MessageBoxIconType::InfoIcon,
+                "Update Available",
+                "Version " + release.tagName + " is available - you're on " + juce::String (CurrentVersion::string) + ".",
+                "Open Release Page", "Later",
+                safeThis.getComponent());
+
+            juce::AlertWindow::showAsync (options, [release] (int result)
+            {
+                // makeOptionsOkCancel adds two buttons; per AlertWindow's
+                // documented N-button result mapping, button[0] ("Open
+                // Release Page") returns 1, button[1] ("Later") returns 0.
+                if (result == 1)
+                    juce::URL (release.htmlUrl).launchInDefaultBrowser();
+            });
+        });
+    };
+    addAndMakeVisible (updateButton);
+
     startTimerHz (30);
     setSize (760, 720);
 }
@@ -139,6 +168,8 @@ void LearnerVerbEditor::resized()
     lessonButton.setBounds (titleRow.removeFromRight (80));
     titleRow.removeFromRight (8);
     bypassButton.setBounds (titleRow.removeFromRight (90));
+    titleRow.removeFromRight (8);
+    updateButton.setBounds (titleRow.removeFromRight (80));
     titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
 

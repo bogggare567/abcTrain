@@ -74,6 +74,7 @@ flowchart TB
         SpectrumBase["SpectrumAnalyzerComponent\n(FFT/FIFO base)"]
         MicroLesson["MicroLesson\n(pure state machine)"]
         LessonController["LessonController\n(APVTS + UI)"]
+        UpdateChecker["UpdateChecker\n(pure logic + async GitHub check)"]
         TestUtils["TestUtils.h"]
         LessonController --> MicroLesson
     end
@@ -93,6 +94,10 @@ flowchart TB
     LEEdit --> LessonController
     LCEdit --> LessonController
     LVEdit --> LessonController
+    ETEdit --> UpdateChecker
+    LEEdit --> UpdateChecker
+    LCEdit --> UpdateChecker
+    LVEdit --> UpdateChecker
 
     Runner -. "compiles & runs directly, no host/GUI" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
@@ -102,6 +107,7 @@ flowchart TB
     Runner -. "compiles & runs directly" .-> LCProc
     Runner -. "compiles & runs directly" .-> LVProc
     Runner -. "compiles & runs directly" .-> MicroLesson
+    Runner -. "compiles & runs directly\n(pure functions only)" .-> UpdateChecker
     Runner --> TestUtils
 
     LVProc -.-> LearnerSat

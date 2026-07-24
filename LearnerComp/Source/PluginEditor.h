@@ -5,6 +5,7 @@
 #include "../../shared/WaveformDisplay.h"
 #include "../../shared/SpectrumAnalyzer.h"
 #include "../../shared/LessonController.h"
+#include "../../shared/UpdateChecker.h"
 #include <array>
 #include <memory>
 
@@ -46,6 +47,8 @@ private:
 
     juce::TextButton lessonButton { "Lesson" };
     LessonController lessonController;
+
+    juce::TextButton updateButton { "Updates" };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerCompEditor)
 };
