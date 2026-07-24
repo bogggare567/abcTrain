@@ -6,6 +6,7 @@
 #include "../../shared/WaveformDisplay.h"
 #include "../../shared/LessonController.h"
 #include "../../shared/UpdateChecker.h"
+#include "../../shared/AbcTrainLookAndFeel.h"
 #include <array>
 #include <memory>
 
@@ -30,6 +31,11 @@ private:
         juce::Label nameLabel;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> freqAttachment, gainAttachment, qAttachment;
     };
+
+    // Declared first so it's constructed before, and destroyed after,
+    // every other Component below - see the class comment on
+    // AbcTrainLookAndFeel.
+    AbcTrainLookAndFeel lookAndFeel;
 
     LearnerEQProcessor& processor;
     SpectrumAnalyserComponent spectrum;

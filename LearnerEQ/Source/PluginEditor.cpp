@@ -13,15 +13,15 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalEqLesson())
 {
+    setLookAndFeel (&lookAndFeel);
+
     titleLabel.setText ("Learner EQ", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
+    titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
     titleLabel.setJustificationType (juce::Justification::centred);
-    titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
 
     guideLabel.setJustificationType (juce::Justification::centred);
-    guideLabel.setFont (juce::Font (14.0f));
-    guideLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     guideLabel.setText (defaultGuideText, juce::dontSendNotification);
     addAndMakeVisible (guideLabel);
 
@@ -30,13 +30,13 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     addAndMakeVisible (waveform);
 
     inputPeakLabel.setJustificationType (juce::Justification::centred);
-    inputPeakLabel.setFont (juce::Font (13.0f));
-    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (inputPeakLabel);
 
     outputPeakLabel.setJustificationType (juce::Justification::centred);
-    outputPeakLabel.setFont (juce::Font (13.0f));
-    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (outputPeakLabel);
 
     for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
@@ -45,14 +45,10 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
         controls.nameLabel.setText (EQCoefficients::nameForBand (band), juce::dontSendNotification);
         controls.nameLabel.setJustificationType (juce::Justification::centred);
-        controls.nameLabel.setColour (juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible (controls.nameLabel);
 
         for (auto* slider : { &controls.freqSlider, &controls.gainSlider, &controls.qSlider })
-        {
-            slider->setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::deepskyblue);
             addAndMakeVisible (slider);
-        }
 
         controls.freqAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
             processor.apvts, LearnerEQProcessor::freqParamId (band), controls.freqSlider);
@@ -91,7 +87,6 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         processor.apvts, LearnerEQProcessor::bypassParamId, bypassButton);
-    bypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
     addAndMakeVisible (bypassButton);
 
     lessonButton.onClick = [this] { lessonController.showAndStart(); };
@@ -136,11 +131,12 @@ LearnerEQEditor::~LearnerEQEditor()
 {
     processor.setSpectrumAnalyser (nullptr);
     processor.setWaveformDisplay (nullptr);
+    setLookAndFeel (nullptr);
 }
 
 void LearnerEQEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e1e24));
+    g.fillAll (juce::Colour (0xff1e1e2e));
 }
 
 void LearnerEQEditor::resized()

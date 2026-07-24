@@ -16,6 +16,11 @@ flowchart TB
         EQGame["EQGame"]
         CompGame["CompressionGame"]
         RevGame["ReverbGame"]
+        PanGame["PanGame"]
+        DelayGame["DelayGame"]
+        DistGame["DistortionGame"]
+        WidthGame["StereoWidthGame"]
+        DBGame["DBGame"]
         Pink["PinkNoiseGenerator"]
 
         ETProc --> GM
@@ -27,9 +32,19 @@ flowchart TB
         GameIface --> EQGame
         GameIface --> CompGame
         GameIface --> RevGame
+        GameIface --> PanGame
+        GameIface --> DelayGame
+        GameIface --> DistGame
+        GameIface --> WidthGame
+        GameIface --> DBGame
         EQGame --> Pink
         CompGame --> Pink
         RevGame --> Pink
+        PanGame --> Pink
+        DelayGame --> Pink
+        DistGame --> Pink
+        WidthGame --> Pink
+        DBGame --> Pink
     end
 
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
@@ -75,6 +90,7 @@ flowchart TB
         MicroLesson["MicroLesson\n(pure state machine)"]
         LessonController["LessonController\n(APVTS + UI)"]
         UpdateChecker["UpdateChecker\n(pure logic + async GitHub check)"]
+        LookAndFeel["AbcTrainLookAndFeel\n(shared dark theme)"]
         TestUtils["TestUtils.h"]
         LessonController --> MicroLesson
     end
@@ -98,10 +114,19 @@ flowchart TB
     LEEdit --> UpdateChecker
     LCEdit --> UpdateChecker
     LVEdit --> UpdateChecker
+    ETEdit --> LookAndFeel
+    LEEdit --> LookAndFeel
+    LCEdit --> LookAndFeel
+    LVEdit --> LookAndFeel
 
     Runner -. "compiles & runs directly, no host/GUI" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
     Runner -. "compiles & runs directly" .-> RevGame
+    Runner -. "compiles & runs directly" .-> PanGame
+    Runner -. "compiles & runs directly" .-> DelayGame
+    Runner -. "compiles & runs directly" .-> DistGame
+    Runner -. "compiles & runs directly" .-> WidthGame
+    Runner -. "compiles & runs directly" .-> DBGame
     Runner -. "compiles & runs directly" .-> GM
     Runner -. "compiles & runs directly" .-> LEProc
     Runner -. "compiles & runs directly" .-> LCProc

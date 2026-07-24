@@ -39,7 +39,13 @@ target_sources(EarTrainer
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
+        Source/Games/PanGame.cpp
+        Source/Games/DelayGame.cpp
+        Source/Games/DistortionGame.cpp
+        Source/Games/StereoWidthGame.cpp
+        Source/Games/DBGame.cpp
         shared/UpdateChecker.cpp
+        shared/AbcTrainLookAndFeel.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -84,6 +90,7 @@ target_sources(LearnerEQ
         shared/WaveformDisplay.cpp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
+        shared/AbcTrainLookAndFeel.cpp
 )
 
 target_compile_definitions(LearnerEQ
@@ -126,6 +133,7 @@ target_sources(LearnerComp
         shared/SpectrumAnalyzer.cpp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
+        shared/AbcTrainLookAndFeel.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
 
@@ -169,6 +177,7 @@ target_sources(LearnerVerb
         shared/SpectrumAnalyzer.cpp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
+        shared/AbcTrainLookAndFeel.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
 
@@ -206,6 +215,11 @@ target_sources(EarTrainerTests
         tests/EQGameTest.cpp
         tests/CompressionGameTest.cpp
         tests/ReverbGameTest.cpp
+        tests/PanGameTest.cpp
+        tests/DelayGameTest.cpp
+        tests/DistortionGameTest.cpp
+        tests/StereoWidthGameTest.cpp
+        tests/DBGameTest.cpp
         tests/GameManagerTest.cpp
         tests/ProgressManagerTest.cpp
         tests/LearnerEQTest.cpp
@@ -218,6 +232,11 @@ target_sources(EarTrainerTests
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
+        Source/Games/PanGame.cpp
+        Source/Games/DelayGame.cpp
+        Source/Games/DistortionGame.cpp
+        Source/Games/StereoWidthGame.cpp
+        Source/Games/DBGame.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
@@ -229,6 +248,7 @@ target_sources(EarTrainerTests
         shared/SpectrumAnalyzer.cpp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
+        shared/AbcTrainLookAndFeel.cpp
 )
 
 # JUCE_USE_CURL is deliberately left at its default (0) here: this test

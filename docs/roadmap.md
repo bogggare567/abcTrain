@@ -45,14 +45,17 @@ vs. not.
 | Downloadable builds: CI uploads a per-OS artifact on every push, publishes a GitHub Release with all three OS builds when a `vX.Y.Z` tag is pushed, and each plugin has a manual "Check for Updates" button (`shared/UpdateChecker`, see [decisions/007](decisions/007-update-checker.md)) | ✓ — no background daily timer, manual only; see the ADR for why |
 | Unit tests: `UpdateCheckerTest` (version-comparison + JSON-parsing logic — pure, no real network call) | ✓ |
 | Real per-OS installers: component/format-selectable `.pkg`/DMG (macOS), Inno Setup `.exe` with a free-text VST3 path (Windows), `tar.gz` + interactive `install.sh` (Linux) — see [decisions/008](decisions/008-installers.md) | ✓ — macOS/Linux verified locally end-to-end; Windows `.iss` not yet compiled anywhere (no Windows in this sandbox), CI is its first real test |
+| 5 more EarTrainer exercises: `PanGame` (5 pan positions), `DelayGame` (4 fixed delay times), `DistortionGame` (4 waveshaper types), `StereoWidthGame` (4 widths), `DBGame` (5 gain deltas) — 8 games total now, see `docs/diagrams/game-engine.md` | ✓ |
+| Unit tests: `PanGameTest`/`DelayGameTest`/`DistortionGameTest`/`StereoWidthGameTest`/`DBGameTest` (same scoring/state template as the first 3 games, plus a decorrelation check for `StereoWidthGame` and a label-recompute check for `DBGame`) | ✓ |
+| Shared dark theme: `shared/AbcTrainLookAndFeel` applied to all four editors, deprecated `Font` migrated to `FontOptions` everywhere, one consistent accent colour instead of three one-off ones, a basic 200 ms fade-in on EarTrainer's choice buttons (see [decisions/009](decisions/009-look-and-feel.md)) | ✓ — **basic pass only**: hover/press animations beyond the one fade, gradient-filled meter curves, pill-shaped tooltips, and `FlexBox` layout were all deliberately deferred, see the ADR |
 | Integration-level tests (editor button clicks -> GameManager state, or a lesson step actually landing on the right APVTS values through `LessonController`) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins
 
 | Feature | Status |
 |---|---|
-| More EarTrainer exercises (stereo width, delay type, distortion type) | ⏳ |
 | LearnerSat | ⏳ |
+| UI polish beyond the basic redesign pass: hover/press animations (fade timers, press-scale springs), gradient-filled spectrum/waveform curves, pill-shaped tooltip backgrounds for guide labels, `FlexBox`-based layout | ⏳ deliberately deferred from the redesign pass, see [decisions/009](decisions/009-look-and-feel.md) |
 | LearnerVerb: impulse-response visualization, decay-vs-frequency graph, stereo correlometer/vectorscope | ⏳ trimmed from the initial LearnerVerb build, see [decisions/004](decisions/004-learnerverb-scope.md) |
 | In-plugin contextual tooltips beyond one-liners (LearnerEQ, LearnerComp, and LearnerVerb all have one-liners today) | ⏳ |
 | Per-control lesson-step highlighting (beyond the moving-knob cue) | ⏳ trimmed from the initial MicroLesson build, see [decisions/005](decisions/005-microlesson-architecture.md) |

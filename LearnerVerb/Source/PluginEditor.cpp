@@ -28,15 +28,15 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalSpaceLesson())
 {
+    setLookAndFeel (&lookAndFeel);
+
     titleLabel.setText ("Learner Verb", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
+    titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
     titleLabel.setJustificationType (juce::Justification::centred);
-    titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
 
     guideLabel.setJustificationType (juce::Justification::centred);
-    guideLabel.setFont (juce::Font (13.0f));
-    guideLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     guideLabel.setText (defaultGuideText, juce::dontSendNotification);
     addAndMakeVisible (guideLabel);
 
@@ -45,13 +45,13 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     addAndMakeVisible (waveform);
 
     inputPeakLabel.setJustificationType (juce::Justification::centred);
-    inputPeakLabel.setFont (juce::Font (13.0f));
-    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (inputPeakLabel);
 
     outputPeakLabel.setJustificationType (juce::Justification::centred);
-    outputPeakLabel.setFont (juce::Font (13.0f));
-    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (outputPeakLabel);
 
     typeSelector.addItem ("Room", 1);
@@ -74,10 +74,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
         knob.nameLabel.setText (spec.label, juce::dontSendNotification);
         knob.nameLabel.setJustificationType (juce::Justification::centred);
-        knob.nameLabel.setColour (juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible (knob.nameLabel);
 
-        knob.slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::mediumpurple);
         addAndMakeVisible (knob.slider);
 
         knob.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
@@ -103,7 +101,6 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         processor.apvts, LearnerVerbProcessor::bypassParamId, bypassButton);
-    bypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
     addAndMakeVisible (bypassButton);
 
     processor.setWaveformDisplay (&waveform);
@@ -151,11 +148,12 @@ LearnerVerbEditor::~LearnerVerbEditor()
 {
     processor.setWaveformDisplay (nullptr);
     processor.setSpectrumAnalyzer (nullptr);
+    setLookAndFeel (nullptr);
 }
 
 void LearnerVerbEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e1e24));
+    g.fillAll (juce::Colour (0xff1e1e2e));
 }
 
 void LearnerVerbEditor::resized()

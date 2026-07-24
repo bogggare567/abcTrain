@@ -4,11 +4,13 @@
 
 Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
 
-- **Ear Trainer** — ear-training games. It feeds you pink noise through a
-  hidden filter and you guess what changed (which band was boosted/cut,
-  how strong the compression is, which reverb type). Tracks points, a
-  level (1-10, which scales the games' difficulty up as you improve), a
-  daily login streak, and a daily challenge.
+- **Ear Trainer** — 8 ear-training games. It feeds you pink noise through a
+  hidden effect and you guess what changed: which band was boosted/cut,
+  how strong the compression is, which reverb type, where it's panned,
+  the delay time, the distortion type, how wide the stereo image is, or
+  how much the level changed. Tracks points, a level (1-10, which scales
+  the games' difficulty up as you improve), a daily login streak, and a
+  daily challenge.
 - **Learner EQ** — a real 4-band EQ for your own tracks, with a live
   spectrum + response-curve display, a scrolling input/output waveform,
   a one-line plain-language explanation of what a frequency region does
@@ -38,6 +40,34 @@ Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
 base — see [docs/roadmap.md](docs/roadmap.md) for what's actually planned
 vs. built so far.
+
+## Look
+
+All four plugins now share one dark theme (`shared/AbcTrainLookAndFeel`)
+instead of each Learner plugin picking its own accent colour:
+
+- Background `#1e1e2e`, a soft blue accent `#5b9bd5` (knob values, active
+  states), a warm orange highlight `#d98c5f` (rotary-knob fill, active
+  toggles), light-grey text `#e0e0e0`.
+- Rounded buttons (6 px corner radius, 1 px `#3a3a4a` border) that
+  brighten on hover/press - no more stock grey rectangular buttons.
+  Rotary knobs are drawn as a thin arc track + accent-coloured value arc
+  + a simple pointer line, not the default JUCE rotary slider.
+- 22 px bold titles, 14 px body text, 16 px monospaced numeric readouts
+  (peak meters, score/level) - all via the modern `juce::FontOptions`
+  API, replacing every deprecated `Font(float, styleFlags)` call in the
+  codebase.
+- One animation for this pass: EarTrainer's choice buttons fade in over
+  200 ms whenever they regenerate (switching games, or a difficulty
+  change that alters the choice count).
+
+This was an explicitly iterative first pass - hover-fade timers,
+press-scale springs, gradient-filled meter curves, and pill-shaped
+tooltip backgrounds were scoped out on purpose; see
+[docs/decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md)
+for the full list of what's deferred and why. No screenshots here since
+this environment can't render and capture a real JUCE window - the
+description above is the accurate current state.
 
 ## Download
 
@@ -221,7 +251,9 @@ cmake --build build --target EarTrainerTests --config Release
 
 Exits non-zero if any test fails. Covers the games' scoring/state logic
 (`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
-`tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp`), progress/level/
+`tests/ReverbGameTest.cpp`, `tests/PanGameTest.cpp`, `tests/DelayGameTest.cpp`,
+`tests/DistortionGameTest.cpp`, `tests/StereoWidthGameTest.cpp`,
+`tests/DBGameTest.cpp`, `tests/GameManagerTest.cpp`), progress/level/
 streak/daily-challenge logic (`tests/ProgressManagerTest.cpp`), and DSP/
 behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
 — boosting a band raises measured output level at that frequency;
@@ -240,13 +272,18 @@ above).
 
 ## Status
 
-**Ear Trainer:** three exercises implemented — "guess the boosted/cut
-band" (8 octave bands, 100 Hz–12.8 kHz), "guess the compression strength"
-(weak/medium/strong), and "guess the reverb type" (room/hall/plate/
-spring) — sharing a common `Game` interface driving one generic UI, plus
-a `ProgressManager` (points, level 1-10 that scales each game's
-difficulty, daily login streak, one daily challenge) — see
-[docs/architecture.md](docs/architecture.md) and
+**Ear Trainer:** 8 exercises implemented — "guess the boosted/cut band"
+(8 octave bands, 100 Hz–12.8 kHz), "guess the compression strength"
+(weak/medium/strong), "guess the reverb type" (room/hall/plate/spring),
+"guess the pan position" (5 positions, Hard Left–Hard Right), "guess the
+delay time" (50/150/300/500 ms), "guess the distortion" (Soft Clip/Hard
+Clip/Tape Saturation/Overdrive), "guess the stereo width" (Narrow–Extra
+Wide), and "guess the gain change" (±dB, the one game whose choice labels
+themselves change with difficulty) — sharing a common `Game` interface
+driving one generic UI, plus a `ProgressManager` (points, level 1-10 that
+scales each game's difficulty, daily login streak, one daily challenge)
+— see [docs/architecture.md](docs/architecture.md),
+[docs/diagrams/game-engine.md](docs/diagrams/game-engine.md), and
 [docs/decisions/002-difficulty-scaling.md](docs/decisions/002-difficulty-scaling.md).
 
 **Learner EQ:** 4-band EQ (low shelf, 2 bells, high shelf) processing real
@@ -312,6 +349,11 @@ Bypass next to Lesson in the title row) via the newly-extracted
   the real per-OS installers (`.pkg`/DMG, Inno Setup, `tar.gz`), and why
   macOS can't offer a free-text custom install path the way
   Windows/Linux can
+- [docs/decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md) —
+  the shared `AbcTrainLookAndFeel` dark theme, and what was deliberately
+  deferred from this first redesign pass
+- [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) — the
+  `Game` interface and all 8 exercises' class diagram
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

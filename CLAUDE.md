@@ -2,7 +2,9 @@
 
 Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 
-- **EarTrainer** — multiple-choice ear-training games.
+- **EarTrainer** — multiple-choice ear-training games (8 today: EQ,
+  compression, reverb type, pan position, delay time, distortion type,
+  stereo width, gain/dB).
 - **LearnerEQ** — a real 4-band EQ that processes the host's own audio,
   with a live spectrum + response-curve display, a scrolling waveform,
   short contextual tooltips while dragging a band's frequency knob, a
@@ -24,7 +26,11 @@ timer) that checks GitHub for a newer release — see
 [decisions/007](docs/decisions/007-update-checker.md). CI now uploads a
 downloadable build artifact per OS on every push, and publishes a GitHub
 Release when a `vX.Y.Z` tag is pushed — see
-[docs/diagrams/ci-pipeline.md](docs/diagrams/ci-pipeline.md).
+[docs/diagrams/ci-pipeline.md](docs/diagrams/ci-pipeline.md). All four
+editors, plus `shared/LessonController`, now share one dark theme
+(`shared/AbcTrainLookAndFeel`) instead of each Learner plugin picking its
+own one-off accent colour — see
+[decisions/009](docs/decisions/009-look-and-feel.md).
 
 Longer-term product direction (not all built): a learning ecosystem of
 "teaching" plugins (LearnerEQ/LearnerComp/LearnerVerb done, LearnerSat
@@ -51,7 +57,9 @@ plugins and why that's not tested with a real `SpectrumAnalyzerComponent`,
 007 is CI artifacts/releases plus the manual-only "Check for Updates"
 button and why it needs `NEEDS_CURL TRUE` on Linux, 008 is the per-OS
 installers (`.pkg`/DMG, Inno Setup, `tar.gz`) and why macOS can't offer a
-free-text custom install path the way Windows/Linux can),
+free-text custom install path the way Windows/Linux can, 009 is the
+shared `AbcTrainLookAndFeel` dark theme applied to all four editors and
+what was deliberately deferred from that first redesign pass),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -110,8 +118,45 @@ full rationale.
   7-10 — the only game where difficulty changes the choice count, which
   is why `PluginEditor::refreshFromGameState()` has to handle a
   mid-session choice-count change (see ADR 002).
+- `Source/Games/PanGame.{h,cpp}` — "guess the pan position": pink noise
+  panned with an equal-power law (`gainL=cos(theta)`, `gainR=sin(theta)`,
+  which is loudness-equalized for free) to one of 5 positions (Hard
+  Left/Left/Center/Right/Hard Right). `setDifficulty` follows
+  `CompressionGame`'s precedent exactly: same 5 labels throughout, but
+  swaps between 3 position tables whose values converge toward center at
+  higher tiers.
+- `Source/Games/DelayGame.{h,cpp}` — "guess the delay time": a percussive
+  noise burst through a `juce::dsp::DelayLine` at one of 4 fixed times
+  (50/150/300/500 ms), feedback 0, fixed 50% dry/wet. Those four times
+  never change with difficulty (they're the literal spec) — instead
+  `setDifficulty` shortens the burst repeat period (1.4s → 0.9s → 0.6s),
+  giving less time to judge the delay before the next burst.
+- `Source/Games/DistortionGame.{h,cpp}` — "guess the distortion type": a
+  waveshaper applied to pink noise, one of 4 types (Soft Clip = `tanh`,
+  Hard Clip = `jlimit`, Tape Saturation = `tanh` + a post-clip lowpass,
+  Overdrive = asymmetric `tanh` for an even-harmonic character), each
+  with its own makeup gain so loudness isn't a tell. `setDifficulty`
+  scales the pre-shaping drive amount (6.0 → 3.0 → 1.5) rather than
+  swapping types — same "fixed labels, scaled parameter" shape as
+  `DelayGame`.
+- `Source/Games/StereoWidthGame.{h,cpp}` — "guess the stereo width": mid/
+  side processing (`side *= width`) on **two independent**
+  `PinkNoiseGenerator`s (see below — a single mono source duplicated to
+  both channels would have zero side signal, making width meaningless) to
+  one of 4 named widths (Narrow/Normal/Wide/Extra Wide, no numbers
+  shown). `setDifficulty` converges the underlying width multipliers
+  toward 1.0 at higher tiers, same shape as `PanGame`.
+- `Source/Games/DBGame.{h,cpp}` — "guess the gain change": a fixed dB
+  offset (`Decibels::decibelsToGain`) applied to pink noise, 5 choices
+  spaced by a step size in dB. This is the **one** game whose choice
+  *labels* change with difficulty rather than staying fixed — the labels
+  are literally the dB numbers ("-6dB".."+6dB"), so a smaller step at
+  higher tiers ("+3dB" → "+2dB" at the 2 dB step) means the labels
+  themselves get recomputed each tier, not just the DSP behind them.
 - `Source/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
-  economy algorithm) used by all three games above.
+  economy algorithm) used by every game above; each instance owns its own
+  `juce::Random`, which is what lets `StereoWidthGame` use two decorrelated
+  instances for a real side signal.
 - `Source/GameManager.{h,cpp}` — owns all registered `Game`s, tracks the
   active one, prepares *all* games up front in `prepare()` so switching
   games never needs an audio-thread re-prepare. Also exposes
@@ -451,6 +496,61 @@ tree — none of the three scripts below build anything themselves.
   will both warn on them until code signing/notarization is done — that's
   separate, unstarted future work, not a bug in the installer scripts.
 
+## Architecture — Look and feel (`shared/`, all four editors)
+
+See [decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md)
+for the full rationale; summary here. This is a basic first pass, not the
+full FabFilter-style redesign that was asked for — see "not yet built"
+below for what was deliberately deferred.
+
+- `shared/AbcTrainLookAndFeel.h/.cpp` — extends `juce::LookAndFeel_V4`.
+  One `juce::LookAndFeel_V4::ColourScheme` (dark background `#1e1e2e`, blue
+  accent `#5b9bd5` as `defaultFill`, orange `#d98c5f` as `highlightedFill`,
+  light-grey `#e0e0e0` text) set once in the constructor, which
+  `LookAndFeel_V4::initialiseColours()` maps onto specific component
+  `colourId`s automatically (e.g. `highlightedFill` becomes both
+  `Slider::rotarySliderFillColourId` and `TextButton::buttonOnColourId`) —
+  this is what lets one colour scheme reach every rotary knob across all
+  three Learner plugins instead of each editor setting its own one-off
+  accent colour (the old `deepskyblue`/`mediumpurple` per-slider overrides
+  were removed for this reason). Overrides `drawButtonBackground` (rounded
+  6px corners, 1px border, brightens whatever `backgroundColour` JUCE
+  passed in on hover/press rather than replacing it — see the ADR for a
+  real bug this caught on read-through, since overwriting that parameter
+  would have silently broken EarTrainer's per-button correct/wrong
+  answer colour-coding) and `drawRotarySlider` (arc track + value arc +
+  pointer line via `Path::addCentredArc`). Also provides `titleFont()`/
+  `monoFont()` static helpers (22px bold / 16px monospace) plus the
+  `getLabelFont`/`getTextButtonFont`/etc. overrides that return the 14px
+  body size by default — all via `juce::Font(juce::FontOptions(...))`,
+  replacing the deprecated `Font(float, styleFlags)` constructor
+  everywhere it was still used.
+- Each of the four editors (`Source/PluginEditor.h`,
+  `LearnerEQ/Source/PluginEditor.h`, `LearnerComp/Source/PluginEditor.h`,
+  `LearnerVerb/Source/PluginEditor.h`) owns its own
+  `AbcTrainLookAndFeel` member — declared **first** in the class (so C++
+  reverse-order destruction guarantees it outlives every child
+  `Component` still referencing it while the editor tears down) — rather
+  than one shared static instance, since a host can have several editor
+  instances open at once. `setLookAndFeel(&lookAndFeel)` is the first
+  constructor statement, `setLookAndFeel(nullptr)` is in the destructor.
+- `Source/PluginEditor.cpp`'s `rebuildChoiceButtons()` fades each new
+  choice button in over 200 ms via
+  `juce::Desktop::getInstance().getAnimator().fadeIn()` — the one
+  animation in this pass, covering both a game switch and a mid-session
+  choice-count change (`ReverbGame`'s difficulty tiers).
+- `shared/LessonController.cpp` picked up the same font migration and
+  background/border colours as the four editors, so the lesson overlay
+  matches the rest of the theme.
+
+Not yet built (deliberately deferred, see ADR 009): hover/press
+animations beyond the one fade-in (no `Timer`-driven alpha ramp, no
+press-scale-then-spring-back), gradient fills under the spectrum/waveform
+curves, pill-shaped tooltip backgrounds for guide labels, `FlexBox`-based
+layout (every editor still uses explicit `Rectangle::removeFrom*`), and
+screenshots/mockups in `README.md` (this sandbox can't render or capture a
+real JUCE window, so the look is described in text there instead).
+
 ## Testing (`tests/`, `shared/`)
 
 `EarTrainerTests` is a plain console app (`juce_add_console_app`, not a
@@ -463,17 +563,25 @@ plugin targets), so no plugin host or GUI is needed to run it.
 - `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
   audio-domain assertions.
 - `tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
-  `tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp` — logic-level:
-  scoring, answer/round state transitions, choice-count/label contracts,
-  and (for all three games) that `setDifficulty` at each tier still plays
-  a valid round. Deliberately don't assert on actual audio content (the
-  games generate random noise), since that would be either flaky or
-  trivial — `ReverbGameTest` is the partial exception, it does check the
-  output buffer isn't silent (a decent smoke test given the type-specific
-  DSP paths: `dsp::Reverb` vs. the allpass cascade). Note `ReverbGame`
-  now defaults to the easy tier (2 choices) *before* `setDifficulty` is
-  ever called, matching the other two games' easy-tier defaults — tests
-  that want all 4 types must call `setDifficulty(10)` first.
+  `tests/ReverbGameTest.cpp`, `tests/PanGameTest.cpp`,
+  `tests/DelayGameTest.cpp`, `tests/DistortionGameTest.cpp`,
+  `tests/StereoWidthGameTest.cpp`, `tests/DBGameTest.cpp`,
+  `tests/GameManagerTest.cpp` — logic-level: scoring, answer/round state
+  transitions, choice-count/label contracts, and (for all eight games)
+  that `setDifficulty` at each tier still plays a valid round.
+  Deliberately don't assert on actual audio content (the games generate
+  random noise), since that would be either flaky or trivial —
+  `ReverbGameTest`/`DistortionGameTest` are the exceptions, re-rolling
+  `newRound()` to force every type and checking the output buffer isn't
+  silent (a decent smoke test given each game's type-specific DSP paths).
+  `StereoWidthGameTest` additionally checks left and right samples
+  actually differ, verifying the two independent `PinkNoiseGenerator`s
+  really decorrelate. `DBGameTest` checks the choice labels themselves at
+  three difficulty levels, since `DBGame` is the one game whose labels
+  are recomputed per tier. Note `ReverbGame` now defaults to the easy
+  tier (2 choices) *before* `setDifficulty` is ever called, matching the
+  other games' easy-tier defaults — tests that want all 4 types must call
+  `setDifficulty(10)` first. `GameManagerTest` asserts 8 registered games.
 - `tests/ProgressManagerTest.cpp` — level/points math, streak, daily
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
@@ -596,7 +704,6 @@ closely (see [decisions/008](docs/decisions/008-installers.md)).
 
 ## Roadmap (not yet built)
 
-- More EarTrainer exercises (delay type, stereo width, distortion type, ...).
 - One more teaching plugin: LearnerSat — same pattern as the other three
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).
@@ -635,6 +742,11 @@ closely (see [decisions/008](docs/decisions/008-installers.md)).
   wouldn't have provided real protection anyway — trivially extractable
   from the shipped binary). Revisit once there's real user traction worth
   protecting.
+- UI polish beyond the basic `AbcTrainLookAndFeel` pass: hover/press
+  animations (fade timers, press-scale springs), gradient-filled
+  spectrum/waveform curves, pill-shaped tooltip backgrounds for guide
+  labels, `FlexBox`-based layout — all deliberately deferred from the
+  redesign pass, see ADR 009.
 - Phase 2 (AI detector) and phase 3 (sales site/B2B licensing beyond the
   current `LICENSE` file) are unstarted; see prior conversation history
   for the full plan if picked up later.

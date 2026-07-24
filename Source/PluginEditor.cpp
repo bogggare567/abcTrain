@@ -10,10 +10,11 @@ namespace
 EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
+    setLookAndFeel (&lookAndFeel);
+
     titleLabel.setText ("Ear Trainer", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
+    titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
     titleLabel.setJustificationType (juce::Justification::centred);
-    titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
 
     auto& gameManager = processor.getGameManager();
@@ -25,38 +26,32 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addAndMakeVisible (gameSelector);
 
     instructionLabel.setJustificationType (juce::Justification::centred);
-    instructionLabel.setFont (juce::Font (14.0f));
-    instructionLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (instructionLabel);
 
     newRoundButton.onClick = [this] { processor.getGameManager().getActiveGame().newRound(); };
     addAndMakeVisible (newRoundButton);
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
-    scoreLabel.setFont (juce::Font (14.0f));
-    scoreLabel.setColour (juce::Label::textColourId, juce::Colours::white);
+    scoreLabel.setFont (AbcTrainLookAndFeel::monoFont());
     addAndMakeVisible (scoreLabel);
 
     feedbackLabel.setJustificationType (juce::Justification::centred);
-    feedbackLabel.setFont (juce::Font (16.0f, juce::Font::bold));
+    feedbackLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
     feedbackLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (feedbackLabel);
 
     levelLabel.setJustificationType (juce::Justification::centredLeft);
-    levelLabel.setFont (juce::Font (14.0f));
-    levelLabel.setColour (juce::Label::textColourId, juce::Colours::white);
+    levelLabel.setFont (AbcTrainLookAndFeel::monoFont());
     addAndMakeVisible (levelLabel);
 
     addAndMakeVisible (levelProgressBar);
 
     streakLabel.setJustificationType (juce::Justification::centredRight);
-    streakLabel.setFont (juce::Font (14.0f));
-    streakLabel.setColour (juce::Label::textColourId, juce::Colours::orange);
+    streakLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    streakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffd98c5f));
     addAndMakeVisible (streakLabel);
 
     dailyChallengeLabel.setJustificationType (juce::Justification::centred);
-    dailyChallengeLabel.setFont (juce::Font (13.0f));
-    dailyChallengeLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (dailyChallengeLabel);
 
     gameManager.getActiveGame().addChangeListener (this);
@@ -101,11 +96,12 @@ EarTrainerEditor::~EarTrainerEditor()
 {
     processor.getGameManager().getActiveGame().removeChangeListener (this);
     processor.getProgressManager().removeChangeListener (this);
+    setLookAndFeel (nullptr);
 }
 
 void EarTrainerEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e1e24));
+    g.fillAll (juce::Colour (0xff1e1e2e));
 }
 
 void EarTrainerEditor::resized()
@@ -167,11 +163,21 @@ void EarTrainerEditor::rebuildChoiceButtons()
     choiceButtons.clear();
 
     auto& game = processor.getGameManager().getActiveGame();
+    auto& animator = juce::Desktop::getInstance().getAnimator();
+
     for (int i = 0; i < game.getNumChoices(); ++i)
     {
         auto* button = choiceButtons.add (new juce::TextButton (game.getChoiceLabel (i)));
         button->onClick = [this, i] { choiceButtonClicked (i); };
         addAndMakeVisible (button);
+
+        // Basic fade-in whenever the choice buttons regenerate (switching
+        // games, or a mid-session choice-count change like ReverbGame's
+        // difficulty tiers) - one deliberately simple animation for this
+        // pass, per the redesign's own iterative scope; see
+        // decisions/009-look-and-feel.md for what else was deferred.
+        button->setAlpha (0.0f);
+        animator.fadeIn (button, 200);
     }
 }
 

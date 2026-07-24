@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "../shared/UpdateChecker.h"
+#include "../shared/AbcTrainLookAndFeel.h"
 
 // Generic multiple-choice UI driven entirely by the active Game's
 // interface (name/instructions/choice count/labels/feedback). Adding a
@@ -32,9 +33,9 @@ private:
         void paint (juce::Graphics& g) override
         {
             auto bounds = getLocalBounds().toFloat();
-            g.setColour (juce::Colours::darkgrey);
+            g.setColour (juce::Colour (0xff3a3a4a));
             g.fillRoundedRectangle (bounds, 4.0f);
-            g.setColour (juce::Colours::limegreen);
+            g.setColour (juce::Colour (0xff5b9bd5));
             g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * progress), 4.0f);
         }
 
@@ -48,6 +49,11 @@ private:
     void rebuildChoiceButtons();
     void choiceButtonClicked (int choiceIndex);
     void gameSelected();
+
+    // Declared first so it's constructed before, and destroyed after,
+    // every other Component below that might still reference it during
+    // teardown - see the class comment on AbcTrainLookAndFeel.
+    AbcTrainLookAndFeel lookAndFeel;
 
     EarTrainerProcessor& processor;
 

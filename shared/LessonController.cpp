@@ -6,19 +6,14 @@ LessonController::LessonController (juce::AudioProcessorValueTreeState& stateToC
     setOpaque (true);
 
     titleLabel.setJustificationType (juce::Justification::centred);
-    titleLabel.setFont (juce::Font (16.0f, juce::Font::bold));
-    titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
-    titleLabel.setText (lesson.getTitle(), juce::dontSendNotification);
+    titleLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
     addAndMakeVisible (titleLabel);
 
     progressLabel.setJustificationType (juce::Justification::centred);
-    progressLabel.setFont (juce::Font (12.0f));
-    progressLabel.setColour (juce::Label::textColourId, juce::Colours::grey);
+    progressLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (progressLabel);
 
     stepTextLabel.setJustificationType (juce::Justification::centred);
-    stepTextLabel.setFont (juce::Font (14.0f));
-    stepTextLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (stepTextLabel);
 
     previousButton.onClick = [this]
@@ -74,8 +69,8 @@ void LessonController::applyCurrentStep()
 
 void LessonController::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff26263a));
-    g.setColour (juce::Colours::deepskyblue);
+    g.fillAll (juce::Colour (0xff1e1e2e));
+    g.setColour (juce::Colour (0xff5b9bd5).withAlpha (0.6f));
     g.drawRect (getLocalBounds(), 2);
 }
 
