@@ -22,6 +22,7 @@ public:
 
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
+    void setDifficulty (int level) override;
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -50,7 +51,15 @@ private:
         float makeupGainDb;
     };
 
-    static const std::array<Preset, numLevels> presets;
+    // Three difficulty tiers, same labels throughout - only how far apart
+    // the presets sit changes. Easy (levels 1-3) is the original wide
+    // spread; medium/hard (4-6/7-10) converge the threshold/ratio values
+    // (and shrink the makeup-gain compensation to match) so the character
+    // difference between "Weak" and "Strong" gets progressively subtler.
+    static const std::array<Preset, numLevels> easyPresets;
+    static const std::array<Preset, numLevels> mediumPresets;
+    static const std::array<Preset, numLevels> hardPresets;
+    const std::array<Preset, numLevels>* activePresets = &easyPresets;
 
     void updateCompressor();
 

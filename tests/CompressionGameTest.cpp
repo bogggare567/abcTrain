@@ -66,6 +66,27 @@ public:
             expectEquals (game.getRoundsPlayed(), 1);
             expectEquals (game.getChosenChoiceIndex(), correct);
         }
+
+        beginTest ("setDifficulty keeps the same 3 labels and choice count at every tier");
+        {
+            CompressionGame game;
+            const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
+
+            for (const int level : { 1, 5, 10 })
+            {
+                game.setDifficulty (level);
+                game.prepare (spec);
+
+                expectEquals (game.getNumChoices(), CompressionGame::numLevels);
+                expectEquals (game.getChoiceLabel (0), juce::String ("Weak"));
+                expectEquals (game.getChoiceLabel (1), juce::String ("Medium"));
+                expectEquals (game.getChoiceLabel (2), juce::String ("Strong"));
+
+                const auto correct = game.getCorrectChoiceIndex();
+                game.submitAnswer (correct);
+                expect (game.wasLastAnswerCorrect());
+            }
+        }
     }
 };
 

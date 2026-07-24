@@ -37,6 +37,13 @@ is the first thing that has actually executed that filter chain. It's
 intentionally narrow (one assertion) rather than a broad audio-correctness
 suite; expanding it is listed below.
 
+**`ProgressManagerTest.cpp`** covers level/points math (pure static
+functions), streak increment/reset, daily challenge generation and
+completion, and a persistence round-trip through a real (temp-named)
+`juce::PropertiesFile`. None of it goes through the real
+`Game → ChangeListener → ProgressManager` wiring — see the note on
+`registerAnswer` below.
+
 ## Why game logic and DSP output are tested differently
 
 The games generate random noise (`PinkNoiseGenerator`) as their test
@@ -49,23 +56,40 @@ without fighting the randomness. `LearnerEQ` is different: it processes a
 *known* input (a synthesized sine wave) through *deterministic* filtering,
 so asserting on output level is meaningful and repeatable.
 
+## `ChangeBroadcaster` is asynchronous - tests can't rely on it
+
+`juce::ChangeBroadcaster::sendChangeMessage()` (what every `Game` calls on
+`newRound()`/`submitAnswer()`, and what `ProgressManager` calls after
+`registerAnswer()`) is delivered via `AsyncUpdater`, which needs a running
+JUCE message loop to actually invoke listeners. `EarTrainerTests` is a
+plain console app that never pumps one. Concretely: calling
+`game.submitAnswer(...)` in a test does *not* reliably (or possibly ever)
+trigger `ProgressManager::changeListenerCallback` in that process. Rather
+than write a test that might silently no-op or hang the binary waiting on
+a message loop that's never running, `ProgressManager` exposes
+`registerAnswer(int gameIndex, bool wasCorrect)` as a direct, synchronous
+entry point that both the real `changeListenerCallback` and
+`ProgressManagerTest` call — see
+[decisions/002-difficulty-scaling.md](decisions/002-difficulty-scaling.md)
+and the comment on `registerAnswer` in `Source/ProgressManager.h`. Net
+effect: the *reaction logic* (scoring, streak-in-a-row, daily challenge)
+is well-tested; the *wiring* that connects a real button click to that
+logic is not, and can only be checked by actually running the plugin.
+
 ## Not yet built
 
-- **Confirmed-passing CI**: `.github/workflows/build_and_test.yml` exists
-  (matrix: ubuntu-latest/macos-latest/windows-latest, builds every target,
-  runs `EarTrainerTests`) but hasn't been observed passing yet — it was
-  written in the same environment that has no CMake/compiler available, so
-  it's unverified YAML, not a confirmed-working pipeline. Every test run so
-  far has been a manual, careful read of the code against JUCE's API, not
-  an actual compile+run. This is the single biggest risk in the current
-  codebase — get an actual green run before trusting any of the DSP code
-  without a human rebuilding and listening to it first.
+- **CI is green, but confirm it stays that way.** All three OSes passed on
+  commit `a2f2944`, catching two real bugs first (see
+  `docs/diagrams/ci-pipeline.md`). That was the first actual compile+run
+  this codebase ever got; every change since then still needs to actually
+  go through CI, not just look correct on read-through.
 - **Integration tests**: nothing exercises `PluginEditor` (button clicks
-  changing `GameManager` state end-to-end) or the `SliderAttachment` wiring
-  in `LearnerEQEditor`. JUCE's `UnitTest` framework can run headless GUI
-  tests with `juce::ScopedJuceInitialiser_GUI`, but it wasn't set up here —
-  worth adding once the editors are stable enough that testing them is
-  worth the setup cost.
+  changing `GameManager` state end-to-end), the `SliderAttachment` wiring
+  in `LearnerEQEditor`, or the real `Game → ChangeListener → ProgressManager`
+  path (see above). JUCE's `UnitTest` framework can run headless GUI tests
+  with `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, but it
+  wasn't set up here — worth adding once the editors are stable enough
+  that testing them is worth the setup cost.
 - **Golden-file audio regression tests**: rendering a fixed input through
   a plugin and diffing against a saved reference output (via
   `shared/TestUtils.h`'s `rms`, or a tighter per-sample comparison) would

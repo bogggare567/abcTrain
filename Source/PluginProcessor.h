@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "GameManager.h"
+#include "ProgressManager.h"
 
 class EarTrainerProcessor : public juce::AudioProcessor
 {
@@ -33,9 +34,14 @@ public:
     void setStateInformation (const void*, int) override {}
 
     GameManager& getGameManager() noexcept { return gameManager; }
+    ProgressManager& getProgressManager() noexcept { return progressManager; }
 
 private:
+    // Declaration order matters: gameManager must be constructed before
+    // progressManager, since ProgressManager's constructor registers
+    // itself as a listener on every game.
     GameManager gameManager;
+    ProgressManager progressManager { gameManager };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerProcessor)
 };

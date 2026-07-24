@@ -36,3 +36,9 @@ juce::StringArray GameManager::getGameNames() const
         names.add (game->getName());
     return names;
 }
+
+void GameManager::setDifficultyForAllGames (int level)
+{
+    for (auto* game : games)
+        game->setDifficulty (level);
+}

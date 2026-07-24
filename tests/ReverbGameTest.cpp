@@ -9,15 +9,37 @@ public:
 
     void runTest() override
     {
-        beginTest ("exposes 4 reverb type choices");
+        beginTest ("defaults to the easy tier (2 choices) before setDifficulty is called");
         {
             ReverbGame game;
+            expectEquals (game.getNumChoices(), 2);
+        }
+
+        beginTest ("setDifficulty unlocks all 4 types at the hard tier");
+        {
+            ReverbGame game;
+            game.setDifficulty (10);
             expectEquals (game.getNumChoices(), ReverbGame::numTypes);
+        }
+
+        beginTest ("setDifficulty tiers: 1-3 -> 2, 4-6 -> 3, 7-10 -> 4");
+        {
+            ReverbGame game;
+
+            game.setDifficulty (1);
+            expectEquals (game.getNumChoices(), 2);
+
+            game.setDifficulty (4);
+            expectEquals (game.getNumChoices(), 3);
+
+            game.setDifficulty (7);
+            expectEquals (game.getNumChoices(), 4);
         }
 
         beginTest ("produces a non-silent buffer after newRound()");
         {
             ReverbGame game;
+            game.setDifficulty (10);
             const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
             game.prepare (spec); // prepare() calls newRound() once
 
@@ -35,6 +57,7 @@ public:
         beginTest ("correct answer increases the score");
         {
             ReverbGame game;
+            game.setDifficulty (10);
             const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
             game.prepare (spec);
 
@@ -48,11 +71,12 @@ public:
         beginTest ("wrong answer does not increase the score");
         {
             ReverbGame game;
+            game.setDifficulty (10);
             const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
             game.prepare (spec);
 
             const auto correct = game.getCorrectChoiceIndex();
-            const auto wrong = (correct + 1) % ReverbGame::numTypes;
+            const auto wrong = (correct + 1) % game.getNumChoices();
             game.submitAnswer (wrong);
 
             expect (! game.wasLastAnswerCorrect());
@@ -62,12 +86,13 @@ public:
         beginTest ("a second answer in the same round is ignored");
         {
             ReverbGame game;
+            game.setDifficulty (10);
             const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
             game.prepare (spec);
 
             const auto correct = game.getCorrectChoiceIndex();
             game.submitAnswer (correct);
-            game.submitAnswer ((correct + 1) % ReverbGame::numTypes);
+            game.submitAnswer ((correct + 1) % game.getNumChoices());
 
             expectEquals (game.getRoundsPlayed(), 1);
             expectEquals (game.getChosenChoiceIndex(), correct);

@@ -41,16 +41,37 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     feedbackLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (feedbackLabel);
 
+    levelLabel.setJustificationType (juce::Justification::centredLeft);
+    levelLabel.setFont (juce::Font (14.0f));
+    levelLabel.setColour (juce::Label::textColourId, juce::Colours::white);
+    addAndMakeVisible (levelLabel);
+
+    addAndMakeVisible (levelProgressBar);
+
+    streakLabel.setJustificationType (juce::Justification::centredRight);
+    streakLabel.setFont (juce::Font (14.0f));
+    streakLabel.setColour (juce::Label::textColourId, juce::Colours::orange);
+    addAndMakeVisible (streakLabel);
+
+    dailyChallengeLabel.setJustificationType (juce::Justification::centred);
+    dailyChallengeLabel.setFont (juce::Font (13.0f));
+    dailyChallengeLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible (dailyChallengeLabel);
+
     gameManager.getActiveGame().addChangeListener (this);
+    processor.getProgressManager().addChangeListener (this);
+
     rebuildChoiceButtons();
     refreshFromGameState();
+    refreshFromProgressState();
 
-    setSize (640, 360);
+    setSize (640, 440);
 }
 
 EarTrainerEditor::~EarTrainerEditor()
 {
     processor.getGameManager().getActiveGame().removeChangeListener (this);
+    processor.getProgressManager().removeChangeListener (this);
 }
 
 void EarTrainerEditor::paint (juce::Graphics& g)
@@ -84,6 +105,16 @@ void EarTrainerEditor::resized()
     auto bottomRow = area.removeFromTop (36);
     newRoundButton.setBounds (bottomRow.removeFromLeft (140));
     scoreLabel.setBounds (bottomRow.reduced (8, 0));
+
+    area.removeFromTop (16);
+
+    auto progressRow = area.removeFromTop (24);
+    levelLabel.setBounds (progressRow.removeFromLeft (100));
+    streakLabel.setBounds (progressRow.removeFromRight (100));
+    levelProgressBar.setBounds (progressRow.reduced (8, 4));
+
+    area.removeFromTop (8);
+    dailyChallengeLabel.setBounds (area.removeFromTop (20));
 }
 
 void EarTrainerEditor::gameSelected()
@@ -119,12 +150,27 @@ void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
 
 void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 {
+    // Either the active game or ProgressManager could have fired this;
+    // both refreshes are cheap, so just do both rather than tracking
+    // which broadcaster it was.
     refreshFromGameState();
+    refreshFromProgressState();
 }
 
 void EarTrainerEditor::refreshFromGameState()
 {
     auto& game = processor.getGameManager().getActiveGame();
+
+    // A difficulty change (via ProgressManager, on level-up) can change
+    // the active game's choice count at runtime - currently only
+    // ReverbGame does this. Only rebuild at the start of a fresh round,
+    // not mid-reveal, so the button layout doesn't shift while showing
+    // an answer.
+    if (! game.hasAnswered() && choiceButtons.size() != game.getNumChoices())
+    {
+        rebuildChoiceButtons();
+        resized();
+    }
 
     instructionLabel.setText (game.getInstructions(), juce::dontSendNotification);
 
@@ -152,4 +198,18 @@ void EarTrainerEditor::refreshFromGameState()
         feedbackLabel.setText ({}, juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     }
+}
+
+void EarTrainerEditor::refreshFromProgressState()
+{
+    auto& progress = processor.getProgressManager();
+
+    levelLabel.setText ("Level " + juce::String (progress.getLevel()), juce::dontSendNotification);
+    levelProgressBar.setProgress (progress.getLevelProgressProportion());
+
+    streakLabel.setText (juce::String (progress.getStreakDays()) + " day streak", juce::dontSendNotification);
+
+    dailyChallengeLabel.setText (progress.getDailyChallengeDescription(), juce::dontSendNotification);
+    dailyChallengeLabel.setColour (juce::Label::textColourId,
+                                    progress.isDailyChallengeComplete() ? correctColour : juce::Colours::lightgrey);
 }

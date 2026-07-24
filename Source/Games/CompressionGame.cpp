@@ -1,10 +1,22 @@
 #include "CompressionGame.h"
 #include <cmath>
 
-const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::presets {{
+const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::easyPresets {{
     { "Weak",   -12.0f, 2.0f, 2.0f  },
     { "Medium", -18.0f, 4.0f, 6.0f  },
     { "Strong", -24.0f, 8.0f, 10.0f }
+}};
+
+const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::mediumPresets {{
+    { "Weak",   -15.0f, 3.0f, 4.0f },
+    { "Medium", -18.0f, 4.0f, 6.0f },
+    { "Strong", -21.0f, 5.0f, 8.0f }
+}};
+
+const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::hardPresets {{
+    { "Weak",   -17.0f, 3.5f, 5.0f },
+    { "Medium", -18.0f, 4.0f, 6.0f },
+    { "Strong", -19.0f, 4.5f, 7.0f }
 }};
 
 void CompressionGame::prepare (const juce::dsp::ProcessSpec& spec)
@@ -51,8 +63,18 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
     juce::dsp::ProcessContextReplacing<float> context (block);
     compressor.process (context);
 
-    const auto& preset = presets[(size_t) correctLevelIndex];
+    const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
     buffer.applyGain (juce::Decibels::decibelsToGain (preset.makeupGainDb) * 0.6f);
+}
+
+void CompressionGame::setDifficulty (int level)
+{
+    if (level <= 3)
+        activePresets = &easyPresets;
+    else if (level <= 6)
+        activePresets = &mediumPresets;
+    else
+        activePresets = &hardPresets;
 }
 
 void CompressionGame::newRound()
@@ -81,7 +103,7 @@ void CompressionGame::submitAnswer (int choiceIndex)
 
 juce::String CompressionGame::getChoiceLabel (int choiceIndex) const
 {
-    return presets[(size_t) choiceIndex].label;
+    return (*activePresets)[(size_t) choiceIndex].label;
 }
 
 juce::String CompressionGame::getFeedbackText() const
@@ -89,7 +111,7 @@ juce::String CompressionGame::getFeedbackText() const
     if (! answered)
         return {};
 
-    const auto& preset = presets[(size_t) correctLevelIndex];
+    const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + preset.label + " compression ("
            + juce::String (preset.ratio, 0) + ":1 at "
@@ -98,7 +120,7 @@ juce::String CompressionGame::getFeedbackText() const
 
 void CompressionGame::updateCompressor()
 {
-    const auto& preset = presets[(size_t) correctLevelIndex];
+    const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
     compressor.setThreshold (preset.thresholdDb);
     compressor.setRatio (preset.ratio);
 }

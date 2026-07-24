@@ -19,6 +19,12 @@ public:
     virtual void prepare (const juce::dsp::ProcessSpec&) = 0;
     virtual void process (juce::AudioBuffer<float>&) = 0;
 
+    // Adjusts how hard the next round(s) will be, on a 1-10 scale (see
+    // docs/decisions/002-difficulty-scaling.md). Takes effect starting
+    // with the next newRound() call - doesn't retroactively change a
+    // round already in progress. Safe to call before prepare().
+    virtual void setDifficulty (int level) = 0;
+
     // Starts a new round: pick a new random target, reset answer state,
     // and broadcast a change so the UI can refresh.
     virtual void newRound() = 0;

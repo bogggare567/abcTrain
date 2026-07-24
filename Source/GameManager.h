@@ -22,6 +22,13 @@ public:
     Game& getActiveGame() noexcept { return *games[activeIndex]; }
     juce::StringArray getGameNames() const;
 
+    // For ProgressManager, which needs to listen to every game (not just
+    // the active one) and apply difficulty to all of them.
+    int getNumGames() const noexcept { return games.size(); }
+    Game& getGame (int index) noexcept { return *games[index]; }
+
+    void setDifficultyForAllGames (int level);
+
 private:
     juce::OwnedArray<Game> games;
     int activeIndex = 0;

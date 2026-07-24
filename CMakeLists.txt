@@ -34,6 +34,7 @@ target_sources(EarTrainer
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/GameManager.cpp
+        Source/ProgressManager.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
@@ -112,8 +113,10 @@ target_sources(EarTrainerTests
         tests/CompressionGameTest.cpp
         tests/ReverbGameTest.cpp
         tests/GameManagerTest.cpp
+        tests/ProgressManagerTest.cpp
         tests/LearnerEQTest.cpp
         Source/GameManager.cpp
+        Source/ProgressManager.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp

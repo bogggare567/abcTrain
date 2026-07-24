@@ -20,6 +20,7 @@ public:
 
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
+    void setDifficulty (int level) override;
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -55,6 +56,8 @@ private:
     int correctCount = 0;
     int totalCount = 0;
 
-    static constexpr float gainDb = 9.0f;
+    // Easy (levels 1-3): 9 dB. Medium (4-6): 6 dB. Hard (7-10): 3 dB.
+    // Smaller boost/cut is harder to hear. Set via setDifficulty().
+    float gainDb = 9.0f;
     static constexpr float filterQ = 2.0f;
 };

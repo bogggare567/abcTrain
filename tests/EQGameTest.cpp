@@ -67,6 +67,24 @@ public:
             expectEquals (game.getRoundsPlayed(), 1);
             expectEquals (game.getChosenChoiceIndex(), correct);
         }
+
+        beginTest ("setDifficulty doesn't change the band count and rounds still play");
+        {
+            EQGame game;
+            const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
+
+            for (const int level : { 1, 5, 10 })
+            {
+                game.setDifficulty (level);
+                game.prepare (spec); // re-prepares, calls newRound()
+
+                expectEquals (game.getNumChoices(), EQGame::numBands);
+
+                const auto correct = game.getCorrectChoiceIndex();
+                game.submitAnswer (correct);
+                expect (game.wasLastAnswerCorrect());
+            }
+        }
     }
 };
 

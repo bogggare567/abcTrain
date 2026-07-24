@@ -25,11 +25,16 @@ public:
 
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
+    void setDifficulty (int level) override;
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
 
-    int getNumChoices() const override { return numTypes; }
+    // Easy (levels 1-3): Room/Hall only. Medium (4-6): + Plate. Hard
+    // (7-10): all four including Spring. Fewer choices = easier, and the
+    // array order (Room, Hall, Plate, Spring) is deliberately most- to
+    // least-distinguishable, so the "easy" subset is genuinely easy.
+    int getNumChoices() const override { return activeNumTypes; }
     juce::String getChoiceLabel (int choiceIndex) const override;
 
     bool hasAnswered() const override { return answered; }
@@ -54,6 +59,13 @@ private:
     std::array<juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
                                                juce::dsp::IIR::Coefficients<float>>, 4> springAllpass;
     double sampleRate = 44100.0;
+    // Defaults to the easy tier (matches EQGame/CompressionGame both
+    // defaulting to their easy values) in case something ever constructs
+    // a game and calls newRound() before setDifficulty() - the real app
+    // always calls setDifficulty() during ProgressManager construction,
+    // before the host's first prepareToPlay(), so this default is a
+    // defensive fallback, not something normally observed.
+    int activeNumTypes = 2;
 
     int samplesSinceBurstStart = 0;
     int attackSamples = 1;

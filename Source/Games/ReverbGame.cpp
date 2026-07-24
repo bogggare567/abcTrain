@@ -62,9 +62,19 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
     buffer.applyGain (0.7f);
 }
 
+void ReverbGame::setDifficulty (int level)
+{
+    if (level <= 3)
+        activeNumTypes = 2;
+    else if (level <= 6)
+        activeNumTypes = 3;
+    else
+        activeNumTypes = numTypes;
+}
+
 void ReverbGame::newRound()
 {
-    correctTypeIndex = random.nextInt (numTypes);
+    correctTypeIndex = random.nextInt (activeNumTypes);
     chosenTypeIndex = -1;
     answered = false;
 

@@ -40,6 +40,16 @@ void EQGame::process (juce::AudioBuffer<float>& buffer)
     buffer.applyGain (0.25f);
 }
 
+void EQGame::setDifficulty (int level)
+{
+    if (level <= 3)
+        gainDb = 9.0f;
+    else if (level <= 6)
+        gainDb = 6.0f;
+    else
+        gainDb = 3.0f;
+}
+
 void EQGame::newRound()
 {
     correctBandIndex = random.nextInt (numBands);

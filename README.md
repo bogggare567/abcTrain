@@ -6,7 +6,9 @@ Two VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
 
 - **Ear Trainer** — ear-training games. It feeds you pink noise through a
   hidden filter and you guess what changed (which band was boosted/cut,
-  how strong the compression is).
+  how strong the compression is, which reverb type). Tracks points, a
+  level (1-10, which scales the games' difficulty up as you improve), a
+  daily login streak, and a daily challenge.
 - **Learner EQ** — a real 4-band EQ for your own tracks, with a live
   spectrum display, a response-curve overlay, and a one-line plain-
   language explanation of what a frequency region does while you drag it.
@@ -32,13 +34,17 @@ flowchart TB
         EQGame["EQGame"]
         CompGame["CompressionGame"]
         RevGame["ReverbGame"]
+        PM["ProgressManager"]
 
         ETProc --> GM
+        ETProc --> PM
         ETEdit --> GM
+        ETEdit --> PM
         GM --> GameIface
         GameIface --> EQGame
         GameIface --> CompGame
         GameIface --> RevGame
+        PM --> GM
     end
 
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
@@ -98,18 +104,23 @@ cmake --build build --target EarTrainerTests --config Release
 
 Exits non-zero if any test fails. Covers the games' scoring/state logic
 (`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
-`tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp`) and one real DSP
-regression check for LearnerEQ (`tests/LearnerEQTest.cpp` — boosting a
-band actually raises measured output level at that frequency). Also runs
-on push/PR via `.github/workflows/build_and_test.yml` (badge above).
+`tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp`), progress/level/
+streak/daily-challenge logic (`tests/ProgressManagerTest.cpp`), and one
+real DSP regression check for LearnerEQ (`tests/LearnerEQTest.cpp` —
+boosting a band actually raises measured output level at that frequency).
+Also runs on push/PR via `.github/workflows/build_and_test.yml` (badge
+above).
 
 ## Status
 
 **Ear Trainer:** three exercises implemented — "guess the boosted/cut
 band" (8 octave bands, 100 Hz–12.8 kHz), "guess the compression strength"
 (weak/medium/strong), and "guess the reverb type" (room/hall/plate/
-spring) — sharing a common `Game` interface driving one generic UI — see
-[docs/architecture.md](docs/architecture.md).
+spring) — sharing a common `Game` interface driving one generic UI, plus
+a `ProgressManager` (points, level 1-10 that scales each game's
+difficulty, daily login streak, one daily challenge) — see
+[docs/architecture.md](docs/architecture.md) and
+[docs/decisions/002-difficulty-scaling.md](docs/decisions/002-difficulty-scaling.md).
 
 **Learner EQ:** 4-band EQ (low shelf, 2 bells, high shelf) processing real
 host audio, host-automatable via `AudioProcessorValueTreeState`, live

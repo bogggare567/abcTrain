@@ -17,8 +17,33 @@ public:
     void resized() override;
 
 private:
+    // Plain filled-rectangle progress bar - simple enough not to warrant
+    // its own file.
+    class LevelProgressBar : public juce::Component
+    {
+    public:
+        void setProgress (float newProgress) noexcept
+        {
+            progress = juce::jlimit (0.0f, 1.0f, newProgress);
+            repaint();
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            auto bounds = getLocalBounds().toFloat();
+            g.setColour (juce::Colours::darkgrey);
+            g.fillRoundedRectangle (bounds, 4.0f);
+            g.setColour (juce::Colours::limegreen);
+            g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * progress), 4.0f);
+        }
+
+    private:
+        float progress = 0.0f;
+    };
+
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void refreshFromGameState();
+    void refreshFromProgressState();
     void rebuildChoiceButtons();
     void choiceButtonClicked (int choiceIndex);
     void gameSelected();
@@ -32,6 +57,11 @@ private:
     juce::Label feedbackLabel;
     juce::TextButton newRoundButton { "New Round" };
     juce::OwnedArray<juce::TextButton> choiceButtons;
+
+    juce::Label levelLabel;
+    LevelProgressBar levelProgressBar;
+    juce::Label streakLabel;
+    juce::Label dailyChallengeLabel;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerEditor)
 };

@@ -28,7 +28,12 @@ vs. not.
 
 | Feature | Status |
 |---|---|
-| Score persistence (`juce::PropertiesFile`) | ⏳ |
+| `ProgressManager`: points, level 1-10, `juce::PropertiesFile` persistence (see [decisions/002](decisions/002-difficulty-scaling.md)) | ✓ |
+| Adaptive difficulty (`Game::setDifficulty`, all 3 games, driven by level) | ✓ |
+| Daily login streak | ✓ |
+| Daily challenge (N-in-a-row on a deterministically-picked game, bonus points) | ✓ |
+| Level/progress bar/streak/daily-challenge shown in `PluginEditor` | ✓ |
+| Unit tests: `ProgressManagerTest` (level math, streak, daily challenge, persistence round-trip) | ✓ |
 | LearnerComp (compressor: envelope visualization, gain-reduction meter, A/B) | ⏳ |
 | Shared visualization/hint components factored out for reuse across Learner plugins | ⏳ |
 | Integration-level tests (editor button clicks -> GameManager state) | ⏳ |
@@ -42,7 +47,6 @@ vs. not.
 | In-plugin contextual tooltips beyond one-liners (LearnerEQ has the one-liner today) | ⏳ |
 | Micro-lessons (step-by-step guided parameter changes with explanation) | ⏳ |
 | Glossary with audio examples | ⏳ |
-| Adaptive difficulty | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |
 | Packaging/installer, code signing, licensing | ⏳ |
 
