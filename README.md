@@ -1,8 +1,8 @@
-# Ear Trainer / Learner EQ / Learner Comp
+# Ear Trainer / Learner EQ / Learner Comp / Learner Verb
 
 [![Build and Test](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
 
-Three VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
+Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
 
 - **Ear Trainer** — ear-training games. It feeds you pink noise through a
   hidden filter and you guess what changed (which band was boosted/cut,
@@ -18,6 +18,10 @@ Three VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
   input/output peak meters, a one-line explanation per control, and 4
   presets to learn from (Vocal Smoothing, Punchy Drums, Bass Control,
   Limiter).
+- **Learner Verb** — a real reverb for your own tracks (Room/Hall/Plate/
+  Spring), with the same scrolling waveform + peak-meter view, a one-line
+  explanation per control, and 4 presets (Vocal Ambience, Concert Hall,
+  Small Room, Spring Tank).
 
 Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
@@ -68,27 +72,41 @@ flowchart TB
         LCProc["PluginProcessor"]
         LCEdit["PluginEditor"]
         Engine["CompressorEngine"]
-        Waveform["WaveformDisplay"]
 
         LCProc --> Engine
-        LCEdit --> Waveform
+    end
+
+    subgraph LearnerVerb["LearnerVerb plugin (VST3 / AU / Standalone)"]
+        LVProc["PluginProcessor"]
+        LVEdit["PluginEditor"]
+        RevEngine["ReverbEngine"]
+
+        LVProc --> RevEngine
+    end
+
+    subgraph Shared["shared/"]
+        Waveform["WaveformDisplay"]
     end
 
     subgraph Tests["EarTrainerTests (console app)"]
         Runner["TestRunner (juce::UnitTestRunner)"]
     end
 
-    LearnerVerb["LearnerVerb plugin"]
+    LearnerSat["LearnerSat plugin"]
+
+    LCEdit --> Waveform
+    LVEdit --> Waveform
 
     Runner -. "compiles & runs directly" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
     Runner -. "compiles & runs directly" .-> RevGame
     Runner -. "compiles & runs directly" .-> LEProc
     Runner -. "compiles & runs directly" .-> LCProc
-    LCProc -.-> LearnerVerb
+    Runner -. "compiles & runs directly" .-> LVProc
+    LVProc -.-> LearnerSat
 
     classDef planned stroke-dasharray:4 3,opacity:0.55;
-    class LearnerVerb planned;
+    class LearnerSat planned;
 ```
 
 ## Building
@@ -102,10 +120,11 @@ cmake -B build
 cmake --build build --config Release
 ```
 
-All three plugins build from the one root `CMakeLists.txt`. Artifacts land
+All four plugins build from the one root `CMakeLists.txt`. Artifacts land
 under `build/EarTrainer_artefacts/Release/`,
-`build/LearnerEQ_artefacts/Release/`, and
-`build/LearnerComp_artefacts/Release/` (or `Debug/`), each with `VST3/`,
+`build/LearnerEQ_artefacts/Release/`,
+`build/LearnerComp_artefacts/Release/`, and
+`build/LearnerVerb_artefacts/Release/` (or `Debug/`), each with `VST3/`,
 `AU/`, and `Standalone/` subfolders. Copy the `.vst3`/`.component` into
 your system plugin folder, or run the Standalone build directly to test
 without a DAW.
@@ -123,12 +142,14 @@ cmake --build build --target EarTrainerTests --config Release
 Exits non-zero if any test fails. Covers the games' scoring/state logic
 (`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
 `tests/ReverbGameTest.cpp`, `tests/GameManagerTest.cpp`), progress/level/
-streak/daily-challenge logic (`tests/ProgressManagerTest.cpp`), and DSP
-regression checks for both Learner plugins (`tests/LearnerEQTest.cpp` —
-boosting a band raises measured output level at that frequency;
+streak/daily-challenge logic (`tests/ProgressManagerTest.cpp`), and DSP/
+behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
+— boosting a band raises measured output level at that frequency;
 `tests/LearnerCompTest.cpp` — closed-form compression/makeup-gain math,
-bypass passthrough, preset application). Also runs on push/PR via
-`.github/workflows/build_and_test.yml` (badge above).
+bypass passthrough, preset application; `tests/LearnerVerbTest.cpp` — a
+tail persists after the input stops, `dryWet=0` is an exact passthrough,
+every reverb type produces sound, preset application). Also runs on
+push/PR via `.github/workflows/build_and_test.yml` (badge above).
 
 ## Status
 
@@ -154,6 +175,15 @@ control, 4 teaching presets — see
 [docs/decisions/003-learnercomp-engine.md](docs/decisions/003-learnercomp-engine.md)
 for why it isn't built on `juce::dsp::Compressor`.
 
+**Learner Verb:** reverb with Room/Hall/Plate (`juce::dsp::Reverb`) and
+Spring (custom allpass cascade) via one `ReverbEngine`, pre-delay,
+processing real host audio, host-automatable, the same scrolling waveform
++ peak-meter view as LearnerComp (now `shared/WaveformDisplay`), 4
+teaching presets — see
+[docs/decisions/004-learnerverb-scope.md](docs/decisions/004-learnerverb-scope.md)
+for what was deliberately trimmed from the initial build (impulse-response
+visualization, decay-vs-frequency graph, stereo correlometer) and why.
+
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — the `Game`/`GameManager`
@@ -166,6 +196,8 @@ for why it isn't built on `juce::dsp::Compressor`.
   `setDifficulty`/`ProgressManager`
 - [docs/decisions/003-learnercomp-engine.md](docs/decisions/003-learnercomp-engine.md) —
   why LearnerComp has a custom compressor engine
+- [docs/decisions/004-learnerverb-scope.md](docs/decisions/004-learnerverb-scope.md) —
+  LearnerVerb's trimmed visualization scope and the decay-to-`roomSize` approximation
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

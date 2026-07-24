@@ -1,8 +1,8 @@
 # System overview
 
-What's actually built (`EarTrainer`, `LearnerEQ`, `LearnerComp`, `shared/`,
-`EarTrainerTests`) plus where the next teaching plugins/games would plug
-in. Dashed boxes are **not built yet** — see
+What's actually built (`EarTrainer`, `LearnerEQ`, `LearnerComp`,
+`LearnerVerb`, `shared/`, `EarTrainerTests`) plus where the next teaching
+plugins/games would plug in. Dashed boxes are **not built yet** — see
 [../roadmap.md](../roadmap.md) for status.
 
 ```mermaid
@@ -53,20 +53,35 @@ flowchart TB
         LCProc["PluginProcessor"]
         LCEdit["PluginEditor"]
         Engine["CompressorEngine"]
-        Waveform["WaveformDisplay"]
         Guide["CompressorGuide"]
 
         LCProc --> Engine
-        LCEdit --> Waveform
         LCEdit --> Guide
+    end
+
+    subgraph LearnerVerb["LearnerVerb plugin (VST3 / AU / Standalone)"]
+        LVProc["PluginProcessor"]
+        LVEdit["PluginEditor"]
+        RevEngine["ReverbEngine"]
+        RevGuide["ReverbGuide"]
+
+        LVProc --> RevEngine
+        LVEdit --> RevGuide
+    end
+
+    subgraph Shared["shared/"]
+        Waveform["WaveformDisplay"]
+        TestUtils["TestUtils.h"]
     end
 
     subgraph Tests["EarTrainerTests (console app)"]
         Runner["TestRunner (juce::UnitTestRunner)"]
-        TestUtils["shared/TestUtils.h"]
     end
 
-    LearnerVerb["LearnerVerb plugin"]
+    LearnerSat["LearnerSat plugin"]
+
+    LCEdit --> Waveform
+    LVEdit --> Waveform
 
     Runner -. "compiles & runs directly, no host/GUI" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
@@ -74,20 +89,21 @@ flowchart TB
     Runner -. "compiles & runs directly" .-> GM
     Runner -. "compiles & runs directly" .-> LEProc
     Runner -. "compiles & runs directly" .-> LCProc
+    Runner -. "compiles & runs directly" .-> LVProc
     Runner --> TestUtils
 
-    LCProc -.-> LearnerVerb
+    LVProc -.-> LearnerSat
 
     classDef planned stroke-dasharray:4 3,opacity:0.55;
-    class LearnerVerb planned;
+    class LearnerSat planned;
 ```
 
 **Key structural fact:** `EarTrainerTests` links the game/processor `.cpp`
 files directly rather than depending on the plugin targets. It excludes
 `Source/PluginProcessor.cpp` (EarTrainer's) entirely, and excludes every
 plugin's `PluginEntry.cpp` (the file containing just `createPluginFilter()`)
-— LearnerEQ's and LearnerComp's `PluginProcessor.cpp` are both linked in
-(each `*Test.cpp` needs the real processor), but their `createPluginFilter()`
-factory functions live in separate files specifically so linking both
-processors into one test binary doesn't collide two definitions of that
-function.
+— LearnerEQ's, LearnerComp's, and LearnerVerb's `PluginProcessor.cpp` are
+all linked in (each `*Test.cpp` needs the real processor), but their
+`createPluginFilter()` factory functions live in separate files
+specifically so linking three processors into one test binary doesn't
+collide three definitions of that function.

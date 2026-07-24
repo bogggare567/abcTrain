@@ -3,9 +3,11 @@
 `.github/workflows/build_and_test.yml` exists and runs this on every push/
 PR. **Confirmed green on all three OSes** as of commit `a2f2944`
 (2026-07-24) — Windows, macOS, and Ubuntu all built every target and ran
-`EarTrainerTests` to completion successfully. This was not the first
-attempt: two real bugs surfaced and got fixed along the way, both worth
-knowing about if the build ever regresses:
+`EarTrainerTests` to completion successfully — and again on `dd207d1`
+(LearnerComp added). LearnerVerb, added after `dd207d1`, hasn't been
+confirmed yet. The first green run was not the first attempt: two real
+bugs surfaced and got fixed along the way, both worth knowing about if the
+build ever regresses:
 
 1. `LearnerEQProcessor::getName()` returned the `JucePlugin_Name` macro,
    which JUCE only defines for real `juce_add_plugin` targets. It's
@@ -19,27 +21,34 @@ knowing about if the build ever regresses:
    unity-build translation units at once OOM-killed the Ubuntu runner
    (exit 143). Fixed by capping it explicitly (`--parallel 2`).
 
+This is the actual shape of `.github/workflows/build_and_test.yml`, not a
+proposal — kept in sync with the real file, not an earlier draft of it:
+
 ```mermaid
 flowchart TD
-    A["Push / Pull Request"] --> B{"Matrix: macOS, Windows"}
-    B --> C["Configure CMake\n(FetchContent pulls JUCE 8.0.15)"]
-    C --> D["Build EarTrainer + LearnerEQ\n(VST3 / AU / Standalone)"]
-    C --> E["Build EarTrainerTests"]
-    E --> F["Run EarTrainerTests"]
-    F -- pass --> G["Upload build artifacts"]
-    F -- fail --> H["Fail the check, block merge"]
-    D --> G
+    A["Push / Pull Request"] --> B{"Matrix: ubuntu-latest,\nmacos-latest, windows-latest"}
+    B --> C["Checkout"]
+    C --> D{"Linux?"}
+    D -- yes --> E["Install X11/GL/alsa/freetype dev packages\n(needed to compile, not just to run)"]
+    D -- no --> F["Cache JUCE FetchContent\n(keyed on hash of CMakeLists.txt)"]
+    E --> F
+    F --> G["Configure: cmake -B build"]
+    G --> H["Build: cmake --build build --parallel 2\n(all 4 plugins + EarTrainerTests)"]
+    H --> I["Run EarTrainerTests"]
+    I -- pass --> J["Check succeeds"]
+    I -- fail --> K["Check fails, blocks merge"]
 ```
 
-Open questions to resolve before implementing this:
+Deliberately **not** in this pipeline, all still open:
 
-- **Which OS runners.** `EarTrainer`/`LearnerEQ` are macOS/Windows plugin
-  formats (AU is macOS-only); Linux isn't a target format but could still
-  run `EarTrainerTests` cheaply if a fast sanity check on every push is
-  wanted before the slower macOS/Windows plugin builds run.
-- **JUCE fetch caching.** `FetchContent` re-cloning JUCE on every run is
-  slow; cache the `_deps` build directory keyed on the pinned JUCE tag in
-  `CMakeLists.txt`.
-- **Artifact retention/signing.** Out of scope until there's an actual
-  release process (see phase 1.0 in the roadmap) — unsigned CI builds
-  aren't distributable as-is on macOS/Windows.
+- **No artifact upload.** A green run proves the code builds and passes
+  tests; it doesn't produce a downloadable `.vst3`/`.component` for anyone
+  to actually try. Add this once there's a reason to hand someone a build
+  without them cloning and compiling it themselves.
+- **No code signing / notarization.** Out of scope until there's an actual
+  release process (see phase 1.0 in `../roadmap.md`) — unsigned builds
+  aren't distributable as-is on macOS/Windows regardless.
+- **No separate fast/slow split.** Every OS builds all four plugins plus
+  the test binary in one job; there's no cheap "just run the tests"
+  Linux-only fast-fail step ahead of the (slower) macOS/Windows plugin
+  builds. Worth revisiting if CI turnaround time becomes annoying.

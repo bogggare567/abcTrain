@@ -1,5 +1,5 @@
 #include "PluginEditor.h"
-#include "ParameterGuide.h"
+#include "ReverbGuide.h"
 #include <array>
 
 namespace
@@ -10,23 +10,22 @@ namespace
         const char* label;
     };
 
-    const std::array<KnobSpec, 7> knobSpecs {{
-        { "threshold", "Threshold" },
-        { "ratio",     "Ratio" },
-        { "attack",    "Attack" },
-        { "release",   "Release" },
-        { "knee",      "Knee" },
-        { "makeup",    "Makeup" },
-        { "dryWet",    "Dry/Wet" }
+    const std::array<KnobSpec, 6> knobSpecs {{
+        { "decay",    "Decay" },
+        { "preDelay", "Pre-Delay" },
+        { "size",     "Size" },
+        { "damping",  "Damping" },
+        { "dryWet",   "Dry/Wet" },
+        { "width",    "Width" }
     }};
 
-    constexpr const char* defaultGuideText = "Drag a knob to see what it does.";
+    constexpr const char* defaultGuideText = "Drag a control to see what it does.";
 }
 
-LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
+LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    titleLabel.setText ("Learner Comp", juce::dontSendNotification);
+    titleLabel.setText ("Learner Verb", juce::dontSendNotification);
     titleLabel.setFont (juce::Font (22.0f, juce::Font::bold));
     titleLabel.setJustificationType (juce::Justification::centred);
     titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
@@ -40,11 +39,6 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
 
     addAndMakeVisible (waveform);
 
-    gainReductionLabel.setJustificationType (juce::Justification::centred);
-    gainReductionLabel.setFont (juce::Font (20.0f, juce::Font::bold));
-    gainReductionLabel.setColour (juce::Label::textColourId, juce::Colours::orange);
-    addAndMakeVisible (gainReductionLabel);
-
     inputPeakLabel.setJustificationType (juce::Justification::centred);
     inputPeakLabel.setFont (juce::Font (13.0f));
     inputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
@@ -54,6 +48,19 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     outputPeakLabel.setFont (juce::Font (13.0f));
     outputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (outputPeakLabel);
+
+    typeSelector.addItem ("Room", 1);
+    typeSelector.addItem ("Hall", 2);
+    typeSelector.addItem ("Plate", 3);
+    typeSelector.addItem ("Spring", 4);
+    addAndMakeVisible (typeSelector);
+    typeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
+        processor.apvts, LearnerVerbProcessor::typeParamId, typeSelector);
+
+    typeSelector.onChange = [this]
+    {
+        guideLabel.setText (ReverbGuide::describe ("type"), juce::dontSendNotification);
+    };
 
     for (size_t i = 0; i < knobs.size(); ++i)
     {
@@ -65,7 +72,7 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         knob.nameLabel.setColour (juce::Label::textColourId, juce::Colours::white);
         addAndMakeVisible (knob.nameLabel);
 
-        knob.slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::deepskyblue);
+        knob.slider.setColour (juce::Slider::rotarySliderFillColourId, juce::Colours::mediumpurple);
         addAndMakeVisible (knob.slider);
 
         knob.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
@@ -74,7 +81,7 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         const juce::String paramId (spec.paramId);
         knob.slider.onDragStart = [this, paramId]
         {
-            guideLabel.setText (CompressorGuide::describe (paramId), juce::dontSendNotification);
+            guideLabel.setText (ReverbGuide::describe (paramId), juce::dontSendNotification);
         };
         knob.slider.onDragEnd = [this]
         {
@@ -82,14 +89,9 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         };
     }
 
-    bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        processor.apvts, LearnerCompProcessor::bypassParamId, bypassButton);
-    bypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
-    addAndMakeVisible (bypassButton);
-
-    for (int i = 0; i < (int) CompressorGuide::presets.size(); ++i)
+    for (int i = 0; i < (int) ReverbGuide::presets.size(); ++i)
     {
-        auto* button = presetButtons.add (new juce::TextButton (CompressorGuide::presets[(size_t) i].name));
+        auto* button = presetButtons.add (new juce::TextButton (ReverbGuide::presets[(size_t) i].name));
         button->onClick = [this, i] { processor.applyPreset (i); };
         addAndMakeVisible (button);
     }
@@ -97,36 +99,37 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     processor.setWaveformDisplay (&waveform);
 
     startTimerHz (30);
-    setSize (820, 620);
+    setSize (760, 560);
 }
 
-LearnerCompEditor::~LearnerCompEditor()
+LearnerVerbEditor::~LearnerVerbEditor()
 {
     processor.setWaveformDisplay (nullptr);
 }
 
-void LearnerCompEditor::paint (juce::Graphics& g)
+void LearnerVerbEditor::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colour (0xff1e1e24));
 }
 
-void LearnerCompEditor::resized()
+void LearnerVerbEditor::resized()
 {
     auto area = getLocalBounds().reduced (16);
 
     titleLabel.setBounds (area.removeFromTop (32));
+    typeSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (200, 24));
+    area.removeFromTop (8);
     guideLabel.setBounds (area.removeFromTop (20));
     area.removeFromTop (8);
 
-    waveform.setBounds (area.removeFromTop (160));
+    waveform.setBounds (area.removeFromTop (150));
     area.removeFromTop (8);
 
-    auto meterRow = area.removeFromTop (28);
-    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 3));
-    gainReductionLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
+    auto meterRow = area.removeFromTop (20);
+    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
     outputPeakLabel.setBounds (meterRow);
 
-    area.removeFromTop (16);
+    area.removeFromTop (8);
 
     auto knobRow = area.removeFromTop (110);
     const auto knobWidth = knobRow.getWidth() / (int) knobs.size();
@@ -140,18 +143,13 @@ void LearnerCompEditor::resized()
     area.removeFromTop (16);
 
     auto bottomRow = area.removeFromTop (32);
-    bypassButton.setBounds (bottomRow.removeFromLeft (100));
-    bottomRow.removeFromLeft (16);
     const auto presetWidth = bottomRow.getWidth() / juce::jmax (1, presetButtons.size());
     for (auto* button : presetButtons)
         button->setBounds (bottomRow.removeFromLeft (presetWidth).reduced (4, 0));
 }
 
-void LearnerCompEditor::timerCallback()
+void LearnerVerbEditor::timerCallback()
 {
-    gainReductionLabel.setText ("GR: " + juce::String (waveform.getCurrentHighlightAmount(), 1) + " dB",
-                                 juce::dontSendNotification);
-
     inputPeakLabel.setText ("In: "
                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)
                                  + " dB",

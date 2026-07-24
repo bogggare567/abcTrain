@@ -6,12 +6,12 @@
 #include <array>
 #include <memory>
 
-class LearnerCompEditor : public juce::AudioProcessorEditor,
+class LearnerVerbEditor : public juce::AudioProcessorEditor,
                            private juce::Timer
 {
 public:
-    explicit LearnerCompEditor (LearnerCompProcessor&);
-    ~LearnerCompEditor() override;
+    explicit LearnerVerbEditor (LearnerVerbProcessor&);
+    ~LearnerVerbEditor() override;
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -26,20 +26,20 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
     };
 
-    LearnerCompProcessor& processor;
+    LearnerVerbProcessor& processor;
 
     juce::Label titleLabel;
     juce::Label guideLabel;
     WaveformDisplay waveform;
-    juce::Label gainReductionLabel;
     juce::Label inputPeakLabel;
     juce::Label outputPeakLabel;
 
-    std::array<KnobControl, 7> knobs;
-    juce::ToggleButton bypassButton { "Bypass" };
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
+    juce::ComboBox typeSelector;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> typeAttachment;
+
+    std::array<KnobControl, 6> knobs;
 
     juce::OwnedArray<juce::TextButton> presetButtons;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerCompEditor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerVerbEditor)
 };

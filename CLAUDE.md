@@ -1,6 +1,6 @@
-# Ear Trainer / Learner EQ / Learner Comp — project notes
+# Ear Trainer / Learner EQ / Learner Comp / Learner Verb — project notes
 
-Three JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
+Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 
 - **EarTrainer** — multiple-choice ear-training games.
 - **LearnerEQ** — a real 4-band EQ that processes the host's own audio,
@@ -8,10 +8,13 @@ Three JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
   tooltips while dragging a band's frequency knob.
 - **LearnerComp** — a real compressor processing the host's own audio,
   with a scrolling waveform highlighting where it's reducing gain, a
-  GR/peak meter row, contextual tooltips, and 4 teaching presets (new).
+  GR/peak meter row, contextual tooltips, and 4 teaching presets.
+- **LearnerVerb** — a real reverb (Room/Hall/Plate/Spring) processing the
+  host's own audio, the same scrolling waveform/peak-meter view as
+  LearnerComp, contextual tooltips, and 4 teaching presets (new).
 
 Longer-term product direction (not all built): a learning ecosystem of
-"teaching" plugins (LearnerEQ and LearnerComp done, LearnerVerb/LearnerSat
+"teaching" plugins (LearnerEQ/LearnerComp/LearnerVerb done, LearnerSat
 planned) paired with the trainer games and a lightweight in-plugin
 knowledge base, plus a phase-2 AI module that analyzes a reference track
 and suggests which teaching plugins to try. Treat any specific
@@ -23,21 +26,23 @@ that depend on them.
 
 `docs/roadmap.md` (status of everything, done vs. planned),
 `docs/diagrams/` (mermaid: system overview, game-engine class diagram,
-learner-plugin component diagrams for both LearnerEQ and LearnerComp,
+learner-plugin component diagrams for LearnerEQ/LearnerComp/LearnerVerb,
 proposed CI pipeline), `docs/decisions/` (ADRs: 001 is the `Game`
 interface choice, 002 is `setDifficulty`/`ProgressManager`, 003 is why
 LearnerComp has a custom compressor engine instead of
-`juce::dsp::Compressor`), `docs/testing-strategy.md`. This file
-(`CLAUDE.md`) stays the per-file breakdown; `docs/` is the higher-level/
-visual layer — keep both in sync when the architecture changes rather
-than letting one drift.
+`juce::dsp::Compressor`, 004 is LearnerVerb's trimmed visualization scope
+and its decay-to-`roomSize` approximation), `docs/testing-strategy.md`.
+This file (`CLAUDE.md`) stays the per-file breakdown; `docs/` is the
+higher-level/visual layer — keep both in sync when the architecture
+changes rather than letting one drift.
 
 ## Build
 
 CMake + JUCE via `FetchContent` (pinned to tag `8.0.15` in
 `CMakeLists.txt` — no local JUCE checkout needed). `cmake -B build &&
-cmake --build build` builds all three plugin targets (`EarTrainer`,
-`LearnerEQ`, `LearnerComp`) from the one root `CMakeLists.txt`.
+cmake --build build` builds all four plugin targets (`EarTrainer`,
+`LearnerEQ`, `LearnerComp`, `LearnerVerb`) from the one root
+`CMakeLists.txt`.
 
 ## Architecture — EarTrainer (`Source/`)
 
@@ -188,14 +193,14 @@ for why it doesn't use `juce::dsp::Compressor`.
   Bypass skips the engine entirely and passes audio through unchanged.
   `applyPreset(int)` lives here (not just in the editor's button handler)
   specifically so it's unit-testable without constructing a `Component`.
-- `LearnerComp/Source/WaveformDisplay.{h,cpp}` — same FIFO-accumulate/
-  30 Hz-timer-flush pattern as `SpectrumAnalyserComponent`, but for a
-  scrolling peak-based dual waveform instead of an FFT: gray input trace,
-  output trace tinted from blue to red proportional to gain reduction in
-  that ~33 ms column. Also the source of the GR/peak meter readouts (via
-  `getCurrentGainReductionDb`/`getInputPeak`/`getOutputPeak`). Not
-  extracted into `shared/` despite the structural similarity to
-  `SpectrumAnalyserComponent` — see the roadmap.
+- `shared/WaveformDisplay.{h,cpp}` — same FIFO-accumulate/30 Hz-timer-flush
+  pattern as `SpectrumAnalyserComponent`, but for a scrolling peak-based
+  dual waveform instead of an FFT: gray input trace, output trace tinted
+  from blue to red proportional to a generic `highlightAmount` (LearnerComp
+  passes gain reduction) in that ~33 ms column. Also the source of the
+  peak-meter readouts (via `getInputPeak`/`getOutputPeak`/
+  `getCurrentHighlightAmount`). Shared with LearnerVerb — see the
+  LearnerVerb section below.
 - `LearnerComp/Source/PluginEditor.{h,cpp}` — 7 rotary knobs (one per
   float param) + bypass toggle + 4 preset buttons, each preset button just
   calling `processor.applyPreset(i)`. Guide label updates via
@@ -206,6 +211,53 @@ for why it doesn't use `juce::dsp::Compressor`.
 Not yet built for LearnerComp: knowledge-base content beyond the one-line
 tooltips, micro-lessons, any automated coverage of attack/release
 *transient* behavior (only steady-state math is tested).
+
+## Architecture — LearnerVerb (`LearnerVerb/Source/`)
+
+Same shape again (real audio, APVTS parameters, host-automatable), for
+space instead of dynamics. See
+[decisions/004-learnerverb-scope.md](docs/decisions/004-learnerverb-scope.md)
+for what was deliberately cut from the first build and why the `Decay`
+knob isn't a precise physical measurement.
+
+- `LearnerVerb/Source/ReverbEngine.h` — Room/Hall/Plate via
+  `juce::dsp::Reverb` (Freeverb-derived); Spring via a cascade of 4
+  resonant allpass filters, the same technique `EarTrainer`'s `ReverbGame`
+  uses for its Spring type, reimplemented here (not literally shared —
+  `ReverbGame`'s version is tightly coupled to its per-round game model,
+  this one needs continuous live parameter control). `Decay` (seconds) is
+  mapped onto `roomSize` by ear, since Freeverb has no literal
+  decay-in-seconds parameter — an approximation, not a physical model,
+  same "tuned, not measured" precedent as `CompressionGame`/`ReverbGame`'s
+  presets. A `juce::dsp::DelayLine` implements pre-delay ahead of whichever
+  algorithm is selected. Always renders 100% wet; `PluginProcessor` blends
+  dry/wet itself, same division of responsibility as `CompressorEngine`.
+- `LearnerVerb/Source/ReverbGuide.h` (`ReverbGuide` namespace) — tooltip
+  text per parameter ID, plus the 4 preset definitions (Vocal Ambience/
+  Concert Hall/Small Room/Spring Tank: type, decay, pre-delay, size,
+  damping, dry/wet, width).
+- `LearnerVerb/Source/PluginProcessor.{h,cpp}` — 7 APVTS params (type as
+  an `AudioParameterChoice`, decay/preDelay/size/damping/dryWet/width as
+  floats). `processBlock` makes a wet-only copy of the block
+  (`wetBuffer.makeCopyOf`), runs `ReverbEngine::process` on the copy, then
+  blends wet/dry per sample into the real buffer — `ReverbEngine` never
+  needs to know about `Dry/Wet` at all. Pushes (dry, blended-output) to
+  whatever `WaveformDisplay` the editor registered, with `highlightAmount`
+  left at its default (no gain-reduction-style concept here).
+  `applyPreset(int)` lives here for the same testability reason as
+  LearnerComp's.
+- `LearnerVerb/Source/PluginEditor.{h,cpp}` — a `ComboBox` for Type
+  (`ComboBoxAttachment`, items added manually to match the choice
+  parameter — attachments don't auto-populate the combo box) + 6 rotary
+  knobs + 4 preset buttons. Same guide-label/tooltip pattern as the other
+  two Learner plugins.
+- `LearnerVerb/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
+  reason as the other two.
+
+Not yet built for LearnerVerb (deliberately trimmed, see ADR 004):
+impulse-response "cloud" visualization, decay-vs-frequency graph, stereo
+correlometer/vectorscope, knowledge-base content beyond one-line tooltips,
+micro-lessons.
 
 ## Testing (`tests/`, `shared/`)
 
@@ -247,6 +299,14 @@ plugin targets), so no plugin host or GUI is needed to run it.
   settled). Also checks bypass leaves the buffer bit-for-bit unchanged,
   `applyPreset` sets every parameter a preset defines, and an
   out-of-range preset index is a no-op rather than a crash.
+- `tests/LearnerVerbTest.cpp` — reverb has no clean closed-form target the
+  way compression math does, so this is behavioral instead: a noise burst
+  through a real `LearnerVerbProcessor` should leave an audible tail after
+  the burst ends (unlike a dry passthrough, which would be silent);
+  `dryWet = 0` should give an exact (not just close) passthrough, since
+  `0 * wet + 1 * dry` is exact in floating point; every one of the 4 types
+  should produce non-silent output without crashing; `applyPreset` and the
+  out-of-range-index guard are tested the same way as LearnerComp's.
 
 **`juce::ChangeBroadcaster::sendChangeMessage()` is asynchronous** (needs
 a running JUCE message loop to deliver), and `EarTrainerTests` never pumps
@@ -262,24 +322,26 @@ only exercised by actually running the plugin. See
 `Source/PluginProcessor.cpp` (EarTrainer's — the game logic under test
 doesn't need the `AudioProcessor` wrapper) and every plugin's
 `PluginEntry.cpp` (`LearnerEQ/Source/PluginEntry.cpp`,
-`LearnerComp/Source/PluginEntry.cpp` — each is *just*
-`createPluginFilter()`, split out of its `PluginProcessor.cpp`
-specifically because `LearnerEQTest` and `LearnerCompTest` both need
-their real processor's `PluginProcessor.cpp` linked in, and two
-definitions of `createPluginFilter()` in one binary would collide. The
-real plugin targets (`juce_add_plugin`) link both `PluginProcessor.cpp`
-*and* `PluginEntry.cpp` — only the test binary needs the split.
+`LearnerComp/Source/PluginEntry.cpp`, `LearnerVerb/Source/PluginEntry.cpp`
+— each is *just* `createPluginFilter()`, split out of its
+`PluginProcessor.cpp` specifically because `LearnerEQTest`,
+`LearnerCompTest`, and `LearnerVerbTest` all need their real processor's
+`PluginProcessor.cpp` linked in, and three definitions of
+`createPluginFilter()` in one binary would collide. The real plugin
+targets (`juce_add_plugin`) link both `PluginProcessor.cpp` *and*
+`PluginEntry.cpp` — only the test binary needs the split.
 
 CI: `.github/workflows/build_and_test.yml` builds all targets and runs
 `EarTrainerTests` on push/PR across ubuntu-latest/macos-latest/
-windows-latest. **Confirmed green on all three as of commit `a2f2944`.**
-Two real bugs were caught and fixed getting there (see
-`docs/diagrams/ci-pipeline.md` for both) — this was the first actual
-compile+run this codebase had ever gotten, so treat that history as a
-reminder to keep watching CI on every push, not evidence the code is now
-bulletproof. **LearnerComp was added after that green run and is not yet
-confirmed to build/pass** — watch the next CI run on this branch before
-trusting it.
+windows-latest. **Confirmed green on all three as of commit `a2f2944`**,
+and again on `dd207d1` (LearnerComp, added afterward) — checked directly
+against the GitHub Actions API, not assumed. Two real bugs were caught and
+fixed getting to the first green run (see `docs/diagrams/ci-pipeline.md`
+for both) — that was the first actual compile+run this codebase had ever
+gotten, so treat that history as a reminder to keep watching CI on every
+push, not evidence the code is now bulletproof. **LearnerVerb was added
+after `dd207d1` and is not yet confirmed to build/pass** — watch the next
+CI run on this branch before trusting it.
 
 ## Conventions
 
@@ -298,17 +360,15 @@ trusting it.
 ## Roadmap (not yet built)
 
 - More EarTrainer exercises (delay type, stereo width, distortion type, ...).
-- More teaching plugins: LearnerVerb, LearnerSat — same pattern as
-  LearnerEQ/LearnerComp (own `juce_add_plugin` target, APVTS params, a
-  visualization + contextual guide text, its own `PluginEntry.cpp` split).
-- Extract the shared FIFO-fill/timer-repaint pattern behind
-  `SpectrumAnalyserComponent` and `WaveformDisplay` into `shared/` once a
-  third Learner plugin needs it — don't guess the abstraction from two
-  data points.
+- One more teaching plugin: LearnerSat — same pattern as the other three
+  (own `juce_add_plugin` target, APVTS params, a visualization +
+  contextual guide text, its own `PluginEntry.cpp` split).
+- LearnerVerb's trimmed-for-now visualizations: impulse-response "cloud,"
+  decay-vs-frequency graph, stereo correlometer/vectorscope (see ADR 004).
 - LearnerEQ "analyze reference" mode + richer knowledge base/micro-lessons.
-- Golden-file / transient-behavior audio regression tests for LearnerEQ
-  and LearnerComp (both currently have exactly one narrow steady-state
-  DSP assertion each).
+- Golden-file / transient-behavior audio regression tests for LearnerEQ,
+  LearnerComp, and LearnerVerb (each currently has only steady-state or
+  behavioral assertions, no golden-file comparison).
 - Integration test for the real `Game → ProgressManager` `ChangeListener`
   wiring (needs a pumped message loop, not set up yet — see Testing).
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are

@@ -1,14 +1,11 @@
 # Learner-series teaching plugins
 
-Two plugins in this pattern so far: `LearnerEQ` and `LearnerComp`. Both
-process the host's real audio and are genuinely usable, host-automatable
-effects (unlike EarTrainer's games). Both follow the same shape: their own
-`juce_add_plugin` target, `AudioProcessorValueTreeState` for parameters, a
-visualization component fed from the audio thread, and a short contextual
-guide string per control. **They don't share code with each other yet**
-(see the note at the bottom) — `SpectrumAnalyserComponent` and
-`WaveformDisplay` are separate, parallel implementations of the same
-FIFO-fill/timer-repaint pattern.
+Three plugins in this pattern so far: `LearnerEQ`, `LearnerComp`, and
+`LearnerVerb`. All process the host's real audio and are genuinely
+usable, host-automatable effects (unlike EarTrainer's games). All follow
+the same shape: their own `juce_add_plugin` target, `AudioProcessorValueTreeState`
+for parameters, a visualization component fed from the audio thread, and
+a short contextual guide string per control.
 
 ## LearnerEQ
 
@@ -53,6 +50,10 @@ for `FrequencyGuide`: the live spectrum, the response curve, and the
 highlighted-band overlay all convert frequency to x-position through the
 same function, so they're guaranteed to line up on screen.
 
+`SpectrumAnalyserComponent` is FFT-based and stays local to LearnerEQ —
+see the shared-code note at the bottom for why it isn't unified with the
+other two plugins' waveform view.
+
 ## LearnerComp
 
 ```mermaid
@@ -68,7 +69,7 @@ flowchart LR
     subgraph Editor["LearnerComp Editor"]
         Edit["PluginEditor"]
         Knobs["7 rotary knobs + bypass toggle"]
-        Waveform["WaveformDisplay"]
+        Waveform["shared/WaveformDisplay"]
         Presets["4 preset buttons"]
         Guide2["guideLabel (contextual tooltip)"]
         Edit --> Knobs
@@ -98,12 +99,60 @@ handler:** it's directly unit-testable that way (`LearnerCompTest.cpp`
 calls it without needing to construct an editor/GUI at all) — see
 [testing-strategy.md](../testing-strategy.md) for why constructing a
 `Component` in the console test binary was avoided rather than relied on.
+Same reasoning applies to `LearnerVerbProcessor::applyPreset` below.
 
-## Shared-code gap
+## LearnerVerb
 
-`SpectrumAnalyserComponent` (LearnerEQ) and `WaveformDisplay` (LearnerComp)
-are both "accumulate from the audio thread into a fixed-size buffer, flush
-on a UI timer, repaint" — structurally the same pattern, implemented twice.
-Nothing has been extracted into a shared component yet. Worth doing once a
-third Learner plugin needs the same shape, rather than guessing the right
-abstraction from two data points.
+```mermaid
+flowchart LR
+    subgraph Processor["LearnerVerb Processor"]
+        Proc["PluginProcessor"]
+        APVTS[("APVTS: type/decay/preDelay/\nsize/damping/dryWet/width")]
+        Engine["ReverbEngine\n(Room/Hall/Plate via dsp::Reverb,\nSpring via allpass cascade, see ADR 004)"]
+        Proc --> APVTS
+        Proc --> Engine
+    end
+
+    subgraph Editor["LearnerVerb Editor"]
+        Edit["PluginEditor"]
+        TypeBox["Type ComboBox + 6 rotary knobs"]
+        Waveform2["shared/WaveformDisplay"]
+        Presets2["4 preset buttons"]
+        Guide3["guideLabel (contextual tooltip)"]
+        Edit --> TypeBox
+        Edit --> Waveform2
+        Edit --> Presets2
+        Edit --> Guide3
+    end
+
+    ParamGuide2["ReverbGuide\n(tooltip text + preset table)"]
+
+    TypeBox -- "ComboBoxAttachment /\nSliderAttachment" --> APVTS
+    Proc -- "engine.process()\non a wet-only copy of the block" --> Engine
+    Proc -- "pushSample(dry, blended)\naudio thread" --> Waveform2
+    Presets2 -- "processor.applyPreset(i)" --> ParamGuide2
+    Guide3 -- "describe(paramId)" --> ParamGuide2
+```
+
+**Why `PluginProcessor` makes a wet-only copy of the block instead of
+processing in place:** `ReverbEngine::process` always renders 100% wet,
+same division of responsibility as `CompressorEngine` — the processor
+blends dry/wet itself afterward, sample by sample, so `ReverbEngine` never
+needs to know about the `Dry/Wet` parameter at all.
+
+**Why `WaveformDisplay`'s highlight channel goes unused here:**
+LearnerComp tints the output trace red by gain reduction; LearnerVerb has
+no equivalent per-sample "how hard is this working" value, so it just
+passes the default (no tint). The shared component tolerates a consumer
+that doesn't need the highlight feature.
+
+## Shared code
+
+`shared/WaveformDisplay.{h,cpp}` — the scrolling peak-based dual-waveform
+component — is used by both LearnerComp and LearnerVerb. It started as
+LearnerComp-only; once LearnerVerb needed the identical FIFO-accumulate/
+30 Hz-timer/scrolling-columns shape, it was extracted rather than copied a
+second time (see [decisions/004](../decisions/004-learnerverb-scope.md)).
+`SpectrumAnalyserComponent` (LearnerEQ) is *not* part of this — it's
+FFT-based, a fundamentally different data shape from time-domain peak
+tracking, so there's nothing to unify there.

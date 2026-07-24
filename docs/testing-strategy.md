@@ -57,6 +57,17 @@ handler specifically so it's testable without constructing an editor — see
 this console test binary was avoided as a matter of policy, not just for
 this one case.
 
+**`LearnerVerbTest.cpp`** has no closed-form target the way compression
+math does — a reverb tail's exact level isn't something to solve for in
+closed form the way a compressor's steady-state gain reduction is — so
+it's behavioral instead: a noise burst through a real `LearnerVerbProcessor`
+should leave an audible tail once the burst stops (a dry passthrough
+wouldn't); `dryWet = 0` should be an *exact* passthrough (not just close —
+`0 * wet + 1 * dry` is exact in IEEE float, so this is a real bit-equality
+check, not a tolerance fudge); every one of the 4 types should produce
+non-silent output without crashing; `applyPreset`/out-of-range-index are
+tested the same way as LearnerComp's.
+
 ## Why game logic and DSP output are tested differently
 
 The games generate random noise (`PinkNoiseGenerator`) as their test
@@ -93,24 +104,26 @@ logic is not, and can only be checked by actually running the plugin.
 
 - **CI is green, but confirm it stays that way.** All three OSes passed on
   commit `a2f2944`, catching two real bugs first (see
-  `docs/diagrams/ci-pipeline.md`). That was the first actual compile+run
-  this codebase ever got; every change since then still needs to actually
-  go through CI, not just look correct on read-through.
+  `docs/diagrams/ci-pipeline.md`), and again on `dd207d1` (LearnerComp) —
+  both checked directly against the GitHub Actions API. LearnerVerb
+  (commit after `dd207d1`) has not been confirmed yet. Every change still
+  needs to actually go through CI, not just look correct on read-through.
 - **Integration tests**: nothing exercises `PluginEditor` (button clicks
-  changing `GameManager` state end-to-end), the `SliderAttachment` wiring
-  in `LearnerEQEditor`, or the real `Game → ChangeListener → ProgressManager`
-  path (see above). JUCE's `UnitTest` framework can run headless GUI tests
-  with `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, but it
+  changing `GameManager` state end-to-end), the `SliderAttachment`/
+  `ComboBoxAttachment` wiring in any Learner editor, or the real
+  `Game → ChangeListener → ProgressManager` path (see above). JUCE's
+  `UnitTest` framework can run headless GUI tests with
+  `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, but it
   wasn't set up here — worth adding once the editors are stable enough
   that testing them is worth the setup cost.
 - **Golden-file audio regression tests**: rendering a fixed input through
   a plugin and diffing against a saved reference output (via
   `shared/TestUtils.h`'s `rms`, or a tighter per-sample comparison) would
   catch DSP regressions during refactors that the current logic-only tests
-  can't see. There are now two DSP-heavy plugins (LearnerEQ, LearnerComp)
-  each with exactly one narrow steady-state assertion and no coverage of
-  transient/attack-release behavior — this is worth doing soon, not just
-  "eventually."
+  can't see. There are now three DSP-heavy plugins (LearnerEQ, LearnerComp,
+  LearnerVerb), each with only steady-state or behavioral assertions and
+  no coverage of transient/attack-release behavior — this is worth doing
+  soon, not just "eventually."
 - **Seeded randomness for the games**: `juce::Random`'s default
   constructor seeds from system entropy; none of the game classes expose a
   way to inject a seed. If deterministic game-round tests are ever needed

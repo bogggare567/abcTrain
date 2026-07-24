@@ -36,7 +36,9 @@ vs. not.
 | Unit tests: `ProgressManagerTest` (level math, streak, daily challenge, persistence round-trip) | ✓ |
 | LearnerComp: custom soft-knee compressor engine (see [decisions/003](decisions/003-learnercomp-engine.md)), waveform visualization with gain-reduction highlighting, GR/peak meters, bypass (doubles as A/B), 4 teaching presets | ✓ |
 | Unit tests: `LearnerCompTest` (closed-form compression/makeup-gain math, bypass passthrough, preset application) | ✓ |
-| Shared visualization/hint components factored out for reuse across Learner plugins | ⏳ still not done — LearnerEQ's `SpectrumAnalyserComponent` and LearnerComp's `WaveformDisplay` are separate, unshared implementations despite similar shape (FIFO-fill from audio thread + timer-driven repaint). Worth extracting once a third Learner plugin needs the same pattern. |
+| LearnerVerb: Room/Hall/Plate (`juce::dsp::Reverb`) + Spring (custom allpass cascade) via one `ReverbEngine`, pre-delay, waveform visualization, 4 teaching presets (see [decisions/004](decisions/004-learnerverb-scope.md)) | ✓ — **scope trimmed**: no impulse-response "cloud," no decay-vs-frequency graph, no stereo correlometer/vectorscope. Just the live wet/dry waveform + peak meters, matching LearnerComp's shape. Those three visualizations are each a real feature in their own right, not something to bolt on by default — see the ADR. |
+| Unit tests: `LearnerVerbTest` (behavioral/smoke: tail persists after input stops, dryWet=0 is exact passthrough, every type produces sound, preset application) — no closed-form target the way compression has | ✓ |
+| Shared visualization component factored out for reuse across Learner plugins | ✓ `shared/WaveformDisplay.{h,cpp}`, extracted from LearnerComp once LearnerVerb needed the identical shape. `SpectrumAnalyserComponent` (LearnerEQ) is still separate — it's FFT-based, a fundamentally different data shape from the time-domain peak-tracking the other two share, so there's nothing to unify there. |
 | Integration-level tests (editor button clicks -> GameManager state) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins
@@ -44,8 +46,9 @@ vs. not.
 | Feature | Status |
 |---|---|
 | More EarTrainer exercises (stereo width, delay type, distortion type) | ⏳ |
-| LearnerVerb, LearnerSat | ⏳ |
-| In-plugin contextual tooltips beyond one-liners (LearnerEQ and LearnerComp both have one-liners today) | ⏳ |
+| LearnerSat | ⏳ |
+| LearnerVerb: impulse-response visualization, decay-vs-frequency graph, stereo correlometer/vectorscope | ⏳ trimmed from the initial LearnerVerb build, see [decisions/004](decisions/004-learnerverb-scope.md) |
+| In-plugin contextual tooltips beyond one-liners (LearnerEQ, LearnerComp, and LearnerVerb all have one-liners today) | ⏳ |
 | Micro-lessons (step-by-step guided parameter changes with explanation) | ⏳ |
 | Glossary with audio examples | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |
@@ -57,7 +60,7 @@ vs. not.
 |---|---|
 | Synthetic dataset generator (dry/wet pairs with known processing) | ⏳ |
 | Reference-track analysis model (detect likely EQ/comp/reverb applied) | ⏳ |
-| "Try this on LearnerEQ/LearnerComp" suggestion flow from analysis results | ⏳ |
+| "Try this on LearnerEQ/LearnerComp/LearnerVerb" suggestion flow from analysis results | ⏳ |
 | B2B: school/studio accounts, progress tracking, LMS integration | ⏳ |
 | Sales site + payment integration | ⏳ |
 

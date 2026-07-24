@@ -1,6 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "WaveformDisplay.h"
+#include "../../shared/WaveformDisplay.h"
 #include "ParameterGuide.h"
 
 LearnerCompProcessor::LearnerCompProcessor()
