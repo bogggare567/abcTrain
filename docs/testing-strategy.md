@@ -55,7 +55,17 @@ parameter a preset defines. `applyPreset` deliberately lives on
 handler specifically so it's testable without constructing an editor — see
 `docs/diagrams/learner-plugin.md` for why constructing a `Component` in
 this console test binary was avoided as a matter of policy, not just for
-this one case.
+this one case. That policy is also why the test added for
+`shared/SpectrumAnalyzer.h`'s integration (once all three Learner plugins
+gained a live spectrum — see
+[decisions/006-unified-visualization.md](decisions/006-unified-visualization.md))
+doesn't construct a `SpectrumAnalyzerComponent` directly: it's a
+`juce::Component` with a `juce::Timer`, and initialising that on a headless
+CI runner is a real risk, not a hypothetical one. Instead the test exercises
+what actually changed and is safe to check without a message loop:
+`processBlock` computing a mono downmix of the input every sample (in both
+the normal and bypassed branches) behind a null check for "no analyzer
+attached," the state every test runs in by construction.
 
 **`LearnerVerbTest.cpp`** has no closed-form target the way compression
 math does — a reverb tail's exact level isn't something to solve for in
@@ -104,15 +114,20 @@ logic is not, and can only be checked by actually running the plugin.
 
 - **CI is green, but confirm it stays that way.** All three OSes passed on
   commit `a2f2944`, catching two real bugs first (see
-  `docs/diagrams/ci-pipeline.md`), and again on `dd207d1` (LearnerComp) —
-  both checked directly against the GitHub Actions API. LearnerVerb
-  (commit after `dd207d1`) has not been confirmed yet. Every change still
-  needs to actually go through CI, not just look correct on read-through.
+  `docs/diagrams/ci-pipeline.md`), again on `dd207d1` (LearnerComp), and
+  again on `8932b84` (LearnerVerb) — each checked directly against the
+  GitHub Actions API, not assumed. The MicroLesson/LessonController commit
+  and the visualization-unification commit after it have not been
+  confirmed yet as of this writing. Every change still needs to actually
+  go through CI, not just look correct on read-through.
 - **Integration tests**: nothing exercises `PluginEditor` (button clicks
   changing `GameManager` state end-to-end), the `SliderAttachment`/
   `ComboBoxAttachment` wiring in any Learner editor, or the real
-  `Game → ChangeListener → ProgressManager` path (see above). JUCE's
-  `UnitTest` framework can run headless GUI tests with
+  `Game → ChangeListener → ProgressManager` path (see above). Nor does
+  anything exercise `LessonController`'s actual APVTS-setting behavior or
+  `SpectrumAnalyzerComponent`'s FFT/timer logic directly, for the same
+  reason (see decisions/006-unified-visualization.md). JUCE's `UnitTest`
+  framework can run headless GUI tests with
   `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, but it
   wasn't set up here — worth adding once the editors are stable enough
   that testing them is worth the setup cost.

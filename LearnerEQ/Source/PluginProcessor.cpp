@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "SpectrumAnalyser.h"
+#include "../../shared/WaveformDisplay.h"
 
 LearnerEQProcessor::LearnerEQProcessor()
     : AudioProcessor (BusesProperties()
@@ -37,6 +38,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout LearnerEQProcessor::createPa
             qRange, 0.7f));
     }
 
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID (bypassParamId, 1), "Bypass", false));
+
     return { params.begin(), params.end() };
 }
 
@@ -62,6 +66,8 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
     for (auto& filter : filters)
         filter.prepare (spec);
 
+    dryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock);
+
     updateFilters();
 }
 
@@ -84,18 +90,37 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
 
-    updateFilters();
+    const auto numChannels = buffer.getNumChannels();
+    const auto numSamples = buffer.getNumSamples();
 
-    juce::dsp::AudioBlock<float> block (buffer);
-    juce::dsp::ProcessContextReplacing<float> context (block);
-    for (auto& filter : filters)
-        filter.process (context);
+    // Captured before filtering so the waveform display can show the
+    // untreated input alongside whatever bypass leaves in `buffer`.
+    dryBuffer.makeCopyOf (buffer, true);
+
+    const bool bypassed = apvts.getRawParameterValue (bypassParamId)->load() > 0.5f;
+
+    if (! bypassed)
+    {
+        updateFilters();
+
+        juce::dsp::AudioBlock<float> block (buffer);
+        juce::dsp::ProcessContextReplacing<float> context (block);
+        for (auto& filter : filters)
+            filter.process (context);
+    }
+
+    if (auto* display = waveformDisplay.load())
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto dry = numChannels > 0 ? dryBuffer.getSample (0, i) : 0.0f;
+            const auto wet = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
+            display->pushSample (dry, wet);
+        }
+    }
 
     if (auto* analyser = spectrumAnalyser.load())
     {
-        const auto numChannels = buffer.getNumChannels();
-        const auto numSamples = buffer.getNumSamples();
-
         for (int i = 0; i < numSamples; ++i)
         {
             float mono = 0.0f;

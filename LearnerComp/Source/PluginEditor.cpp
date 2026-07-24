@@ -40,6 +40,8 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     guideLabel.setText (defaultGuideText, juce::dontSendNotification);
     addAndMakeVisible (guideLabel);
 
+    addAndMakeVisible (spectrum);
+
     addAndMakeVisible (waveform);
 
     gainReductionLabel.setJustificationType (juce::Justification::centred);
@@ -97,6 +99,7 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     }
 
     processor.setWaveformDisplay (&waveform);
+    processor.setSpectrumAnalyzer (&spectrum);
 
     lessonButton.onClick = [this] { lessonController.showAndStart(); };
     addAndMakeVisible (lessonButton);
@@ -105,12 +108,13 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     lessonController.onClosed = [this] { resized(); };
 
     startTimerHz (30);
-    setSize (820, 620);
+    setSize (820, 780);
 }
 
 LearnerCompEditor::~LearnerCompEditor()
 {
     processor.setWaveformDisplay (nullptr);
+    processor.setSpectrumAnalyzer (nullptr);
 }
 
 void LearnerCompEditor::paint (juce::Graphics& g)
@@ -126,9 +130,15 @@ void LearnerCompEditor::resized()
 
     auto titleRow = area.removeFromTop (32);
     lessonButton.setBounds (titleRow.removeFromRight (80));
+    titleRow.removeFromRight (8);
+    bypassButton.setBounds (titleRow.removeFromRight (90));
+    titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
 
     guideLabel.setBounds (area.removeFromTop (20));
+    area.removeFromTop (8);
+
+    spectrum.setBounds (area.removeFromTop (140));
     area.removeFromTop (8);
 
     waveform.setBounds (area.removeFromTop (160));
@@ -153,8 +163,6 @@ void LearnerCompEditor::resized()
     area.removeFromTop (16);
 
     auto bottomRow = area.removeFromTop (32);
-    bypassButton.setBounds (bottomRow.removeFromLeft (100));
-    bottomRow.removeFromLeft (16);
     const auto presetWidth = bottomRow.getWidth() / juce::jmax (1, presetButtons.size());
     for (auto* button : presetButtons)
         button->setBounds (bottomRow.removeFromLeft (presetWidth).reduced (4, 0));
@@ -162,6 +170,9 @@ void LearnerCompEditor::resized()
 
 void LearnerCompEditor::timerCallback()
 {
+    const auto sr = processor.getSampleRate();
+    spectrum.setSampleRate (sr > 0.0 ? sr : 44100.0);
+
     gainReductionLabel.setText ("GR: " + juce::String (waveform.getCurrentHighlightAmount(), 1) + " dB",
                                  juce::dontSendNotification);
 

@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "../../shared/WaveformDisplay.h"
+#include "../../shared/SpectrumAnalyzer.h"
 #include "../../shared/LessonController.h"
 #include <array>
 #include <memory>
@@ -31,6 +32,7 @@ private:
 
     juce::Label titleLabel;
     juce::Label guideLabel;
+    SpectrumAnalyzerComponent spectrum;
     WaveformDisplay waveform;
     juce::Label gainReductionLabel;
     juce::Label inputPeakLabel;

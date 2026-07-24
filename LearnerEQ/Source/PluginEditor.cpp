@@ -26,6 +26,18 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     addAndMakeVisible (spectrum);
 
+    addAndMakeVisible (waveform);
+
+    inputPeakLabel.setJustificationType (juce::Justification::centred);
+    inputPeakLabel.setFont (juce::Font (13.0f));
+    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible (inputPeakLabel);
+
+    outputPeakLabel.setJustificationType (juce::Justification::centred);
+    outputPeakLabel.setFont (juce::Font (13.0f));
+    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible (outputPeakLabel);
+
     for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
     {
         auto& controls = bands[(size_t) band];
@@ -74,6 +86,12 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     }
 
     processor.setSpectrumAnalyser (&spectrum);
+    processor.setWaveformDisplay (&waveform);
+
+    bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        processor.apvts, LearnerEQProcessor::bypassParamId, bypassButton);
+    bypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
+    addAndMakeVisible (bypassButton);
 
     lessonButton.onClick = [this] { lessonController.showAndStart(); };
     addAndMakeVisible (lessonButton);
@@ -82,12 +100,13 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     lessonController.onClosed = [this] { resized(); };
 
     startTimerHz (30);
-    setSize (760, 480);
+    setSize (760, 700);
 }
 
 LearnerEQEditor::~LearnerEQEditor()
 {
     processor.setSpectrumAnalyser (nullptr);
+    processor.setWaveformDisplay (nullptr);
 }
 
 void LearnerEQEditor::paint (juce::Graphics& g)
@@ -103,12 +122,23 @@ void LearnerEQEditor::resized()
 
     auto titleRow = area.removeFromTop (32);
     lessonButton.setBounds (titleRow.removeFromRight (80));
+    titleRow.removeFromRight (8);
+    bypassButton.setBounds (titleRow.removeFromRight (90));
+    titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
 
     guideLabel.setBounds (area.removeFromTop (24));
     area.removeFromTop (8);
 
     spectrum.setBounds (area.removeFromTop (220));
+    area.removeFromTop (16);
+
+    waveform.setBounds (area.removeFromTop (130));
+    area.removeFromTop (8);
+
+    auto meterRow = area.removeFromTop (20);
+    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
+    outputPeakLabel.setBounds (meterRow);
     area.removeFromTop (16);
 
     auto bandsArea = area;
@@ -139,4 +169,14 @@ void LearnerEQEditor::timerCallback()
 
     const auto sr = processor.getSampleRate();
     spectrum.setEQState (sr > 0.0 ? sr : 44100.0, freqs, gains, qs);
+
+    inputPeakLabel.setText ("In: "
+                                 + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)
+                                 + " dB",
+                             juce::dontSendNotification);
+
+    outputPeakLabel.setText ("Out: "
+                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getOutputPeak(), -60.0f), 1)
+                                  + " dB",
+                              juce::dontSendNotification);
 }

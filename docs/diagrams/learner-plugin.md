@@ -13,7 +13,7 @@ a short contextual guide string per control.
 flowchart LR
     subgraph Processor["LearnerEQ Processor"]
         Proc["PluginProcessor"]
-        APVTS[("APVTS: 4 bands x freq/gain/Q")]
+        APVTS[("APVTS: 4 bands x freq/gain/Q\n+ bypass")]
         Filters["4x ProcessorDuplicator&lt;IIR::Filter&gt;"]
         Proc --> APVTS
         Proc --> Filters
@@ -22,13 +22,17 @@ flowchart LR
     subgraph Editor["LearnerEQ Editor"]
         Edit["PluginEditor"]
         Sliders["4 columns of freq/gain/Q rotary sliders"]
-        Spectrum["SpectrumAnalyserComponent"]
+        Spectrum["SpectrumAnalyserComponent\n(extends shared/SpectrumAnalyzer)"]
+        Waveform["shared/WaveformDisplay"]
         Guide["guideLabel (contextual tooltip)"]
+        BypassBtn["Bypass toggle"]
         LessonBtn["Lesson button"]
         Lesson["shared/LessonController\n(Vocal EQ Basics, VocalEqLesson.h)"]
         Edit --> Sliders
         Edit --> Spectrum
+        Edit --> Waveform
         Edit --> Guide
+        Edit --> BypassBtn
         Edit --> LessonBtn
         LessonBtn -- "showAndStart()" --> Lesson
     end
@@ -37,9 +41,11 @@ flowchart LR
     FreqGuide["FrequencyGuide\n(log-freq to x-position mapping + descriptions)"]
 
     Sliders -- "SliderAttachment" --> APVTS
-    Filters -- "recomputed from APVTS\nonce per block" --> Coeffs
-    Proc -- "pushNextSampleIntoFifo\n(audio thread)" --> Spectrum
-    Spectrum -- "response curve" --> Coeffs
+    BypassBtn -- "ButtonAttachment" --> APVTS
+    Filters -- "recomputed from APVTS\nonce per block, skipped when bypassed" --> Coeffs
+    Proc -- "pushNextSampleIntoFifo(output)\naudio thread" --> Spectrum
+    Proc -- "pushSample(dry, wet)\naudio thread" --> Waveform
+    Spectrum -- "response curve, paintOverlay()" --> Coeffs
     Spectrum -- "x-axis mapping" --> FreqGuide
     Guide -- "describe(freq)" --> FreqGuide
     Lesson -- "setValueNotifyingHost\nper step" --> APVTS
@@ -51,13 +57,20 @@ real-time filtering; the editor uses the exact same function purely to
 draw the response curve. If they used different logic to decide "what does
 band N sound like," the displayed curve could silently disagree with the
 actual audio — sharing one source of truth rules that out. Same reasoning
-for `FrequencyGuide`: the live spectrum, the response curve, and the
-highlighted-band overlay all convert frequency to x-position through the
-same function, so they're guaranteed to line up on screen.
+for `FrequencyGuide`: the response curve and the highlighted-band overlay
+both convert frequency to x-position through the same function, so they're
+guaranteed to line up on screen with each other and with the spectrum drawn
+underneath.
 
-`SpectrumAnalyserComponent` is FFT-based and stays local to LearnerEQ —
-see the shared-code note at the bottom for why it isn't unified with the
-other two plugins' waveform view.
+`SpectrumAnalyserComponent` now extends `shared/SpectrumAnalyzerComponent`
+(see [decisions/006](../decisions/006-unified-visualization.md)) — the
+FFT/FIFO/timer machinery is shared with LearnerComp and LearnerVerb, and
+this subclass only adds the response-curve + highlighted-band overlay via
+`paintOverlay()`. Its spectrum is fed the *output* (post-filter) signal,
+unchanged from before — the point is seeing what the EQ curve did.
+`WaveformDisplay` is new here too, showing input vs. output with no
+highlight tint (LearnerEQ has no per-sample "how hard is this working"
+concept the way gain reduction gives LearnerComp one).
 
 ## LearnerComp
 
@@ -73,16 +86,20 @@ flowchart LR
 
     subgraph Editor["LearnerComp Editor"]
         Edit["PluginEditor"]
-        Knobs["7 rotary knobs + bypass toggle"]
+        Knobs["7 rotary knobs"]
+        Spectrum2["SpectrumAnalyzerComponent\n(shared/SpectrumAnalyzer, no overlay)"]
         Waveform["shared/WaveformDisplay"]
         Presets["4 preset buttons"]
         Guide2["guideLabel (contextual tooltip)"]
+        BypassBtn2["Bypass toggle"]
         LessonBtn2["Lesson button"]
         Lesson2["shared/LessonController\n(Vocal Compression, VocalCompressionLesson.h)"]
         Edit --> Knobs
+        Edit --> Spectrum2
         Edit --> Waveform
         Edit --> Presets
         Edit --> Guide2
+        Edit --> BypassBtn2
         Edit --> LessonBtn2
         LessonBtn2 -- "showAndStart()" --> Lesson2
     end
@@ -90,8 +107,10 @@ flowchart LR
     ParamGuide["CompressorGuide\n(tooltip text + preset table)"]
 
     Knobs -- "SliderAttachment" --> APVTS
+    BypassBtn2 -- "ButtonAttachment" --> APVTS
     Proc -- "computeGain(detection)\nstereo-linked, audio thread" --> Engine
     Proc -- "pushSample(in, out, gainReductionDb)\naudio thread" --> Waveform
+    Proc -- "pushNextSampleIntoFifo(mono input)\naudio thread" --> Spectrum2
     Presets -- "processor.applyPreset(i)" --> ParamGuide
     Guide2 -- "describe(paramId)" --> ParamGuide
     Lesson2 -- "setValueNotifyingHost\nper step" --> APVTS
@@ -117,7 +136,7 @@ Same reasoning applies to `LearnerVerbProcessor::applyPreset` below.
 flowchart LR
     subgraph Processor["LearnerVerb Processor"]
         Proc["PluginProcessor"]
-        APVTS[("APVTS: type/decay/preDelay/\nsize/damping/dryWet/width")]
+        APVTS[("APVTS: type/decay/preDelay/\nsize/damping/dryWet/width/bypass")]
         Engine["ReverbEngine\n(Room/Hall/Plate via dsp::Reverb,\nSpring via allpass cascade, see ADR 004)"]
         Proc --> APVTS
         Proc --> Engine
@@ -126,15 +145,19 @@ flowchart LR
     subgraph Editor["LearnerVerb Editor"]
         Edit["PluginEditor"]
         TypeBox["Type ComboBox + 6 rotary knobs"]
+        Spectrum3["SpectrumAnalyzerComponent\n(shared/SpectrumAnalyzer, no overlay)"]
         Waveform2["shared/WaveformDisplay"]
         Presets2["4 preset buttons"]
         Guide3["guideLabel (contextual tooltip)"]
+        BypassBtn3["Bypass toggle"]
         LessonBtn3["Lesson button"]
         Lesson3["shared/LessonController\n(Space for Vocals, VocalSpaceLesson.h)"]
         Edit --> TypeBox
+        Edit --> Spectrum3
         Edit --> Waveform2
         Edit --> Presets2
         Edit --> Guide3
+        Edit --> BypassBtn3
         Edit --> LessonBtn3
         LessonBtn3 -- "showAndStart()" --> Lesson3
     end
@@ -142,12 +165,21 @@ flowchart LR
     ParamGuide2["ReverbGuide\n(tooltip text + preset table)"]
 
     TypeBox -- "ComboBoxAttachment /\nSliderAttachment" --> APVTS
-    Proc -- "engine.process()\non a wet-only copy of the block" --> Engine
+    BypassBtn3 -- "ButtonAttachment" --> APVTS
+    Proc -- "engine.process()\non a wet-only copy of the block,\nalways runs even when bypassed" --> Engine
     Proc -- "pushSample(dry, blended)\naudio thread" --> Waveform2
+    Proc -- "pushNextSampleIntoFifo(mono input)\naudio thread" --> Spectrum3
     Presets2 -- "processor.applyPreset(i)" --> ParamGuide2
     Guide3 -- "describe(paramId)" --> ParamGuide2
     Lesson3 -- "setValueNotifyingHost\nper step" --> APVTS
 ```
+
+**Why bypass forces the wet mix to 0% instead of writing `dryWet = 0`:**
+un-bypassing needs to restore whatever `Dry/Wet` the user had dialled in,
+not silently zero it out. `ReverbEngine` keeps running every block
+regardless of bypass so its internal tail state stays warm — no
+cold-start click when bypass is toggled off mid-tail (see
+[decisions/006](../decisions/006-unified-visualization.md)).
 
 **Why `PluginProcessor` makes a wet-only copy of the block instead of
 processing in place:** `ReverbEngine::process` always renders 100% wet,
@@ -164,13 +196,26 @@ that doesn't need the highlight feature.
 ## Shared code
 
 `shared/WaveformDisplay.{h,cpp}` — the scrolling peak-based dual-waveform
-component — is used by both LearnerComp and LearnerVerb. It started as
+component — is now used by all three Learner plugins. It started as
 LearnerComp-only; once LearnerVerb needed the identical FIFO-accumulate/
 30 Hz-timer/scrolling-columns shape, it was extracted rather than copied a
-second time (see [decisions/004](../decisions/004-learnerverb-scope.md)).
-`SpectrumAnalyserComponent` (LearnerEQ) is *not* part of this — it's
-FFT-based, a fundamentally different data shape from time-domain peak
-tracking, so there's nothing to unify there.
+second time (see [decisions/004](../decisions/004-learnerverb-scope.md)),
+and LearnerEQ picked it up later once all three plugins' visualizations
+were unified (see [decisions/006](../decisions/006-unified-visualization.md)).
+
+`shared/SpectrumAnalyzer.{h,cpp}` — the FIFO-accumulate/FFT/30 Hz-timer
+live spectrum, extracted from what used to be LearnerEQ's standalone
+`SpectrumAnalyserComponent` once LearnerComp and LearnerVerb both wanted a
+plain live spectrum too (see [decisions/006](../decisions/006-unified-visualization.md)).
+`SpectrumAnalyzerComponent` (the shared base) knows nothing about EQ bands
+or highlighting; LearnerEQ's `SpectrumAnalyserComponent` subclasses it and
+adds the response-curve + highlighted-band overlay via `paintOverlay()`.
+Note the spelling: the shared base and the two new processor-side
+`setSpectrumAnalyzer` methods use "Analyzer" (as specified for this task),
+while LearnerEQ's own already-shipped `SpectrumAnalyserComponent`/
+`setSpectrumAnalyser` keep their established British spelling rather than
+being renamed for cosmetic consistency — both appear side by side in
+`LearnerEQ/Source/SpectrumAnalyser.h` intentionally.
 
 `shared/MicroLesson.h` + `shared/LessonController.{h,cpp}` — the guided-
 lesson machinery used by all three editors above, one lesson each. See

@@ -7,6 +7,7 @@
 #include <atomic>
 
 class SpectrumAnalyserComponent;
+class WaveformDisplay;
 
 // A real 4-band EQ that processes whatever audio the host feeds it (unlike
 // the EarTrainer games, which ignore host input and generate their own
@@ -47,10 +48,12 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     void setSpectrumAnalyser (SpectrumAnalyserComponent* analyser) noexcept { spectrumAnalyser = analyser; }
+    void setWaveformDisplay (WaveformDisplay* display) noexcept { waveformDisplay = display; }
 
     static juce::String freqParamId (int band) { return "band" + juce::String (band) + "Freq"; }
     static juce::String gainParamId (int band) { return "band" + juce::String (band) + "Gain"; }
     static juce::String qParamId (int band) { return "band" + juce::String (band) + "Q"; }
+    static constexpr const char* bypassParamId = "bypass";
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -59,8 +62,10 @@ private:
     std::array<juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
                                                juce::dsp::IIR::Coefficients<float>>, numBands> filters;
     double sampleRate = 44100.0;
+    juce::AudioBuffer<float> dryBuffer;
 
     std::atomic<SpectrumAnalyserComponent*> spectrumAnalyser { nullptr };
+    std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEQProcessor)
 };

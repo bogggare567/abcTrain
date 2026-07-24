@@ -10,20 +10,26 @@ Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
   level (1-10, which scales the games' difficulty up as you improve), a
   daily login streak, and a daily challenge.
 - **Learner EQ** — a real 4-band EQ for your own tracks, with a live
-  spectrum display, a response-curve overlay, a one-line plain-language
-  explanation of what a frequency region does while you drag it, and a
-  step-by-step "Lesson" walkthrough (Vocal EQ Basics).
-- **Learner Comp** — a real compressor for your own tracks, with a
-  scrolling input/output waveform that highlights in red wherever the
-  compressor is actively reducing gain, a live gain-reduction meter,
-  input/output peak meters, a one-line explanation per control, 4
+  spectrum + response-curve display, a scrolling input/output waveform,
+  a one-line plain-language explanation of what a frequency region does
+  while you drag it, a Bypass/A-B toggle, and a step-by-step "Lesson"
+  walkthrough (Vocal EQ Basics).
+- **Learner Comp** — a real compressor for your own tracks, with a live
+  spectrum, a scrolling input/output waveform that highlights in red
+  wherever the compressor is actively reducing gain, a live gain-reduction
+  meter, input/output peak meters, a one-line explanation per control, 4
   presets to learn from (Vocal Smoothing, Punchy Drums, Bass Control,
-  Limiter), and a step-by-step "Lesson" walkthrough (Vocal Compression).
+  Limiter), a Bypass/A-B toggle, and a step-by-step "Lesson" walkthrough
+  (Vocal Compression).
 - **Learner Verb** — a real reverb for your own tracks (Room/Hall/Plate/
-  Spring), with the same scrolling waveform + peak-meter view, a one-line
-  explanation per control, 4 presets (Vocal Ambience, Concert Hall,
-  Small Room, Spring Tank), and a step-by-step "Lesson" walkthrough
-  (Space for Vocals).
+  Spring), with the same live spectrum + scrolling waveform/peak-meter
+  view, a one-line explanation per control, 4 presets (Vocal Ambience,
+  Concert Hall, Small Room, Spring Tank), a Bypass/A-B toggle, and a
+  step-by-step "Lesson" walkthrough (Space for Vocals).
+
+All three Learner plugins share the same visualization shape and Bypass/
+Lesson button placement now — see
+[docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md).
 
 Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
@@ -62,7 +68,7 @@ flowchart TB
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
         LEProc["PluginProcessor"]
         LEEdit["PluginEditor"]
-        Spectrum["SpectrumAnalyserComponent"]
+        Spectrum["SpectrumAnalyserComponent\n(extends shared SpectrumAnalyzer)"]
         APVTS[("AudioProcessorValueTreeState")]
 
         LEProc --> APVTS
@@ -88,6 +94,7 @@ flowchart TB
 
     subgraph Shared["shared/"]
         Waveform["WaveformDisplay"]
+        SpectrumBase["SpectrumAnalyzerComponent"]
         LessonController["MicroLesson + LessonController"]
     end
 
@@ -97,8 +104,12 @@ flowchart TB
 
     LearnerSat["LearnerSat plugin"]
 
+    LEEdit --> Waveform
     LCEdit --> Waveform
     LVEdit --> Waveform
+    Spectrum --> SpectrumBase
+    LCEdit --> SpectrumBase
+    LVEdit --> SpectrumBase
     LEEdit --> LessonController
     LCEdit --> LessonController
     LVEdit --> LessonController
@@ -154,10 +165,10 @@ behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
 `tests/LearnerCompTest.cpp` — closed-form compression/makeup-gain math,
 bypass passthrough, preset application; `tests/LearnerVerbTest.cpp` — a
 tail persists after the input stops, `dryWet=0` is an exact passthrough,
-every reverb type produces sound, preset application), and the
-step-navigation logic behind the "Lesson" feature
-(`tests/MicroLessonTest.cpp`). Also runs on push/PR via
-`.github/workflows/build_and_test.yml` (badge above).
+bypass forces an exact dry passthrough without clobbering `Dry/Wet`, every
+reverb type produces sound, preset application), and the step-navigation
+logic behind the "Lesson" feature (`tests/MicroLessonTest.cpp`). Also runs
+on push/PR via `.github/workflows/build_and_test.yml` (badge above).
 
 ## Status
 
@@ -172,22 +183,23 @@ difficulty, daily login streak, one daily challenge) — see
 
 **Learner EQ:** 4-band EQ (low shelf, 2 bells, high shelf) processing real
 host audio, host-automatable via `AudioProcessorValueTreeState`, live
-spectrum + response curve, contextual tooltip per frequency range while
-dragging.
+spectrum + response curve, a scrolling input/output waveform, contextual
+tooltip per frequency range while dragging, and a Bypass toggle.
 
 **Learner Comp:** compressor with a custom soft-knee gain-computer engine
 (threshold/ratio/attack/release/knee/makeup/dry-wet, plus bypass),
-processing real host audio, host-automatable, scrolling waveform with
-gain-reduction highlighting, GR/peak meters, contextual tooltip per
-control, 4 teaching presets — see
+processing real host audio, host-automatable, live spectrum, scrolling
+waveform with gain-reduction highlighting, GR/peak meters, contextual
+tooltip per control, 4 teaching presets — see
 [docs/decisions/003-learnercomp-engine.md](docs/decisions/003-learnercomp-engine.md)
 for why it isn't built on `juce::dsp::Compressor`.
 
 **Learner Verb:** reverb with Room/Hall/Plate (`juce::dsp::Reverb`) and
 Spring (custom allpass cascade) via one `ReverbEngine`, pre-delay,
-processing real host audio, host-automatable, the same scrolling waveform
-+ peak-meter view as LearnerComp (now `shared/WaveformDisplay`), 4
-teaching presets — see
+processing real host audio, host-automatable, the same live spectrum +
+scrolling waveform + peak-meter view as LearnerComp (now
+`shared/SpectrumAnalyzer`/`shared/WaveformDisplay`), 4 teaching presets, a
+Bypass toggle — see
 [docs/decisions/004-learnerverb-scope.md](docs/decisions/004-learnerverb-scope.md)
 for what was deliberately trimmed from the initial build (impulse-response
 visualization, decay-vs-frequency graph, stereo correlometer) and why.
@@ -199,6 +211,12 @@ Compression; Learner Verb: Space for Vocals) via shared
 `MicroLesson`/`LessonController` machinery — see
 [docs/decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md)
 for the split and what was trimmed (per-control highlighting).
+
+**Unified visualization:** all three Learner plugins now share the same
+shape (live spectrum, then waveform + peak meters, then controls, then
+Bypass next to Lesson in the title row) via the newly-extracted
+`shared/SpectrumAnalyzer` — see
+[docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md).
 
 ## Documentation
 
@@ -216,6 +234,9 @@ for the split and what was trimmed (per-control highlighting).
   LearnerVerb's trimmed visualization scope and the decay-to-`roomSize` approximation
 - [docs/decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md) —
   `MicroLesson`/`LessonController` split and why per-control highlighting was cut
+- [docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md) —
+  unifying spectrum/waveform/bypass across all three Learner plugins, and
+  why it isn't tested with a real `SpectrumAnalyzerComponent`
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

@@ -123,6 +123,54 @@ public:
             expectEquals (processor.apvts.getRawParameterValue (LearnerCompProcessor::thresholdParamId)->load(),
                           thresholdBefore);
         }
+
+        // Note on what this does NOT test: SpectrumAnalyzerComponent
+        // (shared/SpectrumAnalyzer.h) is a juce::Component with a
+        // juce::Timer, so constructing one here would need a running JUCE
+        // message loop - this console test binary deliberately doesn't run
+        // one (see docs/testing-strategy.md's "no Component in the console
+        // test binary" policy, and decisions/006-unified-visualization.md).
+        // On Linux, initialising that GUI machinery in a container with no
+        // display server is a real risk, not a hypothetical one - exactly
+        // the kind of thing that has broken this project's CI before. What
+        // *is* safe and worth covering here is the processor-side code this
+        // task added: processBlock now computes a mono downmix of the input
+        // every sample to feed a spectrum analyzer, guarded by a null check
+        // for when no editor is attached (the normal state in every test,
+        // and in a real host before the editor is opened).
+        beginTest ("processBlock runs the new spectrum-feed path safely with no analyzer attached");
+        {
+            constexpr double sampleRate = 44100.0;
+            constexpr int numSamples = 8192;
+
+            LearnerCompProcessor processor;
+            processor.prepareToPlay (sampleRate, numSamples);
+            processor.setSpectrumAnalyzer (nullptr); // explicit, though this is also the default
+
+            processor.apvts.getRawParameterValue (LearnerCompProcessor::thresholdParamId)->store (-6.0f);
+            processor.apvts.getRawParameterValue (LearnerCompProcessor::ratioParamId)->store (2.0f);
+            processor.apvts.getRawParameterValue (LearnerCompProcessor::attackParamId)->store (1.0f);
+            processor.apvts.getRawParameterValue (LearnerCompProcessor::kneeParamId)->store (0.0f);
+
+            auto buffer = TestUtils::generateSineBuffer (1000.0f, sampleRate, numSamples, 2, 1.0f);
+            juce::MidiBuffer midi;
+            processor.processBlock (buffer, midi);
+
+            const auto outputPeak = buffer.getMagnitude (0, numSamples - 1024, 1024);
+            const auto outputDb = juce::Decibels::gainToDecibels (outputPeak);
+            expectWithinAbsoluteError (outputDb, -3.0f, 0.5f);
+
+            // Same code path again with bypass on, since the mono-downmix
+            // feed is computed separately in that branch.
+            processor.apvts.getRawParameterValue (LearnerCompProcessor::bypassParamId)->store (1.0f);
+            const auto input = TestUtils::generateSineBuffer (1000.0f, sampleRate, 512, 2, 0.5f);
+            auto bypassBuffer = input;
+            processor.processBlock (bypassBuffer, midi);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 512; ++i)
+                    expectWithinAbsoluteError (bypassBuffer.getSample (ch, i), input.getSample (ch, i), 1.0e-6f);
+        }
     }
 };
 

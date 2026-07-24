@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "../../shared/WaveformDisplay.h"
+#include "../../shared/SpectrumAnalyzer.h"
 #include "ParameterGuide.h"
 
 LearnerCompProcessor::LearnerCompProcessor()
@@ -87,17 +88,27 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
     auto* display = waveformDisplay.load();
+    auto* analyzer = spectrumAnalyzer.load();
 
     const bool bypassed = apvts.getRawParameterValue (bypassParamId)->load() > 0.5f;
 
     if (bypassed)
     {
-        if (display != nullptr)
+        for (int i = 0; i < numSamples; ++i)
         {
-            for (int i = 0; i < numSamples; ++i)
-            {
-                const auto sample = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
+            const auto sample = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
+
+            if (display != nullptr)
                 display->pushSample (sample, sample, 0.0f);
+
+            if (analyzer != nullptr)
+            {
+                float mono = 0.0f;
+                for (int ch = 0; ch < numChannels; ++ch)
+                    mono += buffer.getSample (ch, i);
+                if (numChannels > 0)
+                    mono /= (float) numChannels;
+                analyzer->pushNextSampleIntoFifo (mono);
             }
         }
         return;
@@ -110,8 +121,15 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     for (int i = 0; i < numSamples; ++i)
     {
         float detection = 0.0f;
+        float monoInput = 0.0f;
         for (int ch = 0; ch < numChannels; ++ch)
-            detection = juce::jmax (detection, std::abs (buffer.getSample (ch, i)));
+        {
+            const auto inputSample = buffer.getSample (ch, i);
+            detection = juce::jmax (detection, std::abs (inputSample));
+            monoInput += inputSample;
+        }
+        if (numChannels > 0)
+            monoInput /= (float) numChannels;
 
         const auto gain = engine.computeGain (detection);
         const auto inputForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
@@ -128,6 +146,9 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             const auto outputForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
             display->pushSample (inputForDisplay, outputForDisplay, engine.getLastGainReductionDb());
         }
+
+        if (analyzer != nullptr)
+            analyzer->pushNextSampleIntoFifo (monoInput);
     }
 }
 

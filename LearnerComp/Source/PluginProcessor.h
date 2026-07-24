@@ -5,6 +5,7 @@
 #include <atomic>
 
 class WaveformDisplay;
+class SpectrumAnalyzerComponent;
 
 // A real compressor that processes the host's audio, like LearnerEQ but
 // for dynamics instead of frequency. Parameters are host-automatable via
@@ -44,6 +45,7 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     void setWaveformDisplay (WaveformDisplay* display) noexcept { waveformDisplay = display; }
+    void setSpectrumAnalyzer (SpectrumAnalyzerComponent* analyzer) noexcept { spectrumAnalyzer = analyzer; }
 
     // Sets every parameter to one of CompressorGuide::presets by index.
     // Exposed here (not just as an editor button handler) so it can be
@@ -65,6 +67,7 @@ private:
 
     CompressorEngine engine;
     std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
+    std::atomic<SpectrumAnalyzerComponent*> spectrumAnalyzer { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerCompProcessor)
 };

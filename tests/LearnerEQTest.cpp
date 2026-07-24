@@ -38,6 +38,30 @@ public:
 
             expect (boostedRms > flatRms);
         }
+
+        beginTest ("bypass leaves the signal completely unchanged");
+        {
+            constexpr double sampleRate = 44100.0;
+            constexpr int blockSize = 512;
+
+            LearnerEQProcessor processor;
+            processor.prepareToPlay (sampleRate, blockSize);
+
+            // A boosted band would normally change the signal a lot - bypass
+            // should still leave it bit-for-bit untouched.
+            if (auto* rawGain = processor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (1)))
+                rawGain->store (18.0f);
+            processor.apvts.getRawParameterValue (LearnerEQProcessor::bypassParamId)->store (1.0f);
+
+            const auto input = TestUtils::generateSineBuffer (800.0f, sampleRate, blockSize, 2, 0.8f);
+            auto buffer = input;
+            juce::MidiBuffer midi;
+            processor.processBlock (buffer, midi);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < blockSize; ++i)
+                    expectWithinAbsoluteError (buffer.getSample (ch, i), input.getSample (ch, i), 1.0e-6f);
+        }
     }
 };
 

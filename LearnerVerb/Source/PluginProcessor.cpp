@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "../../shared/WaveformDisplay.h"
+#include "../../shared/SpectrumAnalyzer.h"
 #include "ReverbGuide.h"
 
 LearnerVerbProcessor::LearnerVerbProcessor()
@@ -42,6 +43,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout LearnerVerbProcessor::create
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID (widthParamId, 1), "Width",
         juce::NormalisableRange<float> (0.0f, 100.0f, 1.0f), 100.0f));
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID (bypassParamId, 1), "Bypass", false));
 
     return { params.begin(), params.end() };
 }
@@ -97,17 +101,32 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
+    const bool bypassed = apvts.getRawParameterValue (bypassParamId)->load() > 0.5f;
+
     wetBuffer.makeCopyOf (buffer, true);
     juce::dsp::AudioBlock<float> wetBlock (wetBuffer);
     engine.process (wetBlock);
 
-    const auto dryWetFraction = juce::jlimit (0.0f, 1.0f,
-        apvts.getRawParameterValue (dryWetParamId)->load() / 100.0f);
+    // Bypass forces a pure dry passthrough by zeroing the effective wet
+    // mix, rather than overwriting the Dry/Wet parameter itself, so
+    // un-bypassing restores whatever Dry/Wet was dialled in before. The
+    // engine still runs every block regardless of bypass so its internal
+    // state (the reverb tail) stays warm - no click or cold-start thump
+    // if bypass is toggled off mid-tail.
+    const auto dryWetFraction = bypassed ? 0.0f
+        : juce::jlimit (0.0f, 1.0f, apvts.getRawParameterValue (dryWetParamId)->load() / 100.0f);
 
     auto* display = waveformDisplay.load();
+    auto* analyzer = spectrumAnalyzer.load();
 
     for (int i = 0; i < numSamples; ++i)
     {
+        float monoIn = 0.0f;
+        for (int ch = 0; ch < numChannels; ++ch)
+            monoIn += buffer.getSample (ch, i);
+        if (numChannels > 0)
+            monoIn /= (float) numChannels;
+
         const auto dryForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
         const auto wetForDisplay = numChannels > 0 ? wetBuffer.getSample (0, i) : 0.0f;
 
@@ -123,6 +142,9 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             const auto outputForDisplay = dryWetFraction * wetForDisplay + (1.0f - dryWetFraction) * dryForDisplay;
             display->pushSample (dryForDisplay, outputForDisplay);
         }
+
+        if (analyzer != nullptr)
+            analyzer->pushNextSampleIntoFifo (monoIn);
     }
 }
 

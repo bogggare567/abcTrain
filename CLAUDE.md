@@ -4,14 +4,21 @@ Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 
 - **EarTrainer** — multiple-choice ear-training games.
 - **LearnerEQ** — a real 4-band EQ that processes the host's own audio,
-  with a live spectrum + response-curve display and short contextual
-  tooltips while dragging a band's frequency knob.
+  with a live spectrum + response-curve display, a scrolling waveform,
+  short contextual tooltips while dragging a band's frequency knob, a
+  Bypass toggle, and a guided Lesson.
 - **LearnerComp** — a real compressor processing the host's own audio,
-  with a scrolling waveform highlighting where it's reducing gain, a
-  GR/peak meter row, contextual tooltips, and 4 teaching presets.
+  with a live spectrum, a scrolling waveform highlighting where it's
+  reducing gain, a GR/peak meter row, contextual tooltips, 4 teaching
+  presets, a Bypass toggle, and a guided Lesson.
 - **LearnerVerb** — a real reverb (Room/Hall/Plate/Spring) processing the
-  host's own audio, the same scrolling waveform/peak-meter view as
-  LearnerComp, contextual tooltips, and 4 teaching presets (new).
+  host's own audio, the same live-spectrum + scrolling-waveform/peak-meter
+  view as LearnerComp, contextual tooltips, 4 teaching presets, a Bypass
+  toggle, and a guided Lesson.
+
+All three Learner plugins now share the same visualization shape (live
+spectrum, then waveform + peak meters) and the same Bypass/Lesson button
+placement — see [decisions/006](docs/decisions/006-unified-visualization.md).
 
 Longer-term product direction (not all built): a learning ecosystem of
 "teaching" plugins (LearnerEQ/LearnerComp/LearnerVerb done, LearnerSat
@@ -32,7 +39,9 @@ interface choice, 002 is `setDifficulty`/`ProgressManager`, 003 is why
 LearnerComp has a custom compressor engine instead of
 `juce::dsp::Compressor`, 004 is LearnerVerb's trimmed visualization scope
 and its decay-to-`roomSize` approximation, 005 is the `MicroLesson`/
-`LessonController` split and why per-control highlighting was cut),
+`LessonController` split and why per-control highlighting was cut, 006 is
+unifying the spectrum/waveform/bypass shape across all three Learner
+plugins and why that's not tested with a real `SpectrumAnalyzerComponent`),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -133,30 +142,40 @@ restore with the session (`getStateInformation`/`setStateInformation`).
   filtering) and the editor (drawing the response curve), so they can
   never disagree about what a band does.
 - `LearnerEQ/Source/FrequencyGuide.h` — the log-frequency ⟷ normalised-x
-  mapping used by *all three* overlays (live spectrum, response curve,
-  highlighted-band region) so they line up on screen, plus the short
-  plain-language descriptions shown per frequency range while dragging.
+  mapping used by the response curve and the highlighted-band region so
+  they line up with each other and with the spectrum drawn underneath,
+  plus the short plain-language descriptions shown per frequency range
+  while dragging.
 - `LearnerEQ/Source/PluginProcessor.{h,cpp}` — 4 `ProcessorDuplicator`
-  filters run in series on the real audio block; recomputes coefficients
-  from current APVTS values once per block (not per-sample). Feeds a
-  mono-summed copy of each sample to whatever `SpectrumAnalyserComponent`
-  the editor registered via `setSpectrumAnalyser` (a raw
-  `std::atomic<SpectrumAnalyserComponent*>`, null-checked, since the
-  editor can be closed while the processor keeps running).
-- `LearnerEQ/Source/SpectrumAnalyser.{h,cpp}` — standard JUCE FFT-analyser
-  pattern (fixed FIFO filled from the audio thread via
-  `pushNextSampleIntoFifo`, FFT run on a 30 Hz UI timer) plus two overlays
-  drawn on top: the combined 4-band response curve (via
-  `EQCoefficients::make` + `Coefficients::getMagnitudeForFrequency`), and
-  a translucent highlighted region for whichever band is currently being
-  dragged.
+  filters run in series on the real audio block (skipped entirely when
+  the `bypass` APVTS param is on); recomputes coefficients from current
+  APVTS values once per block (not per-sample). Feeds a mono-summed copy
+  of the (post-filter) output to whatever `SpectrumAnalyserComponent` the
+  editor registered via `setSpectrumAnalyser`, and (dry, wet) per sample
+  to whatever `WaveformDisplay` the editor registered via
+  `setWaveformDisplay` (both raw `std::atomic<T*>`, null-checked, since
+  the editor can be closed while the processor keeps running). A
+  `dryBuffer` member captures the pre-filter signal each block
+  specifically so the waveform's input trace still shows the untreated
+  signal even when bypass is off.
+- `LearnerEQ/Source/SpectrumAnalyser.{h,cpp}` — `SpectrumAnalyserComponent`
+  now *extends* `shared/SpectrumAnalyzerComponent` (see
+  [decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md)),
+  adding only the combined 4-band response curve (via `EQCoefficients::make`
+  + `Coefficients::getMagnitudeForFrequency`) and a translucent highlighted
+  region for whichever band is being dragged, both drawn via an overridden
+  `paintOverlay()`. The FFT/FIFO/30 Hz-timer spectrum itself now lives in
+  `shared/SpectrumAnalyzer.{h,cpp}`.
 - `LearnerEQ/Source/PluginEditor.{h,cpp}` — 4 columns of freq/gain/Q
-  rotary sliders bound with `SliderAttachment`. `onDragStart`/
-  `onValueChange`/`onDragEnd` on each band's freq slider drive the guide
-  label text (via `FrequencyGuide::describe`) and
+  rotary sliders bound with `SliderAttachment`, a `WaveformDisplay` +
+  input/output peak labels below the spectrum, and a Bypass `ToggleButton`
+  (`ButtonAttachment`) placed next to the Lesson button in the title row.
+  `onDragStart`/`onValueChange`/`onDragEnd` on each band's freq slider
+  drive the guide label text (via `FrequencyGuide::describe`) and
   `spectrum.setHighlightedBand`. A 30 Hz editor timer pushes current
-  parameter values into the spectrum component so the response curve
-  tracks knob movement even with no audio playing.
+  parameter values into the spectrum component (so the response curve
+  tracks knob movement even with no audio playing) and refreshes the peak
+  labels from the waveform display.
 - `LearnerEQ/Source/PluginEntry.cpp` — just `createPluginFilter()`,
   deliberately split out of `PluginProcessor.cpp` (see the Testing section
   below for why).
@@ -191,25 +210,38 @@ for why it doesn't use `juce::dsp::Compressor`.
   release, knee).
 - `LearnerComp/Source/PluginProcessor.{h,cpp}` — 8 APVTS params
   (threshold/ratio/attack/release/knee/makeup/dryWet/bypass).
-  `processBlock` computes one stereo-linked detection value per sample,
-  gets a gain from `CompressorEngine`, applies it to every channel with
-  dry/wet blending, and (unless bypassed) pushes (input, output,
-  gainReductionDb) to whatever `WaveformDisplay` the editor registered.
-  Bypass skips the engine entirely and passes audio through unchanged.
-  `applyPreset(int)` lives here (not just in the editor's button handler)
-  specifically so it's unit-testable without constructing a `Component`.
-- `shared/WaveformDisplay.{h,cpp}` — same FIFO-accumulate/30 Hz-timer-flush
-  pattern as `SpectrumAnalyserComponent`, but for a scrolling peak-based
-  dual waveform instead of an FFT: gray input trace, output trace tinted
-  from blue to red proportional to a generic `highlightAmount` (LearnerComp
-  passes gain reduction) in that ~33 ms column. Also the source of the
-  peak-meter readouts (via `getInputPeak`/`getOutputPeak`/
-  `getCurrentHighlightAmount`). Shared with LearnerVerb — see the
-  LearnerVerb section below.
-- `LearnerComp/Source/PluginEditor.{h,cpp}` — 7 rotary knobs (one per
-  float param) + bypass toggle + 4 preset buttons, each preset button just
-  calling `processor.applyPreset(i)`. Guide label updates via
-  `onDragStart`/`onDragEnd` on each knob, same pattern as LearnerEQ.
+  `processBlock` computes one stereo-linked detection value per sample and
+  a mono downmix of the *input* signal (fed to whatever
+  `SpectrumAnalyzerComponent` the editor registered via
+  `setSpectrumAnalyzer`, in both the normal and bypassed branches — see
+  [decisions/006](docs/decisions/006-unified-visualization.md) for why
+  the spectrum shows input, not output, here), gets a gain from
+  `CompressorEngine`, applies it to every channel with dry/wet blending,
+  and (unless bypassed) pushes (input, output, gainReductionDb) to
+  whatever `WaveformDisplay` the editor registered. Bypass skips the
+  engine entirely and passes audio through unchanged. `applyPreset(int)`
+  lives here (not just in the editor's button handler) specifically so
+  it's unit-testable without constructing a `Component`.
+- `shared/WaveformDisplay.{h,cpp}` — FIFO-accumulate/30 Hz-timer-flush
+  pattern (same shape `shared/SpectrumAnalyzer` uses for its FFT), for a
+  scrolling peak-based dual waveform: gray input trace, output trace
+  tinted from blue to red proportional to a generic `highlightAmount`
+  (LearnerComp passes gain reduction) in that ~33 ms column. Also the
+  source of the peak-meter readouts (via `getInputPeak`/`getOutputPeak`/
+  `getCurrentHighlightAmount`). Used by all three Learner plugins.
+- `shared/SpectrumAnalyzer.{h,cpp}` — `SpectrumAnalyzerComponent`: the
+  live-spectrum FFT/FIFO/30 Hz-timer machinery, extracted from what used
+  to be LearnerEQ-only `SpectrumAnalyserComponent` once LearnerComp and
+  LearnerVerb both wanted a plain live spectrum too (no response curve, no
+  highlighting — that stays LearnerEQ-specific via a `paintOverlay()`
+  override, see the LearnerEQ section above). Used directly, unsubclassed,
+  by LearnerComp and LearnerVerb.
+- `LearnerComp/Source/PluginEditor.{h,cpp}` — a `SpectrumAnalyzerComponent`
+  above the waveform, 7 rotary knobs (one per float param), a Bypass
+  `ToggleButton` next to the Lesson button in the title row, and 4 preset
+  buttons, each preset button just calling `processor.applyPreset(i)`.
+  Guide label updates via `onDragStart`/`onDragEnd` on each knob, same
+  pattern as LearnerEQ.
 - `LearnerComp/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as LearnerEQ's.
 - `LearnerComp/Source/VocalCompressionLesson.h` — `buildVocalCompressionLesson()`,
@@ -244,21 +276,28 @@ knob isn't a precise physical measurement.
   text per parameter ID, plus the 4 preset definitions (Vocal Ambience/
   Concert Hall/Small Room/Spring Tank: type, decay, pre-delay, size,
   damping, dry/wet, width).
-- `LearnerVerb/Source/PluginProcessor.{h,cpp}` — 7 APVTS params (type as
+- `LearnerVerb/Source/PluginProcessor.{h,cpp}` — 8 APVTS params (type as
   an `AudioParameterChoice`, decay/preDelay/size/damping/dryWet/width as
-  floats). `processBlock` makes a wet-only copy of the block
-  (`wetBuffer.makeCopyOf`), runs `ReverbEngine::process` on the copy, then
-  blends wet/dry per sample into the real buffer — `ReverbEngine` never
-  needs to know about `Dry/Wet` at all. Pushes (dry, blended-output) to
-  whatever `WaveformDisplay` the editor registered, with `highlightAmount`
-  left at its default (no gain-reduction-style concept here).
-  `applyPreset(int)` lives here for the same testability reason as
-  LearnerComp's.
-- `LearnerVerb/Source/PluginEditor.{h,cpp}` — a `ComboBox` for Type
-  (`ComboBoxAttachment`, items added manually to match the choice
-  parameter — attachments don't auto-populate the combo box) + 6 rotary
-  knobs + 4 preset buttons. Same guide-label/tooltip pattern as the other
-  two Learner plugins.
+  floats, plus `bypass`). `processBlock` makes a wet-only copy of the
+  block (`wetBuffer.makeCopyOf`), runs `ReverbEngine::process` on the copy
+  *every block regardless of bypass* (so the tail's internal state stays
+  warm), then blends wet/dry per sample into the real buffer —
+  `ReverbEngine` never needs to know about `Dry/Wet` at all. Bypass forces
+  the effective wet fraction to 0 without touching the stored `Dry/Wet`
+  value, so un-bypassing restores whatever the user had dialled in (see
+  [decisions/006](docs/decisions/006-unified-visualization.md)). Also
+  feeds a mono downmix of the input to whatever `SpectrumAnalyzerComponent`
+  the editor registered via `setSpectrumAnalyzer`, and pushes
+  (dry, blended-output) to whatever `WaveformDisplay` the editor
+  registered, with `highlightAmount` left at its default (no
+  gain-reduction-style concept here). `applyPreset(int)` lives here for
+  the same testability reason as LearnerComp's.
+- `LearnerVerb/Source/PluginEditor.{h,cpp}` — a `SpectrumAnalyzerComponent`
+  above the waveform, a `ComboBox` for Type (`ComboBoxAttachment`, items
+  added manually to match the choice parameter — attachments don't
+  auto-populate the combo box) + 6 rotary knobs, a Bypass `ToggleButton`
+  next to the Lesson button in the title row, and 4 preset buttons. Same
+  guide-label/tooltip pattern as the other two Learner plugins.
 - `LearnerVerb/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as the other two.
 - `LearnerVerb/Source/VocalSpaceLesson.h` — `buildVocalSpaceLesson()`, one
@@ -332,14 +371,20 @@ plugin targets), so no plugin host or GUI is needed to run it.
   checks measured RMS actually goes up at that frequency. This is the
   kind of check that would have caught a broken filter chain, which
   mattered here because LearnerEQ's DSP code could not be compiled/run at
-  all in the environment it was originally written in.
+  all in the environment it was originally written in. Also checks that
+  bypass leaves the buffer bit-for-bit unchanged even with a large band
+  boost dialled in.
 - `tests/LearnerCompTest.cpp` — same approach: a 0 dBFS sine through a
   real `LearnerCompProcessor` at -6 dB threshold/2:1 ratio/hard knee
   should settle at -3 dBFS; adding +3 dB makeup should bring it back to
   ~0 dBFS (measured on the buffer tail, after the fast attack has
   settled). Also checks bypass leaves the buffer bit-for-bit unchanged,
-  `applyPreset` sets every parameter a preset defines, and an
-  out-of-range preset index is a no-op rather than a crash.
+  `applyPreset` sets every parameter a preset defines, an out-of-range
+  preset index is a no-op rather than a crash, and (in both the normal and
+  bypassed branches) that `processBlock`'s mono-downmix feed for
+  `SpectrumAnalyzerComponent` runs safely with no analyzer attached —
+  deliberately *not* by constructing a real `SpectrumAnalyzerComponent`,
+  see [decisions/006](docs/decisions/006-unified-visualization.md) for why.
 - `tests/LearnerVerbTest.cpp` — reverb has no clean closed-form target the
   way compression math does, so this is behavioral instead: a noise burst
   through a real `LearnerVerbProcessor` should leave an audible tail after
@@ -347,7 +392,9 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `dryWet = 0` should give an exact (not just close) passthrough, since
   `0 * wet + 1 * dry` is exact in floating point; every one of the 4 types
   should produce non-silent output without crashing; `applyPreset` and the
-  out-of-range-index guard are tested the same way as LearnerComp's.
+  out-of-range-index guard are tested the same way as LearnerComp's; and
+  bypass forces an exact dry passthrough even with `Dry/Wet` at 100%,
+  without leaving the `Dry/Wet` parameter itself clobbered.
 - `tests/MicroLessonTest.cpp` — step-navigation state machine tests
   against `MicroLesson` directly: inactive until `start()`, `nextStep`/
   `previousStep` stop at the ends and no-op before `start()`, `stop()`
@@ -386,9 +433,10 @@ real bugs were caught and fixed getting to the first green run (see
 `docs/diagrams/ci-pipeline.md` for both) — that was the first actual
 compile+run this codebase had ever gotten, so treat that history as a
 reminder to keep watching CI on every push, not evidence the code is now
-bulletproof. **MicroLesson/LessonController was added after `8932b84` and
-is not yet confirmed to build/pass** — watch the next CI run on this
-branch before trusting it.
+bulletproof. **The MicroLesson/LessonController commit and the
+visualization-unification commit after it (this one) have not yet been
+confirmed to build/pass** — watch the next CI run on this branch before
+trusting them.
 
 ## Conventions
 
@@ -411,7 +459,9 @@ branch before trusting it.
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).
 - LearnerVerb's trimmed-for-now visualizations: impulse-response "cloud,"
-  decay-vs-frequency graph, stereo correlometer/vectorscope (see ADR 004).
+  decay-vs-frequency graph, stereo correlometer/vectorscope (see ADR 004) —
+  unaffected by the spectrum/waveform unification in ADR 006, which only
+  brought all three plugins up to the same baseline shape.
 - LearnerEQ "analyze reference" mode + richer knowledge base beyond one-
   line tooltips.
 - Per-control lesson-step highlighting, trimmed from the initial
@@ -424,7 +474,10 @@ branch before trusting it.
 - Integration test for the real `Game → ProgressManager` `ChangeListener`
   wiring (needs a pumped message loop, not set up yet — see Testing), and
   similarly no automated test of `LessonController`'s actual
-  APVTS-setting behavior (see ADR 005).
+  APVTS-setting behavior (see ADR 005) or `SpectrumAnalyzerComponent`'s
+  FFT/timer logic directly (see ADR 006) — all three would need
+  `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, which is a
+  real but deliberately deferred setup cost (see `docs/testing-strategy.md`).
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
   unstarted; see prior conversation history for the full plan if picked
   up later.

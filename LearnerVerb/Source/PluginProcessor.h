@@ -5,6 +5,7 @@
 #include <atomic>
 
 class WaveformDisplay;
+class SpectrumAnalyzerComponent;
 
 // A real reverb that processes the host's audio, like LearnerEQ/
 // LearnerComp but for space instead of frequency/dynamics. See
@@ -42,6 +43,7 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 
     void setWaveformDisplay (WaveformDisplay* display) noexcept { waveformDisplay = display; }
+    void setSpectrumAnalyzer (SpectrumAnalyzerComponent* analyzer) noexcept { spectrumAnalyzer = analyzer; }
 
     // Sets every parameter to one of ReverbGuide::presets by index.
     // Exposed here (not just as an editor button handler) so it's
@@ -55,6 +57,7 @@ public:
     static constexpr const char* dampingParamId = "damping";
     static constexpr const char* dryWetParamId = "dryWet";
     static constexpr const char* widthParamId = "width";
+    static constexpr const char* bypassParamId = "bypass";
 
 private:
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -63,6 +66,7 @@ private:
     ReverbEngine engine;
     juce::AudioBuffer<float> wetBuffer;
     std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
+    std::atomic<SpectrumAnalyzerComponent*> spectrumAnalyzer { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerVerbProcessor)
 };

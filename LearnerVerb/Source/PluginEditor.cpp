@@ -39,6 +39,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     guideLabel.setText (defaultGuideText, juce::dontSendNotification);
     addAndMakeVisible (guideLabel);
 
+    addAndMakeVisible (spectrum);
+
     addAndMakeVisible (waveform);
 
     inputPeakLabel.setJustificationType (juce::Justification::centred);
@@ -98,7 +100,13 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         addAndMakeVisible (button);
     }
 
+    bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
+        processor.apvts, LearnerVerbProcessor::bypassParamId, bypassButton);
+    bypassButton.setColour (juce::ToggleButton::textColourId, juce::Colours::white);
+    addAndMakeVisible (bypassButton);
+
     processor.setWaveformDisplay (&waveform);
+    processor.setSpectrumAnalyzer (&spectrum);
 
     lessonButton.onClick = [this] { lessonController.showAndStart(); };
     addAndMakeVisible (lessonButton);
@@ -107,12 +115,13 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     lessonController.onClosed = [this] { resized(); };
 
     startTimerHz (30);
-    setSize (760, 560);
+    setSize (760, 720);
 }
 
 LearnerVerbEditor::~LearnerVerbEditor()
 {
     processor.setWaveformDisplay (nullptr);
+    processor.setSpectrumAnalyzer (nullptr);
 }
 
 void LearnerVerbEditor::paint (juce::Graphics& g)
@@ -128,11 +137,17 @@ void LearnerVerbEditor::resized()
 
     auto titleRow = area.removeFromTop (32);
     lessonButton.setBounds (titleRow.removeFromRight (80));
+    titleRow.removeFromRight (8);
+    bypassButton.setBounds (titleRow.removeFromRight (90));
+    titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
 
     typeSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (200, 24));
     area.removeFromTop (8);
     guideLabel.setBounds (area.removeFromTop (20));
+    area.removeFromTop (8);
+
+    spectrum.setBounds (area.removeFromTop (140));
     area.removeFromTop (8);
 
     waveform.setBounds (area.removeFromTop (150));
@@ -163,6 +178,9 @@ void LearnerVerbEditor::resized()
 
 void LearnerVerbEditor::timerCallback()
 {
+    const auto sr = processor.getSampleRate();
+    spectrum.setSampleRate (sr > 0.0 ? sr : 44100.0);
+
     inputPeakLabel.setText ("In: "
                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)
                                  + " dB",

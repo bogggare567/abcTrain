@@ -35,7 +35,7 @@ flowchart TB
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
         LEProc["PluginProcessor"]
         LEEdit["PluginEditor"]
-        Spectrum["SpectrumAnalyserComponent"]
+        Spectrum["SpectrumAnalyserComponent\n(extends shared SpectrumAnalyzer)"]
         Coeffs["EQCoefficients"]
         FreqGuide["FrequencyGuide"]
         APVTS[("AudioProcessorValueTreeState")]
@@ -71,6 +71,7 @@ flowchart TB
 
     subgraph Shared["shared/"]
         Waveform["WaveformDisplay"]
+        SpectrumBase["SpectrumAnalyzerComponent\n(FFT/FIFO base)"]
         MicroLesson["MicroLesson\n(pure state machine)"]
         LessonController["LessonController\n(APVTS + UI)"]
         TestUtils["TestUtils.h"]
@@ -83,8 +84,12 @@ flowchart TB
 
     LearnerSat["LearnerSat plugin"]
 
+    LEEdit --> Waveform
     LCEdit --> Waveform
     LVEdit --> Waveform
+    Spectrum --> SpectrumBase
+    LCEdit --> SpectrumBase
+    LVEdit --> SpectrumBase
     LEEdit --> LessonController
     LCEdit --> LessonController
     LVEdit --> LessonController

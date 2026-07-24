@@ -41,6 +41,7 @@ vs. not.
 | Shared visualization component factored out for reuse across Learner plugins | ✓ `shared/WaveformDisplay.{h,cpp}`, extracted from LearnerComp once LearnerVerb needed the identical shape. `SpectrumAnalyserComponent` (LearnerEQ) is still separate — it's FFT-based, a fundamentally different data shape from the time-domain peak-tracking the other two share, so there's nothing to unify there. |
 | Micro-lessons: `MicroLesson`/`LessonController` (see [decisions/005](decisions/005-microlesson-architecture.md)), one lesson per Learner plugin (Vocal EQ Basics / Vocal Compression / Space for Vocals), a "Lesson" button in each editor | ✓ — per-control UI highlighting was cut (the parameter's own `SliderAttachment`/`ComboBoxAttachment` already makes the knob visibly move when a step sets it, which does the same job), see the ADR |
 | Unit tests: `MicroLessonTest` (step navigation state machine — pure logic, no APVTS/GUI needed) | ✓ |
+| Unified visualization across Learner plugins: `shared/SpectrumAnalyzer` (extracted from LearnerEQ), Waveform+Spectrum in all three, Bypass/A-B toggle in all three next to Lesson (see [decisions/006](decisions/006-unified-visualization.md)) | ✓ |
 | Integration-level tests (editor button clicks -> GameManager state, or a lesson step actually landing on the right APVTS values through `LessonController`) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins

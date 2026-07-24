@@ -105,6 +105,32 @@ public:
                 processor.apvts.getRawParameterValue (LearnerVerbProcessor::dryWetParamId)->load(), 20.0f, 0.5f);
         }
 
+        beginTest ("bypass forces a pure dry passthrough regardless of Dry/Wet");
+        {
+            constexpr double sampleRate = 44100.0;
+            constexpr int numSamples = 512;
+
+            LearnerVerbProcessor processor;
+            processor.prepareToPlay (sampleRate, numSamples);
+
+            // Dry/Wet stays at 100% wet - bypass should still force an exact
+            // dry passthrough, and un-bypassing should restore this 100%
+            // rather than leaving Dry/Wet clobbered at 0.
+            processor.apvts.getRawParameterValue (LearnerVerbProcessor::dryWetParamId)->store (100.0f);
+            processor.apvts.getRawParameterValue (LearnerVerbProcessor::bypassParamId)->store (1.0f);
+
+            const auto input = TestUtils::generateSineBuffer (1000.0f, sampleRate, numSamples, 2, 0.5f);
+            auto buffer = input;
+            juce::MidiBuffer midi;
+            processor.processBlock (buffer, midi);
+
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < numSamples; ++i)
+                    expectWithinAbsoluteError (buffer.getSample (ch, i), input.getSample (ch, i), 1.0e-6f);
+
+            expectEquals (processor.apvts.getRawParameterValue (LearnerVerbProcessor::dryWetParamId)->load(), 100.0f);
+        }
+
         beginTest ("an out-of-range preset index is ignored, not a crash");
         {
             LearnerVerbProcessor processor;

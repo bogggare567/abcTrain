@@ -34,9 +34,11 @@ This also motivated extracting `WaveformDisplay` out of
 the identical FIFO-accumulate/30 Hz-timer/scrolling-columns shape, the
 abstraction is no longer a guess from one data point (see
 [decisions/001](001-game-interface.md) and the roadmap note this closes
-out). `SpectrumAnalyserComponent` (LearnerEQ) stays separate — it's
-FFT-based, a different data shape entirely, not something to force into
-the same component.
+out). `SpectrumAnalyserComponent` (LearnerEQ) stayed separate *at the
+time* — FFT-based, a different data shape entirely from time-domain peak
+tracking. It was later extracted too, once LearnerComp and LearnerVerb
+both wanted a plain live spectrum of their own — see
+[decisions/006](006-unified-visualization.md).
 
 ## Decay is mapped onto `juce::dsp::Reverb`'s `roomSize`, not modeled
 

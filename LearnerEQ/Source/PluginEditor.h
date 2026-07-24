@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "SpectrumAnalyser.h"
+#include "../../shared/WaveformDisplay.h"
 #include "../../shared/LessonController.h"
 #include <array>
 #include <memory>
@@ -33,7 +34,13 @@ private:
     SpectrumAnalyserComponent spectrum;
     juce::Label titleLabel;
     juce::Label guideLabel;
+    WaveformDisplay waveform;
+    juce::Label inputPeakLabel;
+    juce::Label outputPeakLabel;
     std::array<BandControls, LearnerEQProcessor::numBands> bands;
+
+    juce::ToggleButton bypassButton { "Bypass" };
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
 
     juce::TextButton lessonButton { "Lesson" };
     LessonController lessonController;
