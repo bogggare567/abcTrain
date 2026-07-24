@@ -34,8 +34,9 @@ vs. not.
 | Daily challenge (N-in-a-row on a deterministically-picked game, bonus points) | ✓ |
 | Level/progress bar/streak/daily-challenge shown in `PluginEditor` | ✓ |
 | Unit tests: `ProgressManagerTest` (level math, streak, daily challenge, persistence round-trip) | ✓ |
-| LearnerComp (compressor: envelope visualization, gain-reduction meter, A/B) | ⏳ |
-| Shared visualization/hint components factored out for reuse across Learner plugins | ⏳ |
+| LearnerComp: custom soft-knee compressor engine (see [decisions/003](decisions/003-learnercomp-engine.md)), waveform visualization with gain-reduction highlighting, GR/peak meters, bypass (doubles as A/B), 4 teaching presets | ✓ |
+| Unit tests: `LearnerCompTest` (closed-form compression/makeup-gain math, bypass passthrough, preset application) | ✓ |
+| Shared visualization/hint components factored out for reuse across Learner plugins | ⏳ still not done — LearnerEQ's `SpectrumAnalyserComponent` and LearnerComp's `WaveformDisplay` are separate, unshared implementations despite similar shape (FIFO-fill from audio thread + timer-driven repaint). Worth extracting once a third Learner plugin needs the same pattern. |
 | Integration-level tests (editor button clicks -> GameManager state) | ⏳ |
 
 ## 1.0 — knowledge base, more exercises/plugins
@@ -44,7 +45,7 @@ vs. not.
 |---|---|
 | More EarTrainer exercises (stereo width, delay type, distortion type) | ⏳ |
 | LearnerVerb, LearnerSat | ⏳ |
-| In-plugin contextual tooltips beyond one-liners (LearnerEQ has the one-liner today) | ⏳ |
+| In-plugin contextual tooltips beyond one-liners (LearnerEQ and LearnerComp both have one-liners today) | ⏳ |
 | Micro-lessons (step-by-step guided parameter changes with explanation) | ⏳ |
 | Glossary with audio examples | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |

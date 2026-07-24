@@ -44,6 +44,19 @@ completion, and a persistence round-trip through a real (temp-named)
 `Game → ChangeListener → ProgressManager` wiring — see the note on
 `registerAnswer` below.
 
+**`LearnerCompTest.cpp`** processes real sine waves through a real
+`LearnerCompProcessor` (same approach as `LearnerEQTest`) and checks
+closed-form compression math: a 0 dBFS sine at a -6 dB threshold with a
+2:1 ratio and hard knee should settle at -3 dBFS; adding +3 dB makeup gain
+on top of that should bring it back to ~0 dBFS. Also checks bypass leaves
+the signal bit-for-bit unchanged, and that `applyPreset` sets every
+parameter a preset defines. `applyPreset` deliberately lives on
+`LearnerCompProcessor` rather than only inside the editor's preset-button
+handler specifically so it's testable without constructing an editor — see
+`docs/diagrams/learner-plugin.md` for why constructing a `Component` in
+this console test binary was avoided as a matter of policy, not just for
+this one case.
+
 ## Why game logic and DSP output are tested differently
 
 The games generate random noise (`PinkNoiseGenerator`) as their test
@@ -94,8 +107,10 @@ logic is not, and can only be checked by actually running the plugin.
   a plugin and diffing against a saved reference output (via
   `shared/TestUtils.h`'s `rms`, or a tighter per-sample comparison) would
   catch DSP regressions during refactors that the current logic-only tests
-  can't see. Worth adding once there's more than one DSP-heavy plugin to
-  protect.
+  can't see. There are now two DSP-heavy plugins (LearnerEQ, LearnerComp)
+  each with exactly one narrow steady-state assertion and no coverage of
+  transient/attack-release behavior — this is worth doing soon, not just
+  "eventually."
 - **Seeded randomness for the games**: `juce::Random`'s default
   constructor seeds from system entropy; none of the game classes expose a
   way to inject a seed. If deterministic game-round tests are ever needed

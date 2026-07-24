@@ -126,8 +126,3 @@ void LearnerEQProcessor::setStateInformation (const void* data, int sizeInBytes)
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         apvts.replaceState (juce::ValueTree::fromXml (*xml));
 }
-
-juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
-{
-    return new LearnerEQProcessor();
-}

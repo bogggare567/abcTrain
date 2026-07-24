@@ -1,14 +1,17 @@
-# Ear Trainer / Learner EQ — project notes
+# Ear Trainer / Learner EQ / Learner Comp — project notes
 
-Two JUCE plugins in one repo/CMake build, both VST3/AU/Standalone:
+Three JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 
-- **EarTrainer** — multiple-choice ear-training games (existing).
+- **EarTrainer** — multiple-choice ear-training games.
 - **LearnerEQ** — a real 4-band EQ that processes the host's own audio,
   with a live spectrum + response-curve display and short contextual
-  tooltips while dragging a band's frequency knob (new).
+  tooltips while dragging a band's frequency knob.
+- **LearnerComp** — a real compressor processing the host's own audio,
+  with a scrolling waveform highlighting where it's reducing gain, a
+  GR/peak meter row, contextual tooltips, and 4 teaching presets (new).
 
 Longer-term product direction (not all built): a learning ecosystem of
-"teaching" plugins (LearnerEQ done, LearnerComp/LearnerVerb/LearnerSat
+"teaching" plugins (LearnerEQ and LearnerComp done, LearnerVerb/LearnerSat
 planned) paired with the trainer games and a lightweight in-plugin
 knowledge base, plus a phase-2 AI module that analyzes a reference track
 and suggests which teaching plugins to try. Treat any specific
@@ -20,9 +23,11 @@ that depend on them.
 
 `docs/roadmap.md` (status of everything, done vs. planned),
 `docs/diagrams/` (mermaid: system overview, game-engine class diagram,
-learner-plugin component diagram, proposed CI pipeline),
-`docs/decisions/` (ADRs: 001 is the `Game` interface choice, 002 is
-`setDifficulty`/`ProgressManager`), `docs/testing-strategy.md`. This file
+learner-plugin component diagrams for both LearnerEQ and LearnerComp,
+proposed CI pipeline), `docs/decisions/` (ADRs: 001 is the `Game`
+interface choice, 002 is `setDifficulty`/`ProgressManager`, 003 is why
+LearnerComp has a custom compressor engine instead of
+`juce::dsp::Compressor`), `docs/testing-strategy.md`. This file
 (`CLAUDE.md`) stays the per-file breakdown; `docs/` is the higher-level/
 visual layer — keep both in sync when the architecture changes rather
 than letting one drift.
@@ -31,8 +36,8 @@ than letting one drift.
 
 CMake + JUCE via `FetchContent` (pinned to tag `8.0.15` in
 `CMakeLists.txt` — no local JUCE checkout needed). `cmake -B build &&
-cmake --build build` builds both plugin targets (`EarTrainer`,
-`LearnerEQ`) from the one root `CMakeLists.txt`.
+cmake --build build` builds all three plugin targets (`EarTrainer`,
+`LearnerEQ`, `LearnerComp`) from the one root `CMakeLists.txt`.
 
 ## Architecture — EarTrainer (`Source/`)
 
@@ -146,9 +151,61 @@ restore with the session (`getStateInformation`/`setStateInformation`).
   `spectrum.setHighlightedBand`. A 30 Hz editor timer pushes current
   parameter values into the spectrum component so the response curve
   tracks knob movement even with no audio playing.
+- `LearnerEQ/Source/PluginEntry.cpp` — just `createPluginFilter()`,
+  deliberately split out of `PluginProcessor.cpp` (see the Testing section
+  below for why).
 
 Not yet built for LearnerEQ: "analyze reference" mode, knowledge-base
 tooltips beyond the one-line frequency description, micro-lessons.
+
+## Architecture — LearnerComp (`LearnerComp/Source/`)
+
+Same shape as LearnerEQ (real audio, APVTS parameters, host-automatable)
+but for dynamics instead of frequency. See
+[decisions/003-learnercomp-engine.md](docs/decisions/003-learnercomp-engine.md)
+for why it doesn't use `juce::dsp::Compressor`.
+
+- `LearnerComp/Source/CompressorEngine.h` — custom feed-forward
+  compressor: soft-knee gain computer (Giannoulis/Massberg/Reiss formula)
+  plus one-pole attack/release smoothing on the gain-reduction envelope
+  itself (not on the input level). `computeGain(detectionSample)` returns
+  a gain factor rather than a processed sample, so the processor can feed
+  it a stereo-linked detection value (loudest channel) and apply the
+  *same* gain to every channel, avoiding stereo-image pumping.
+  `getLastGainReductionDb()` exposes the smoothed envelope for the meter
+  and waveform highlight — the whole reason this isn't `juce::dsp::Compressor`,
+  which exposes neither knee nor its internal gain reduction.
+- `LearnerComp/Source/ParameterGuide.h` (`CompressorGuide` namespace) —
+  tooltip text per parameter ID, plus the 4 preset definitions (Vocal
+  Smoothing/Punchy Drums/Bass Control/Limiter: threshold, ratio, attack,
+  release, knee).
+- `LearnerComp/Source/PluginProcessor.{h,cpp}` — 8 APVTS params
+  (threshold/ratio/attack/release/knee/makeup/dryWet/bypass).
+  `processBlock` computes one stereo-linked detection value per sample,
+  gets a gain from `CompressorEngine`, applies it to every channel with
+  dry/wet blending, and (unless bypassed) pushes (input, output,
+  gainReductionDb) to whatever `WaveformDisplay` the editor registered.
+  Bypass skips the engine entirely and passes audio through unchanged.
+  `applyPreset(int)` lives here (not just in the editor's button handler)
+  specifically so it's unit-testable without constructing a `Component`.
+- `LearnerComp/Source/WaveformDisplay.{h,cpp}` — same FIFO-accumulate/
+  30 Hz-timer-flush pattern as `SpectrumAnalyserComponent`, but for a
+  scrolling peak-based dual waveform instead of an FFT: gray input trace,
+  output trace tinted from blue to red proportional to gain reduction in
+  that ~33 ms column. Also the source of the GR/peak meter readouts (via
+  `getCurrentGainReductionDb`/`getInputPeak`/`getOutputPeak`). Not
+  extracted into `shared/` despite the structural similarity to
+  `SpectrumAnalyserComponent` — see the roadmap.
+- `LearnerComp/Source/PluginEditor.{h,cpp}` — 7 rotary knobs (one per
+  float param) + bypass toggle + 4 preset buttons, each preset button just
+  calling `processor.applyPreset(i)`. Guide label updates via
+  `onDragStart`/`onDragEnd` on each knob, same pattern as LearnerEQ.
+- `LearnerComp/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
+  reason as LearnerEQ's.
+
+Not yet built for LearnerComp: knowledge-base content beyond the one-line
+tooltips, micro-lessons, any automated coverage of attack/release
+*transient* behavior (only steady-state math is tested).
 
 ## Testing (`tests/`, `shared/`)
 
@@ -183,6 +240,13 @@ plugin targets), so no plugin host or GUI is needed to run it.
   kind of check that would have caught a broken filter chain, which
   mattered here because LearnerEQ's DSP code could not be compiled/run at
   all in the environment it was originally written in.
+- `tests/LearnerCompTest.cpp` — same approach: a 0 dBFS sine through a
+  real `LearnerCompProcessor` at -6 dB threshold/2:1 ratio/hard knee
+  should settle at -3 dBFS; adding +3 dB makeup should bring it back to
+  ~0 dBFS (measured on the buffer tail, after the fast attack has
+  settled). Also checks bypass leaves the buffer bit-for-bit unchanged,
+  `applyPreset` sets every parameter a preset defines, and an
+  out-of-range preset index is a no-op rather than a crash.
 
 **`juce::ChangeBroadcaster::sendChangeMessage()` is asynchronous** (needs
 a running JUCE message loop to deliver), and `EarTrainerTests` never pumps
@@ -195,20 +259,27 @@ only exercised by actually running the plugin. See
 `docs/testing-strategy.md` for more.
 
 `EarTrainerTests`' `target_sources` intentionally excludes
-`Source/PluginProcessor.cpp` (EarTrainer's, not LearnerEQ's): both it and
-`LearnerEQ/Source/PluginProcessor.cpp` define `createPluginFilter()`, and
-linking both into one binary would collide. The game logic under test
-doesn't need the `AudioProcessor` wrapper anyway — only `LearnerEQTest`
-needs a real `AudioProcessor`, and it gets one from LearnerEQ.
+`Source/PluginProcessor.cpp` (EarTrainer's — the game logic under test
+doesn't need the `AudioProcessor` wrapper) and every plugin's
+`PluginEntry.cpp` (`LearnerEQ/Source/PluginEntry.cpp`,
+`LearnerComp/Source/PluginEntry.cpp` — each is *just*
+`createPluginFilter()`, split out of its `PluginProcessor.cpp`
+specifically because `LearnerEQTest` and `LearnerCompTest` both need
+their real processor's `PluginProcessor.cpp` linked in, and two
+definitions of `createPluginFilter()` in one binary would collide. The
+real plugin targets (`juce_add_plugin`) link both `PluginProcessor.cpp`
+*and* `PluginEntry.cpp` — only the test binary needs the split.
 
 CI: `.github/workflows/build_and_test.yml` builds all targets and runs
 `EarTrainerTests` on push/PR across ubuntu-latest/macos-latest/
 windows-latest. **Confirmed green on all three as of commit `a2f2944`.**
-Two real bugs were caught and fixed getting here (see
+Two real bugs were caught and fixed getting there (see
 `docs/diagrams/ci-pipeline.md` for both) — this was the first actual
 compile+run this codebase had ever gotten, so treat that history as a
 reminder to keep watching CI on every push, not evidence the code is now
-bulletproof.
+bulletproof. **LearnerComp was added after that green run and is not yet
+confirmed to build/pass** — watch the next CI run on this branch before
+trusting it.
 
 ## Conventions
 
@@ -227,10 +298,17 @@ bulletproof.
 ## Roadmap (not yet built)
 
 - More EarTrainer exercises (delay type, stereo width, distortion type, ...).
-- More teaching plugins: LearnerComp, LearnerVerb, LearnerSat — same
-  pattern as LearnerEQ (own `juce_add_plugin` target, APVTS params, a
-  visualization + contextual guide text).
+- More teaching plugins: LearnerVerb, LearnerSat — same pattern as
+  LearnerEQ/LearnerComp (own `juce_add_plugin` target, APVTS params, a
+  visualization + contextual guide text, its own `PluginEntry.cpp` split).
+- Extract the shared FIFO-fill/timer-repaint pattern behind
+  `SpectrumAnalyserComponent` and `WaveformDisplay` into `shared/` once a
+  third Learner plugin needs it — don't guess the abstraction from two
+  data points.
 - LearnerEQ "analyze reference" mode + richer knowledge base/micro-lessons.
+- Golden-file / transient-behavior audio regression tests for LearnerEQ
+  and LearnerComp (both currently have exactly one narrow steady-state
+  DSP assertion each).
 - Integration test for the real `Game → ProgressManager` `ChangeListener`
   wiring (needs a pumped message loop, not set up yet — see Testing).
 - Phase 2 (AI detector) and phase 3 (licensing/sales site/B2B) are
