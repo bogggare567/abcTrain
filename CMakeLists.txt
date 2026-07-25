@@ -71,6 +71,27 @@ juce_add_binary_data(I18nData SOURCES
     shared/i18n/strings/uk.json
 )
 
+# Embeds a handful of short, originally-synthesized (not recorded/sampled
+# from any third-party source) WAV files so EarTrainer's opt-in "Built-in
+# Samples" training category (see Source/ReferenceAudioLibrary.cpp) works
+# out of the box, with no external folder required - same "can't rely on
+# a filesystem path relative to the plugin binary" reasoning as I18nData
+# above. See decisions/018 for why these are programmatically generated
+# rather than real recordings. NAMESPACE/HEADER_NAME are explicit and
+# distinct from I18nData's (both default to BinaryData/BinaryData.h) -
+# EarTrainer and EarTrainerTests link both binary-data targets at once,
+# and two same-named generated headers on one include path would collide.
+juce_add_binary_data(SampleData
+    NAMESPACE SampleBinaryData
+    HEADER_NAME SampleBinaryData.h
+    SOURCES
+        assets/samples/Percussive/Kick.wav
+        assets/samples/Percussive/Snare.wav
+        assets/samples/Sustained/Pad.wav
+        assets/samples/Sustained/Pluck.wav
+        assets/samples/Sustained/Tone.wav
+)
+
 juce_add_plugin(EarTrainer
     COMPANY_NAME "EarSnap"
     PLUGIN_MANUFACTURER_CODE Esnp
@@ -124,6 +145,7 @@ target_link_libraries(EarTrainer
         juce::juce_dsp
         juce::juce_animation
         I18nData
+        SampleData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -353,6 +375,7 @@ target_link_libraries(EarTrainerTests
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        SampleData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

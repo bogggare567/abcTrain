@@ -91,7 +91,12 @@ this codebase to produce on its own, 017 is folding a user-supplied
 tooltips/instructions/lessons in this project's own words, a real pre-
 existing lesson-overlay z-order bug found while touching that code, and
 real per-plugin `ICON_BIG` app icons replacing the previous blank/default
-one), `docs/diagrams/i18n-architecture.md`
+one, 018 is a bounded gradient/shadow/glow UI polish pass across all four
+editors plus five originally-synthesized built-in training samples
+(`assets/samples/`) exposed through the existing opt-in
+`ReferenceAudioLibrary`, and why a folder of real commercial "name your
+price" albums pointed at during that same request was deliberately never
+read or embedded), `docs/diagrams/i18n-architecture.md`
 (how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
@@ -221,11 +226,24 @@ full rationale.
   same pattern LearnerEQ's processor already uses for its spectrum/
   waveform registration. Never fetches, bundles, or vets the legality of
   any file itself — see decisions/015 for why that boundary matters here.
+  `addBuiltInCategories()` (called at the start of every `rescan()`)
+  re-materialises five originally-synthesized WAV files embedded via the
+  `SampleData` binary-data target (`assets/samples/Percussive/`,
+  `assets/samples/Sustained/`) into real cache files under
+  `tempDirectory/abcTrain/BuiltInSamples/`, and injects them as two
+  always-present categories ("Built-in Percussive", "Built-in Sustained")
+  ahead of anything found on disk — a real non-noise training option with
+  zero setup, and the reason the file-chooser button below exists. See
+  [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md).
 - `Source/TrainingSoundsComponent.{h,cpp}` — the "Choose Training Sounds"
   overlay (same full-size show/hide shape as `shared/LessonController`):
-  a Pink Noise button plus one button per detected category, locked/
-  unlocked by `ProgressManager::getMaxLevelReached()`. Reachable via a
-  "Training Sounds" button in `PluginEditor`'s title row.
+  a "Choose Folder..." button (`juce::FileChooser::launchAsync`,
+  directory-select mode, `Component::SafePointer`-guarded) calling
+  `ReferenceAudioLibrary::setRootFolder()`, a Pink Noise button, and one
+  button per detected category (built-in categories always first, then
+  whatever the chosen folder's subfolders contain), locked/unlocked by
+  `ProgressManager::getMaxLevelReached()`. Reachable via a "Training
+  Sounds" button in `PluginEditor`'s title row.
 - `Source/GameManager.{h,cpp}` — owns all registered `Game`s, tracks the
   active one, prepares *all* games up front in `prepare()` so switching
   games never needs an audio-thread re-prepare (also (re)loads whatever
@@ -269,7 +287,13 @@ full rationale.
   [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)
   for the redesign rationale and two real layout bugs (edge-label
   clipping; `paint()` silently not using the same inset math as the mouse
-  handlers) found only by actually running the app.
+  handlers) found only by actually running the app. A correct answer now
+  fades a soft glow out around the thumb over ~900ms; a wrong answer gives
+  the thumb and big label a brief, decaying wobble instead of a flat
+  colour swap — both driven by `juce::Animator` (see
+  [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md)),
+  the same `juce_animation` module already used by `LevelProgressBar`'s
+  fill transition below.
 - `Source/PluginEditor.{h,cpp}` — fully generic: `ComboBox` game selector,
   a single `ChoiceSliderComponent` rebuilt via `setChoices()` on switch
   *or* whenever a fresh round's choice count no longer matches (needed
@@ -278,7 +302,12 @@ full rationale.
   recreated per round like the old buttons) means the fadeIn-collapse bug
   class from [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)
   can't recur here. Also shows level/progress-bar/streak/daily-challenge
-  from `ProgressManager` — including a `levelSelector` `ComboBox` (1-10)
+  from `ProgressManager` — the progress bar (`LevelProgressBar`, nested in
+  this same header) now "breathes": a slow, low-amplitude glow pulse at
+  the fill's leading edge via a plain 30Hz `Timer`, independent of its
+  existing eased fill-transition `Animator` (see
+  [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md)) —
+  including a `levelSelector` `ComboBox` (1-10)
   that calls `ProgressManager::setLevelManually` directly, so difficulty
   is player-controllable, not just an automatic side effect of points —
   an "Updates" button (`shared/UpdateChecker`, see
@@ -672,12 +701,20 @@ below for what was deliberately deferred.
   three Learner plugins instead of each editor setting its own one-off
   accent colour (the old `deepskyblue`/`mediumpurple` per-slider overrides
   were removed for this reason). Overrides `drawButtonBackground` (rounded
-  6px corners, 1px border, brightens whatever `backgroundColour` JUCE
-  passed in on hover/press rather than replacing it — see the ADR for a
-  real bug this caught on read-through, since overwriting that parameter
-  would have silently broken EarTrainer's per-button correct/wrong
-  answer colour-coding) and `drawRotarySlider` (arc track + value arc +
-  pointer line via `Path::addCentredArc`). Also provides `titleFont()`/
+  7px corners, 1px border, a subtle gradient fill, brightens whatever
+  `backgroundColour` JUCE passed in on hover/press rather than replacing
+  it — see the ADR for a real bug this caught on read-through, since
+  overwriting that parameter would have silently broken EarTrainer's
+  per-button correct/wrong answer colour-coding — plus a `DropShadow` that
+  grows on hover and shrinks on press, see
+  [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md))
+  and `drawRotarySlider` (arc track + value arc + pointer line via
+  `Path::addCentredArc`, a cheap layered-fake-blur glow behind the value
+  arc while the knob is being touched, and a gradient-shaded,
+  drop-shadowed knob cap instead of a flat disc — also ADR 018). A new
+  `paintPanelBackground()` static helper (a gentle radial gradient
+  instead of one flat colour) replaces every editor's plain
+  `g.fillAll()` in `paint()` (also ADR 018). Also provides `titleFont()`/
   `monoFont()` static helpers (22px bold / 16px monospace) plus the
   `getLabelFont`/`getTextButtonFont`/etc. overrides that return the 14px
   body size by default — all via `juce::Font(juce::FontOptions(...))`,
@@ -727,16 +764,21 @@ below for what was deliberately deferred.
   icon was ever configured. See
   [decisions/017](docs/decisions/017-knowledge-base-content-pass-and-app-icons.md).
 
-Not yet built (deliberately deferred, see ADR 009 and ADR 016): hover/
-press animations beyond the one fade-in (no `Timer`-driven alpha ramp, no
-press-scale-then-spring-back), gradient fills under the spectrum/waveform
-curves, pill-shaped tooltip backgrounds for guide labels, `FlexBox`-based
-layout (every editor still uses explicit `Rectangle::removeFrom*`), a
-light theme, a documented design-token styleguide, professional/licensed
-icon assets (the current icons are original simple line art, not a
-Feather/Phosphor-equivalent set), and screenshots/mockups in `README.md`
-(this sandbox can't render or capture a real JUCE window, so the look is
-described in text there instead).
+Not yet built (deliberately deferred, see ADR 009, ADR 016, and ADR 018):
+per-widget hover/press *state interpolation* (button/knob shadow and glow
+responses are immediate, keyed off JUCE's highlighted/down flags, not
+eased over time the way `LevelProgressBar`'s breathing glow or
+`ChoiceSliderComponent`'s feedback animations are — see ADR 018 for why a
+shared, stateless `LookAndFeel` has nowhere to keep a per-button animation
+timeline), no press-scale-then-spring-back, gradient fills under the
+spectrum/waveform curves, pill-shaped tooltip backgrounds for guide
+labels, `FlexBox`-based layout (every editor still uses explicit
+`Rectangle::removeFrom*`), a light theme, a documented design-token
+styleguide, a licensed custom typeface, professional/licensed icon assets
+(the current icons are original simple line art, not a
+Feather/Phosphor-equivalent set), icon "morphing" transitions, and
+screenshots/mockups in `README.md` (this sandbox can't render or capture a
+real JUCE window, so the look is described in text there instead).
 
 ## Architecture — Localization / i18n (`shared/i18n/`, EarTrainer's editor)
 
@@ -836,6 +878,12 @@ plugin targets), so no plugin host or GUI is needed to run it.
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
   rather than through the real `ChangeListener` wiring (see below).
+- `tests/ReferenceAudioLibraryTest.cpp` — writes real WAV files to a temp
+  folder and checks `rescan()`'s category/file-count contract (including
+  that the two always-present built-in categories, see ADR 018, are
+  counted alongside whatever real subfolders exist), `selectFile()`
+  loading/resampling/failing-safely behaviour, and root-folder/selection
+  persistence across `PropertiesFile` reconstruction.
 - `tests/LearnerEQTest.cpp` — the one test that touches real DSP output:
   boosts a band via `apvts.getRawParameterValue(...)->store(...)` and
   checks measured RMS actually goes up at that frequency. This is the
@@ -980,13 +1028,14 @@ too, only Windows needed the fix (see
 - A dedicated soundkorb.ru page for the plugins themselves — the site
   link added in this pass just points at the existing site; the user
   said a specific page for abcTrain there is separate, later work.
-- Training-sounds UX beyond the current first pass (see
-  [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)):
-  a file-chooser button for a custom root folder (currently only the
-  persisted default, `setRootFolder()` has no UI), a way to audition a
-  category's audio or pick a specific file within it (currently a random
-  pick each time), and LearnerEQ/LearnerComp/LearnerVerb don't have any
-  reference-audio option at all (EarTrainer only, so far).
+- Training-sounds UX beyond the current pass (see
+  [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)
+  and [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md) —
+  a folder-chooser button and two always-available built-in synthesized
+  sample categories now exist): a way to audition a category's audio or
+  pick a specific file within it (still a random pick each time), and
+  LearnerEQ/LearnerComp/LearnerVerb don't have any reference-audio option
+  at all (EarTrainer only, so far).
 - One more teaching plugin: LearnerSat — same pattern as the other three
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).
@@ -1038,11 +1087,14 @@ too, only Windows needed the fix (see
   wouldn't have provided real protection anyway — trivially extractable
   from the shipped binary). Revisit once there's real user traction worth
   protecting.
-- UI polish beyond the basic `AbcTrainLookAndFeel` pass: hover/press
-  animations (fade timers, press-scale springs), gradient-filled
-  spectrum/waveform curves, pill-shaped tooltip backgrounds for guide
-  labels, `FlexBox`-based layout — all deliberately deferred from the
-  redesign pass, see ADR 009.
+- UI polish beyond the current pass (gradients/shadows/hover-glow on
+  buttons and knobs, a radial-gradient panel background, breathing
+  progress bar, and correct/wrong feedback animations on the choice
+  slider, see ADR 018): per-widget hover/press *state interpolation*
+  (press-scale-then-spring-back), gradient-filled spectrum/waveform
+  curves, pill-shaped tooltip backgrounds for guide labels, `FlexBox`-
+  based layout, a light theme, a licensed custom typeface — all
+  deliberately deferred, see ADR 009 and ADR 018.
 - Phase 2 (AI detector) and phase 3 (sales site/B2B licensing beyond the
   current `LICENSE` file) are unstarted; see prior conversation history
   for the full plan if picked up later.

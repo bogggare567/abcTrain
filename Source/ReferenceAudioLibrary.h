@@ -71,6 +71,16 @@ public:
     static constexpr double maxBufferSeconds = 20.0;
 
 private:
+    // Re-materialises the small set of embedded, originally-synthesized
+    // WAV samples (SampleBinaryData, see CMakeLists.txt) as real files
+    // under a cache directory, then adds them to `categories` as one or
+    // more "Built-in ..." categories, ahead of anything scanned from
+    // `rootFolder` - so there's always at least one real (if simple)
+    // training option even with no folder configured at all. Cache files
+    // let this reuse selectFile()'s ordinary File-based path unchanged,
+    // rather than duplicating it for an in-memory source. See decisions/018.
+    void addBuiltInCategories();
+
     juce::PropertiesFile& properties;
     juce::AudioFormatManager formatManager;
 

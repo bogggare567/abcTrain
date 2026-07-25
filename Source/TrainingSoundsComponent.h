@@ -41,6 +41,15 @@ private:
     juce::Random random;
 
     juce::Label titleLabel;
+
+    // Lets the player point ReferenceAudioLibrary at their own folder of
+    // audio files (e.g. their personal music library) - the legitimate
+    // way to train on real material without this project ever fetching,
+    // bundling, or vetting any of it itself (see decisions/015 and 018).
+    juce::TextButton chooseFolderButton { "Choose Folder..." };
+    juce::Label rootFolderLabel;
+    std::unique_ptr<juce::FileChooser> fileChooser;
+
     juce::TextButton pinkNoiseButton { "Pink Noise (default)" };
     juce::OwnedArray<juce::TextButton> categoryButtons;
     juce::Label statusLabel;

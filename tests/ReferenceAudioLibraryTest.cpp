@@ -53,17 +53,24 @@ public:
         tempRoot.deleteRecursively();
         tempRoot.createDirectory();
 
-        beginTest ("rescan() on a folder with no subfolders yields no categories");
+        beginTest ("rescan() on a folder with no subfolders still yields the built-in categories");
         {
             auto options = makeTempOptions ("empty");
             juce::PropertiesFile properties (options);
             ReferenceAudioLibrary library (properties);
 
             library.setRootFolder (tempRoot.getChildFile ("nonexistent"));
-            expect (library.getCategories().isEmpty());
+
+            // No filesystem folder configured/found - but the bundled,
+            // programmatically-synthesized samples (see decisions/018)
+            // are always present, so this is never actually empty.
+            const auto& categories = library.getCategories();
+            expectEquals (categories.size(), 2);
+            expectEquals (categories.getReference (0).name, juce::String ("Built-in Percussive"));
+            expectEquals (categories.getReference (1).name, juce::String ("Built-in Sustained"));
         }
 
-        beginTest ("rescan() only counts subfolders that contain real audio files");
+        beginTest ("rescan() only counts filesystem subfolders that contain real audio files, alongside the built-ins");
         {
             const auto rockDir = tempRoot.getChildFile ("Rock");
             writeTestWav (rockDir.getChildFile ("track1.wav"), 44100.0, 4410);
@@ -79,7 +86,8 @@ public:
             library.setRootFolder (tempRoot);
 
             const auto& categories = library.getCategories();
-            expectEquals (categories.size(), 1); // only "Rock" has real audio in it
+            // 2 built-in + "Rock" - "EmptyGenre" has no real audio in it.
+            expectEquals (categories.size(), 3);
 
             bool foundRock = false;
             for (const auto& category : categories)
@@ -89,6 +97,25 @@ public:
                     expectEquals (category.files.size(), 2);
                 }
             expect (foundRock);
+        }
+
+        beginTest ("built-in categories are always unlocked-first and actually selectable");
+        {
+            auto options = makeTempOptions ("builtin");
+            juce::PropertiesFile properties (options);
+            ReferenceAudioLibrary library (properties);
+            library.setRootFolder (tempRoot.getChildFile ("nonexistent"));
+
+            const auto& categories = library.getCategories();
+            expectEquals (categories.size(), 2);
+            expect (categories.getReference (0).files.size() == 2); // Kick, Snare
+            expect (categories.getReference (1).files.size() == 3); // Pad, Pluck, Tone
+
+            const auto& firstFile = categories.getReference (0).files.getReference (0);
+            expect (firstFile.existsAsFile());
+            expect (library.selectFile (firstFile, 44100.0));
+            expect (library.getActiveBuffer() != nullptr);
+            expect (library.getActiveBuffer()->getNumSamples() > 0);
         }
 
         beginTest ("selectFile loads a real file as the active buffer; clearSelection falls back to nullptr");

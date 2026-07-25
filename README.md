@@ -43,6 +43,18 @@ Every game shares one `Game` interface, one generic UI, adaptive
 difficulty (level 1–10), a daily login streak, and a daily challenge — see
 [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md).
 
+By default every game generates its own pink noise, chosen deliberately
+for its flat spectrum (fair for any frequency/width question). A
+"Training Sounds" button lets you train on real audio instead: two
+always-available built-in categories (five short, originally-synthesized
+percussive/sustained samples - no third-party or copyrighted content), or
+point it at your own folder of audio via a "Choose Folder..." button.
+Categories unlock progressively with your level, same as the games
+themselves. This project never fetches, bundles, or vets the legality of
+audio in a folder you point it at - that's on you. See
+[decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)
+and [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md).
+
 ## 🎛️ Teaching plugins
 
 - **Learner EQ** — a real 4-band EQ (low shelf, 2 bells, high shelf),
@@ -115,25 +127,36 @@ visual style in text.
 All four plugins now share one dark theme (`shared/AbcTrainLookAndFeel`)
 instead of each Learner plugin picking its own accent colour:
 
-- Background `#1e1e2e`, a soft blue accent `#5b9bd5` (knob values, active
-  states), a warm orange highlight `#d98c5f` (rotary-knob fill, active
-  toggles), light-grey text `#e0e0e0`.
-- Rounded buttons (6 px corner radius, 1 px `#3a3a4a` border) that
-  brighten on hover/press - no more stock grey rectangular buttons.
-  Rotary knobs are drawn as a thin arc track + accent-coloured value arc
-  + a simple pointer line, not the default JUCE rotary slider.
+- Background `#1e1e2e` painted as a soft radial gradient rather than a
+  flat fill, a soft blue accent `#5b9bd5` (knob values, active states), a
+  warm orange highlight `#d98c5f` (rotary-knob fill, active toggles),
+  light-grey text `#e0e0e0`.
+- Rounded buttons (7 px corner radius, 1 px `#3a3a4a` border, a subtle
+  gradient fill) with a soft drop shadow that grows on hover and shrinks
+  on press - no more stock grey rectangular buttons. Rotary knobs are
+  drawn as a thin arc track + accent-coloured value arc + a
+  gradient-shaded, drop-shadowed knob cap, with a soft glow behind the
+  value arc while you're actually turning it.
 - 22 px bold titles, 14 px body text, 16 px monospaced numeric readouts
   (peak meters, score/level) - all via the modern `juce::FontOptions`
   API, replacing every deprecated `Font(float, styleFlags)` call in the
   codebase.
-- One animation for this pass: EarTrainer's choice buttons fade in over
-  200 ms whenever they regenerate (switching games, or a difficulty
-  change that alters the choice count).
+- EarTrainer's level progress bar "breathes" - a slow, low-amplitude glow
+  pulse at the fill's leading edge - independently of its existing eased
+  fill-transition animation. Its choice slider fades a soft glow around
+  the thumb on a correct answer, and gives it a brief decaying wobble on
+  a wrong one, instead of a flat colour swap.
 
-This was an explicitly iterative first pass - hover-fade timers,
-press-scale springs, gradient-filled meter curves, and pill-shaped
-tooltip backgrounds were scoped out on purpose; see
+This is a bounded, coding-level polish pass, not the full FabFilter/
+Ableton-grade design system a "premium redesign" implies - that needs a
+real designer/design tool, not something this codebase produces alone.
+Per-widget hover/press *state interpolation* (press-scale-then-spring-
+back), gradient-filled meter curves, pill-shaped tooltip backgrounds, a
+light theme, a licensed custom typeface, and `FlexBox` layout are all
+still scoped out on purpose; see
 [docs/decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md)
+and
+[docs/decisions/018-ui-polish-and-builtin-samples.md](docs/decisions/018-ui-polish-and-builtin-samples.md)
 for the full list of what's deferred and why. No screenshots here since
 this environment can't render and capture a real JUCE window - the
 description above is the accurate current state.

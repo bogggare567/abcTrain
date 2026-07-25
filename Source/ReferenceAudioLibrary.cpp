@@ -1,4 +1,6 @@
 #include "ReferenceAudioLibrary.h"
+#include "SampleBinaryData.h"
+#include <array>
 
 namespace
 {
@@ -45,9 +47,70 @@ void ReferenceAudioLibrary::setRootFolder (const juce::File& newRoot)
     rescan();
 }
 
+void ReferenceAudioLibrary::addBuiltInCategories()
+{
+    struct BuiltInFile
+    {
+        const char* categoryName;
+        const char* fileName;
+        const char* data;
+        int size;
+    };
+
+    // Every one of these is a short, programmatically-synthesized tone
+    // (see assets/samples/ and decisions/018) - never a recording of, or
+    // extracted from, anyone else's copyrighted material.
+    static const std::array<BuiltInFile, 5> builtIns {{
+        { "Built-in Percussive", "Kick.wav",  SampleBinaryData::Kick_wav,  SampleBinaryData::Kick_wavSize },
+        { "Built-in Percussive", "Snare.wav", SampleBinaryData::Snare_wav, SampleBinaryData::Snare_wavSize },
+        { "Built-in Sustained",  "Pad.wav",   SampleBinaryData::Pad_wav,   SampleBinaryData::Pad_wavSize },
+        { "Built-in Sustained",  "Pluck.wav", SampleBinaryData::Pluck_wav, SampleBinaryData::Pluck_wavSize },
+        { "Built-in Sustained",  "Tone.wav",  SampleBinaryData::Tone_wav,  SampleBinaryData::Tone_wavSize },
+    }};
+
+    const auto cacheDir = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                               .getChildFile ("abcTrain")
+                               .getChildFile ("BuiltInSamples");
+    cacheDir.createDirectory();
+
+    juce::Array<Category> builtInCategories;
+
+    for (const auto& b : builtIns)
+    {
+        auto file = cacheDir.getChildFile (b.fileName);
+        if (! file.existsAsFile() || file.getSize() != (juce::int64) b.size)
+            file.replaceWithData (b.data, (size_t) b.size);
+
+        const juce::String categoryName (b.categoryName);
+        Category* target = nullptr;
+        for (auto& c : builtInCategories)
+            if (c.name == categoryName)
+            {
+                target = &c;
+                break;
+            }
+
+        if (target == nullptr)
+        {
+            builtInCategories.add ({ categoryName, {} });
+            target = &builtInCategories.getReference (builtInCategories.size() - 1);
+        }
+
+        target->files.add (file);
+    }
+
+    // Inserted ahead of anything scanned from rootFolder, so built-in
+    // categories always land at the front - TrainingSoundsComponent's
+    // lock rule is "index < maxLevelReached", and level starts at 1, so
+    // the first built-in category is always unlocked.
+    for (int i = builtInCategories.size() - 1; i >= 0; --i)
+        categories.insert (0, builtInCategories.getReference (i));
+}
+
 void ReferenceAudioLibrary::rescan()
 {
     categories.clear();
+    addBuiltInCategories();
 
     if (! rootFolder.isDirectory())
         return;

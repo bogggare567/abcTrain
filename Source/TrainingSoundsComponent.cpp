@@ -10,6 +10,40 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     titleLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
     addAndMakeVisible (titleLabel);
 
+    chooseFolderButton.onClick = [this]
+    {
+        // FileChooser::launchAsync's callback can outlive this component
+        // if the editor is closed while the OS picker is still open -
+        // the lambda's SafePointer null-checks before touching `this`.
+        fileChooser = std::make_unique<juce::FileChooser> (
+            "Choose a folder of your own reference audio",
+            processor.getGameManager().getReferenceAudioLibrary().getRootFolder(),
+            "*");
+
+        juce::Component::SafePointer<TrainingSoundsComponent> safeThis (this);
+
+        fileChooser->launchAsync (
+            juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+            [safeThis] (const juce::FileChooser& chooser)
+            {
+                if (safeThis == nullptr)
+                    return;
+
+                const auto chosen = chooser.getResult();
+                if (chosen == juce::File())
+                    return;
+
+                safeThis->processor.getGameManager().getReferenceAudioLibrary().setRootFolder (chosen);
+                safeThis->refresh();
+            });
+    };
+    addAndMakeVisible (chooseFolderButton);
+
+    rootFolderLabel.setJustificationType (juce::Justification::centred);
+    rootFolderLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
+    rootFolderLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
+    addAndMakeVisible (rootFolderLabel);
+
     pinkNoiseButton.onClick = [this]
     {
         processor.getGameManager().getReferenceAudioLibrary().clearSelection();
@@ -36,6 +70,8 @@ void TrainingSoundsComponent::refresh()
 
     auto& library = processor.getGameManager().getReferenceAudioLibrary();
     library.rescan();
+
+    rootFolderLabel.setText ("Folder: " + library.getRootFolder().getFullPathName(), juce::dontSendNotification);
 
     const auto maxLevelReached = processor.getProgressManager().getMaxLevelReached();
     const auto& categories = library.getCategories();
@@ -106,6 +142,10 @@ void TrainingSoundsComponent::resized()
     auto area = getLocalBounds().reduced (16);
 
     titleLabel.setBounds (area.removeFromTop (28));
+    area.removeFromTop (8);
+    chooseFolderButton.setBounds (area.removeFromTop (32));
+    area.removeFromTop (4);
+    rootFolderLabel.setBounds (area.removeFromTop (16));
     area.removeFromTop (8);
     pinkNoiseButton.setBounds (area.removeFromTop (32));
     area.removeFromTop (8);
