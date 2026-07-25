@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_animation/juce_animation.h>
 
 // Drag-to-select answer widget: a single horizontal track with one evenly-
 // spaced tick per choice, a big label showing whichever choice is currently
@@ -59,6 +60,17 @@ private:
     int correctIndex = -1;
     int chosenIndex = -1;
     bool lastCorrect = false;
+
+    // Post-answer feedback (see decisions/018): a correct guess fades a
+    // soft glow out around the thumb over ~900ms; a wrong one gives the
+    // thumb/big label a brief, decaying "disappointed" wobble rather than
+    // an aggressive shake. Both driven by juce_animation, independent of
+    // the drag-preview logic above.
+    void startFeedbackAnimation (bool wasCorrect);
+    float feedbackGlow = 0.0f;
+    float feedbackWobblePx = 0.0f;
+    juce::Animator feedbackAnimator = juce::ValueAnimatorBuilder{}.build();
+    juce::VBlankAnimatorUpdater feedbackUpdater { this };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChoiceSliderComponent)
 };

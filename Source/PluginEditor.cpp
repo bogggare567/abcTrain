@@ -262,7 +262,7 @@ EarTrainerEditor::~EarTrainerEditor()
 
 void EarTrainerEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e1e2e));
+    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
 }
 
 void EarTrainerEditor::resized()

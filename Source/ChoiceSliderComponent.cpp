@@ -1,4 +1,5 @@
 #include "ChoiceSliderComponent.h"
+#include <cmath>
 
 namespace
 {
@@ -25,11 +26,16 @@ void ChoiceSliderComponent::setChoices (const juce::StringArray& labels)
 
 void ChoiceSliderComponent::resetForNewRound()
 {
+    if (! feedbackAnimator.isComplete())
+        feedbackAnimator.complete();
+
     previewIndex = -1;
     answered = false;
     correctIndex = -1;
     chosenIndex = -1;
     lastCorrect = false;
+    feedbackGlow = 0.0f;
+    feedbackWobblePx = 0.0f;
     repaint();
 }
 
@@ -40,7 +46,59 @@ void ChoiceSliderComponent::showAnswer (int newCorrectIndex, int newChosenIndex,
     chosenIndex = newChosenIndex;
     lastCorrect = wasCorrect;
     previewIndex = newChosenIndex;
+    startFeedbackAnimation (wasCorrect);
     repaint();
+}
+
+void ChoiceSliderComponent::startFeedbackAnimation (bool wasCorrect)
+{
+    if (! feedbackAnimator.isComplete())
+        feedbackAnimator.complete();
+
+    if (wasCorrect)
+    {
+        feedbackGlow = 1.0f;
+        feedbackWobblePx = 0.0f;
+
+        feedbackAnimator = juce::ValueAnimatorBuilder{}
+                               .withEasing (juce::Easings::createEaseOut())
+                               .withDurationMs (900.0)
+                               .withValueChangedCallback ([this] (float t)
+                               {
+                                   feedbackGlow = 1.0f - t;
+                                   repaint();
+                               })
+                               .build();
+    }
+    else
+    {
+        feedbackGlow = 0.0f;
+
+        // A short, decaying oscillation (sine envelope shrinking as t
+        // grows) reads as a gentle "disappointed" wobble rather than an
+        // aggressive shake - three quick back-and-forths, each smaller
+        // than the last.
+        feedbackAnimator = juce::ValueAnimatorBuilder{}
+                               .withEasing (juce::Easings::createLinear())
+                               .withDurationMs (450.0)
+                               .withValueChangedCallback ([this] (float t)
+                               {
+                                   constexpr float maxWobblePx = 5.0f;
+                                   feedbackWobblePx = std::sin (t * juce::MathConstants<float>::twoPi * 2.5f)
+                                                     * (1.0f - t) * maxWobblePx;
+                                   repaint();
+                               })
+                               .build();
+    }
+
+    feedbackUpdater.addAnimator (feedbackAnimator, [this]
+    {
+        feedbackUpdater.removeAnimator (feedbackAnimator);
+        feedbackGlow = 0.0f;
+        feedbackWobblePx = 0.0f;
+        repaint();
+    });
+    feedbackAnimator.start();
 }
 
 juce::Rectangle<int> ChoiceSliderComponent::getTrackArea() const
@@ -143,17 +201,35 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
 
     if (highlighted >= 0 && highlighted < n)
     {
-        const auto x = xForIndex (highlighted, trackArea);
+        // The wobble nudges both the thumb and the big label together, as
+        // if the whole answer briefly shook its head "no" - not just one
+        // isolated element twitching.
+        const auto x = xForIndex (highlighted, trackArea) + feedbackWobblePx;
 
         auto thumbColour = accentColour;
         if (answered)
             thumbColour = lastCorrect ? correctColour : wrongColour;
+
+        // Correct-answer glow: a soft halo that fades out over ~900ms,
+        // drawn as a couple of progressively larger/fainter circles
+        // behind the crisp thumb - the same cheap fake-blur trick the
+        // rotary sliders' drag glow uses.
+        if (feedbackGlow > 0.001f)
+        {
+            const auto glowR1 = thumbRadius + 10.0f * feedbackGlow;
+            const auto glowR2 = thumbRadius + 5.0f * feedbackGlow;
+            g.setColour (correctColour.withAlpha (0.15f * feedbackGlow));
+            g.fillEllipse (x - glowR1, trackY - glowR1, glowR1 * 2.0f, glowR1 * 2.0f);
+            g.setColour (correctColour.withAlpha (0.25f * feedbackGlow));
+            g.fillEllipse (x - glowR2, trackY - glowR2, glowR2 * 2.0f, glowR2 * 2.0f);
+        }
 
         g.setColour (thumbColour);
         g.fillEllipse (x - thumbRadius, trackY - thumbRadius, thumbRadius * 2.0f, thumbRadius * 2.0f);
 
         g.setColour (bodyTextColour);
         g.setFont (juce::Font (juce::FontOptions (20.0f, juce::Font::bold)));
-        g.drawText (choiceLabels[highlighted], bigLabelArea, juce::Justification::centred);
+        g.drawText (choiceLabels[highlighted], bigLabelArea.toFloat().translated (feedbackWobblePx, 0.0f).toNearestInt(),
+                     juce::Justification::centred);
     }
 }

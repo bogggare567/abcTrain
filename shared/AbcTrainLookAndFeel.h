@@ -42,4 +42,9 @@ public:
     void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height,
                            float sliderPosProportional, float rotaryStartAngle,
                            float rotaryEndAngle, juce::Slider&) override;
+
+    // Shared panel-background painter (a soft radial gradient instead of a
+    // flat fill) so all four editors' paint() look consistent - see
+    // decisions/018 for why this replaced a plain g.fillAll() everywhere.
+    static void paintPanelBackground (juce::Graphics&, juce::Rectangle<float> bounds);
 };

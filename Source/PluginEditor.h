@@ -9,6 +9,7 @@
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AppIcons.h"
 #include "../shared/i18n/LocalisationManager.h"
+#include <cmath>
 
 // Generic multiple-choice UI driven entirely by the active Game's
 // interface (name/instructions/choice count/labels/feedback). Adding a
@@ -28,9 +29,16 @@ private:
     // own juce_animation module (Animator/ValueAnimatorBuilder) instead
     // of snapping straight to the new value - the first step of the
     // phased animation pass described in decisions/013-ui-libraries.md.
-    class LevelProgressBar : public juce::Component
+    // Also "breathes" continuously - a slow, low-amplitude glow pulse at
+    // the leading edge of the fill via a plain Timer, independent of the
+    // eased fill-transition Animator above (see decisions/018).
+    class LevelProgressBar : public juce::Component,
+                              private juce::Timer
     {
     public:
+        LevelProgressBar() { startTimerHz (30); }
+        ~LevelProgressBar() override { stopTimer(); }
+
         void setProgress (float newProgress) noexcept
         {
             const auto target = juce::jlimit (0.0f, 1.0f, newProgress);
@@ -70,13 +78,40 @@ private:
             auto bounds = getLocalBounds().toFloat();
             g.setColour (juce::Colour (0xff3a3a4a));
             g.fillRoundedRectangle (bounds, 4.0f);
+
+            auto fillBounds = bounds.withWidth (bounds.getWidth() * displayedProgress);
             g.setColour (juce::Colour (0xff5b9bd5));
-            g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * displayedProgress), 4.0f);
+            g.fillRoundedRectangle (fillBounds, 4.0f);
+
+            // The "breathing" glow: a soft, slowly-pulsing highlight right
+            // at the leading edge of the fill - only drawn once there's
+            // real progress to show, so an empty bar at level 1 doesn't
+            // pulse for no reason.
+            if (displayedProgress > 0.02f)
+            {
+                const auto glowAlpha = 0.12f + 0.10f * (0.5f + 0.5f * std::sin (breathPhase));
+                const auto glowWidth = juce::jmin (18.0f, fillBounds.getWidth());
+                auto glowBounds = fillBounds.removeFromRight (glowWidth);
+                g.setColour (juce::Colours::white.withAlpha (glowAlpha));
+                g.fillRoundedRectangle (glowBounds, 4.0f);
+            }
         }
 
     private:
+        void timerCallback() override
+        {
+            // A full slow cycle roughly every ~3.4s (2*pi / 0.03 rad per
+            // 33ms tick at 30Hz) - unhurried, "calm" pacing rather than a
+            // nervous flicker.
+            breathPhase += 0.03f;
+            if (breathPhase > juce::MathConstants<float>::twoPi)
+                breathPhase -= juce::MathConstants<float>::twoPi;
+            repaint();
+        }
+
         float targetProgress = 0.0f;
         float displayedProgress = 0.0f;
+        float breathPhase = 0.0f;
 
         // Animator has no default constructor (only explicit
         // Animator(shared_ptr<Impl>)) - this placeholder is never
