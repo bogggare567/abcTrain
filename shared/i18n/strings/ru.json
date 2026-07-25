@@ -53,5 +53,10 @@
   "ui.accuracy": "Точность",
   "ui.bestStreak": "Лучшая серия",
   "ui.rounds": "Раундов",
-  "ui.close": "Закрыть"
+  "ui.close": "Закрыть",
+  "ui.modePractice": "Тренировка",
+  "ui.modeSurvival": "Выживание",
+  "ui.modeBlitz": "Блиц",
+  "ui.runOver": "Забег окончен —",
+  "ui.mode": "Режим"
 }

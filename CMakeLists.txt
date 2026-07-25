@@ -116,6 +116,7 @@ target_sources(EarTrainer
         Source/ChoiceSliderComponent.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
+        Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
         Source/TrainingSoundsComponent.cpp
         Source/GamePickerComponent.cpp
@@ -340,6 +341,7 @@ target_sources(EarTrainerTests
         tests/LocalisationManagerTest.cpp
         tests/VersionChannelTest.cpp
         tests/ProgressManagerTest.cpp
+        tests/SessionManagerTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
         tests/LearnerVerbTest.cpp
@@ -348,6 +350,7 @@ target_sources(EarTrainerTests
         tests/ReferenceAudioLibraryTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
+        Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp

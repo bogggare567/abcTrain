@@ -137,8 +137,34 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     instructionLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (instructionLabel);
 
-    newRoundButton.onClick = [this] { processor.getGameManager().getActiveGame().newRound(); };
+    newRoundButton.onClick = [this] { startNewRun(); };
     addAndMakeVisible (newRoundButton);
+
+    modeSelector.addItem (localisation.getText ("ui.modePractice"), 1);
+    modeSelector.addItem (localisation.getText ("ui.modeSurvival"), 2);
+    modeSelector.addItem (localisation.getText ("ui.modeBlitz"), 3);
+    modeSelector.setSelectedId (1, juce::dontSendNotification);
+    modeSelector.onChange = [this] { modeSelected(); };
+    addAndMakeVisible (modeSelector);
+
+    runStatusLabel.setJustificationType (juce::Justification::centredRight);
+    runStatusLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    addAndMakeVisible (runStatusLabel);
+
+    session.onRunEnded = [this] (int finalScore)
+    {
+        auto& progress = processor.getProgressManager();
+        const auto gameIndex = processor.getGameManager().getActiveGameIndex();
+
+        if (session.getMode() == SessionManager::Mode::survival)
+            progress.recordSurvivalScore (gameIndex, finalScore);
+        else if (session.getMode() == SessionManager::Mode::blitz)
+            progress.recordBlitzScore (gameIndex, finalScore);
+    };
+
+    // 1 Hz is all the Blitz clock needs, and it's the only thing on this
+    // timer - no reason to run the whole editor at animation rate.
+    startTimerHz (1);
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
     scoreLabel.setFont (AbcTrainLookAndFeel::monoFont());
@@ -295,6 +321,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     setSize (680, 596);
 
     applyTheme();
+    session.startRun();
     rebuildChoiceSlider();
     refreshFromGameState();
     refreshFromProgressState();
@@ -427,7 +454,10 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::medium);
 
         auto bottomRow = inner.removeFromTop (34);
-        newRoundButton.setBounds (bottomRow.removeFromLeft (140));
+        newRoundButton.setBounds (bottomRow.removeFromLeft (128));
+        bottomRow.removeFromLeft (Spacing::small);
+        modeSelector.setBounds (bottomRow.removeFromLeft (124));
+        runStatusLabel.setBounds (bottomRow.removeFromRight (128));
         scoreLabel.setBounds (bottomRow.reduced (Spacing::medium, 0));
     }
 
@@ -487,6 +517,92 @@ void EarTrainerEditor::rebuildGameSelectorItems()
     gameSelectorButton.setButtonText (localisation.getText ("ui.chooseTraining"));
 }
 
+void EarTrainerEditor::timerCallback()
+{
+    if (session.getMode() != SessionManager::Mode::blitz || ! session.isRunActive())
+        return;
+
+    if (session.tickOneSecond())
+        refreshFromGameState();   // the clock just ended the run
+
+    refreshRunStatus();
+}
+
+void EarTrainerEditor::modeSelected()
+{
+    // setMode() starts a fresh run itself, so this is one call, not two.
+    switch (modeSelector.getSelectedId())
+    {
+        case 2:  session.setMode (SessionManager::Mode::survival); break;
+        case 3:  session.setMode (SessionManager::Mode::blitz); break;
+        default: session.setMode (SessionManager::Mode::practice); break;
+    }
+
+    startNewRun();
+}
+
+void EarTrainerEditor::startNewRun()
+{
+    // Any auto-advance still in flight belongs to the run being replaced.
+    ++pendingAdvanceId;
+
+    if (! session.isRunActive())
+        session.startRun();
+
+    processor.getGameManager().getActiveGame().newRound();
+    refreshRunStatus();
+}
+
+void EarTrainerEditor::refreshRunStatus()
+{
+    const auto mode = session.getMode();
+
+    if (mode == SessionManager::Mode::practice)
+    {
+        runStatusLabel.setText ({}, juce::dontSendNotification);
+        return;
+    }
+
+    const auto& theme = AbcTrainTheme::current();
+
+    if (! session.isRunActive())
+    {
+        runStatusLabel.setText (localisation.getText ("ui.runOver") + "  "
+                                     + juce::String (session.getRunScore()),
+                                 juce::dontSendNotification);
+        runStatusLabel.setColour (juce::Label::textColourId, theme.negative);
+        return;
+    }
+
+    if (mode == SessionManager::Mode::survival)
+    {
+        // Lives as filled/empty pips rather than a number - readable at a
+        // glance, which is the point of a life counter.
+        // Wrapped in juce::String explicitly: juce::String has no
+        // unambiguous operator+= for a raw CharPointer_UTF8, and the plain
+        // const char* overload would not treat these as UTF-8 (the same
+        // gotcha that mojibake'd the language display names, see ADR 011).
+        const juce::String filledPip (juce::CharPointer_UTF8 ("\xe2\x97\x8f"));   // U+25CF
+        const juce::String emptyPip  (juce::CharPointer_UTF8 ("\xe2\x97\x8b"));   // U+25CB
+
+        juce::String pips;
+        for (int i = 0; i < SessionManager::survivalLives; ++i)
+            pips += (i < session.getLivesRemaining()) ? filledPip : emptyPip;
+
+        runStatusLabel.setText (pips + "   " + juce::String (session.getRunScore()),
+                                 juce::dontSendNotification);
+        runStatusLabel.setColour (juce::Label::textColourId,
+                                   session.getLivesRemaining() <= 1 ? theme.negative : theme.text);
+        return;
+    }
+
+    const auto seconds = session.getSecondsRemaining();
+    runStatusLabel.setText (juce::String (seconds) + "s   " + juce::String (session.getRunScore()),
+                             juce::dontSendNotification);
+    runStatusLabel.setColour (juce::Label::textColourId,
+                               seconds <= 10 ? theme.negative : theme.text);
+}
+
 void EarTrainerEditor::rebuildGamePickerCards()
 {
     auto& gameManager = processor.getGameManager();
@@ -524,6 +640,16 @@ void EarTrainerEditor::refreshLocalisedText()
 {
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setButtonText (localisation.getText ("ui.updates"));
+
+    {
+        const auto selected = modeSelector.getSelectedId();
+        modeSelector.clear (juce::dontSendNotification);
+        modeSelector.addItem (localisation.getText ("ui.modePractice"), 1);
+        modeSelector.addItem (localisation.getText ("ui.modeSurvival"), 2);
+        modeSelector.addItem (localisation.getText ("ui.modeBlitz"), 3);
+        modeSelector.setSelectedId (selected > 0 ? selected : 1, juce::dontSendNotification);
+    }
+
     rebuildGameSelectorItems();
     refreshFromGameState();
     refreshFromProgressState();
@@ -547,7 +673,39 @@ void EarTrainerEditor::rebuildChoiceSlider()
 
 void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
 {
-    processor.getGameManager().getActiveGame().submitAnswer (choiceIndex);
+    if (! session.isRunActive())
+        return;   // survival/blitz run is over - the answer would score nothing
+
+    auto& game = processor.getGameManager().getActiveGame();
+    game.submitAnswer (choiceIndex);
+
+    const auto wasCorrect = game.wasLastAnswerCorrect();
+    session.registerAnswer (wasCorrect);
+    refreshRunStatus();
+
+    // Auto-advance: the player shouldn't have to press a button between
+    // every question. The delay is longer after a wrong answer (more to
+    // read) and zero once a run has ended, so the final result stays on
+    // screen instead of being replaced by another round.
+    const auto delayMs = session.getAutoAdvanceDelayMs (wasCorrect);
+    if (delayMs <= 0)
+        return;
+
+    const auto advanceId = ++pendingAdvanceId;
+    juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+
+    juce::Timer::callAfterDelay (delayMs, [safeThis, advanceId]
+    {
+        // Ignore if the editor closed, or if anything started a newer
+        // round in the meantime (game switch, mode switch, manual New
+        // Round) - otherwise a queued advance would land on a run the
+        // player has already left.
+        if (safeThis == nullptr || safeThis->pendingAdvanceId != advanceId)
+            return;
+
+        if (safeThis->session.isRunActive())
+            safeThis->processor.getGameManager().getActiveGame().newRound();
+    });
 }
 
 void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster* source)

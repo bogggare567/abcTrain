@@ -53,5 +53,10 @@
   "ui.accuracy": "Accuracy",
   "ui.bestStreak": "Best streak",
   "ui.rounds": "Rounds",
-  "ui.close": "Close"
+  "ui.close": "Close",
+  "ui.modePractice": "Practice",
+  "ui.modeSurvival": "Survival",
+  "ui.modeBlitz": "Blitz",
+  "ui.runOver": "Run over —",
+  "ui.mode": "Mode"
 }

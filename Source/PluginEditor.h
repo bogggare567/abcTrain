@@ -6,6 +6,7 @@
 #include "ChoiceSliderComponent.h"
 #include "TrainingSoundsComponent.h"
 #include "GamePickerComponent.h"
+#include "SessionManager.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AppIcons.h"
@@ -16,7 +17,8 @@
 // interface (name/instructions/choice count/labels/feedback). Adding a
 // new game to GameManager needs no changes here.
 class EarTrainerEditor : public juce::AudioProcessorEditor,
-                          private juce::ChangeListener
+                          private juce::ChangeListener,
+                          private juce::Timer
 {
 public:
     explicit EarTrainerEditor (EarTrainerProcessor&);
@@ -148,6 +150,12 @@ private:
     void applyTheme();
     void toggleTheme();
 
+    void timerCallback() override;          // 1 Hz, drives the Blitz clock
+
+    void modeSelected();
+    void startNewRun();
+    void refreshRunStatus();
+
     void refreshFromGameState();
     void refreshFromProgressState();
     void refreshLocalisedText();
@@ -187,6 +195,18 @@ private:
     juce::Label scoreLabel;
     juce::Label feedbackLabel;
     juce::TextButton newRoundButton { "New Round" };
+
+    // Practice / Survival / Blitz. A run in the latter two ends on its
+    // own terms (lives or clock) and posts a score against the exercise;
+    // see SessionManager.
+    SessionManager session;
+    juce::ComboBox modeSelector;
+    juce::Label runStatusLabel;
+
+    // Kept so an auto-advance already in flight can be cancelled if the
+    // player switches game/mode before it fires - otherwise a queued
+    // newRound() would land on the exercise they just left.
+    int pendingAdvanceId = 0;
     // Drag-to-select slider replacing the old row of separate choice
     // buttons - see decisions/015-choice-slider-and-training-sounds.md.
     ChoiceSliderComponent choiceSlider;
