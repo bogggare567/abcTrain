@@ -11,7 +11,7 @@ public:
         beginTest ("registers all games");
         {
             GameManager manager;
-            expectEquals (manager.getGameNames().size(), 8);
+            expectEquals (manager.getGameNames().size(), 9);
             expectEquals (manager.getActiveGameIndex(), 0);
         }
 

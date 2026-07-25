@@ -141,7 +141,7 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     addAndMakeVisible (updateButton);
 
     startTimerHz (30);
-    setSize (760, 720);
+    setSize (760, 748);
 }
 
 LearnerVerbEditor::~LearnerVerbEditor()
@@ -173,7 +173,7 @@ void LearnerVerbEditor::resized()
 
     typeSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (200, 24));
     area.removeFromTop (8);
-    guideLabel.setBounds (area.removeFromTop (20));
+    guideLabel.setBounds (area.removeFromTop (48));
     area.removeFromTop (8);
 
     spectrum.setBounds (area.removeFromTop (140));

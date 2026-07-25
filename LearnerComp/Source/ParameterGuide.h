@@ -25,29 +25,59 @@ namespace CompressorGuide
         { "Limiter",         -6.0f,  20.0f, 0.1f,  50.0f,  0.0f  }
     }};
 
+    // Text here mirrors docs/knowledge_base.md's "Компрессия и
+    // динамическая обработка" section - keep both in sync. Original
+    // explanations from general, widely-taught practice, not derived
+    // from any specific book (see decisions/010-book-library-scope.md).
+    // "Learn more" names one relevant book from docs/library_catalog.md -
+    // title/author only, never a quote from it.
     inline juce::String describe (const juce::String& paramId)
     {
         if (paramId == "threshold")
             return "The level above which the compressor starts working. "
-                   "-12 dB means peaks louder than -12 dB get compressed.";
+                   "-12 dB means only peaks louder than -12 dB get turned "
+                   "down; everything quieter passes through untouched. "
+                   "Lower thresholds mean more of the signal gets compressed.\n"
+                   "Learn more: Roey Izhaki - Mixing Audio.";
         if (paramId == "ratio")
-            return "How much compression is applied. 4:1 means 4 dB over "
-                   "the threshold becomes 1 dB at the output.";
+            return "How much compression is applied above the threshold. "
+                   "4:1 means 4 dB over the threshold becomes 1 dB at the "
+                   "output. 2-4:1 reads as gentle leveling; 8:1 and up starts "
+                   "to feel like limiting.\n"
+                   "Learn more: Bobby Owsinski - The Mixing Engineer's Handbook.";
         if (paramId == "attack")
-            return "How fast compression kicks in. A fast attack can flatten "
-                   "transients; a slow attack lets the initial hit through.";
+            return "How fast compression kicks in after a peak crosses the "
+                   "threshold. A fast attack (0.1-5 ms) catches transients and "
+                   "controls them; a slower attack (20-30 ms) lets the initial "
+                   "hit through before clamping down - the classic way to keep "
+                   "drums punchy while still taming the sustain.\n"
+                   "Learn more: Bobby Owsinski - The Mixing Engineer's Handbook.";
         if (paramId == "release")
-            return "How fast compression lets go. Too short can cause audible "
-                   "pumping; too long can feel sluggish.";
+            return "How fast compression lets go after the signal drops back "
+                   "below threshold. Too short on fast material can cause "
+                   "audible pumping (gain visibly breathing with the rhythm); "
+                   "too long can feel sluggish, not recovering before the next "
+                   "peak arrives.\n"
+                   "Learn more: Roey Izhaki - Mixing Audio.";
         if (paramId == "knee")
             return "How gradually compression ramps in around the threshold. "
-                   "0 dB is a hard knee (sudden); higher values ease in more gently.";
+                   "0 dB is a hard knee - compression switches on suddenly "
+                   "right at the threshold; higher values ease in gradually "
+                   "before and after it, which usually sounds smoother and "
+                   "less noticeable on program material.\n"
+                   "Learn more: Bobby Owsinski - The Mixing Engineer's Handbook.";
         if (paramId == "makeup")
-            return "Restores loudness lost to compression. Raise it to bring "
-                   "the level back up after the peaks are tamed.";
+            return "Restores loudness lost to compression - it doesn't change "
+                   "the dynamics, only the overall level afterward. Raise it "
+                   "to bring a compressed signal back up to match (or exceed) "
+                   "the original's perceived loudness.\n"
+                   "Learn more: Bob Katz - Mastering Audio: The Art and the Science.";
         if (paramId == "dryWet")
-            return "Blends compressed (wet) with uncompressed (dry) signal - "
-                   "parallel compression at less than 100%.";
+            return "Blends compressed (wet) with uncompressed (dry) signal. "
+                   "Parallel compression - wet below 100% - adds density and "
+                   "sustain from the compressed signal while keeping the dry "
+                   "signal's original transients and dynamics intact.\n"
+                   "Learn more: Roey Izhaki - Mixing Audio.";
 
         return {};
     }

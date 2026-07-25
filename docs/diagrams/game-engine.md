@@ -76,6 +76,12 @@ classDiagram
         only game whose choice labels aren't fixed
     }
 
+    class FrequencyRangeGame {
+        7 standard named ranges: Sub-bass..Air
+        boosted/cut frequency moves within the range
+        log-uniform pick, same gain-scaling shape as EQGame
+    }
+
     Game <|.. EQGame
     Game <|.. CompressionGame
     Game <|.. ReverbGame
@@ -84,6 +90,7 @@ classDiagram
     Game <|.. DistortionGame
     Game <|.. StereoWidthGame
     Game <|.. DBGame
+    Game <|.. FrequencyRangeGame
 
     class GameManager {
         -games OwnedArray~Game~
@@ -155,4 +162,9 @@ names) were spec'd as literal, non-tiered choices. `DBGame` is the one
 exception to "labels never change": since its labels *are* the dB
 numbers, there's no way to keep them fixed while making the underlying
 gap smaller, so its labels are recomputed from the current tier's step
-size instead.
+size instead. `FrequencyRangeGame` (the ninth game) follows `EQGame`'s
+own precedent exactly, since it's the closest existing relative -
+7 fixed named-range labels, boost/cut gain scales 9/6/3 dB by tier, and
+the boosted frequency itself is chosen log-uniformly *within* whichever
+range is correct each round (unlike `EQGame`'s 8 fixed band centers) so
+the player learns the range's boundaries rather than 8 memorized points.

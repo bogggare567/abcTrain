@@ -44,6 +44,7 @@ target_sources(EarTrainer
         Source/Games/DistortionGame.cpp
         Source/Games/StereoWidthGame.cpp
         Source/Games/DBGame.cpp
+        Source/Games/FrequencyRangeGame.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
 )
@@ -220,6 +221,7 @@ target_sources(EarTrainerTests
         tests/DistortionGameTest.cpp
         tests/StereoWidthGameTest.cpp
         tests/DBGameTest.cpp
+        tests/FrequencyRangeGameTest.cpp
         tests/GameManagerTest.cpp
         tests/ProgressManagerTest.cpp
         tests/LearnerEQTest.cpp
@@ -237,6 +239,7 @@ target_sources(EarTrainerTests
         Source/Games/DistortionGame.cpp
         Source/Games/StereoWidthGame.cpp
         Source/Games/DBGame.cpp
+        Source/Games/FrequencyRangeGame.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp

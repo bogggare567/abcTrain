@@ -7,6 +7,7 @@
 #include "Games/DistortionGame.h"
 #include "Games/StereoWidthGame.h"
 #include "Games/DBGame.h"
+#include "Games/FrequencyRangeGame.h"
 
 GameManager::GameManager()
 {
@@ -18,6 +19,7 @@ GameManager::GameManager()
     games.add (new DistortionGame());
     games.add (new StereoWidthGame());
     games.add (new DBGame());
+    games.add (new FrequencyRangeGame());
 }
 
 void GameManager::prepare (const juce::dsp::ProcessSpec& spec)

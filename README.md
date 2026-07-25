@@ -4,28 +4,32 @@
 
 Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
 
-- **Ear Trainer** — 8 ear-training games. It feeds you pink noise through a
+- **Ear Trainer** — 9 ear-training games. It feeds you pink noise through a
   hidden effect and you guess what changed: which band was boosted/cut,
   how strong the compression is, which reverb type, where it's panned,
-  the delay time, the distortion type, how wide the stereo image is, or
-  how much the level changed. Tracks points, a level (1-10, which scales
+  the delay time, the distortion type, how wide the stereo image is, how
+  much the level changed, or which named frequency range (sub-bass
+  through air) was affected. Tracks points, a level (1-10, which scales
   the games' difficulty up as you improve), a daily login streak, and a
   daily challenge.
 - **Learner EQ** — a real 4-band EQ for your own tracks, with a live
   spectrum + response-curve display, a scrolling input/output waveform,
-  a one-line plain-language explanation of what a frequency region does
-  while you drag it, a Bypass/A-B toggle, and a step-by-step "Lesson"
-  walkthrough (Vocal EQ Basics).
+  a richer plain-language explanation (with practical values and a
+  "Learn more" book pointer) of what a frequency region does while you
+  drag it, a Bypass/A-B toggle, and a step-by-step "Lesson" walkthrough
+  (Vocal EQ Basics).
 - **Learner Comp** — a real compressor for your own tracks, with a live
   spectrum, a scrolling input/output waveform that highlights in red
   wherever the compressor is actively reducing gain, a live gain-reduction
-  meter, input/output peak meters, a one-line explanation per control, 4
+  meter, input/output peak meters, a richer explanation per control
+  (practical values plus a "Learn more" book pointer), 4
   presets to learn from (Vocal Smoothing, Punchy Drums, Bass Control,
   Limiter), a Bypass/A-B toggle, and a step-by-step "Lesson" walkthrough
   (Vocal Compression).
 - **Learner Verb** — a real reverb for your own tracks (Room/Hall/Plate/
   Spring), with the same live spectrum + scrolling waveform/peak-meter
-  view, a one-line explanation per control, 4 presets (Vocal Ambience,
+  view, a richer explanation per control (practical values plus a
+  "Learn more" book pointer), 4 presets (Vocal Ambience,
   Concert Hall, Small Room, Spring Tank), a Bypass/A-B toggle, and a
   step-by-step "Lesson" walkthrough (Space for Vocals).
 
@@ -40,9 +44,14 @@ Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
 base — see [docs/roadmap.md](docs/roadmap.md) for what's actually planned
 vs. built so far. A first step toward that knowledge base is
-[docs/library_catalog.md](docs/library_catalog.md), a bibliography of
-~150 audio-engineering books that future tooltip/lesson content will
-draw general ideas from — deliberately a title/author catalog only, never
+[docs/knowledge_base.md](docs/knowledge_base.md) — original reference
+material (general, widely-taught practice, not derived from any specific
+book) covering EQ, compression, reverb, psychoacoustics, mastering,
+mixing, room acoustics, digital audio, saturation, stereo, and delay/
+modulation, which the three Learner plugins' tooltips are now written
+from. [docs/library_catalog.md](docs/library_catalog.md) is a companion
+bibliography of ~150 audio-engineering books each tooltip's "Learn more"
+line points into — deliberately a title/author catalog only, never
 extracted or quoted text; see
 [decisions/010](docs/decisions/010-book-library-scope.md) for why.
 
@@ -258,7 +267,8 @@ Exits non-zero if any test fails. Covers the games' scoring/state logic
 (`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
 `tests/ReverbGameTest.cpp`, `tests/PanGameTest.cpp`, `tests/DelayGameTest.cpp`,
 `tests/DistortionGameTest.cpp`, `tests/StereoWidthGameTest.cpp`,
-`tests/DBGameTest.cpp`, `tests/GameManagerTest.cpp`), progress/level/
+`tests/DBGameTest.cpp`, `tests/FrequencyRangeGameTest.cpp`,
+`tests/GameManagerTest.cpp`), progress/level/
 streak/daily-challenge logic (`tests/ProgressManagerTest.cpp`), and DSP/
 behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
 — boosting a band raises measured output level at that frequency;
@@ -277,14 +287,15 @@ above).
 
 ## Status
 
-**Ear Trainer:** 8 exercises implemented — "guess the boosted/cut band"
+**Ear Trainer:** 9 exercises implemented — "guess the boosted/cut band"
 (8 octave bands, 100 Hz–12.8 kHz), "guess the compression strength"
 (weak/medium/strong), "guess the reverb type" (room/hall/plate/spring),
 "guess the pan position" (5 positions, Hard Left–Hard Right), "guess the
 delay time" (50/150/300/500 ms), "guess the distortion" (Soft Clip/Hard
 Clip/Tape Saturation/Overdrive), "guess the stereo width" (Narrow–Extra
-Wide), and "guess the gain change" (±dB, the one game whose choice labels
-themselves change with difficulty) — sharing a common `Game` interface
+Wide), "guess the gain change" (±dB, the one game whose choice labels
+themselves change with difficulty), and "name the frequency range"
+(Sub-bass through Air, the standard 7-range naming) — sharing a common `Game` interface
 driving one generic UI, plus a `ProgressManager` (points, level 1-10 that
 scales each game's difficulty, daily login streak, one daily challenge)
 — see [docs/architecture.md](docs/architecture.md),
@@ -359,11 +370,12 @@ Bypass next to Lesson in the title row) via the newly-extracted
   deferred from this first redesign pass
 - [docs/decisions/010-book-library-scope.md](docs/decisions/010-book-library-scope.md) —
   why the book-library work stops at a bibliography
-  ([docs/library_catalog.md](docs/library_catalog.md)) instead of
-  extracting and quoting text from copyrighted books in the shipped
-  plugins
+  ([docs/library_catalog.md](docs/library_catalog.md)) plus an original
+  reference doc ([docs/knowledge_base.md](docs/knowledge_base.md))
+  instead of extracting and quoting text from copyrighted books in the
+  shipped plugins
 - [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) — the
-  `Game` interface and all 8 exercises' class diagram
+  `Game` interface and all 9 exercises' class diagram
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept

@@ -21,6 +21,7 @@ flowchart TB
         DistGame["DistortionGame"]
         WidthGame["StereoWidthGame"]
         DBGame["DBGame"]
+        FreqRangeGame["FrequencyRangeGame"]
         Pink["PinkNoiseGenerator"]
 
         ETProc --> GM
@@ -37,6 +38,7 @@ flowchart TB
         GameIface --> DistGame
         GameIface --> WidthGame
         GameIface --> DBGame
+        GameIface --> FreqRangeGame
         EQGame --> Pink
         CompGame --> Pink
         RevGame --> Pink
@@ -45,6 +47,7 @@ flowchart TB
         DistGame --> Pink
         WidthGame --> Pink
         DBGame --> Pink
+        FreqRangeGame --> Pink
     end
 
     subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
@@ -127,6 +130,7 @@ flowchart TB
     Runner -. "compiles & runs directly" .-> DistGame
     Runner -. "compiles & runs directly" .-> WidthGame
     Runner -. "compiles & runs directly" .-> DBGame
+    Runner -. "compiles & runs directly" .-> FreqRangeGame
     Runner -. "compiles & runs directly" .-> GM
     Runner -. "compiles & runs directly" .-> LEProc
     Runner -. "compiles & runs directly" .-> LCProc

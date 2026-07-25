@@ -134,7 +134,7 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     addAndMakeVisible (updateButton);
 
     startTimerHz (30);
-    setSize (820, 780);
+    setSize (820, 808);
 }
 
 LearnerCompEditor::~LearnerCompEditor()
@@ -164,7 +164,7 @@ void LearnerCompEditor::resized()
     titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
 
-    guideLabel.setBounds (area.removeFromTop (20));
+    guideLabel.setBounds (area.removeFromTop (48));
     area.removeFromTop (8);
 
     spectrum.setBounds (area.removeFromTop (140));

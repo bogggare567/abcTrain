@@ -124,7 +124,7 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     addAndMakeVisible (updateButton);
 
     startTimerHz (30);
-    setSize (760, 700);
+    setSize (760, 728);
 }
 
 LearnerEQEditor::~LearnerEQEditor()
@@ -154,7 +154,7 @@ void LearnerEQEditor::resized()
     titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
 
-    guideLabel.setBounds (area.removeFromTop (24));
+    guideLabel.setBounds (area.removeFromTop (52));
     area.removeFromTop (8);
 
     spectrum.setBounds (area.removeFromTop (220));

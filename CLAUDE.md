@@ -2,9 +2,9 @@
 
 Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 
-- **EarTrainer** — multiple-choice ear-training games (8 today: EQ,
+- **EarTrainer** — multiple-choice ear-training games (9 today: EQ,
   compression, reverb type, pan position, delay time, distortion type,
-  stereo width, gain/dB).
+  stereo width, gain/dB, named frequency range).
 - **LearnerEQ** — a real 4-band EQ that processes the host's own audio,
   with a live spectrum + response-curve display, a scrolling waveform,
   short contextual tooltips while dragging a band's frequency knob, a
@@ -46,7 +46,11 @@ that depend on them.
 `docs/roadmap.md` (status of everything, done vs. planned),
 `docs/library_catalog.md` (bibliography of the user's local audio-
 engineering book collection, title/author/topic only — no book text was
-ever extracted, see ADR 010), `docs/diagrams/` (mermaid: system overview,
+ever extracted, see ADR 010), `docs/knowledge_base.md` (original
+reference material — general, widely-taught audio-engineering knowledge,
+not derived from any specific book — that the in-plugin tooltip text in
+`ParameterGuide.h`/`ReverbGuide.h`/`FrequencyGuide.h` is written from;
+keep all four in sync), `docs/diagrams/` (mermaid: system overview,
 game-engine class diagram, learner-plugin component diagrams for
 LearnerEQ/LearnerComp/LearnerVerb, proposed CI pipeline),
 `docs/decisions/` (ADRs: 001 is the `Game`
@@ -158,6 +162,16 @@ full rationale.
   are literally the dB numbers ("-6dB".."+6dB"), so a smaller step at
   higher tiers ("+3dB" → "+2dB" at the 2 dB step) means the labels
   themselves get recomputed each tier, not just the DSP behind them.
+- `Source/Games/FrequencyRangeGame.{h,cpp}` — "name the range": a peak
+  filter boosts or cuts a frequency chosen log-uniformly *within* one of
+  7 standard named ranges (Sub-bass/Bass/Low-mids/Mids/High-mids/
+  Presence/Air — the same names `LearnerEQ`'s `FrequencyGuide` and
+  `docs/knowledge_base.md` use), applied to pink noise. Closest relative
+  is `EQGame` — `setDifficulty` follows the exact same shape (9/6/3 dB by
+  tier, 7 choices never change) — but the boosted frequency itself moves
+  around inside the chosen range each round rather than landing on one
+  of 8 fixed band centers, so the player has to learn the range's actual
+  boundaries instead of memorizing fixed points.
 - `Source/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
   economy algorithm) used by every game above; each instance owns its own
   `juce::Random`, which is what lets `StereoWidthGame` use two decorrelated
@@ -214,8 +228,12 @@ restore with the session (`getStateInformation`/`setStateInformation`).
 - `LearnerEQ/Source/FrequencyGuide.h` — the log-frequency ⟷ normalised-x
   mapping used by the response curve and the highlighted-band region so
   they line up with each other and with the spectrum drawn underneath,
-  plus the short plain-language descriptions shown per frequency range
-  while dragging.
+  plus the per-frequency-range guide text shown while dragging a band's
+  frequency knob (2-4 original sentences with practical values, plus a
+  "Learn more" book pointer — mirrors
+  [docs/knowledge_base.md](docs/knowledge_base.md)'s "Эквализация"
+  section, see decisions/010). The editor's `guideLabel` was made taller
+  (24px → 52px, window height +28px) to fit this without truncating.
 - `LearnerEQ/Source/PluginProcessor.{h,cpp}` — 4 `ProcessorDuplicator`
   filters run in series on the real audio block (skipped entirely when
   the `bypass` APVTS param is on); recomputes coefficients from current
@@ -276,9 +294,13 @@ for why it doesn't use `juce::dsp::Compressor`.
   and waveform highlight — the whole reason this isn't `juce::dsp::Compressor`,
   which exposes neither knee nor its internal gain reduction.
 - `LearnerComp/Source/ParameterGuide.h` (`CompressorGuide` namespace) —
-  tooltip text per parameter ID, plus the 4 preset definitions (Vocal
-  Smoothing/Punchy Drums/Bass Control/Limiter: threshold, ratio, attack,
-  release, knee).
+  tooltip text per parameter ID (2-4 original sentences with practical
+  values, plus a "Learn more" book pointer — mirrors
+  [docs/knowledge_base.md](docs/knowledge_base.md)'s "Компрессия и
+  динамическая обработка" section, see decisions/010), plus the 4 preset
+  definitions (Vocal Smoothing/Punchy Drums/Bass Control/Limiter:
+  threshold, ratio, attack, release, knee). The editor's `guideLabel` was
+  made taller (20px → 48px, window height +28px) to fit the longer text.
 - `LearnerComp/Source/PluginProcessor.{h,cpp}` — 8 APVTS params
   (threshold/ratio/attack/release/knee/makeup/dryWet/bypass).
   `processBlock` computes one stereo-linked detection value per sample and
@@ -344,9 +366,14 @@ knob isn't a precise physical measurement.
   algorithm is selected. Always renders 100% wet; `PluginProcessor` blends
   dry/wet itself, same division of responsibility as `CompressorEngine`.
 - `LearnerVerb/Source/ReverbGuide.h` (`ReverbGuide` namespace) — tooltip
-  text per parameter ID, plus the 4 preset definitions (Vocal Ambience/
-  Concert Hall/Small Room/Spring Tank: type, decay, pre-delay, size,
-  damping, dry/wet, width).
+  text per parameter ID (2-4 original sentences with practical values,
+  plus a "Learn more" book pointer — mirrors
+  [docs/knowledge_base.md](docs/knowledge_base.md)'s "Реверберация и
+  пространство" section, see decisions/010), plus the 4 preset
+  definitions (Vocal Ambience/Concert Hall/Small Room/Spring Tank: type,
+  decay, pre-delay, size, damping, dry/wet, width). The editor's
+  `guideLabel` was made taller (20px → 48px, window height +28px) to fit
+  the longer text.
 - `LearnerVerb/Source/PluginProcessor.{h,cpp}` — 8 APVTS params (type as
   an `AudioParameterChoice`, decay/preDelay/size/damping/dryWet/width as
   floats, plus `bypass`). `processBlock` makes a wet-only copy of the
@@ -571,22 +598,27 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `tests/ReverbGameTest.cpp`, `tests/PanGameTest.cpp`,
   `tests/DelayGameTest.cpp`, `tests/DistortionGameTest.cpp`,
   `tests/StereoWidthGameTest.cpp`, `tests/DBGameTest.cpp`,
-  `tests/GameManagerTest.cpp` — logic-level: scoring, answer/round state
-  transitions, choice-count/label contracts, and (for all eight games)
-  that `setDifficulty` at each tier still plays a valid round.
-  Deliberately don't assert on actual audio content (the games generate
-  random noise), since that would be either flaky or trivial —
-  `ReverbGameTest`/`DistortionGameTest` are the exceptions, re-rolling
-  `newRound()` to force every type and checking the output buffer isn't
-  silent (a decent smoke test given each game's type-specific DSP paths).
+  `tests/FrequencyRangeGameTest.cpp`, `tests/GameManagerTest.cpp` —
+  logic-level: scoring, answer/round state transitions, choice-count/
+  label contracts, and (for all nine games) that `setDifficulty` at each
+  tier still plays a valid round. Deliberately don't assert on actual
+  audio content (the games generate random noise), since that would be
+  either flaky or trivial — `ReverbGameTest`/`DistortionGameTest` are the
+  exceptions, re-rolling `newRound()` to force every type and checking
+  the output buffer isn't silent (a decent smoke test given each game's
+  type-specific DSP paths); `FrequencyRangeGameTest` does the same
+  non-silent check once, since unlike Reverb/Distortion it has no
+  discrete "type" to force through every value of.
   `StereoWidthGameTest` additionally checks left and right samples
   actually differ, verifying the two independent `PinkNoiseGenerator`s
   really decorrelate. `DBGameTest` checks the choice labels themselves at
   three difficulty levels, since `DBGame` is the one game whose labels
-  are recomputed per tier. Note `ReverbGame` now defaults to the easy
-  tier (2 choices) *before* `setDifficulty` is ever called, matching the
-  other games' easy-tier defaults — tests that want all 4 types must call
-  `setDifficulty(10)` first. `GameManagerTest` asserts 8 registered games.
+  are recomputed per tier. `FrequencyRangeGameTest` checks the 7 choice
+  labels match the standard range names exactly. Note `ReverbGame` now
+  defaults to the easy tier (2 choices) *before* `setDifficulty` is ever
+  called, matching the other games' easy-tier defaults — tests that want
+  all 4 types must call `setDifficulty(10)` first. `GameManagerTest`
+  asserts 9 registered games.
 - `tests/ProgressManagerTest.cpp` — level/points math, streak, daily
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
@@ -714,11 +746,15 @@ too, only Windows needed the fix (see
 - One more teaching plugin: LearnerSat — same pattern as the other three
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).
-- Richer in-plugin tooltips/lessons written originally (general
-  audio-engineering knowledge, not derived from any specific book) with
-  an optional "further reading" pointer into `docs/library_catalog.md` —
-  the catalog itself is done, the tooltip/lesson rewrite across all three
-  Learner plugins and EarTrainer's 8 games is not, see ADR 010.
+- The three Learner plugins' parameter tooltips are now richly rewritten
+  (`ParameterGuide.h`/`ReverbGuide.h`/`FrequencyGuide.h`, see ADR 010 and
+  `docs/knowledge_base.md`); still not done: any of the four `MicroLesson`
+  lessons' step text, and EarTrainer's other 8 games' one-line
+  `getInstructions()` strings.
+- More EarTrainer exercises building on standard, non-book-specific
+  terminology - dB SPL vs dB FS, compressor topology (VCA/FET/Opto/
+  Vari-Mu) - were considered for this pass; only `FrequencyRangeGame`
+  (named frequency ranges) shipped, the other two are still just ideas.
 - LearnerVerb's trimmed-for-now visualizations: impulse-response "cloud,"
   decay-vs-frequency graph, stereo correlometer/vectorscope (see ADR 004) —
   unaffected by the spectrum/waveform unification in ADR 006, which only
