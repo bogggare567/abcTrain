@@ -2,6 +2,9 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_animation/juce_animation.h>
+#include "Games/Game.h"
+#include <functional>
+#include <vector>
 
 // Drag-to-select answer widget: a single horizontal track with one evenly-
 // spaced tick per choice, a big label showing whichever choice is currently
@@ -31,6 +34,23 @@ public:
     // for every game without any per-game code.
     void setAxisCaption (const juce::String& caption);
 
+    // ---- continuous mode ----
+    // Switches the widget from "N zones you click" to a ruler the pointer
+    // slides along: the readout tracks the cursor, and a tolerance band
+    // travels with it showing how much slack the current difficulty gives.
+    // `formatter` turns a normalised 0..1 position into real-unit text.
+    void setContinuousScale (std::vector<Game::GridMark> marks,
+                             float toleranceNormalised,
+                             std::function<juce::String (float)> formatter);
+    void setDiscreteScale();
+
+    // Reveals the round's answer on a continuous scale: the target gets an
+    // accent marker and its tolerance band, the guess keeps its own line.
+    void showContinuousAnswer (float chosenNormalised, float targetNormalised, bool wasCorrect);
+
+    // Fires on release with the normalised position, in continuous mode.
+    std::function<void (float)> onContinuousChoice;
+
     // Shown in place of the big value readout before anything is picked.
     void setPlaceholderText (const juce::String& text);
 
@@ -54,6 +74,7 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
     void mouseEnter (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
+    void mouseMove (const juce::MouseEvent&) override;
 
 private:
     void timerCallback() override;
@@ -82,6 +103,20 @@ private:
     juce::StringArray choiceLabels;
     juce::String axisCaption;
     juce::String placeholderText { "Drag to choose" };
+
+    // Continuous-mode state. cursorNormalised is where the pointer last
+    // was; it is the *answer in progress*, so it survives until the round
+    // is reset rather than snapping back when the pointer leaves.
+    bool continuousMode = false;
+    bool cursorEngaged = false;
+    float cursorNormalised = 0.5f;
+    float toleranceNormalised = 0.0f;
+    float targetNormalised = -1.0f;
+    std::vector<Game::GridMark> gridMarks;
+    std::function<juce::String (float)> valueFormatter;
+
+    void paintContinuousScale (juce::Graphics&);
+    void paintContinuousOverlay (juce::Graphics&);
 
     // Live drag position before release, or (once answered) the index the
     // player actually picked - whichever is relevant is what paint() shows

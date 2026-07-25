@@ -299,6 +299,16 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addAndMakeVisible (soundkorbLink);
 
     choiceSlider.onChoiceSelected = [this] (int choiceIndex) { choiceButtonClicked (choiceIndex); };
+
+    choiceSlider.onContinuousChoice = [this] (float normalised)
+    {
+        if (! session.isRunActive())
+            return;
+
+        auto& game = processor.getGameManager().getActiveGame();
+        game.submitNormalisedAnswer (normalised);
+        afterAnswer (game.wasLastAnswerCorrect());
+    };
     addAndMakeVisible (choiceSlider);
 
     // Added last so it paints on top of every other child, same as
@@ -674,11 +684,28 @@ void EarTrainerEditor::rebuildChoiceSlider()
     // ordering hazard here to begin with.
     choiceSlider.setChoices (labels);
 
+    if (game.usesContinuousScale())
+    {
+        // The ruler and its tolerance both come from the game, so the
+        // widget needs no idea what a frequency or a decibel is.
+        choiceSlider.setContinuousScale (game.getGridMarks(),
+                                          game.getToleranceNormalised(),
+                                          [&game] (float t) { return game.formatNormalisedValue (t); });
+    }
+    else
+    {
+        choiceSlider.setDiscreteScale();
+    }
+
     // "< first - last >" tells the player which way the scale runs, which
     // matters most on the games whose labels aren't self-evidently ordered
     // (pan, width). Derived from the labels themselves, so it needs no
     // per-game table and can't go stale when a game's choices change.
-    if (labels.size() >= 2)
+    // A continuous scale labels its own axis densely, so the "< first -
+    // last >" caption underneath would just repeat the two end marks.
+    if (game.usesContinuousScale())
+        choiceSlider.setAxisCaption ({});
+    else if (labels.size() >= 2)
         choiceSlider.setAxisCaption (juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xb9 "))
                                           + labels[0] + juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  "))
                                           + labels[labels.size() - 1]
@@ -696,8 +723,11 @@ void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
 
     auto& game = processor.getGameManager().getActiveGame();
     game.submitAnswer (choiceIndex);
+    afterAnswer (game.wasLastAnswerCorrect());
+}
 
-    const auto wasCorrect = game.wasLastAnswerCorrect();
+void EarTrainerEditor::afterAnswer (bool wasCorrect)
+{
     session.registerAnswer (wasCorrect);
     refreshRunStatus();
 
@@ -776,7 +806,12 @@ void EarTrainerEditor::refreshFromGameState()
 
     if (game.hasAnswered())
     {
-        choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
+        if (game.usesContinuousScale())
+            choiceSlider.showContinuousAnswer (game.getChosenNormalised(),
+                                                game.getCorrectNormalised(),
+                                                game.wasLastAnswerCorrect());
+        else
+            choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
         feedbackLabel.setText (game.getFeedbackText(), juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().negative);

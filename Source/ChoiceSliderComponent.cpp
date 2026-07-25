@@ -85,6 +85,8 @@ void ChoiceSliderComponent::resetForNewRound()
     correctIndex = -1;
     chosenIndex = -1;
     lastCorrect = false;
+    cursorEngaged = false;
+    targetNormalised = -1.0f;
     feedbackGlow = 0.0f;
     feedbackWobblePx = 0.0f;
     repaint();
@@ -191,12 +193,35 @@ void ChoiceSliderComponent::updatePreviewFromMouse (const juce::MouseEvent& e)
     if (answered || choiceLabels.isEmpty())
         return;
 
-    previewIndex = indexForX (e.position.x, getScaleArea().toFloat());
+    const auto scaleArea = getScaleArea().toFloat();
+
+    if (continuousMode)
+    {
+        // No snapping: the answer is wherever the pointer is, to the pixel.
+        cursorNormalised = juce::jlimit (0.0f, 1.0f,
+                                          (e.position.x - scaleArea.getX())
+                                              / juce::jmax (1.0f, scaleArea.getWidth()));
+        cursorEngaged = true;
+        repaint();
+        return;
+    }
+
+    previewIndex = indexForX (e.position.x, scaleArea);
     repaint();
 }
 
 void ChoiceSliderComponent::mouseDown (const juce::MouseEvent& e) { updatePreviewFromMouse (e); }
 void ChoiceSliderComponent::mouseDrag (const juce::MouseEvent& e) { updatePreviewFromMouse (e); }
+
+void ChoiceSliderComponent::mouseMove (const juce::MouseEvent& e)
+{
+    // Continuous mode tracks the bare pointer, not just drags - the value
+    // readout is meant to follow the mouse the moment it's over the ruler,
+    // which is what makes the scale feel like an instrument you sweep
+    // rather than a control you have to grab first.
+    if (continuousMode)
+        updatePreviewFromMouse (e);
+}
 
 void ChoiceSliderComponent::mouseUp (const juce::MouseEvent&)
 {
@@ -205,7 +230,17 @@ void ChoiceSliderComponent::mouseUp (const juce::MouseEvent&)
     // and glowing with the cursor nowhere near it.
     touchTarget = isMouseOver (true) ? 1.0f : 0.0f;
 
-    if (answered || previewIndex < 0)
+    if (answered)
+        return;
+
+    if (continuousMode)
+    {
+        if (cursorEngaged && onContinuousChoice != nullptr)
+            onContinuousChoice (cursorNormalised);
+        return;
+    }
+
+    if (previewIndex < 0)
         return;
 
     if (onChoiceSelected)
@@ -214,11 +249,34 @@ void ChoiceSliderComponent::mouseUp (const juce::MouseEvent&)
 
 void ChoiceSliderComponent::paint (juce::Graphics& g)
 {
-    if (choiceLabels.isEmpty())
+    if (choiceLabels.isEmpty() && gridMarks.empty())
         return;
 
-    paintScale (g);
-    paintOverPanel (g);
+    const auto entered = AbcTrainTheme::Ease::out (enterAmount);
+
+    juce::Graphics::ScopedSaveState saved (g);
+    g.setOpacity (entered);
+    g.addTransform (juce::AffineTransform::translation (0.0f, (1.0f - entered) * 10.0f));
+
+    if (continuousMode)
+    {
+        paintContinuousScale (g);
+        paintContinuousOverlay (g);
+    }
+    else
+    {
+        paintScale (g);
+        paintOverPanel (g);
+    }
+
+    if (axisCaption.isNotEmpty())
+    {
+        AbcTrainLookAndFeel::drawTrackedText (g, axisCaption,
+                                               getLocalBounds().removeFromBottom (captionHeight).toFloat(),
+                                               AbcTrainLookAndFeel::captionFont(),
+                                               AbcTrainTheme::current().textDim.withAlpha (0.8f), 1.4f,
+                                               juce::Justification::centred);
+    }
 }
 
 void ChoiceSliderComponent::paintScale (juce::Graphics& g)
@@ -333,19 +391,11 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
 void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
-    const auto entered = AbcTrainTheme::Ease::out (enterAmount);
-    const auto enterOffsetY = (1.0f - entered) * 10.0f;
-
-    juce::Graphics::ScopedSaveState saved (g);
-    g.setOpacity (entered);
-    g.addTransform (juce::AffineTransform::translation (0.0f, enterOffsetY));
-
     const auto n = choiceLabels.size();
     const auto highlighted = answered ? chosenIndex : previewIndex;
 
     auto bounds = getLocalBounds();
     const auto bigLabelArea = bounds.removeFromTop (bigLabelHeight).toFloat();
-    const auto captionArea = getLocalBounds().removeFromBottom (captionHeight).toFloat();
 
     // ---- big current-choice readout ----
     if (highlighted >= 0 && highlighted < n)
@@ -369,12 +419,207 @@ void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
         g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
     }
 
-    // ---- axis caption ----
-    if (axisCaption.isNotEmpty())
+}
+
+// ============================ continuous mode ============================
+
+void ChoiceSliderComponent::setContinuousScale (std::vector<Game::GridMark> marks,
+                                                 float newTolerance,
+                                                 std::function<juce::String (float)> formatter)
+{
+    continuousMode = true;
+    gridMarks = std::move (marks);
+    toleranceNormalised = newTolerance;
+    valueFormatter = std::move (formatter);
+    repaint();
+}
+
+void ChoiceSliderComponent::setDiscreteScale()
+{
+    continuousMode = false;
+    gridMarks.clear();
+    valueFormatter = nullptr;
+    repaint();
+}
+
+void ChoiceSliderComponent::showContinuousAnswer (float chosen, float target, bool wasCorrect)
+{
+    answered = true;
+    lastCorrect = wasCorrect;
+    cursorNormalised = juce::jlimit (0.0f, 1.0f, chosen);
+    cursorEngaged = true;
+    targetNormalised = juce::jlimit (0.0f, 1.0f, target);
+    startFeedbackAnimation (wasCorrect);
+    repaint();
+}
+
+void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto touch = AbcTrainTheme::Ease::out (touchAmount);
+    const auto scaleArea = getScaleArea().toFloat();
+
+    AbcTrainLookAndFeel::paintDisplayWell (g, scaleArea);
+
+    juce::Graphics::ScopedSaveState clipped (g);
+    juce::Path panelClip;
+    panelClip.addRoundedRectangle (scaleArea, AbcTrainTheme::Radius::well);
+    g.reduceClipRegion (panelClip);
+
+    const auto xFor = [&] (float normalised)
     {
-        AbcTrainLookAndFeel::drawTrackedText (g, axisCaption, captionArea,
-                                               AbcTrainLookAndFeel::captionFont(),
-                                               theme.textDim.withAlpha (0.8f), 1.4f,
-                                               juce::Justification::centred);
+        return scaleArea.getX() + scaleArea.getWidth() * juce::jlimit (0.0f, 1.0f, normalised);
+    };
+
+    // ---- tolerance band ----
+    // Before answering it travels with the cursor, so the player can see
+    // exactly how much slack this difficulty allows *while aiming*. After
+    // answering it sits on the target, so "was I inside?" is answerable at
+    // a glance rather than by comparing two numbers.
+    if (toleranceNormalised > 0.0f)
+    {
+        const auto bandCentre = answered ? targetNormalised : cursorNormalised;
+        const auto showBand = answered || cursorEngaged;
+
+        if (showBand && bandCentre >= 0.0f)
+        {
+            const auto left = xFor (bandCentre - toleranceNormalised);
+            const auto right = xFor (bandCentre + toleranceNormalised);
+            const auto band = juce::Rectangle<float> (left, scaleArea.getY(),
+                                                       right - left, scaleArea.getHeight());
+
+            // Strong enough to actually see: at 0.055 alpha (the first
+            // attempt) the band was invisible against the well, which
+            // defeats its whole purpose of showing the player their slack.
+            auto bandColour = theme.accent.withAlpha (0.14f);
+            if (answered)
+                bandColour = (lastCorrect ? theme.positive : theme.negative).withAlpha (0.20f);
+
+            g.setColour (bandColour);
+            g.fillRect (band);
+
+            g.setColour ((answered ? (lastCorrect ? theme.positive : theme.negative)
+                                   : theme.accent).withAlpha (answered ? 0.45f : 0.3f));
+            g.drawLine (band.getX(), band.getY(), band.getX(), band.getBottom(), 1.0f);
+            g.drawLine (band.getRight(), band.getY(), band.getRight(), band.getBottom(), 1.0f);
+        }
+    }
+
+    // ---- ruler ----
+    const auto labelRowHeight = 15.0f;
+    const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 3.0f;
+    const auto upperRowY = lowerRowY - labelRowHeight + 1.0f;
+
+    for (const auto& mark : gridMarks)
+    {
+        const auto x = xFor (mark.normalised);
+
+        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.42f : 0.22f));
+        g.drawLine (x, scaleArea.getY() + 6.0f, x, upperRowY - 4.0f, 1.0f);
+
+        // Emphasised marks (the octave centres) take the lower row, the
+        // half-octave boundaries the upper one - so neither series ever
+        // collides with the other however dense the ruler gets.
+        // Clamp each label box inside the panel. Without this the first
+        // and last marks - which sit right on the panel's edges - lose
+        // half their text to the clip region, which showed up in the
+        // running app as a bare "Hz" on the left and a truncated "18.1"
+        // on the right.
+        constexpr auto labelWidth = 56.0f;
+        const auto labelX = juce::jlimit (scaleArea.getX() + 1.0f,
+                                           scaleArea.getRight() - labelWidth - 1.0f,
+                                           x - labelWidth * 0.5f);
+
+        const auto rowY = mark.emphasised ? lowerRowY : upperRowY;
+        g.setFont (juce::Font (juce::FontOptions (mark.emphasised ? 10.5f : 9.5f)));
+        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.85f : 0.5f));
+        g.drawText (mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
+                     juce::Justification::centred, false);
+    }
+
+    // ---- the target marker, once the round is over ----
+    if (answered && targetNormalised >= 0.0f)
+    {
+        const auto x = xFor (targetNormalised);
+        g.setColour (theme.accentWarm);
+        g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 2.0f);
+    }
+
+    // ---- the player's own line ----
+    if (cursorEngaged)
+    {
+        const auto x = xFor (cursorNormalised) + feedbackWobblePx;
+
+        auto lineColour = theme.accent;
+        if (answered)
+            lineColour = lastCorrect ? theme.positive : theme.negative;
+
+        // A soft bloom under the line so it reads as lit, and so it stays
+        // findable where it crosses a gridline.
+        g.setColour (lineColour.withAlpha (0.22f + 0.10f * touch));
+        g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 5.0f);
+        g.setColour (lineColour);
+        g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 1.8f);
+    }
+}
+
+void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto scaleArea = getScaleArea().toFloat();
+    const auto bigLabelArea = getLocalBounds().removeFromTop (bigLabelHeight).toFloat();
+
+    const auto xFor = [&] (float normalised)
+    {
+        return scaleArea.getX() + scaleArea.getWidth() * juce::jlimit (0.0f, 1.0f, normalised);
+    };
+
+    if (! cursorEngaged || valueFormatter == nullptr)
+    {
+        g.setColour (theme.textDim.withAlpha (0.55f));
+        g.setFont (juce::Font (juce::FontOptions (13.0f)));
+        g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
+        return;
+    }
+
+    // The readout rides above the cursor rather than sitting centred, so
+    // the number and the line it refers to are never far apart - the whole
+    // point of a value that tracks the pointer. Clamped to the panel so it
+    // can't run off either end.
+    const auto text = valueFormatter (cursorNormalised);
+    const auto font = juce::Font (juce::FontOptions (24.0f, juce::Font::bold));
+    const auto textWidth = AbcTrainLookAndFeel::trackedTextWidth (text, font, 1.2f) + 16.0f;
+
+    const auto centreX = juce::jlimit (scaleArea.getX() + textWidth * 0.5f,
+                                        scaleArea.getRight() - textWidth * 0.5f,
+                                        xFor (cursorNormalised) + feedbackWobblePx);
+
+    auto valueColour = theme.textBright;
+    if (answered)
+        valueColour = lastCorrect ? theme.positive : theme.negative;
+
+    AbcTrainLookAndFeel::drawTrackedText (
+        g, text,
+        juce::Rectangle<float> (centreX - textWidth * 0.5f, bigLabelArea.getY(),
+                                 textWidth, bigLabelArea.getHeight()),
+        font, valueColour, 1.2f, juce::Justification::centred);
+
+    // The true answer, in the warm accent, offset from the guess so the
+    // two readouts never overlap.
+    if (answered && targetNormalised >= 0.0f && ! lastCorrect)
+    {
+        const auto targetText = valueFormatter (targetNormalised);
+        const auto targetFont = juce::Font (juce::FontOptions (15.0f, juce::Font::bold));
+        const auto targetWidth = AbcTrainLookAndFeel::trackedTextWidth (targetText, targetFont, 1.0f) + 12.0f;
+        const auto targetX = juce::jlimit (scaleArea.getX() + targetWidth * 0.5f,
+                                            scaleArea.getRight() - targetWidth * 0.5f,
+                                            xFor (targetNormalised));
+
+        AbcTrainLookAndFeel::drawTrackedText (
+            g, targetText,
+            juce::Rectangle<float> (targetX - targetWidth * 0.5f,
+                                     bigLabelArea.getY() + bigLabelArea.getHeight() * 0.55f,
+                                     targetWidth, bigLabelArea.getHeight() * 0.45f),
+            targetFont, theme.accentWarm, 1.0f, juce::Justification::centred);
     }
 }

@@ -4,7 +4,7 @@
   "app.learnercomp.name": "Learner Comp",
   "app.learnerverb.name": "Learner Verb",
   "game.eq.name": "Guess the Band",
-  "game.eq.instructions": "Listen, then click the band you think was boosted or cut. A boost in the middle of the spectrum is often the easiest kind of change to hear - sometimes from just 2-3 dB.",
+  "game.eq.instructions": "Listen, then drag along the scale to where you think the boost or cut is. You don't have to be exact - land inside the tolerance band and it counts.",
   "game.compression.name": "Guess the Compression",
   "game.compression.instructions": "Listen to the drum hits, then guess how strong the compression is. Judge it by how much the loud hits get pulled down relative to the quiet ones, not just by overall loudness.",
   "game.reverb.name": "Guess the Reverb",

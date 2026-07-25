@@ -2,6 +2,7 @@
 
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
+#include <vector>
 
 class ReferenceAudioLibrary;
 
@@ -44,8 +45,75 @@ public:
     // Records the player's guess and broadcasts a change with the result.
     virtual void submitAnswer (int choiceIndex) = 0;
 
+    // For a continuous game (see below) these describe the *labelled grid
+    // marks* along the scale rather than the only answers allowed; for a
+    // discrete game they are the answers themselves.
     virtual int getNumChoices() const = 0;
     virtual juce::String getChoiceLabel (int choiceIndex) const = 0;
+
+    // ---- continuous answers -------------------------------------------
+    //
+    // Some skills don't have N right answers, they have a right *value*:
+    // the boosted frequency is 425 Hz, not "one of eight octave bands",
+    // and a pan position is somewhere on a continuum. For those, the
+    // player drags along a scale and is scored on how close they got,
+    // with a tolerance band that narrows as difficulty rises - which is
+    // also a far better difficulty knob than shrinking the boost until
+    // it's inaudible.
+    //
+    // Everything here is in normalised 0..1 axis space. The game owns the
+    // mapping to real units (log frequency, linear dB, ...) so the UI
+    // stays a dumb ruler and can serve every game unchanged.
+    //
+    // Non-pure-virtual with inert defaults, the same shape as
+    // setReferenceAudioLibrary above: the games that haven't been
+    // converted keep working untouched, and so does the discrete
+    // submitAnswer(int) path on the games that have.
+    virtual bool usesContinuousScale() const { return false; }
+
+    // Half-width of the accept band, in normalised units. A guess within
+    // +/- this of the target counts as correct.
+    virtual float getToleranceNormalised() const { return 0.0f; }
+
+    // The round's actual answer, and what the player submitted. Both are
+    // only meaningful once hasAnswered() - before that getChosenNormalised()
+    // returns a negative sentinel.
+    virtual float getCorrectNormalised() const { return 0.0f; }
+    virtual float getChosenNormalised() const { return -1.0f; }
+
+    // Real-unit text for an arbitrary point on the scale ("425 Hz"),
+    // used for the readout that tracks the pointer.
+    virtual juce::String formatNormalisedValue (float normalised) const
+    {
+        return juce::String (normalised, 2);
+    }
+
+    virtual void submitNormalisedAnswer (float normalised) { juce::ignoreUnused (normalised); }
+
+    // A labelled tick on the scale. `emphasised` marks the primary series
+    // (e.g. the octave centres) so the UI can draw the secondary series
+    // (the boundaries between them) more quietly and on its own label row.
+    struct GridMark
+    {
+        float normalised = 0.0f;
+        juce::String label;
+        bool emphasised = true;
+    };
+
+    // Defaults to one mark per discrete choice, evenly spaced - which is
+    // exactly right for a game whose choices *are* the scale. A continuous
+    // game with a denser or unevenly-spaced ruler overrides this.
+    virtual std::vector<GridMark> getGridMarks() const
+    {
+        std::vector<GridMark> marks;
+        const auto count = getNumChoices();
+
+        for (int i = 0; i < count; ++i)
+            marks.push_back ({ count <= 1 ? 0.5f : (float) i / (float) (count - 1),
+                               getChoiceLabel (i), true });
+
+        return marks;
+    }
 
     virtual bool hasAnswered() const = 0;
     virtual int getCorrectChoiceIndex() const = 0;

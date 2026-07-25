@@ -163,6 +163,10 @@ private:
     void rebuildGamePickerCards();
     void rebuildChoiceSlider();
     void choiceButtonClicked (int choiceIndex);
+
+    // Shared tail of both answer paths (discrete index and continuous
+    // value): scoring, run state, and scheduling the auto-advance.
+    void afterAnswer (bool wasCorrect);
     void languageSelected();
     void levelSelected();
 
