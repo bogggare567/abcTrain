@@ -15,7 +15,9 @@ public:
     juce::String getName() const override { return "Guess the Band"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then click the band you think was boosted or cut.";
+        return "Listen, then click the band you think was boosted or cut. A "
+               "boost in the middle of the spectrum is often the easiest "
+               "kind of change to hear - sometimes from just 2-3 dB.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

@@ -17,7 +17,10 @@ public:
     juce::String getName() const override { return "Guess the Compression"; }
     juce::String getInstructions() const override
     {
-        return "Listen to the drum hits, then guess how strong the compression is.";
+        return "Listen to the drum hits, then guess how strong the "
+               "compression is. Judge it by how much the loud hits get "
+               "pulled down relative to the quiet ones, not just by overall "
+               "loudness.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

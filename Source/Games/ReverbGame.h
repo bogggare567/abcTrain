@@ -20,7 +20,10 @@ public:
     juce::String getName() const override { return "Guess the Reverb"; }
     juce::String getInstructions() const override
     {
-        return "Listen to the repeating hit, then guess the reverb type.";
+        return "Listen to the repeating hit, then guess the reverb type. "
+               "Room and Hall differ mainly in decay length, Plate is a "
+               "bright studio character with no real geometry, and Spring "
+               "has a distinctive metallic clang.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

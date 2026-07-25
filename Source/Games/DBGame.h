@@ -23,7 +23,9 @@ public:
     juce::String getName() const override { return "Guess the Gain Change"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then guess how much the level changed.";
+        return "Listen, then guess how much the level changed. Differences "
+               "below roughly 1 dB get hard to reliably tell apart, so "
+               "don't expect every step to feel equally obvious.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

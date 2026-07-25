@@ -25,7 +25,10 @@ public:
     juce::String getName() const override { return "Guess the Stereo Width"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then guess how wide the stereo image is.";
+        return "Listen, then guess how wide the stereo image is. Width "
+               "comes from decorrelation between channels, not just "
+               "panning - always worth checking a wide mix still holds "
+               "together in mono.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

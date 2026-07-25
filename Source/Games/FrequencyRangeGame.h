@@ -30,7 +30,9 @@ public:
     juce::String getName() const override { return "Name the Range"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then click the frequency range you think was boosted or cut.";
+        return "Listen, then click the frequency range you think was "
+               "boosted or cut. Treat the named ranges as a starting map "
+               "for where a problem tends to live, not a fixed rule.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

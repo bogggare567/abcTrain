@@ -240,11 +240,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (trainingSounds);
     trainingSounds.onClosed = [this] { resized(); };
 
-    // +32px taller than before the slider redesign, to fit the slider's
-    // own big-value label above the track and tick labels below it (same
-    // "grew the window to fit new content" precedent as the Learner
-    // plugins' guide-label height increases - see decisions/010).
-    setSize (640, 500);
+    // +32px for the slider redesign (decisions/015), +16px more for
+    // instructionLabel's extra height (decisions/017) - same "grew the
+    // window to fit new content" precedent as the Learner plugins'
+    // guide-label height increases (decisions/010).
+    setSize (640, 516);
 
     rebuildChoiceSlider();
     refreshFromGameState();
@@ -283,7 +283,9 @@ void EarTrainerEditor::resized()
     gameRow.removeFromLeft (8);
     gameSelector.setBounds (gameRow);
     area.removeFromTop (8);
-    instructionLabel.setBounds (area.removeFromTop (24));
+    // 40px (was 24px) since instructions now often wrap to two lines with
+    // a practical tip appended - see decisions/017.
+    instructionLabel.setBounds (area.removeFromTop (40));
     area.removeFromTop (8);
 
     feedbackLabel.setBounds (area.removeFromTop (28));

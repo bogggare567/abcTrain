@@ -18,7 +18,9 @@ public:
     juce::String getName() const override { return "Guess the Pan Position"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then guess where the sound is panned.";
+        return "Listen, then guess where the sound is panned. Equal-power "
+               "panning keeps loudness constant across positions, so trust "
+               "your sense of direction rather than loudness.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

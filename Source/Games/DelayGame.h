@@ -22,7 +22,10 @@ public:
     juce::String getName() const override { return "Guess the Delay Time"; }
     juce::String getInstructions() const override
     {
-        return "Listen to the echo, then guess the delay time.";
+        return "Listen to the echo, then guess the delay time. Very short "
+               "delay times blur into the source instead of sounding like a "
+               "distinct echo - the same effect behind widening and chorus "
+               "tricks.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;

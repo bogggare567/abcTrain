@@ -20,7 +20,9 @@ public:
     juce::String getName() const override { return "Guess the Distortion"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then guess the type of distortion.";
+        return "Listen, then guess the type of distortion. Soft and hard "
+               "clipping generate different harmonics - even-order ones "
+               "read as warmer, odd-order as harsher and more aggressive.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;
