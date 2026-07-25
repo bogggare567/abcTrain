@@ -92,8 +92,10 @@ flowchart TB
         SpectrumBase["SpectrumAnalyzerComponent\n(FFT/FIFO base)"]
         MicroLesson["MicroLesson\n(pure state machine)"]
         LessonController["LessonController\n(APVTS + UI)"]
-        UpdateChecker["UpdateChecker\n(pure logic + async GitHub check)"]
+        UpdateChecker["UpdateChecker\n(pure logic + async GitHub check,\nstable/beta channel-aware)"]
         LookAndFeel["AbcTrainLookAndFeel\n(shared dark theme)"]
+        LocalisationManager["LocalisationManager\n(12 languages, core UI strings)"]
+        VersionInfo["VersionChannel / Version.h\n(git describe-derived)"]
         TestUtils["TestUtils.h"]
         LessonController --> MicroLesson
     end
@@ -121,6 +123,11 @@ flowchart TB
     LEEdit --> LookAndFeel
     LCEdit --> LookAndFeel
     LVEdit --> LookAndFeel
+    ETEdit --> LocalisationManager
+    ETEdit --> VersionInfo
+    LEEdit --> VersionInfo
+    LCEdit --> VersionInfo
+    LVEdit --> VersionInfo
 
     Runner -. "compiles & runs directly, no host/GUI" .-> EQGame
     Runner -. "compiles & runs directly" .-> CompGame
@@ -137,6 +144,8 @@ flowchart TB
     Runner -. "compiles & runs directly" .-> LVProc
     Runner -. "compiles & runs directly" .-> MicroLesson
     Runner -. "compiles & runs directly\n(pure functions only)" .-> UpdateChecker
+    Runner -. "compiles & runs directly" .-> LocalisationManager
+    Runner -. "compiles & runs directly\n(pure function only)" .-> VersionInfo
     Runner --> TestUtils
 
     LVProc -.-> LearnerSat

@@ -1,59 +1,114 @@
-# Ear Trainer / Learner EQ / Learner Comp / Learner Verb
+# abcTrain — Ear Trainer / Learner EQ / Learner Comp / Learner Verb
 
 [![Build and Test](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
+[![License](https://img.shields.io/badge/license-all%20rights%20reserved-lightgrey)](LICENSE)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-blue)](#-download)
+[![Formats](https://img.shields.io/badge/formats-VST3%20%7C%20AU%20%7C%20Standalone-blue)](#-download)
+[![Languages](https://img.shields.io/badge/languages-12-orange)](#-supported-languages)
+[![GitHub Downloads](https://img.shields.io/github/downloads/bogggare567/abcTrain/total)](https://github.com/bogggare567/abcTrain/releases)
 
-Four VST3/AU/Standalone plugins built with [JUCE](https://juce.com):
+Pre-release, unsigned, actively developed - see [BETA_TESTING.md](BETA_TESTING.md)
+before you dig in, and [docs/roadmap.md](docs/roadmap.md) for what's real vs. planned.
 
-- **Ear Trainer** — 9 ear-training games. It feeds you pink noise through a
-  hidden effect and you guess what changed: which band was boosted/cut,
-  how strong the compression is, which reverb type, where it's panned,
-  the delay time, the distortion type, how wide the stereo image is, how
-  much the level changed, or which named frequency range (sub-bass
-  through air) was affected. Tracks points, a level (1-10, which scales
-  the games' difficulty up as you improve), a daily login streak, and a
-  daily challenge.
-- **Learner EQ** — a real 4-band EQ for your own tracks, with a live
-  spectrum + response-curve display, a scrolling input/output waveform,
-  a richer plain-language explanation (with practical values and a
-  "Learn more" book pointer) of what a frequency region does while you
-  drag it, a Bypass/A-B toggle, and a step-by-step "Lesson" walkthrough
+## 🎧 What is abcTrain?
+
+Four free VST3/AU/Standalone plugins built with [JUCE](https://juce.com),
+built around one idea: **train your ears on synthetic examples, then
+apply what you hear on your own tracks with real, host-automatable
+effects that teach as you use them.**
+
+- **Ear Trainer** — a multiple-choice ear-training game. Doesn't touch
+  your audio; it generates its own test signal and quizzes you on what a
+  hidden effect changed.
+- **Learner EQ / Learner Comp / Learner Verb** — real, usable EQ/
+  compressor/reverb for your own tracks, each with a live spectrum/
+  waveform display, plain-language tooltips instead of just numbers, and
+  a guided step-by-step "Lesson."
+
+## 🎮 9 games
+
+| | Game | What you're guessing |
+|---|---|---|
+| 🎚️ | Guess the Band | Which of 8 octave bands (100 Hz–12.8 kHz) got boosted or cut |
+| 🥁 | Guess the Compression | How strong the compression is (weak/medium/strong) |
+| 🏛️ | Guess the Reverb | Room / Hall / Plate / Spring |
+| ↔️ | Guess the Pan Position | Hard Left – Left – Center – Right – Hard Right |
+| ⏱️ | Guess the Delay Time | 50 / 150 / 300 / 500 ms |
+| 🔥 | Guess the Distortion | Soft Clip / Hard Clip / Tape Saturation / Overdrive |
+| 📐 | Guess the Stereo Width | Narrow – Normal – Wide – Extra Wide |
+| 🔊 | Guess the Gain Change | ±dB (the one game whose choice labels change with difficulty) |
+| 🎯 | Name the Range | Sub-bass / Bass / Low-mids / Mids / High-mids / Presence / Air |
+
+Every game shares one `Game` interface, one generic UI, adaptive
+difficulty (level 1–10), a daily login streak, and a daily challenge — see
+[docs/diagrams/game-engine.md](docs/diagrams/game-engine.md).
+
+## 🎛️ Teaching plugins
+
+- **Learner EQ** — a real 4-band EQ (low shelf, 2 bells, high shelf),
+  host-automatable, live spectrum + response-curve display, a scrolling
+  input/output waveform, a richer plain-language explanation per
+  frequency region (practical values + a "Learn more" book pointer) while
+  you drag it, a Bypass/A-B toggle, and a step-by-step "Lesson"
   (Vocal EQ Basics).
-- **Learner Comp** — a real compressor for your own tracks, with a live
-  spectrum, a scrolling input/output waveform that highlights in red
-  wherever the compressor is actively reducing gain, a live gain-reduction
-  meter, input/output peak meters, a richer explanation per control
-  (practical values plus a "Learn more" book pointer), 4
-  presets to learn from (Vocal Smoothing, Punchy Drums, Bass Control,
-  Limiter), a Bypass/A-B toggle, and a step-by-step "Lesson" walkthrough
-  (Vocal Compression).
-- **Learner Verb** — a real reverb for your own tracks (Room/Hall/Plate/
-  Spring), with the same live spectrum + scrolling waveform/peak-meter
-  view, a richer explanation per control (practical values plus a
-  "Learn more" book pointer), 4 presets (Vocal Ambience,
-  Concert Hall, Small Room, Spring Tank), a Bypass/A-B toggle, and a
-  step-by-step "Lesson" walkthrough (Space for Vocals).
+- **Learner Comp** — a real compressor with a custom soft-knee engine
+  (threshold/ratio/attack/release/knee/makeup/dry-wet), live spectrum, a
+  scrolling waveform that highlights in red wherever it's actively
+  reducing gain, GR/peak meters, a richer explanation per control, 4
+  teaching presets (Vocal Smoothing, Punchy Drums, Bass Control, Limiter),
+  Bypass/A-B, and a "Lesson" (Vocal Compression).
+- **Learner Verb** — a real reverb (Room/Hall/Plate via `dsp::Reverb`,
+  Spring via a custom allpass cascade), the same live spectrum/waveform
+  view, a richer explanation per control, 4 presets (Vocal Ambience,
+  Concert Hall, Small Room, Spring Tank), Bypass/A-B, and a "Lesson"
+  (Space for Vocals).
 
-All three Learner plugins share the same visualization shape and Bypass/
-Lesson button placement now — see
-[docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md).
-All four plugins (EarTrainer included) also have an "Updates" button that
-checks GitHub for a newer release on request — see the Download section
-below.
+All three share the same visualization shape and Bypass/Lesson placement
+— see [decisions/006](docs/decisions/006-unified-visualization.md). All
+four plugins have an "Updates" button that checks GitHub for a newer
+release on request — see [Download](#-download) below.
 
-Long-term direction is a small learning ecosystem — more trainer games,
-more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
-base — see [docs/roadmap.md](docs/roadmap.md) for what's actually planned
-vs. built so far. A first step toward that knowledge base is
-[docs/knowledge_base.md](docs/knowledge_base.md) — original reference
-material (general, widely-taught practice, not derived from any specific
-book) covering EQ, compression, reverb, psychoacoustics, mastering,
-mixing, room acoustics, digital audio, saturation, stereo, and delay/
-modulation, which the three Learner plugins' tooltips are now written
+Long-term direction is a small learning ecosystem — more games, more
+teaching plugins, an in-plugin knowledge base — see
+[docs/roadmap.md](docs/roadmap.md). A first step toward that knowledge
+base is [docs/knowledge_base.md](docs/knowledge_base.md) — original
+reference material (general, widely-taught practice, not derived from any
+specific book) covering EQ, compression, reverb, psychoacoustics,
+mastering, mixing, room acoustics, digital audio, saturation, stereo, and
+delay/modulation, which the three Learner plugins' tooltips are written
 from. [docs/library_catalog.md](docs/library_catalog.md) is a companion
 bibliography of ~150 audio-engineering books each tooltip's "Learn more"
 line points into — deliberately a title/author catalog only, never
 extracted or quoted text; see
 [decisions/010](docs/decisions/010-book-library-scope.md) for why.
+
+## 🌍 Supported languages
+
+EarTrainer's editor has a language picker covering its core UI (game
+names/instructions, level/score/streak labels, buttons) in 12 languages:
+
+🇬🇧 English · 🇷🇺 Русский · 🇩🇪 Deutsch · 🇫🇷 Français · 🇪🇸 Español ·
+🇵🇹 Português · 🇨🇳 简体中文 · 🇯🇵 日本語 · 🇰🇷 한국어 · 🇮🇹 Italiano ·
+🇵🇱 Polski · 🇺🇦 Українська
+
+Auto-detected from your system language on first run, persisted after
+that. **Scope, honestly**: only the core string set above is translated
+today - parameter tooltips, lesson steps, and LearnerEQ/Comp/Verb's UI are
+still English-only, and only English/Russian have been directly verified
+by a native speaker on this project. See
+[decisions/011](docs/decisions/011-i18n.md) for the full picture and
+[docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md)
+for how it fits together.
+
+## 📸 Demo
+
+No screenshots or recordings yet - this project has been developed in a
+sandbox with no display to capture a real JUCE window from. See
+[assets/screenshots/README.md](assets/screenshots/README.md) and
+[assets/demo/README.md](assets/demo/README.md) for exactly what's needed
+and in what priority, if you're picking this up somewhere that can render
+one. In the meantime, [Look](#look) below describes the actual current
+visual style in text.
 
 ## Look
 
@@ -134,98 +189,17 @@ separate future work, not done yet.
 
 ## Architecture
 
-Dashed boxes below aren't built yet. Full breakdown, plus class- and
-component-level diagrams for each part, in
-[docs/diagrams/](docs/diagrams/).
-
-```mermaid
-flowchart TB
-    subgraph EarTrainer["EarTrainer plugin (VST3 / AU / Standalone)"]
-        ETProc["PluginProcessor"]
-        ETEdit["PluginEditor (generic)"]
-        GM["GameManager"]
-        GameIface["Game interface"]
-        EQGame["EQGame"]
-        CompGame["CompressionGame"]
-        RevGame["ReverbGame"]
-        PM["ProgressManager"]
-
-        ETProc --> GM
-        ETProc --> PM
-        ETEdit --> GM
-        ETEdit --> PM
-        GM --> GameIface
-        GameIface --> EQGame
-        GameIface --> CompGame
-        GameIface --> RevGame
-        PM --> GM
-    end
-
-    subgraph LearnerEQ["LearnerEQ plugin (VST3 / AU / Standalone)"]
-        LEProc["PluginProcessor"]
-        LEEdit["PluginEditor"]
-        Spectrum["SpectrumAnalyserComponent\n(extends shared SpectrumAnalyzer)"]
-        APVTS[("AudioProcessorValueTreeState")]
-
-        LEProc --> APVTS
-        LEEdit --> APVTS
-        LEEdit --> Spectrum
-    end
-
-    subgraph LearnerComp["LearnerComp plugin (VST3 / AU / Standalone)"]
-        LCProc["PluginProcessor"]
-        LCEdit["PluginEditor"]
-        Engine["CompressorEngine"]
-
-        LCProc --> Engine
-    end
-
-    subgraph LearnerVerb["LearnerVerb plugin (VST3 / AU / Standalone)"]
-        LVProc["PluginProcessor"]
-        LVEdit["PluginEditor"]
-        RevEngine["ReverbEngine"]
-
-        LVProc --> RevEngine
-    end
-
-    subgraph Shared["shared/"]
-        Waveform["WaveformDisplay"]
-        SpectrumBase["SpectrumAnalyzerComponent"]
-        LessonController["MicroLesson + LessonController"]
-        UpdateChecker["UpdateChecker"]
-    end
-
-    subgraph Tests["EarTrainerTests (console app)"]
-        Runner["TestRunner (juce::UnitTestRunner)"]
-    end
-
-    LearnerSat["LearnerSat plugin"]
-
-    LEEdit --> Waveform
-    LCEdit --> Waveform
-    LVEdit --> Waveform
-    Spectrum --> SpectrumBase
-    LCEdit --> SpectrumBase
-    LVEdit --> SpectrumBase
-    LEEdit --> LessonController
-    LCEdit --> LessonController
-    LVEdit --> LessonController
-    ETEdit --> UpdateChecker
-    LEEdit --> UpdateChecker
-    LCEdit --> UpdateChecker
-    LVEdit --> UpdateChecker
-
-    Runner -. "compiles & runs directly" .-> EQGame
-    Runner -. "compiles & runs directly" .-> CompGame
-    Runner -. "compiles & runs directly" .-> RevGame
-    Runner -. "compiles & runs directly" .-> LEProc
-    Runner -. "compiles & runs directly" .-> LCProc
-    Runner -. "compiles & runs directly" .-> LVProc
-    LVProc -.-> LearnerSat
-
-    classDef planned stroke-dasharray:4 3,opacity:0.55;
-    class LearnerSat planned;
-```
+The full system diagram (all 9 games, `shared/` components including
+`LocalisationManager`/`AbcTrainLookAndFeel`/`UpdateChecker`, what
+`EarTrainerTests` actually exercises, dashed boxes for what's not built
+yet) lives in
+[docs/diagrams/system-overview.md](docs/diagrams/system-overview.md) —
+kept there as the single copy rather than duplicated here, since a second
+copy in this README is exactly what went stale in an earlier version of
+this file. See also
+[docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) (the `Game`
+interface + all 9 exercises) and
+[docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md).
 
 ## Building
 
@@ -374,9 +348,33 @@ Bypass next to Lesson in the title row) via the newly-extracted
   reference doc ([docs/knowledge_base.md](docs/knowledge_base.md))
   instead of extracting and quoting text from copyrighted books in the
   shipped plugins
+- [docs/decisions/011-i18n.md](docs/decisions/011-i18n.md) — the
+  flat-JSON-per-language i18n system
+  ([docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md)),
+  why it's scoped to a curated core string set rather than every tooltip,
+  and a real UTF-8-literal bug it caught
+- [docs/decisions/012-versioning.md](docs/decisions/012-versioning.md) —
+  deriving the version from `git describe` instead of a hand-bumped
+  literal, the stable/beta/dev channel detector, and what's still deferred
 - [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) — the
   `Game` interface and all 9 exercises' class diagram
 - [docs/testing-strategy.md](docs/testing-strategy.md)
 - [docs/roadmap.md](docs/roadmap.md)
 - [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept
   current for anyone (human or Claude) picking this project back up
+
+## 🧪 Beta testing
+
+Trying it before it's finished is genuinely useful — see
+[BETA_TESTING.md](BETA_TESTING.md) for what's worth testing right now,
+and what's already known to be incomplete (so you don't file a bug for
+something already tracked).
+
+## 🤝 Contributing
+
+New games, translations, bug fixes, docs — see
+[.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) (English + Русский)
+for how this project likes PRs shaped, and the
+[bug report](.github/ISSUE_TEMPLATE/bug_report.md)/
+[feature request](.github/ISSUE_TEMPLATE/feature_request.md) templates
+for filing an issue.
