@@ -4,32 +4,40 @@
 #include "VocalEqLesson.h"
 #include "FindResonanceLesson.h"
 #include "../../shared/Version.h"
+#include "../../shared/i18n/LocalisationManager.h"
 #include <memory>
 
 namespace
 {
-    constexpr const char* defaultGuideText = "Drag a band's Freq knob to see what it does.";
+    constexpr const char* themeModeKey = "themeMode";
 }
 
 LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalEqLesson()),
-      resonanceLessonController (p.apvts, buildFindResonanceLesson())
+      resonanceLessonController (p.apvts, buildFindResonanceLesson()),
+      // Same shared "abcTrain" settings folder the language preference
+      // uses, so light/dark is one product-wide choice.
+      themeProperties (LocalisationManager::makeDefaultOptions())
 {
+
+    AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
+                                ? AbcTrainTheme::Mode::light
+                                : AbcTrainTheme::Mode::dark);
+    lookAndFeel.refreshFromTheme();
+
     setLookAndFeel (&lookAndFeel);
 
+    // Drawn by paint() with letter-spacing rather than via the Label.
     titleLabel.setText ("Learner EQ", juce::dontSendNotification);
-    titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
-    titleLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (titleLabel);
+    titleLabel.setVisible (false);
+
+    themeButton.onClick = [this] { toggleTheme(); };
+    addAndMakeVisible (themeButton);
 
     pluginIcon.setIcon (AppIcons::Icon::learnerEQ);
     addAndMakeVisible (pluginIcon);
 
-    guideLabel.setJustificationType (juce::Justification::centred);
-    guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
-    guideLabel.setText (defaultGuideText, juce::dontSendNotification);
-    addAndMakeVisible (guideLabel);
 
     addAndMakeVisible (spectrum);
 
@@ -37,12 +45,10 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     inputPeakLabel.setJustificationType (juce::Justification::centred);
     inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (inputPeakLabel);
 
     outputPeakLabel.setJustificationType (juce::Justification::centred);
     outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (outputPeakLabel);
 
     for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
@@ -67,23 +73,21 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
         freqSlider.onDragStart = [this, band, &freqSlider]
         {
-            guideLabel.setText (juce::String (EQCoefficients::nameForBand (band)) + ": "
-                                     + FrequencyGuide::describe ((float) freqSlider.getValue()),
-                                 juce::dontSendNotification);
+            guideTooltip.setText (juce::String (EQCoefficients::nameForBand (band)) + ": "
+                                       + FrequencyGuide::describe ((float) freqSlider.getValue()));
             spectrum.setHighlightedBand (band);
         };
 
         freqSlider.onValueChange = [this, band, &freqSlider]
         {
             if (freqSlider.isMouseButtonDown())
-                guideLabel.setText (juce::String (EQCoefficients::nameForBand (band)) + ": "
-                                         + FrequencyGuide::describe ((float) freqSlider.getValue()),
-                                     juce::dontSendNotification);
+                guideTooltip.setText (juce::String (EQCoefficients::nameForBand (band)) + ": "
+                                           + FrequencyGuide::describe ((float) freqSlider.getValue()));
         };
 
         freqSlider.onDragEnd = [this]
         {
-            guideLabel.setText (defaultGuideText, juce::dontSendNotification);
+            guideTooltip.setText ({});
             spectrum.setHighlightedBand (-1);
         };
     }
@@ -180,9 +184,13 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
-    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
-    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
+                            juce::Justification::centredRight);
     addAndMakeVisible (soundkorbLink);
+
+    // After the controls (so it floats above the visualisation it covers)
+    // but before the lesson overlays, which must stay on top of everything.
+    addAndMakeVisible (guideTooltip);
 
     // Added last, after every other child, so a shown lesson overlay
     // actually covers the title-row buttons/link instead of them poking
@@ -195,7 +203,42 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     resonanceLessonController.onClosed = [this] { resized(); };
 
     startTimerHz (30);
-    setSize (760, 728);
+    // Taller for the section panels' own padding/captions; the guide text
+    // no longer needs a permanent strip (it floats on demand instead).
+    setSize (790, 742);
+
+    applyTheme();
+}
+
+void LearnerEQEditor::applyTheme()
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
+    outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
+
+    for (auto& controls : bands)
+        controls.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
+
+    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+    repaint();
+}
+
+void LearnerEQEditor::toggleTheme()
+{
+    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
+                             ? AbcTrainTheme::Mode::dark
+                             : AbcTrainTheme::Mode::light;
+
+    AbcTrainTheme::setMode (newMode);
+    themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
+
+    lookAndFeel.refreshFromTheme();
+    applyTheme();
+
+    for (auto* child : getChildren())
+        child->repaint();
 }
 
 LearnerEQEditor::~LearnerEQEditor()
@@ -207,57 +250,94 @@ LearnerEQEditor::~LearnerEQEditor()
 
 void LearnerEQEditor::paint (juce::Graphics& g)
 {
+    const auto& theme = AbcTrainTheme::current();
+
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+
+    AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
+    AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Bands");
+
+    AbcTrainLookAndFeel::paintDisplayWell (g, spectrum.getBounds().toFloat().expanded (1.0f));
+    AbcTrainLookAndFeel::paintDisplayWell (g, waveform.getBounds().toFloat().expanded (1.0f));
+
+    AbcTrainLookAndFeel::drawTrackedText (
+        g, titleLabel.getText(),
+        juce::Rectangle<float> (52.0f, (float) AbcTrainTheme::Spacing::medium,
+                                 (float) getWidth() * 0.4f, 32.0f),
+        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
+        juce::Justification::centredLeft);
 }
 
 void LearnerEQEditor::resized()
 {
+    using namespace AbcTrainTheme;
+
     lessonController.setBounds (getLocalBounds());
     resonanceLessonController.setBounds (getLocalBounds());
 
-    auto area = getLocalBounds().reduced (16);
+    auto area = getLocalBounds().reduced (Spacing::large);
 
     auto titleRow = area.removeFromTop (32);
-    lessonSelector.setBounds (titleRow.removeFromRight (150));
-    titleRow.removeFromRight (8);
-    bypassButton.setBounds (titleRow.removeFromRight (90));
-    titleRow.removeFromRight (8);
-    updateButton.setBounds (titleRow.removeFromRight (80));
-    titleRow.removeFromRight (8);
+    lessonSelector.setBounds (titleRow.removeFromRight (156));
+    titleRow.removeFromRight (Spacing::small);
+    themeButton.setBounds (titleRow.removeFromRight (62));
+    titleRow.removeFromRight (Spacing::small);
+    updateButton.setBounds (titleRow.removeFromRight (76));
+    titleRow.removeFromRight (Spacing::small);
+    bypassButton.setBounds (titleRow.removeFromRight (96));
     pluginIcon.setBounds (titleRow.removeFromLeft (28));
-    titleRow.removeFromLeft (4);
-    titleLabel.setBounds (titleRow);
 
-    guideLabel.setBounds (area.removeFromTop (52));
-    area.removeFromTop (8);
+    area.removeFromTop (Spacing::section);
 
-    spectrum.setBounds (area.removeFromTop (220));
-    area.removeFromTop (16);
-
-    waveform.setBounds (area.removeFromTop (130));
-    area.removeFromTop (8);
-
-    auto meterRow = area.removeFromTop (20);
-    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
-    outputPeakLabel.setBounds (meterRow);
-    area.removeFromTop (16);
-
-    auto linkRow = area.removeFromBottom (18);
-    soundkorbLink.setBounds (linkRow.removeFromRight (130));
-
-    auto bandsArea = area;
-    const auto columnWidth = bandsArea.getWidth() / LearnerEQProcessor::numBands;
-
-    for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
+    // --- analysis section: response curve + spectrum, waveform, peaks ---
+    analysisSection = area.removeFromTop (432);
     {
-        auto column = bandsArea.removeFromLeft (columnWidth).reduced (6);
-        auto& controls = bands[(size_t) band];
+        auto inner = analysisSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
 
-        controls.nameLabel.setBounds (column.removeFromTop (20));
-        controls.freqSlider.setBounds (column.removeFromTop (90));
-        controls.gainSlider.setBounds (column.removeFromTop (90));
-        controls.qSlider.setBounds (column.removeFromTop (90));
+        spectrum.setBounds (inner.removeFromTop (215).reduced (1));
+        inner.removeFromTop (Spacing::medium);
+        waveform.setBounds (inner.removeFromTop (124).reduced (1));
+        inner.removeFromTop (Spacing::small);
+
+        auto meterRow = inner.removeFromTop (20);
+        inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
+        outputPeakLabel.setBounds (meterRow);
     }
+
+    area.removeFromTop (Spacing::medium);
+
+    // --- band section: one column of freq/gain/Q per band ---
+    controlSection = area.removeFromTop (198);
+    {
+        auto inner = controlSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
+
+        const auto columnWidth = inner.getWidth() / LearnerEQProcessor::numBands;
+        for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
+        {
+            auto column = inner.removeFromLeft (columnWidth).reduced (Spacing::tight, 0);
+            auto& controls = bands[(size_t) band];
+
+            controls.nameLabel.setBounds (column.removeFromTop (18));
+
+            // Three knobs side by side per band rather than stacked: the
+            // stacked layout needed 270px of height per column, which is
+            // what forced the window so tall and left the bands cramped.
+            const auto knobWidth = column.getWidth() / 3;
+            controls.freqSlider.setBounds (column.removeFromLeft (knobWidth));
+            controls.gainSlider.setBounds (column.removeFromLeft (knobWidth));
+            controls.qSlider.setBounds (column);
+        }
+    }
+
+    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
+
+    // The guide card floats over the lower part of the analysis section:
+    // close to the knob being dragged, without covering the curve itself.
+    guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
+                                            .withHeight (70)
+                                            .withY (analysisSection.getBottom() - 82));
 }
 
 void LearnerEQEditor::timerCallback()

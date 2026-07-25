@@ -45,9 +45,26 @@ private:
     void timerCallback() override;
     void drawNextFrameOfSpectrum();
 
+    // Builds the smoothed spectrum outline once per paint. Split out so
+    // the curve and its gradient fill are guaranteed to be the same shape -
+    // drawing them from two separately-built paths is how a fill and its
+    // outline end up a pixel apart.
+    juce::Path buildSpectrumPath (juce::Rectangle<float> bounds) const;
+    void paintGrid (juce::Graphics&, juce::Rectangle<float> bounds) const;
+
     static constexpr float minFreq = 20.0f;
     static constexpr float maxFreq = 20000.0f;
     static float proportionToFrequency (float proportion) noexcept;
+    static float frequencyToProportion (float frequency) noexcept;
+
+    // Per-bin attack/release smoothing of the displayed magnitude. Raw FFT
+    // output flickers frame to frame even on steady material; easing the
+    // *display* (fast attack so transients still read, slow release so the
+    // curve settles rather than strobes) is what makes it look like a
+    // considered instrument instead of noise. Purely cosmetic - the
+    // underlying analysis is untouched.
+    static constexpr float displayAttack = 0.5f;
+    static constexpr float displayRelease = 0.12f;
 
     juce::dsp::FFT forwardFFT;
     juce::dsp::WindowingFunction<float> window;
@@ -59,6 +76,7 @@ private:
 
     static constexpr int scopeSize = 512;
     std::array<float, (size_t) scopeSize> scopeData {};
+    std::array<float, (size_t) scopeSize> smoothedScope {};
 
     double sampleRate = 44100.0;
 

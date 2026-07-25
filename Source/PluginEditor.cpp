@@ -5,15 +5,9 @@
 
 namespace
 {
-    // Muted, theme-consistent tones (see shared/AbcTrainLookAndFeel.cpp's
-    // scheme: #5b9bd5 blue, #d98c5f orange) instead of JUCE's stock
-    // Colours::limegreen/orangered, which read as garish/cartoonish
-    // against this project's otherwise sophisticated dark palette - a
-    // real design complaint, not just a style nitpick.
-    const juce::Colour correctColour { 0xff5fbf7d };
-    const juce::Colour wrongColour { 0xffd9615f };
-    const juce::Colour bodyTextColour { 0xffe0e0e0 };
-    const juce::Colour mutedTextColour { 0xffa0a0b0 };
+    // The key the light/dark choice is stored under, in the same shared
+    // "abcTrain" PropertiesFile the language preference already uses.
+    constexpr const char* themeModeKey = "themeMode";
 
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
@@ -65,11 +59,25 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
       processor (p),
       trainingSounds (p)
 {
+    // Restore the persisted light/dark choice *before* the LookAndFeel
+    // reads the palette, so the very first paint is already in the right
+    // mode rather than flashing dark and correcting itself.
+    AbcTrainTheme::setMode (localisationProperties.getValue (themeModeKey, "dark") == "light"
+                                ? AbcTrainTheme::Mode::light
+                                : AbcTrainTheme::Mode::dark);
+    lookAndFeel.refreshFromTheme();
+
     setLookAndFeel (&lookAndFeel);
 
+    // The title is drawn by paint() with letter-spacing rather than by a
+    // Label, since JUCE offers no tracking control on Label - see
+    // AbcTrainLookAndFeel::drawTrackedText.
     titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
-    titleLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (titleLabel);
+    titleLabel.setJustificationType (juce::Justification::centredLeft);
+    titleLabel.setVisible (false);
+
+    themeButton.onClick = [this] { toggleTheme(); };
+    addAndMakeVisible (themeButton);
 
     for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
         languageSelector.addItem (LocalisationManager::getDisplayName (code),
@@ -99,7 +107,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     feedbackLabel.setJustificationType (juce::Justification::centred);
     feedbackLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
-    feedbackLabel.setColour (juce::Label::textColourId, bodyTextColour);
     addAndMakeVisible (feedbackLabel);
 
     levelLabel.setJustificationType (juce::Justification::centredLeft);
@@ -115,7 +122,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     streakLabel.setJustificationType (juce::Justification::centredRight);
     streakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    streakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffd98c5f));
     addAndMakeVisible (streakLabel);
 
     dailyChallengeLabel.setJustificationType (juce::Justification::centred);
@@ -223,8 +229,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addAndMakeVisible (trainingSoundsButton);
 
-    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
-    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
+                            juce::Justification::centredRight);
     addAndMakeVisible (soundkorbLink);
 
     choiceSlider.onChoiceSelected = [this] (int choiceIndex) { choiceButtonClicked (choiceIndex); };
@@ -240,16 +246,61 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (trainingSounds);
     trainingSounds.onClosed = [this] { resized(); };
 
-    // +32px for the slider redesign (decisions/015), +16px more for
-    // instructionLabel's extra height (decisions/017) - same "grew the
-    // window to fit new content" precedent as the Learner plugins'
-    // guide-label height increases (decisions/010).
-    setSize (640, 516);
+    // Grown again for the grouping/whitespace pass: the three section
+    // panels each carry their own padding and caption, which is what buys
+    // the "everything breathes" feel, and that space has to come from
+    // somewhere. Same "grew the window to fit new content" precedent as
+    // the slider redesign (015) and the Learner guide labels (010).
+    setSize (680, 596);
 
+    applyTheme();
     rebuildChoiceSlider();
     refreshFromGameState();
     refreshFromProgressState();
     refreshLocalisedText();
+}
+
+void EarTrainerEditor::applyTheme()
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    // Widgets that set their own colours can't be reached by the
+    // LookAndFeel's colour scheme, so they're refreshed here instead - and
+    // every one of them now reads the palette rather than a literal, which
+    // is what makes the light theme possible at all.
+    instructionLabel.setColour (juce::Label::textColourId, theme.textDim);
+    scoreLabel.setColour (juce::Label::textColourId, theme.text);
+    levelLabel.setColour (juce::Label::textColourId, theme.text);
+    streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
+
+    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+
+    // These two are re-coloured per answer/progress state, so just let
+    // the normal refresh paths reapply them from the new palette.
+    refreshFromGameState();
+    refreshFromProgressState();
+
+    repaint();
+}
+
+void EarTrainerEditor::toggleTheme()
+{
+    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
+                             ? AbcTrainTheme::Mode::dark
+                             : AbcTrainTheme::Mode::light;
+
+    AbcTrainTheme::setMode (newMode);
+    localisationProperties.setValue (themeModeKey,
+                                      newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
+
+    lookAndFeel.refreshFromTheme();
+    applyTheme();
+
+    // The LookAndFeel's colour scheme feeds widgets at paint time, so a
+    // repaint of the whole tree is all that's needed - no rebuild.
+    for (auto* child : getChildren())
+        child->repaint();
 }
 
 EarTrainerEditor::~EarTrainerEditor()
@@ -262,57 +313,102 @@ EarTrainerEditor::~EarTrainerEditor()
 
 void EarTrainerEditor::paint (juce::Graphics& g)
 {
+    const auto& theme = AbcTrainTheme::current();
+
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+
+    // Grouped sections behind the controls: related things now sit on a
+    // shared surface with a caption, instead of floating loose on the
+    // backdrop with only whitespace implying the grouping.
+    AbcTrainLookAndFeel::paintSectionPanel (g, exerciseSection.toFloat(), "Exercise");
+    AbcTrainLookAndFeel::paintSectionPanel (g, answerSection.toFloat(), "Your answer");
+    AbcTrainLookAndFeel::paintSectionPanel (g, progressSection.toFloat(), "Progress");
+
+    // The title, letter-spaced. Drawn here rather than through a Label
+    // because JUCE exposes no tracking control on Label/drawText.
+    AbcTrainLookAndFeel::drawTrackedText (
+        g, titleLabel.getText(),
+        juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
+                                 (float) AbcTrainTheme::Spacing::medium,
+                                 (float) getWidth() * 0.5f, 32.0f),
+        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
+        juce::Justification::centredLeft);
 }
 
 void EarTrainerEditor::resized()
 {
-    auto area = getLocalBounds().reduced (16);
+    using namespace AbcTrainTheme;
 
+    auto area = getLocalBounds().reduced (Spacing::large);
+
+    // --- title row: identity on the left, global controls on the right ---
     auto titleRow = area.removeFromTop (32);
-    languageSelector.setBounds (titleRow.removeFromRight (90));
-    titleRow.removeFromRight (8);
-    updateButton.setBounds (titleRow.removeFromRight (80));
-    titleRow.removeFromRight (8);
-    trainingSoundsButton.setBounds (titleRow.removeFromRight (110));
-    titleRow.removeFromRight (8);
-    titleLabel.setBounds (titleRow);
-    area.removeFromTop (8);
-    auto gameRow = area.removeFromTop (28).withSizeKeepingCentre (316, 24);
-    gameIcon.setBounds (gameRow.removeFromLeft (24));
-    gameRow.removeFromLeft (8);
-    gameSelector.setBounds (gameRow);
-    area.removeFromTop (8);
-    // 40px (was 24px) since instructions now often wrap to two lines with
-    // a practical tip appended - see decisions/017.
-    instructionLabel.setBounds (area.removeFromTop (40));
-    area.removeFromTop (8);
+    languageSelector.setBounds (titleRow.removeFromRight (86));
+    titleRow.removeFromRight (Spacing::small);
+    themeButton.setBounds (titleRow.removeFromRight (62));
+    titleRow.removeFromRight (Spacing::small);
+    updateButton.setBounds (titleRow.removeFromRight (76));
+    titleRow.removeFromRight (Spacing::small);
+    trainingSoundsButton.setBounds (titleRow.removeFromRight (118));
 
-    feedbackLabel.setBounds (area.removeFromTop (28));
-    area.removeFromTop (8);
+    area.removeFromTop (Spacing::section);
 
-    auto choiceSliderRow = area.removeFromTop (88);
-    choiceSlider.setBounds (choiceSliderRow.reduced (8, 0));
+    // --- exercise section: which game, and what you're listening for ---
+    exerciseSection = area.removeFromTop (124);
+    {
+        auto inner = exerciseSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);   // clear the section caption
 
-    area.removeFromTop (16);
+        auto gameRow = inner.removeFromTop (28);
+        auto centred = gameRow.withSizeKeepingCentre (340, 26);
+        gameIcon.setBounds (centred.removeFromLeft (24));
+        centred.removeFromLeft (Spacing::small);
+        gameSelector.setBounds (centred);
 
-    auto bottomRow = area.removeFromTop (36);
-    newRoundButton.setBounds (bottomRow.removeFromLeft (140));
-    scoreLabel.setBounds (bottomRow.reduced (8, 0));
+        inner.removeFromTop (Spacing::small);
+        instructionLabel.setBounds (inner);
+    }
 
-    area.removeFromTop (16);
+    area.removeFromTop (Spacing::medium);
 
-    auto progressRow = area.removeFromTop (24);
-    levelLabel.setBounds (progressRow.removeFromLeft (100));
-    levelSelector.setBounds (progressRow.removeFromLeft (50).reduced (0, 2));
-    streakLabel.setBounds (progressRow.removeFromRight (100));
-    levelProgressBar.setBounds (progressRow.reduced (8, 4));
+    // --- answer section: feedback, the slider itself, score/new round ---
+    answerSection = area.removeFromTop (208);
+    {
+        auto inner = answerSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
 
-    area.removeFromTop (8);
-    dailyChallengeLabel.setBounds (area.removeFromTop (20));
+        feedbackLabel.setBounds (inner.removeFromTop (26));
+        inner.removeFromTop (Spacing::small);
 
-    area.removeFromTop (8);
-    soundkorbLink.setBounds (area.removeFromTop (18).removeFromRight (130));
+        choiceSlider.setBounds (inner.removeFromTop (92).reduced (Spacing::small, 0));
+
+        inner.removeFromTop (Spacing::medium);
+
+        auto bottomRow = inner.removeFromTop (34);
+        newRoundButton.setBounds (bottomRow.removeFromLeft (140));
+        scoreLabel.setBounds (bottomRow.reduced (Spacing::medium, 0));
+    }
+
+    area.removeFromTop (Spacing::medium);
+
+    // --- progress section: level, bar, streak, daily challenge ---
+    progressSection = area.removeFromTop (100);
+    {
+        auto inner = progressSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
+
+        auto progressRow = inner.removeFromTop (26);
+        levelLabel.setBounds (progressRow.removeFromLeft (92));
+        levelSelector.setBounds (progressRow.removeFromLeft (54).reduced (0, 1));
+        streakLabel.setBounds (progressRow.removeFromRight (96));
+        levelProgressBar.setBounds (progressRow.reduced (Spacing::medium, 8));
+
+        inner.removeFromTop (Spacing::small);
+        dailyChallengeLabel.setBounds (inner.removeFromTop (20));
+    }
+
+    // --- footer ---
+    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
 
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not it's currently visible.
@@ -439,13 +535,13 @@ void EarTrainerEditor::refreshFromGameState()
         choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
         feedbackLabel.setText (game.getFeedbackText(), juce::dontSendNotification);
-        feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? correctColour : wrongColour);
+        feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().negative);
     }
     else
     {
         choiceSlider.resetForNewRound();
         feedbackLabel.setText ({}, juce::dontSendNotification);
-        feedbackLabel.setColour (juce::Label::textColourId, bodyTextColour);
+        feedbackLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().text);
     }
 }
 
@@ -463,5 +559,5 @@ void EarTrainerEditor::refreshFromProgressState()
 
     dailyChallengeLabel.setText (progress.getDailyChallengeDescription(), juce::dontSendNotification);
     dailyChallengeLabel.setColour (juce::Label::textColourId,
-                                    progress.isDailyChallengeComplete() ? correctColour : mutedTextColour);
+                                    progress.isDailyChallengeComplete() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().textDim);
 }

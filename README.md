@@ -127,16 +127,27 @@ visual style in text.
 All four plugins now share one dark theme (`shared/AbcTrainLookAndFeel`)
 instead of each Learner plugin picking its own accent colour:
 
-- Background `#1e1e2e` painted as a soft radial gradient rather than a
-  flat fill, a soft blue accent `#5b9bd5` (knob values, active states), a
-  warm orange highlight `#d98c5f` (rotary-knob fill, active toggles),
-  light-grey text `#e0e0e0`.
-- Rounded buttons (7 px corner radius, 1 px `#3a3a4a` border, a subtle
-  gradient fill) with a soft drop shadow that grows on hover and shrinks
-  on press - no more stock grey rectangular buttons. Rotary knobs are
-  drawn as a thin arc track + accent-coloured value arc + a
-  gradient-shaded, drop-shadowed knob cap, with a soft glow behind the
-  value arc while you're actually turning it.
+- **Dark and light themes**, both designed rather than one inverted into
+  the other. Dark: `#1e1e2e` under a soft radial gradient, blue accent
+  `#5b9bd5`, warm orange highlight `#d98c5f`. Light: a warm off-white
+  `#e8e6e1` page with panels stepping *up* toward white, deeper accents
+  (a light ground needs more colour weight to read at the same strength)
+  and softer, cooler shadows. Toggle in every plugin's title row; the
+  choice is product-wide and persists.
+- Every colour, spacing step, corner radius and animation duration comes
+  from one token layer (`shared/AbcTrainTheme`) - nothing outside it names
+  a colour.
+- Buttons *lift and settle* rather than switching state: the shadow grows
+  and the surface sinks under a press, all eased over time (press is
+  faster than release - that asymmetry is what reads as mass). Rotary
+  knobs swell slightly and bloom under the pointer.
+- Controls sit on captioned section panels; spectrum and waveform are
+  recessed into wells. The spectrum is a smoothed, gradient-filled curve
+  over a soft frequency grid; the waveform a smoothed symmetric envelope;
+  Learner Comp's gain reduction is an arc that fills *downward* and glows
+  as it works.
+- Guide text floats in over the visualisation only while you're dragging
+  a control, over a real Gaussian blur of what's behind it.
 - 22 px bold titles, 14 px body text, 16 px monospaced numeric readouts
   (peak meters, score/level) - all via the modern `juce::FontOptions`
   API, replacing every deprecated `Font(float, styleFlags)` call in the

@@ -14,10 +14,12 @@
 // slider for both numeric (dB/Hz/pan) and named/categorical choices alike.
 // getNumChoices()/getChoiceLabel(int) is all this needs from a Game, so it
 // works unmodified for every game, numeric or categorical.
-class ChoiceSliderComponent : public juce::Component
+class ChoiceSliderComponent : public juce::Component,
+                               private juce::Timer
 {
 public:
-    ChoiceSliderComponent() = default;
+    ChoiceSliderComponent();
+    ~ChoiceSliderComponent() override;
 
     // Called whenever the active game (or its choice count) changes.
     // Resets to an unanswered, nothing-picked state.
@@ -42,8 +44,12 @@ public:
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseEnter (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
 
 private:
+    void timerCallback() override;
+
     juce::Rectangle<int> getTrackArea() const;
     float xForIndex (int index, const juce::Rectangle<int>& trackArea) const;
     int indexForX (float x, const juce::Rectangle<int>& trackArea) const;
@@ -71,6 +77,21 @@ private:
     float feedbackWobblePx = 0.0f;
     juce::Animator feedbackAnimator = juce::ValueAnimatorBuilder{}.build();
     juce::VBlankAnimatorUpdater feedbackUpdater { this };
+
+    // Touch response: the thumb swells and lights up while the pointer is
+    // over or dragging the track, easing rather than snapping. Driven by
+    // this component's own 60 Hz timer instead of an Animator, since it's a
+    // continuously-retargeted state rather than a one-shot transition -
+    // the same split shared/WidgetStateRegistry makes for LookAndFeel
+    // widgets, applied to a component that draws itself.
+    float touchAmount = 0.0f;
+    float touchTarget = 0.0f;
+
+    // Game-switch transition: setChoices() restarts this at 0, and the new
+    // choices rise into place while fading up rather than appearing
+    // instantly. The old choices don't animate out - the widget is
+    // re-labelled in place, so there is nothing left on screen to remove.
+    float enterAmount = 1.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ChoiceSliderComponent)
 };

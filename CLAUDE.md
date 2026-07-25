@@ -96,7 +96,12 @@ editors plus five originally-synthesized built-in training samples
 (`assets/samples/`) exposed through the existing opt-in
 `ReferenceAudioLibrary`, and why a folder of real commercial "name your
 price" albums pointed at during that same request was deliberately never
-read or embedded), `docs/diagrams/i18n-architecture.md`
+read or embedded, 019 is the `shared/AbcTrainTheme` design-token layer, a
+genuinely designed (not inverted) light theme, `shared/WidgetStateRegistry`
+solving the eased-hover problem ADR 018 recorded as unsolvable, tracked
+typography, gradient-filled visualisations, the `GainReductionMeter`,
+the blur-backed `GuideTooltip`, and two more bugs found only by running
+the app), `docs/diagrams/i18n-architecture.md`
 (how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
@@ -685,15 +690,47 @@ tree — none of the three scripts below build anything themselves.
 
 ## Architecture — Look and feel (`shared/`, all four editors)
 
-See [decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md)
-for the full rationale; summary here. This is a basic first pass, not the
-full FabFilter-style redesign that was asked for — see "not yet built"
-below for what was deliberately deferred.
+See [decisions/009](docs/decisions/009-look-and-feel.md),
+[018](docs/decisions/018-ui-polish-and-builtin-samples.md) and
+[019](docs/decisions/019-design-system-and-light-theme.md) for the full
+rationale; summary here.
+
+- `shared/AbcTrainTheme.h/.cpp` — **the single source of every colour,
+  spacing step, corner radius, animation duration and easing curve in the
+  UI**. `current()` returns the active `Palette`; `setMode()` switches
+  between `dark()` and a separately-*designed* `light()` (warm off-white
+  page, surfaces stepping up toward white, deeper/desaturated accents,
+  softer cooler shadows, ~half the noise strength — explicitly not an
+  inversion, see ADR 019). Exists separately from `AbcTrainLookAndFeel`
+  because a `LookAndFeel` only reaches widgets JUCE routes through it,
+  while every custom component here (spectrum, waveform, choice slider,
+  lesson/training overlays, progress bar) draws itself and used to carry
+  its own drifting copies of the hex literals. The light/dark choice is
+  persisted in the same shared "abcTrain" `PropertiesFile` as the
+  language, so it's one product-wide preference; each of the four editors
+  has a theme toggle in its title row.
+- `shared/WidgetStateRegistry.h/.cpp` — per-`Component` eased hover/press
+  values on a 60 Hz timer, keyed by `Component::SafePointer` (so a widget
+  destroyed mid-animation nulls its entry rather than dangling; dead
+  entries pruned each tick). This is what makes hover/press *interpolate*
+  rather than snap — the thing ADR 018 recorded as impossible for a
+  stateless `LookAndFeel`. Press uses a shorter duration than release
+  deliberately: that asymmetry is what reads as mass.
+- `shared/GainReductionMeter.h/.cpp` — gradient arc filling **downward**
+  with gain reduction, glow intensifying as it works. Downward on
+  purpose (see ADR 019): GR is the one meter where "more is lower", and
+  a reused upward level meter would teach the wrong model.
+- `shared/GuideTooltip.h/.cpp` — the Learner plugins' contextual guide
+  text, now a card that eases in over the visualisation only while a
+  control is dragged, over a **real** Gaussian blur
+  (`juce::ImageConvolutionKernel`) of what's behind it. Snapshots its
+  *parent*, not itself — `createComponentSnapshot` includes children, so
+  snapshotting itself would recurse into its own `paint()`.
 
 - `shared/AbcTrainLookAndFeel.h/.cpp` — extends `juce::LookAndFeel_V4`.
-  One `juce::LookAndFeel_V4::ColourScheme` (dark background `#1e1e2e`, blue
-  accent `#5b9bd5` as `defaultFill`, orange `#d98c5f` as `highlightedFill`,
-  light-grey `#e0e0e0` text) set once in the constructor, which
+  `refreshFromTheme()` reads `AbcTrainTheme::current()` into one
+  `juce::LookAndFeel_V4::ColourScheme` (call it after
+  `AbcTrainTheme::setMode()`, then repaint), which
   `LookAndFeel_V4::initialiseColours()` maps onto specific component
   `colourId`s automatically (e.g. `highlightedFill` becomes both
   `Slider::rotarySliderFillColourId` and `TextButton::buttonOnColourId`) —

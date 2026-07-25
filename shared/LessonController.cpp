@@ -1,4 +1,6 @@
 #include "LessonController.h"
+#include "AbcTrainTheme.h"
+#include "AbcTrainLookAndFeel.h"
 
 LessonController::LessonController (juce::AudioProcessorValueTreeState& stateToControl, MicroLesson lessonToPlay)
     : apvts (stateToControl), lesson (std::move (lessonToPlay))
@@ -10,7 +12,7 @@ LessonController::LessonController (juce::AudioProcessorValueTreeState& stateToC
     addAndMakeVisible (titleLabel);
 
     progressLabel.setJustificationType (juce::Justification::centred);
-    progressLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
+    progressLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
     addAndMakeVisible (progressLabel);
 
     stepTextLabel.setJustificationType (juce::Justification::centred);
@@ -69,8 +71,11 @@ void LessonController::applyCurrentStep()
 
 void LessonController::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e1e2e));
-    g.setColour (juce::Colour (0xff5b9bd5).withAlpha (0.6f));
+    // A full-size overlay, so it repaints the whole backdrop rather than
+    // letting the editor underneath show through.
+    const auto& theme = AbcTrainTheme::current();
+    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    g.setColour (theme.accent.withAlpha (0.55f));
     g.drawRect (getLocalBounds(), 2);
 }
 

@@ -3,6 +3,7 @@
 #include "VocalCompressionLesson.h"
 #include "BusGlueLesson.h"
 #include "../../shared/Version.h"
+#include "../../shared/i18n/LocalisationManager.h"
 #include <array>
 #include <memory>
 
@@ -24,46 +25,47 @@ namespace
         { "dryWet",    "Dry/Wet" }
     }};
 
-    constexpr const char* defaultGuideText = "Drag a knob to see what it does.";
+    constexpr const char* themeModeKey = "themeMode";
 }
 
 LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalCompressionLesson()),
-      busGlueLessonController (p.apvts, buildBusGlueLesson())
+      busGlueLessonController (p.apvts, buildBusGlueLesson()),
+      // Same shared "abcTrain" settings folder the language preference
+      // uses, so light/dark is one product-wide choice rather than a
+      // per-plugin one.
+      themeProperties (LocalisationManager::makeDefaultOptions())
 {
+    AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
+                                ? AbcTrainTheme::Mode::light
+                                : AbcTrainTheme::Mode::dark);
+    lookAndFeel.refreshFromTheme();
+
     setLookAndFeel (&lookAndFeel);
 
+    // Drawn by paint() with letter-spacing rather than via the Label.
     titleLabel.setText ("Learner Comp", juce::dontSendNotification);
-    titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
-    titleLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (titleLabel);
+    titleLabel.setVisible (false);
+
+    themeButton.onClick = [this] { toggleTheme(); };
+    addAndMakeVisible (themeButton);
 
     pluginIcon.setIcon (AppIcons::Icon::learnerComp);
     addAndMakeVisible (pluginIcon);
-
-    guideLabel.setJustificationType (juce::Justification::centred);
-    guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
-    guideLabel.setText (defaultGuideText, juce::dontSendNotification);
-    addAndMakeVisible (guideLabel);
 
     addAndMakeVisible (spectrum);
 
     addAndMakeVisible (waveform);
 
-    gainReductionLabel.setJustificationType (juce::Justification::centred);
-    gainReductionLabel.setFont (juce::Font (juce::FontOptions (20.0f, juce::Font::bold)));
-    gainReductionLabel.setColour (juce::Label::textColourId, juce::Colour (0xffd98c5f));
-    addAndMakeVisible (gainReductionLabel);
+    addAndMakeVisible (gainReductionMeter);
 
     inputPeakLabel.setJustificationType (juce::Justification::centred);
     inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (inputPeakLabel);
 
     outputPeakLabel.setJustificationType (juce::Justification::centred);
     outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (outputPeakLabel);
 
     for (size_t i = 0; i < knobs.size(); ++i)
@@ -83,11 +85,13 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         const juce::String paramId (spec.paramId);
         knob.slider.onDragStart = [this, paramId]
         {
-            guideLabel.setText (CompressorGuide::describe (paramId), juce::dontSendNotification);
+            guideTooltip.setText (CompressorGuide::describe (paramId));
         };
         knob.slider.onDragEnd = [this]
         {
-            guideLabel.setText (defaultGuideText, juce::dontSendNotification);
+            // Empty text animates the card out rather than leaving a
+            // permanent "drag a knob" strip taking up layout space.
+            guideTooltip.setText ({});
         };
     }
 
@@ -190,9 +194,13 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
-    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
-    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
+                            juce::Justification::centredRight);
     addAndMakeVisible (soundkorbLink);
+
+    // After the controls (so it floats above the visualisation it covers)
+    // but before the lesson overlays, which must stay on top of everything.
+    addAndMakeVisible (guideTooltip);
 
     // Added last, after every other child, so a shown lesson overlay
     // actually covers the title-row buttons/link instead of them poking
@@ -205,7 +213,43 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     busGlueLessonController.onClosed = [this] { resized(); };
 
     startTimerHz (30);
-    setSize (820, 808);
+    // Taller than before: the two section panels carry their own padding
+    // and captions, and the guide text no longer occupies a permanent
+    // strip (it floats over the visualisation on demand instead).
+    setSize (840, 820);
+
+    applyTheme();
+}
+
+void LearnerCompEditor::applyTheme()
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
+    outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
+
+    for (auto& knob : knobs)
+        knob.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
+
+    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+    repaint();
+}
+
+void LearnerCompEditor::toggleTheme()
+{
+    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
+                             ? AbcTrainTheme::Mode::dark
+                             : AbcTrainTheme::Mode::light;
+
+    AbcTrainTheme::setMode (newMode);
+    themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
+
+    lookAndFeel.refreshFromTheme();
+    applyTheme();
+
+    for (auto* child : getChildren())
+        child->repaint();
 }
 
 LearnerCompEditor::~LearnerCompEditor()
@@ -217,61 +261,96 @@ LearnerCompEditor::~LearnerCompEditor()
 
 void LearnerCompEditor::paint (juce::Graphics& g)
 {
+    const auto& theme = AbcTrainTheme::current();
+
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+
+    AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
+    AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Compressor");
+
+    // Recessed wells behind the two data displays, so they read as cut
+    // into the panel while the controls sit on top of it.
+    AbcTrainLookAndFeel::paintDisplayWell (g, spectrum.getBounds().toFloat().expanded (1.0f));
+    AbcTrainLookAndFeel::paintDisplayWell (g, waveform.getBounds().toFloat().expanded (1.0f));
+
+    AbcTrainLookAndFeel::drawTrackedText (
+        g, titleLabel.getText(),
+        juce::Rectangle<float> (52.0f, (float) AbcTrainTheme::Spacing::medium,
+                                 (float) getWidth() * 0.4f, 32.0f),
+        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
+        juce::Justification::centredLeft);
 }
 
 void LearnerCompEditor::resized()
 {
+    using namespace AbcTrainTheme;
+
     lessonController.setBounds (getLocalBounds());
     busGlueLessonController.setBounds (getLocalBounds());
 
-    auto area = getLocalBounds().reduced (16);
+    auto area = getLocalBounds().reduced (Spacing::large);
 
     auto titleRow = area.removeFromTop (32);
-    lessonSelector.setBounds (titleRow.removeFromRight (150));
-    titleRow.removeFromRight (8);
-    bypassButton.setBounds (titleRow.removeFromRight (90));
-    titleRow.removeFromRight (8);
-    updateButton.setBounds (titleRow.removeFromRight (80));
-    titleRow.removeFromRight (8);
+    lessonSelector.setBounds (titleRow.removeFromRight (156));
+    titleRow.removeFromRight (Spacing::small);
+    themeButton.setBounds (titleRow.removeFromRight (62));
+    titleRow.removeFromRight (Spacing::small);
+    updateButton.setBounds (titleRow.removeFromRight (76));
+    titleRow.removeFromRight (Spacing::small);
+    bypassButton.setBounds (titleRow.removeFromRight (96));
     pluginIcon.setBounds (titleRow.removeFromLeft (28));
-    titleRow.removeFromLeft (4);
-    titleLabel.setBounds (titleRow);
 
-    guideLabel.setBounds (area.removeFromTop (48));
-    area.removeFromTop (8);
+    area.removeFromTop (Spacing::section);
 
-    spectrum.setBounds (area.removeFromTop (140));
-    area.removeFromTop (8);
-
-    waveform.setBounds (area.removeFromTop (160));
-    area.removeFromTop (8);
-
-    auto meterRow = area.removeFromTop (28);
-    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 3));
-    gainReductionLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
-    outputPeakLabel.setBounds (meterRow);
-
-    area.removeFromTop (16);
-
-    auto knobRow = area.removeFromTop (110);
-    const auto knobWidth = knobRow.getWidth() / (int) knobs.size();
-    for (auto& knob : knobs)
+    // --- analysis section: spectrum, waveform, meters ---
+    analysisSection = area.removeFromTop (390);
     {
-        auto column = knobRow.removeFromLeft (knobWidth).reduced (4);
-        knob.nameLabel.setBounds (column.removeFromTop (18));
-        knob.slider.setBounds (column);
+        auto inner = analysisSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
+
+        spectrum.setBounds (inner.removeFromTop (140).reduced (1));
+        inner.removeFromTop (Spacing::medium);
+        waveform.setBounds (inner.removeFromTop (150).reduced (1));
+        inner.removeFromTop (Spacing::medium);
+
+        auto meterRow = inner.removeFromTop (46);
+        inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 3));
+        outputPeakLabel.setBounds (meterRow.removeFromRight (meterRow.getWidth() / 2));
+        gainReductionMeter.setBounds (meterRow.reduced (Spacing::small, 0));
     }
 
-    area.removeFromTop (16);
+    area.removeFromTop (Spacing::medium);
 
-    auto bottomRow = area.removeFromTop (32);
-    const auto presetWidth = bottomRow.getWidth() / juce::jmax (1, presetButtons.size());
-    for (auto* button : presetButtons)
-        button->setBounds (bottomRow.removeFromLeft (presetWidth).reduced (4, 0));
+    // --- control section: knobs and presets ---
+    controlSection = area.removeFromTop (186);
+    {
+        auto inner = controlSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
 
-    area.removeFromTop (8);
-    soundkorbLink.setBounds (area.removeFromTop (18).removeFromRight (130));
+        auto knobRow = inner.removeFromTop (108);
+        const auto knobWidth = knobRow.getWidth() / (int) knobs.size();
+        for (auto& knob : knobs)
+        {
+            auto column = knobRow.removeFromLeft (knobWidth).reduced (Spacing::tight);
+            knob.nameLabel.setBounds (column.removeFromTop (18));
+            knob.slider.setBounds (column);
+        }
+
+        inner.removeFromTop (Spacing::small);
+
+        auto presetRow = inner.removeFromTop (32);
+        const auto presetWidth = presetRow.getWidth() / juce::jmax (1, presetButtons.size());
+        for (auto* button : presetButtons)
+            button->setBounds (presetRow.removeFromLeft (presetWidth).reduced (Spacing::tight, 0));
+    }
+
+    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
+
+    // The guide card floats over the lower part of the analysis section:
+    // close to the knobs being dragged, without covering them.
+    guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
+                                            .withHeight (66)
+                                            .withY (analysisSection.getBottom() - 78));
 }
 
 void LearnerCompEditor::timerCallback()
@@ -279,8 +358,7 @@ void LearnerCompEditor::timerCallback()
     const auto sr = processor.getSampleRate();
     spectrum.setSampleRate (sr > 0.0 ? sr : 44100.0);
 
-    gainReductionLabel.setText ("GR: " + juce::String (waveform.getCurrentHighlightAmount(), 1) + " dB",
-                                 juce::dontSendNotification);
+    gainReductionMeter.setGainReductionDb (waveform.getCurrentHighlightAmount());
 
     inputPeakLabel.setText ("In: "
                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)

@@ -7,6 +7,8 @@
 #include "../../shared/LessonController.h"
 #include "../../shared/UpdateChecker.h"
 #include "../../shared/AbcTrainLookAndFeel.h"
+#include "../../shared/AbcTrainTheme.h"
+#include "../../shared/GuideTooltip.h"
 #include "../../shared/AppIcons.h"
 #include <array>
 #include <memory>
@@ -23,6 +25,10 @@ public:
 
 private:
     void timerCallback() override;
+
+    // Pushes the active palette into widgets that colour themselves.
+    void applyTheme();
+    void toggleTheme();
 
     struct BandControls
     {
@@ -42,7 +48,9 @@ private:
     SpectrumAnalyserComponent spectrum;
     juce::Label titleLabel;
     AppIconComponent pluginIcon;
-    juce::Label guideLabel;
+    // Floating, blur-backed guide card, shown only while a band's
+    // frequency knob is being dragged - replaces the permanent strip.
+    GuideTooltip guideTooltip;
     WaveformDisplay waveform;
     juce::Label inputPeakLabel;
     juce::Label outputPeakLabel;
@@ -59,6 +67,14 @@ private:
     LessonController resonanceLessonController;
 
     juce::TextButton updateButton { "Updates" };
+
+    // Light/dark switch, persisted product-wide.
+    juce::TextButton themeButton { "Light" };
+    juce::PropertiesFile themeProperties;
+
+    // Section backdrops, computed in resized() and drawn in paint().
+    juce::Rectangle<int> analysisSection;
+    juce::Rectangle<int> controlSection;
 
     // Product site link - see decisions/016.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };

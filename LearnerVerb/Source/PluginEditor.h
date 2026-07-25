@@ -7,6 +7,8 @@
 #include "../../shared/LessonController.h"
 #include "../../shared/UpdateChecker.h"
 #include "../../shared/AbcTrainLookAndFeel.h"
+#include "../../shared/AbcTrainTheme.h"
+#include "../../shared/GuideTooltip.h"
 #include "../../shared/AppIcons.h"
 #include <array>
 #include <memory>
@@ -24,6 +26,10 @@ public:
 private:
     void timerCallback() override;
 
+    // Pushes the active palette into widgets that colour themselves.
+    void applyTheme();
+    void toggleTheme();
+
     struct KnobControl
     {
         juce::Slider slider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
@@ -40,7 +46,9 @@ private:
 
     juce::Label titleLabel;
     AppIconComponent pluginIcon;
-    juce::Label guideLabel;
+    // Floating, blur-backed guide card, shown only while a control is
+    // being dragged - replaces the permanent text strip.
+    GuideTooltip guideTooltip;
     SpectrumAnalyzerComponent spectrum;
     WaveformDisplay waveform;
     juce::Label inputPeakLabel;
@@ -64,6 +72,14 @@ private:
     LessonController tailLessonController;
 
     juce::TextButton updateButton { "Updates" };
+
+    // Light/dark switch, persisted product-wide.
+    juce::TextButton themeButton { "Light" };
+    juce::PropertiesFile themeProperties;
+
+    // Section backdrops, computed in resized() and drawn in paint().
+    juce::Rectangle<int> analysisSection;
+    juce::Rectangle<int> controlSection;
 
     // Product site link - see decisions/016.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };

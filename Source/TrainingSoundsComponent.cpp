@@ -1,4 +1,6 @@
 #include "TrainingSoundsComponent.h"
+#include "../shared/AbcTrainTheme.h"
+#include "../shared/AbcTrainLookAndFeel.h"
 
 TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processorToControl)
     : processor (processorToControl)
@@ -41,7 +43,7 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
     rootFolderLabel.setJustificationType (juce::Justification::centred);
     rootFolderLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
-    rootFolderLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
+    rootFolderLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
     addAndMakeVisible (rootFolderLabel);
 
     pinkNoiseButton.onClick = [this]
@@ -52,7 +54,7 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     addAndMakeVisible (pinkNoiseButton);
 
     statusLabel.setJustificationType (juce::Justification::centred);
-    statusLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
+    statusLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
     addAndMakeVisible (statusLabel);
 
     closeButton.onClick = [this]
@@ -123,13 +125,14 @@ void TrainingSoundsComponent::updateStatusLabel()
 
 void TrainingSoundsComponent::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1e1e2e));
-    g.setColour (juce::Colour (0xff5b9bd5).withAlpha (0.6f));
+    const auto& theme = AbcTrainTheme::current();
+    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    g.setColour (theme.accent.withAlpha (0.55f));
     g.drawRect (getLocalBounds(), 2);
 
     if (categoryButtons.isEmpty())
     {
-        g.setColour (juce::Colour (0xffa0a0b0));
+        g.setColour (theme.textDim);
         g.setFont (juce::Font (juce::FontOptions (13.0f)));
         g.drawFittedText ("No categories found under " + processor.getGameManager().getReferenceAudioLibrary().getRootFolder().getFullPathName()
                                + " - add subfolders of your own audio files there, one subfolder per category.",

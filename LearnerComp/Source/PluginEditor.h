@@ -7,7 +7,10 @@
 #include "../../shared/LessonController.h"
 #include "../../shared/UpdateChecker.h"
 #include "../../shared/AbcTrainLookAndFeel.h"
+#include "../../shared/AbcTrainTheme.h"
 #include "../../shared/AppIcons.h"
+#include "../../shared/GuideTooltip.h"
+#include "../../shared/GainReductionMeter.h"
 #include <array>
 #include <memory>
 
@@ -23,6 +26,11 @@ public:
 
 private:
     void timerCallback() override;
+
+    // Pushes the active palette into widgets that set their own colours,
+    // which the LookAndFeel's colour scheme can't reach.
+    void applyTheme();
+    void toggleTheme();
 
     struct KnobControl
     {
@@ -40,10 +48,19 @@ private:
 
     juce::Label titleLabel;
     AppIconComponent pluginIcon;
-    juce::Label guideLabel;
+
+    // Floating, blur-backed guide card - replaces the fixed text strip that
+    // used to sit under the title. It appears over the visualisation only
+    // while a knob is being dragged, and eases out afterwards.
+    GuideTooltip guideTooltip;
+
     SpectrumAnalyzerComponent spectrum;
     WaveformDisplay waveform;
-    juce::Label gainReductionLabel;
+
+    // Arc meter with a gradient sweep and a glow that intensifies with
+    // reduction, replacing the plain "GR: -3.2 dB" text readout.
+    GainReductionMeter gainReductionMeter;
+
     juce::Label inputPeakLabel;
     juce::Label outputPeakLabel;
 
@@ -61,6 +78,15 @@ private:
     LessonController busGlueLessonController;
 
     juce::TextButton updateButton { "Updates" };
+
+    // Light/dark switch, persisted in the shared product-wide
+    // PropertiesFile so all four plugins agree on the mode.
+    juce::TextButton themeButton { "Light" };
+    juce::PropertiesFile themeProperties;
+
+    // Section backdrops, computed in resized() and drawn in paint().
+    juce::Rectangle<int> analysisSection;
+    juce::Rectangle<int> controlSection;
 
     // Product site link - see decisions/016.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };

@@ -75,13 +75,31 @@ private:
 
         void paint (juce::Graphics& g) override
         {
+            const auto& theme = AbcTrainTheme::current();
             auto bounds = getLocalBounds().toFloat();
-            g.setColour (juce::Colour (0xff3a3a4a));
-            g.fillRoundedRectangle (bounds, 4.0f);
+            const auto radius = bounds.getHeight() * 0.5f;
 
-            auto fillBounds = bounds.withWidth (bounds.getWidth() * displayedProgress);
-            g.setColour (juce::Colour (0xff5b9bd5));
-            g.fillRoundedRectangle (fillBounds, 4.0f);
+            // Recessed groove, same treatment as the choice slider's track
+            // and the linear sliders - one consistent idea of what "a
+            // channel something sits in" looks like across the whole UI.
+            juce::ColourGradient trackGradient (theme.displayBackground.darker (0.12f), bounds.getX(), bounds.getY(),
+                                                 theme.widgetBackground, bounds.getX(), bounds.getBottom(), false);
+            g.setGradientFill (trackGradient);
+            g.fillRoundedRectangle (bounds, radius);
+            g.setColour (theme.outline.withAlpha (0.6f));
+            g.drawRoundedRectangle (bounds, radius, 1.0f);
+
+            if (displayedProgress <= 0.001f)
+                return;
+
+            auto fillBounds = bounds.withWidth (juce::jmax (bounds.getHeight(),
+                                                            bounds.getWidth() * displayedProgress));
+
+            juce::ColourGradient fillGradient (theme.accent.darker (0.1f), fillBounds.getX(), fillBounds.getY(),
+                                                theme.accent.brighter (0.2f), fillBounds.getRight(), fillBounds.getY(),
+                                                false);
+            g.setGradientFill (fillGradient);
+            g.fillRoundedRectangle (fillBounds, radius);
 
             // The "breathing" glow: a soft, slowly-pulsing highlight right
             // at the leading edge of the fill - only drawn once there's
@@ -89,11 +107,11 @@ private:
             // pulse for no reason.
             if (displayedProgress > 0.02f)
             {
-                const auto glowAlpha = 0.12f + 0.10f * (0.5f + 0.5f * std::sin (breathPhase));
-                const auto glowWidth = juce::jmin (18.0f, fillBounds.getWidth());
+                const auto glowAlpha = 0.10f + 0.12f * (0.5f + 0.5f * std::sin (breathPhase));
+                const auto glowWidth = juce::jmin (20.0f, fillBounds.getWidth());
                 auto glowBounds = fillBounds.removeFromRight (glowWidth);
-                g.setColour (juce::Colours::white.withAlpha (glowAlpha));
-                g.fillRoundedRectangle (glowBounds, 4.0f);
+                g.setColour (theme.textBright.withAlpha (glowAlpha));
+                g.fillRoundedRectangle (glowBounds, radius);
             }
         }
 
@@ -122,6 +140,13 @@ private:
     };
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
+
+    // Pushes the active palette into every widget that sets its own colours
+    // explicitly (the LookAndFeel can't reach those). Called at construction
+    // and again whenever the theme is toggled.
+    void applyTheme();
+    void toggleTheme();
+
     void refreshFromGameState();
     void refreshFromProgressState();
     void refreshLocalisedText();
@@ -172,6 +197,19 @@ private:
     juce::Label dailyChallengeLabel;
 
     juce::TextButton updateButton { "Updates" };
+
+    // Light/dark switch. The chosen mode is stored in the same shared
+    // "abcTrain" PropertiesFile the language preference uses, so it's one
+    // product-wide preference rather than per-plugin or per-instance.
+    juce::TextButton themeButton { "Light" };
+
+    // Section backdrops, computed in resized() and drawn in paint(). Held
+    // as members because JUCE gives paint() no access to the layout pass,
+    // and recomputing the same rectangles in both places is exactly how
+    // a panel and its contents drift apart.
+    juce::Rectangle<int> exerciseSection;
+    juce::Rectangle<int> answerSection;
+    juce::Rectangle<int> progressSection;
 
     // Overlay screen for picking which of the user's own reference-audio
     // folders (if any) the games should train on instead of pink noise -

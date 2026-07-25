@@ -48,6 +48,20 @@ public:
 private:
     void timerCallback() override;
 
+    // One peak column's screen position. `mirrored` picks the bottom half
+    // of the symmetric envelope. Static because buildEnvelopeShape needs it
+    // while walking the columns backwards.
+    static juce::Point<float> envelopePoint (const std::array<float, numColumns>& history,
+                                             juce::Rectangle<float> bounds, int index, bool mirrored);
+
+    // Open path along one edge of the envelope, for stroking an outline.
+    juce::Path buildEnvelopePath (const std::array<float, numColumns>& history,
+                                  juce::Rectangle<float> bounds, bool mirrored) const;
+
+    // Closed path around the whole symmetric envelope, for filling.
+    juce::Path buildEnvelopeShape (const std::array<float, numColumns>& history,
+                                   juce::Rectangle<float> bounds) const;
+
     std::array<float, numColumns> inputHistory {};
     std::array<float, numColumns> outputHistory {};
     std::array<float, numColumns> highlightHistory {};

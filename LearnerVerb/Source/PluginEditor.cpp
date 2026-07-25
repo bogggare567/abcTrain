@@ -3,6 +3,7 @@
 #include "VocalSpaceLesson.h"
 #include "BrightVsDarkTailLesson.h"
 #include "../../shared/Version.h"
+#include "../../shared/i18n/LocalisationManager.h"
 #include <array>
 #include <memory>
 
@@ -23,28 +24,34 @@ namespace
         { "width",    "Width" }
     }};
 
-    constexpr const char* defaultGuideText = "Drag a control to see what it does.";
+    constexpr const char* themeModeKey = "themeMode";
 }
 
 LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalSpaceLesson()),
-      tailLessonController (p.apvts, buildBrightVsDarkTailLesson())
+      tailLessonController (p.apvts, buildBrightVsDarkTailLesson()),
+      // Same shared "abcTrain" settings folder the language preference
+      // uses, so light/dark is one product-wide choice.
+      themeProperties (LocalisationManager::makeDefaultOptions())
 {
+    AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
+                                ? AbcTrainTheme::Mode::light
+                                : AbcTrainTheme::Mode::dark);
+    lookAndFeel.refreshFromTheme();
+
     setLookAndFeel (&lookAndFeel);
 
+    // Drawn by paint() with letter-spacing rather than via the Label.
     titleLabel.setText ("Learner Verb", juce::dontSendNotification);
-    titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
-    titleLabel.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (titleLabel);
+    titleLabel.setVisible (false);
+
+    themeButton.onClick = [this] { toggleTheme(); };
+    addAndMakeVisible (themeButton);
 
     pluginIcon.setIcon (AppIcons::Icon::learnerVerb);
     addAndMakeVisible (pluginIcon);
 
-    guideLabel.setJustificationType (juce::Justification::centred);
-    guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
-    guideLabel.setText (defaultGuideText, juce::dontSendNotification);
-    addAndMakeVisible (guideLabel);
 
     addAndMakeVisible (spectrum);
 
@@ -52,12 +59,10 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
     inputPeakLabel.setJustificationType (juce::Justification::centred);
     inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    inputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (inputPeakLabel);
 
     outputPeakLabel.setJustificationType (juce::Justification::centred);
     outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    outputPeakLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     addAndMakeVisible (outputPeakLabel);
 
     typeSelector.addItem ("Room", 1);
@@ -70,7 +75,7 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
     typeSelector.onChange = [this]
     {
-        guideLabel.setText (ReverbGuide::describe ("type"), juce::dontSendNotification);
+        guideTooltip.setText (ReverbGuide::describe ("type"));
     };
 
     for (size_t i = 0; i < knobs.size(); ++i)
@@ -90,11 +95,11 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         const juce::String paramId (spec.paramId);
         knob.slider.onDragStart = [this, paramId]
         {
-            guideLabel.setText (ReverbGuide::describe (paramId), juce::dontSendNotification);
+            guideTooltip.setText (ReverbGuide::describe (paramId));
         };
         knob.slider.onDragEnd = [this]
         {
-            guideLabel.setText (defaultGuideText, juce::dontSendNotification);
+            guideTooltip.setText ({});
         };
     }
 
@@ -197,9 +202,13 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
-    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
-    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
+                            juce::Justification::centredRight);
     addAndMakeVisible (soundkorbLink);
+
+    // After the controls (so it floats above the visualisation it covers)
+    // but before the lesson overlays, which must stay on top of everything.
+    addAndMakeVisible (guideTooltip);
 
     // Added last, after every other child, so a shown lesson overlay
     // actually covers the title-row buttons/link instead of them poking
@@ -212,7 +221,42 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     tailLessonController.onClosed = [this] { resized(); };
 
     startTimerHz (30);
-    setSize (760, 748);
+    // Taller for the section panels' own padding/captions; the guide text
+    // no longer needs a permanent strip (it floats on demand instead).
+    setSize (780, 760);
+
+    applyTheme();
+}
+
+void LearnerVerbEditor::applyTheme()
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
+    outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
+
+    for (auto& knob : knobs)
+        knob.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
+
+    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+    repaint();
+}
+
+void LearnerVerbEditor::toggleTheme()
+{
+    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
+                             ? AbcTrainTheme::Mode::dark
+                             : AbcTrainTheme::Mode::light;
+
+    AbcTrainTheme::setMode (newMode);
+    themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
+
+    lookAndFeel.refreshFromTheme();
+    applyTheme();
+
+    for (auto* child : getChildren())
+        child->repaint();
 }
 
 LearnerVerbEditor::~LearnerVerbEditor()
@@ -224,62 +268,96 @@ LearnerVerbEditor::~LearnerVerbEditor()
 
 void LearnerVerbEditor::paint (juce::Graphics& g)
 {
+    const auto& theme = AbcTrainTheme::current();
+
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+
+    AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
+    AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Reverb");
+
+    AbcTrainLookAndFeel::paintDisplayWell (g, spectrum.getBounds().toFloat().expanded (1.0f));
+    AbcTrainLookAndFeel::paintDisplayWell (g, waveform.getBounds().toFloat().expanded (1.0f));
+
+    AbcTrainLookAndFeel::drawTrackedText (
+        g, titleLabel.getText(),
+        juce::Rectangle<float> (52.0f, (float) AbcTrainTheme::Spacing::medium,
+                                 (float) getWidth() * 0.4f, 32.0f),
+        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
+        juce::Justification::centredLeft);
 }
 
 void LearnerVerbEditor::resized()
 {
+    using namespace AbcTrainTheme;
+
     lessonController.setBounds (getLocalBounds());
     tailLessonController.setBounds (getLocalBounds());
 
-    auto area = getLocalBounds().reduced (16);
+    auto area = getLocalBounds().reduced (Spacing::large);
 
     auto titleRow = area.removeFromTop (32);
-    lessonSelector.setBounds (titleRow.removeFromRight (150));
-    titleRow.removeFromRight (8);
-    bypassButton.setBounds (titleRow.removeFromRight (90));
-    titleRow.removeFromRight (8);
-    updateButton.setBounds (titleRow.removeFromRight (80));
-    titleRow.removeFromRight (8);
+    lessonSelector.setBounds (titleRow.removeFromRight (156));
+    titleRow.removeFromRight (Spacing::small);
+    themeButton.setBounds (titleRow.removeFromRight (62));
+    titleRow.removeFromRight (Spacing::small);
+    updateButton.setBounds (titleRow.removeFromRight (76));
+    titleRow.removeFromRight (Spacing::small);
+    bypassButton.setBounds (titleRow.removeFromRight (96));
     pluginIcon.setBounds (titleRow.removeFromLeft (28));
-    titleRow.removeFromLeft (4);
-    titleLabel.setBounds (titleRow);
 
-    typeSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (200, 24));
-    area.removeFromTop (8);
-    guideLabel.setBounds (area.removeFromTop (48));
-    area.removeFromTop (8);
+    area.removeFromTop (Spacing::section);
 
-    spectrum.setBounds (area.removeFromTop (140));
-    area.removeFromTop (8);
-
-    waveform.setBounds (area.removeFromTop (150));
-    area.removeFromTop (8);
-
-    auto meterRow = area.removeFromTop (20);
-    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
-    outputPeakLabel.setBounds (meterRow);
-
-    area.removeFromTop (8);
-
-    auto knobRow = area.removeFromTop (110);
-    const auto knobWidth = knobRow.getWidth() / (int) knobs.size();
-    for (auto& knob : knobs)
+    // --- analysis section: spectrum, waveform, peak readouts ---
+    analysisSection = area.removeFromTop (368);
     {
-        auto column = knobRow.removeFromLeft (knobWidth).reduced (4);
-        knob.nameLabel.setBounds (column.removeFromTop (18));
-        knob.slider.setBounds (column);
+        auto inner = analysisSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
+
+        spectrum.setBounds (inner.removeFromTop (140).reduced (1));
+        inner.removeFromTop (Spacing::medium);
+        waveform.setBounds (inner.removeFromTop (150).reduced (1));
+        inner.removeFromTop (Spacing::small);
+
+        auto meterRow = inner.removeFromTop (20);
+        inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
+        outputPeakLabel.setBounds (meterRow);
     }
 
-    area.removeFromTop (16);
+    area.removeFromTop (Spacing::medium);
 
-    auto bottomRow = area.removeFromTop (32);
-    const auto presetWidth = bottomRow.getWidth() / juce::jmax (1, presetButtons.size());
-    for (auto* button : presetButtons)
-        button->setBounds (bottomRow.removeFromLeft (presetWidth).reduced (4, 0));
+    // --- control section: type, knobs, presets ---
+    controlSection = area.removeFromTop (222);
+    {
+        auto inner = controlSection.reduced (Spacing::medium);
+        inner.removeFromTop (Spacing::large);
 
-    area.removeFromTop (8);
-    soundkorbLink.setBounds (area.removeFromTop (18).removeFromRight (130));
+        typeSelector.setBounds (inner.removeFromTop (26).withSizeKeepingCentre (220, 26));
+        inner.removeFromTop (Spacing::small);
+
+        auto knobRow = inner.removeFromTop (108);
+        const auto knobWidth = knobRow.getWidth() / (int) knobs.size();
+        for (auto& knob : knobs)
+        {
+            auto column = knobRow.removeFromLeft (knobWidth).reduced (Spacing::tight);
+            knob.nameLabel.setBounds (column.removeFromTop (18));
+            knob.slider.setBounds (column);
+        }
+
+        inner.removeFromTop (Spacing::small);
+
+        auto presetRow = inner.removeFromTop (32);
+        const auto presetWidth = presetRow.getWidth() / juce::jmax (1, presetButtons.size());
+        for (auto* button : presetButtons)
+            button->setBounds (presetRow.removeFromLeft (presetWidth).reduced (Spacing::tight, 0));
+    }
+
+    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
+
+    // The guide card floats over the lower part of the analysis section:
+    // close to the controls being dragged, without covering them.
+    guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
+                                            .withHeight (66)
+                                            .withY (analysisSection.getBottom() - 78));
 }
 
 void LearnerVerbEditor::timerCallback()

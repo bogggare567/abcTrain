@@ -1,6 +1,7 @@
 #include "SpectrumAnalyser.h"
 #include "EQCoefficients.h"
 #include "FrequencyGuide.h"
+#include "../../shared/AbcTrainTheme.h"
 
 void SpectrumAnalyserComponent::setEQState (double sampleRate, const std::array<float, 4>& freqs,
                                              const std::array<float, 4>& gains, const std::array<float, 4>& qs)
@@ -52,6 +53,8 @@ juce::Path SpectrumAnalyserComponent::buildResponseCurvePath (juce::Rectangle<fl
 
 void SpectrumAnalyserComponent::paintOverlay (juce::Graphics& g, juce::Rectangle<float> bounds)
 {
+    const auto& theme = AbcTrainTheme::current();
+
     if (highlightedBandIndex >= 0)
     {
         const auto freq = eqFreqs[(size_t) highlightedBandIndex];
@@ -62,10 +65,25 @@ void SpectrumAnalyserComponent::paintOverlay (juce::Graphics& g, juce::Rectangle
 
         const auto x0 = bounds.getX() + bounds.getWidth() * loProportion;
         const auto x1 = bounds.getX() + bounds.getWidth() * hiProportion;
-        g.setColour (juce::Colours::orange.withAlpha (0.18f));
-        g.fillRect (juce::Rectangle<float> (x0, bounds.getY(), x1 - x0, bounds.getHeight()));
+        const auto region = juce::Rectangle<float> (x0, bounds.getY(), x1 - x0, bounds.getHeight());
+
+        // The highlighted band fades out toward its edges rather than
+        // being a hard-edged block - a bell's influence doesn't stop
+        // abruptly at its bandwidth, and neither should the way it's drawn.
+        juce::ColourGradient bandGradient (theme.accentWarm.withAlpha (0.03f), region.getX(), region.getY(),
+                                            theme.accentWarm.withAlpha (0.03f), region.getRight(), region.getY(),
+                                            false);
+        bandGradient.addColour (0.5, theme.accentWarm.withAlpha (0.22f));
+        g.setGradientFill (bandGradient);
+        g.fillRect (region);
     }
 
-    g.setColour (juce::Colours::white);
-    g.strokePath (buildResponseCurvePath (bounds), juce::PathStrokeType (2.0f));
+    const auto curve = buildResponseCurvePath (bounds);
+
+    // Bloom beneath, crisp line on top - same treatment as the spectrum
+    // curve itself, so the two read as one family of graphics.
+    g.setColour (theme.textBright.withAlpha (0.16f));
+    g.strokePath (curve, juce::PathStrokeType (5.0f, juce::PathStrokeType::curved));
+    g.setColour (theme.textBright);
+    g.strokePath (curve, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved));
 }

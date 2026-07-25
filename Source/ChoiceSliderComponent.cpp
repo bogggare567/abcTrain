@@ -1,26 +1,66 @@
 #include "ChoiceSliderComponent.h"
+#include "../shared/AbcTrainLookAndFeel.h"
+#include "../shared/AbcTrainTheme.h"
 #include <cmath>
 
 namespace
 {
-    // Same muted palette as PluginEditor.cpp/AbcTrainLookAndFeel (see
-    // decisions/014) - kept as local constants rather than shared, since
-    // this component has no other dependency on the rest of the editor.
-    const juce::Colour correctColour { 0xff5fbf7d };
-    const juce::Colour wrongColour { 0xffd9615f };
-    const juce::Colour trackColour { 0xff2a2a3a };
-    const juce::Colour accentColour { 0xff5b9bd5 };
-    const juce::Colour bodyTextColour { 0xffe0e0e0 };
-    const juce::Colour mutedTextColour { 0xffa0a0b0 };
-
-    constexpr int bigLabelHeight = 28;
+    constexpr int bigLabelHeight = 32;
     constexpr int tickLabelHeight = 20;
-    constexpr float thumbRadius = 8.0f;
+    constexpr float baseThumbRadius = 8.0f;
+    constexpr int tickHz = 60;
+}
+
+ChoiceSliderComponent::ChoiceSliderComponent()
+{
+    startTimerHz (tickHz);
+}
+
+ChoiceSliderComponent::~ChoiceSliderComponent()
+{
+    stopTimer();
+}
+
+void ChoiceSliderComponent::timerCallback()
+{
+    const auto step = (float) (1000.0 / (double) tickHz);
+
+    const auto previousTouch = touchAmount;
+    const auto touchStep = step / (float) AbcTrainTheme::Duration::hover;
+    if (std::abs (touchTarget - touchAmount) <= touchStep)
+        touchAmount = touchTarget;
+    else
+        touchAmount += touchTarget > touchAmount ? touchStep : -touchStep;
+
+    const auto previousEnter = enterAmount;
+    if (enterAmount < 1.0f)
+        enterAmount = juce::jmin (1.0f, enterAmount + step / (float) AbcTrainTheme::Duration::transition);
+
+    if (std::abs (touchAmount - previousTouch) > 0.002f
+        || std::abs (enterAmount - previousEnter) > 0.002f)
+    {
+        repaint();
+    }
+}
+
+void ChoiceSliderComponent::mouseEnter (const juce::MouseEvent&)
+{
+    touchTarget = 1.0f;
+}
+
+void ChoiceSliderComponent::mouseExit (const juce::MouseEvent&)
+{
+    if (! isMouseButtonDown())
+        touchTarget = 0.0f;
 }
 
 void ChoiceSliderComponent::setChoices (const juce::StringArray& labels)
 {
     choiceLabels = labels;
+    // Switching games re-labels this widget rather than rebuilding it, so
+    // the transition is an entrance for the new choices: they rise into
+    // place and fade up instead of blinking into existence.
+    enterAmount = 0.0f;
     resetForNewRound();
 }
 
@@ -151,6 +191,11 @@ void ChoiceSliderComponent::mouseDrag (const juce::MouseEvent& e) { updatePrevie
 
 void ChoiceSliderComponent::mouseUp (const juce::MouseEvent&)
 {
+    // A drag can end with the pointer outside the component, in which case
+    // no mouseExit ever arrives - without this the thumb would stay swollen
+    // and glowing with the cursor nowhere near it.
+    touchTarget = isMouseOver (true) ? 1.0f : 0.0f;
+
     if (answered || previewIndex < 0)
         return;
 
@@ -163,6 +208,17 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
     if (choiceLabels.isEmpty())
         return;
 
+    const auto& theme = AbcTrainTheme::current();
+    const auto touch = AbcTrainTheme::Ease::out (touchAmount);
+
+    // Entrance: everything rises a few px into place while fading up.
+    const auto entered = AbcTrainTheme::Ease::out (enterAmount);
+    const auto enterOffsetY = (1.0f - entered) * 10.0f;
+
+    juce::Graphics::ScopedSaveState saved (g);
+    g.setOpacity (entered);
+    g.addTransform (juce::AffineTransform::translation (0.0f, enterOffsetY));
+
     auto bounds = getLocalBounds();
     auto bigLabelArea = bounds.removeFromTop (bigLabelHeight);
     auto tickLabelArea = bounds.removeFromBottom (tickLabelHeight);
@@ -172,8 +228,27 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
     auto trackArea = getTrackArea();
 
     const auto trackY = (float) trackArea.getCentreY();
-    g.setColour (trackColour);
-    g.fillRoundedRectangle ((float) trackArea.getX(), trackY - 3.0f, (float) trackArea.getWidth(), 6.0f, 3.0f);
+    const auto trackThickness = 7.0f + 1.5f * touch;
+    const auto trackRect = juce::Rectangle<float> ((float) trackArea.getX(), trackY - trackThickness * 0.5f,
+                                                    (float) trackArea.getWidth(), trackThickness);
+    const auto trackRadius = trackThickness * 0.5f;
+
+    // Recessed track: a dark well, then a bright hairline along its *lower*
+    // inner edge only. Light falling into a real groove catches the far
+    // wall, which is the bottom - a uniform outline instead just reads as a
+    // drawn pill. Verified by running the app: the first version of this
+    // was too low-contrast against the section panel to read as a groove at
+    // all, which is why the fill is a flat dark tone rather than a gradient
+    // that meets the panel colour at its bottom edge.
+    g.setColour (theme.displayBackground);
+    g.fillRoundedRectangle (trackRect, trackRadius);
+
+    g.setColour (theme.outline.withAlpha (0.85f));
+    g.drawRoundedRectangle (trackRect.reduced (0.5f), trackRadius, 1.0f);
+
+    g.setColour (theme.textBright.withAlpha (0.07f));
+    g.drawLine (trackRect.getX() + trackRadius, trackRect.getBottom() - 0.5f,
+                trackRect.getRight() - trackRadius, trackRect.getBottom() - 0.5f, 1.0f);
 
     const auto n = choiceLabels.size();
     const auto highlighted = answered ? chosenIndex : previewIndex;
@@ -184,16 +259,21 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
     {
         const auto x = xForIndex (i, trackArea);
 
-        auto tickColour = mutedTextColour;
+        auto tickColour = theme.textDim.withAlpha (0.55f);
         if (answered && i == correctIndex)
-            tickColour = correctColour;
+            tickColour = theme.positive;
         else if (answered && i == chosenIndex && ! lastCorrect)
-            tickColour = wrongColour;
+            tickColour = theme.negative;
+
+        // Ticks reach further out from the track as the widget is touched:
+        // the scale "opens up" under the pointer.
+        const auto tickExtent = 1.0f + 0.25f * touch;
+        const auto tickHalf = (float) trackArea.getHeight() * 0.5f * tickExtent;
 
         g.setColour (tickColour);
-        g.drawLine (x, (float) trackArea.getY(), x, (float) trackArea.getBottom(), 2.0f);
+        g.drawLine (x, trackY - tickHalf, x, trackY + tickHalf, 2.0f);
 
-        g.setColour (i == highlighted ? bodyTextColour : mutedTextColour);
+        g.setColour (i == highlighted ? theme.text : theme.textDim);
         g.drawText (choiceLabels[i],
                      (int) x - 40, tickLabelArea.getY(), 80, tickLabelArea.getHeight(),
                      juce::Justification::centred);
@@ -206,9 +286,9 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
         // isolated element twitching.
         const auto x = xForIndex (highlighted, trackArea) + feedbackWobblePx;
 
-        auto thumbColour = accentColour;
+        auto thumbColour = theme.accent;
         if (answered)
-            thumbColour = lastCorrect ? correctColour : wrongColour;
+            thumbColour = lastCorrect ? theme.positive : theme.negative;
 
         // Correct-answer glow: a soft halo that fades out over ~900ms,
         // drawn as a couple of progressively larger/fainter circles
@@ -216,20 +296,45 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
         // rotary sliders' drag glow uses.
         if (feedbackGlow > 0.001f)
         {
-            const auto glowR1 = thumbRadius + 10.0f * feedbackGlow;
-            const auto glowR2 = thumbRadius + 5.0f * feedbackGlow;
-            g.setColour (correctColour.withAlpha (0.15f * feedbackGlow));
+            const auto glowR1 = baseThumbRadius + 12.0f * feedbackGlow;
+            const auto glowR2 = baseThumbRadius + 6.0f * feedbackGlow;
+            g.setColour (theme.positive.withAlpha (0.15f * feedbackGlow));
             g.fillEllipse (x - glowR1, trackY - glowR1, glowR1 * 2.0f, glowR1 * 2.0f);
-            g.setColour (correctColour.withAlpha (0.25f * feedbackGlow));
+            g.setColour (theme.positive.withAlpha (0.25f * feedbackGlow));
             g.fillEllipse (x - glowR2, trackY - glowR2, glowR2 * 2.0f, glowR2 * 2.0f);
         }
 
-        g.setColour (thumbColour);
-        g.fillEllipse (x - thumbRadius, trackY - thumbRadius, thumbRadius * 2.0f, thumbRadius * 2.0f);
+        // The thumb comes alive under the pointer: it swells ~30% and
+        // gains a halo, so the thing you're about to drag announces itself.
+        const auto thumbRadius = baseThumbRadius * (1.0f + 0.3f * touch);
 
-        g.setColour (bodyTextColour);
-        g.setFont (juce::Font (juce::FontOptions (20.0f, juce::Font::bold)));
-        g.drawText (choiceLabels[highlighted], bigLabelArea.toFloat().translated (feedbackWobblePx, 0.0f).toNearestInt(),
-                     juce::Justification::centred);
+        if (touch > 0.01f)
+        {
+            const auto haloRadius = thumbRadius + 7.0f * touch;
+            g.setColour (thumbColour.withAlpha (0.20f * touch));
+            g.fillEllipse (x - haloRadius, trackY - haloRadius, haloRadius * 2.0f, haloRadius * 2.0f);
+        }
+
+        const auto thumbBounds = juce::Rectangle<float> (x - thumbRadius, trackY - thumbRadius,
+                                                          thumbRadius * 2.0f, thumbRadius * 2.0f);
+
+        juce::Path thumbPath;
+        thumbPath.addEllipse (thumbBounds);
+        juce::DropShadow thumbShadow (theme.shadow.withAlpha (0.4f * theme.shadowStrength), 6, { 0, 2 });
+        thumbShadow.drawForPath (g, thumbPath);
+
+        juce::ColourGradient thumbGradient (thumbColour.brighter (0.22f), thumbBounds.getX(), thumbBounds.getY(),
+                                             thumbColour.darker (0.18f), thumbBounds.getX(), thumbBounds.getBottom(),
+                                             false);
+        g.setGradientFill (thumbGradient);
+        g.fillEllipse (thumbBounds);
+
+        // Wide-tracked bold type for the big current-choice readout - this
+        // is the one heading-scale element in the whole EarTrainer window.
+        AbcTrainLookAndFeel::drawTrackedText (
+            g, choiceLabels[highlighted],
+            bigLabelArea.toFloat().translated (feedbackWobblePx, 0.0f),
+            juce::Font (juce::FontOptions (21.0f, juce::Font::bold)),
+            theme.textBright, 1.4f, juce::Justification::centred);
     }
 }
