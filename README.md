@@ -39,7 +39,12 @@ below.
 Long-term direction is a small learning ecosystem — more trainer games,
 more "teaching" plugins in the LearnerEQ shape, an in-plugin knowledge
 base — see [docs/roadmap.md](docs/roadmap.md) for what's actually planned
-vs. built so far.
+vs. built so far. A first step toward that knowledge base is
+[docs/library_catalog.md](docs/library_catalog.md), a bibliography of
+~150 audio-engineering books that future tooltip/lesson content will
+draw general ideas from — deliberately a title/author catalog only, never
+extracted or quoted text; see
+[decisions/010](docs/decisions/010-book-library-scope.md) for why.
 
 ## Look
 
@@ -352,6 +357,11 @@ Bypass next to Lesson in the title row) via the newly-extracted
 - [docs/decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md) —
   the shared `AbcTrainLookAndFeel` dark theme, and what was deliberately
   deferred from this first redesign pass
+- [docs/decisions/010-book-library-scope.md](docs/decisions/010-book-library-scope.md) —
+  why the book-library work stops at a bibliography
+  ([docs/library_catalog.md](docs/library_catalog.md)) instead of
+  extracting and quoting text from copyrighted books in the shipped
+  plugins
 - [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) — the
   `Game` interface and all 8 exercises' class diagram
 - [docs/testing-strategy.md](docs/testing-strategy.md)

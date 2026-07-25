@@ -44,9 +44,12 @@ that depend on them.
 ## Docs directory
 
 `docs/roadmap.md` (status of everything, done vs. planned),
-`docs/diagrams/` (mermaid: system overview, game-engine class diagram,
-learner-plugin component diagrams for LearnerEQ/LearnerComp/LearnerVerb,
-proposed CI pipeline), `docs/decisions/` (ADRs: 001 is the `Game`
+`docs/library_catalog.md` (bibliography of the user's local audio-
+engineering book collection, title/author/topic only — no book text was
+ever extracted, see ADR 010), `docs/diagrams/` (mermaid: system overview,
+game-engine class diagram, learner-plugin component diagrams for
+LearnerEQ/LearnerComp/LearnerVerb, proposed CI pipeline),
+`docs/decisions/` (ADRs: 001 is the `Game`
 interface choice, 002 is `setDifficulty`/`ProgressManager`, 003 is why
 LearnerComp has a custom compressor engine instead of
 `juce::dsp::Compressor`, 004 is LearnerVerb's trimmed visualization scope
@@ -59,7 +62,9 @@ button and why it needs `NEEDS_CURL TRUE` on Linux, 008 is the per-OS
 installers (`.pkg`/DMG, Inno Setup, `tar.gz`) and why macOS can't offer a
 free-text custom install path the way Windows/Linux can, 009 is the
 shared `AbcTrainLookAndFeel` dark theme applied to all four editors and
-what was deliberately deferred from that first redesign pass),
+what was deliberately deferred from that first redesign pass, 010 is why
+the book-library work stops at a bibliography and never extracts or
+quotes book text),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -707,6 +712,11 @@ closely (see [decisions/008](docs/decisions/008-installers.md)).
 - One more teaching plugin: LearnerSat — same pattern as the other three
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).
+- Richer in-plugin tooltips/lessons written originally (general
+  audio-engineering knowledge, not derived from any specific book) with
+  an optional "further reading" pointer into `docs/library_catalog.md` —
+  the catalog itself is done, the tooltip/lesson rewrite across all three
+  Learner plugins and EarTrainer's 8 games is not, see ADR 010.
 - LearnerVerb's trimmed-for-now visualizations: impulse-response "cloud,"
   decay-vs-frequency graph, stereo correlometer/vectorscope (see ADR 004) —
   unaffected by the spectrum/waveform unification in ADR 006, which only

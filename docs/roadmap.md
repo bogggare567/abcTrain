@@ -55,9 +55,10 @@ vs. not.
 | Feature | Status |
 |---|---|
 | LearnerSat | ⏳ |
+| Book-library bibliography: `docs/library_catalog.md` catalogs all 158 books in the user's local audio-engineering collection by topic (title/author only, no text extracted) — see [decisions/010](decisions/010-book-library-scope.md) for why full-text extraction + in-product quoting (the original ask) was rejected as a copyright problem | ✓ catalog only |
 | UI polish beyond the basic redesign pass: hover/press animations (fade timers, press-scale springs), gradient-filled spectrum/waveform curves, pill-shaped tooltip backgrounds for guide labels, `FlexBox`-based layout | ⏳ deliberately deferred from the redesign pass, see [decisions/009](decisions/009-look-and-feel.md) |
 | LearnerVerb: impulse-response visualization, decay-vs-frequency graph, stereo correlometer/vectorscope | ⏳ trimmed from the initial LearnerVerb build, see [decisions/004](decisions/004-learnerverb-scope.md) |
-| In-plugin contextual tooltips beyond one-liners (LearnerEQ, LearnerComp, and LearnerVerb all have one-liners today) | ⏳ |
+| In-plugin contextual tooltips beyond one-liners (LearnerEQ, LearnerComp, and LearnerVerb all have one-liners today), written originally with an optional "further reading" pointer into `docs/library_catalog.md` | ⏳ — see [decisions/010](decisions/010-book-library-scope.md): original text only, never a quote from a specific book |
 | Per-control lesson-step highlighting (beyond the moving-knob cue) | ⏳ trimmed from the initial MicroLesson build, see [decisions/005](decisions/005-microlesson-architecture.md) |
 | More lessons per plugin (each Learner plugin has exactly one today) | ⏳ |
 | Glossary with audio examples | ⏳ |
