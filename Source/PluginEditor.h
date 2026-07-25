@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_animation/juce_animation.h>
 #include "PluginProcessor.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
@@ -20,15 +21,45 @@ public:
     void resized() override;
 
 private:
-    // Plain filled-rectangle progress bar - simple enough not to warrant
-    // its own file.
+    // Plain filled-rectangle progress bar, its fill now eased via JUCE's
+    // own juce_animation module (Animator/ValueAnimatorBuilder) instead
+    // of snapping straight to the new value - the first step of the
+    // phased animation pass described in decisions/013-ui-libraries.md.
     class LevelProgressBar : public juce::Component
     {
     public:
         void setProgress (float newProgress) noexcept
         {
-            progress = juce::jlimit (0.0f, 1.0f, newProgress);
-            repaint();
+            const auto target = juce::jlimit (0.0f, 1.0f, newProgress);
+            if (juce::approximatelyEqual (target, targetProgress))
+                return;
+
+            targetProgress = target;
+
+            // Fast-track any still-running animation to completion first,
+            // so its own onComplete callback removes *itself* from
+            // `updater` before `currentAnimator` gets reassigned below -
+            // otherwise that callback (which reads the member by name,
+            // not by captured value) would end up removing the new
+            // animator instead of the one it actually belongs to.
+            if (! currentAnimator.isComplete())
+                currentAnimator.complete();
+
+            const auto startValue = displayedProgress;
+            const auto endValue = target;
+
+            currentAnimator = juce::ValueAnimatorBuilder{}
+                                   .withEasing (juce::Easings::createEaseOut())
+                                   .withDurationMs (400.0)
+                                   .withValueChangedCallback ([this, startValue, endValue] (float t)
+                                   {
+                                       displayedProgress = startValue + (endValue - startValue) * t;
+                                       repaint();
+                                   })
+                                   .build();
+
+            updater.addAnimator (currentAnimator, [this] { updater.removeAnimator (currentAnimator); });
+            currentAnimator.start();
         }
 
         void paint (juce::Graphics& g) override
@@ -37,11 +68,19 @@ private:
             g.setColour (juce::Colour (0xff3a3a4a));
             g.fillRoundedRectangle (bounds, 4.0f);
             g.setColour (juce::Colour (0xff5b9bd5));
-            g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * progress), 4.0f);
+            g.fillRoundedRectangle (bounds.withWidth (bounds.getWidth() * displayedProgress), 4.0f);
         }
 
     private:
-        float progress = 0.0f;
+        float targetProgress = 0.0f;
+        float displayedProgress = 0.0f;
+
+        // Animator has no default constructor (only explicit
+        // Animator(shared_ptr<Impl>)) - this placeholder is never
+        // started, just a valid object to overwrite the first time
+        // setProgress() actually runs.
+        juce::Animator currentAnimator = juce::ValueAnimatorBuilder{}.build();
+        juce::VBlankAnimatorUpdater updater { this };
     };
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override;

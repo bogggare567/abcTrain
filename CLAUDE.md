@@ -73,8 +73,10 @@ scoped to a curated core string set rather than every tooltip, and a real
 UTF-8-literal bug it caught, 012 is deriving the version from `git
 describe` instead of a hand-bumped literal, the stable/beta/dev channel
 detector, and what's still deferred (CI channel wiring, settings
-migration)), `docs/diagrams/i18n-architecture.md` (how a language choice
-becomes visible text, per ADR 011). `BETA_TESTING.md` and
+migration), 013 is the phased (one library/one component at a time)
+adoption of third-party UI libraries, and the finding that the originally
+-named "juce_animate" library doesn't exist), `docs/diagrams/i18n-architecture.md`
+(how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
 specially, same reasoning as `LICENSE` and the `.github/ISSUE_TEMPLATE/`

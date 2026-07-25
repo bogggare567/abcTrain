@@ -117,6 +117,7 @@ target_link_libraries(EarTrainer
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        juce::juce_animation
         I18nData
     PUBLIC
         juce::juce_recommended_config_flags
