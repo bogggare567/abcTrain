@@ -7,6 +7,7 @@
 #include "../../shared/LessonController.h"
 #include "../../shared/UpdateChecker.h"
 #include "../../shared/AbcTrainLookAndFeel.h"
+#include "../../shared/AppIcons.h"
 #include <array>
 #include <memory>
 
@@ -38,6 +39,7 @@ private:
     LearnerVerbProcessor& processor;
 
     juce::Label titleLabel;
+    AppIconComponent pluginIcon;
     juce::Label guideLabel;
     SpectrumAnalyzerComponent spectrum;
     WaveformDisplay waveform;
@@ -58,6 +60,9 @@ private:
     LessonController lessonController;
 
     juce::TextButton updateButton { "Updates" };
+
+    // Product site link - see decisions/016.
+    juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerVerbEditor)
 };

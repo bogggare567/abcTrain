@@ -7,6 +7,7 @@
 #include "TrainingSoundsComponent.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
+#include "../shared/AppIcons.h"
 #include "../shared/i18n/LocalisationManager.h"
 
 // Generic multiple-choice UI driven entirely by the active Game's
@@ -111,6 +112,10 @@ private:
 
     juce::Label titleLabel;
     juce::ComboBox languageSelector;
+    // Icon for whichever game is currently selected (see AppIcons) - kept
+    // in sync with gameSelector in refreshFromGameState(), so switching
+    // games via the combo box or a difficulty-driven change both update it.
+    AppIconComponent gameIcon;
     juce::ComboBox gameSelector;
     juce::Label instructionLabel;
     juce::Label scoreLabel;
@@ -140,6 +145,12 @@ private:
     // initialised in the constructor's member-init-list, after `processor`.
     juce::TextButton trainingSoundsButton { "Training Sounds" };
     TrainingSoundsComponent trainingSounds;
+
+    // Product site link, shown in a corner of every one of the four
+    // editors (see decisions/016) - a dedicated page for the plugins
+    // themselves is planned there later, this just points at the site
+    // that exists today.
+    juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerEditor)
 };

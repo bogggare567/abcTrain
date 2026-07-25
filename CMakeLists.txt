@@ -107,6 +107,7 @@ target_sources(EarTrainer
         Source/Games/FrequencyRangeGame.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
 )
 
@@ -155,6 +156,7 @@ target_sources(LearnerEQ
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
 )
 
@@ -200,6 +202,7 @@ target_sources(LearnerComp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
@@ -246,6 +249,7 @@ target_sources(LearnerVerb
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
@@ -325,6 +329,7 @@ target_sources(EarTrainerTests
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
 )
 

@@ -21,6 +21,9 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     titleLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (titleLabel);
 
+    pluginIcon.setIcon (AppIcons::Icon::learnerEQ);
+    addAndMakeVisible (pluginIcon);
+
     guideLabel.setJustificationType (juce::Justification::centred);
     guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     guideLabel.setText (defaultGuideText, juce::dontSendNotification);
@@ -168,6 +171,10 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    addAndMakeVisible (soundkorbLink);
+
     startTimerHz (30);
     setSize (760, 728);
 }
@@ -197,6 +204,8 @@ void LearnerEQEditor::resized()
     titleRow.removeFromRight (8);
     updateButton.setBounds (titleRow.removeFromRight (80));
     titleRow.removeFromRight (8);
+    pluginIcon.setBounds (titleRow.removeFromLeft (28));
+    titleRow.removeFromLeft (4);
     titleLabel.setBounds (titleRow);
 
     guideLabel.setBounds (area.removeFromTop (52));
@@ -212,6 +221,9 @@ void LearnerEQEditor::resized()
     inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
     outputPeakLabel.setBounds (meterRow);
     area.removeFromTop (16);
+
+    auto linkRow = area.removeFromBottom (18);
+    soundkorbLink.setBounds (linkRow.removeFromRight (130));
 
     auto bandsArea = area;
     const auto columnWidth = bandsArea.getWidth() / LearnerEQProcessor::numBands;

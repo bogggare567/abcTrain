@@ -82,7 +82,11 @@ control, 015 is the drag-to-select `ChoiceSliderComponent` replacing every
 game's button row, the opt-in `ReferenceAudioLibrary`/`TestSignalGenerator`
 infrastructure for training on user-supplied reference audio instead of
 pink noise, and why that infrastructure never fetches, bundles, or vets
-the legality of any audio file itself), `docs/diagrams/i18n-architecture.md`
+the legality of any audio file itself, 016 is the programmatic
+`shared/AppIcons` vector icon set for every game/plugin, a soundkorb.ru
+site link added to all four editors, and why a full design-system/Figma
+pass from the user's UI-overhaul brief is explicitly out of scope for
+this codebase to produce on its own), `docs/diagrams/i18n-architecture.md`
 (how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
@@ -668,14 +672,32 @@ below for what was deliberately deferred.
 - `shared/LessonController.cpp` picked up the same font migration and
   background/border colours as the four editors, so the lesson overlay
   matches the rest of the theme.
+- `shared/AppIcons.h/.cpp` — programmatic `juce::Path` line icons (no
+  external asset pipeline) for the 9 EarTrainer games plus LearnerEQ/
+  LearnerComp/LearnerVerb, scaled via `Path::scaleToFit()`.
+  `AppIcons::iconForGameName()` maps a `Game::getName()` string to its
+  icon, mirroring `Source/PluginEditor.cpp`'s existing
+  `translateGameName()` lookup shape (unrecognised name falls back to
+  the EQ icon, not a crash). `AppIconComponent` wraps this as a
+  `Component` for EarTrainer's game selector row (updated in
+  `refreshFromGameState()`) and each Learner editor's title row (set
+  once, since plugin identity doesn't change at runtime). See
+  [decisions/016](docs/decisions/016-icons-and-site-link.md) for why this
+  is a deliberately narrower scope than the full designer brief it came
+  from, and a real edge-clipping bug in the soundkorb.ru site link
+  (`juce::HyperlinkButton`, added to all four editors' bottom-right
+  corner in the same pass) found by actually running the app.
 
-Not yet built (deliberately deferred, see ADR 009): hover/press
-animations beyond the one fade-in (no `Timer`-driven alpha ramp, no
+Not yet built (deliberately deferred, see ADR 009 and ADR 016): hover/
+press animations beyond the one fade-in (no `Timer`-driven alpha ramp, no
 press-scale-then-spring-back), gradient fills under the spectrum/waveform
 curves, pill-shaped tooltip backgrounds for guide labels, `FlexBox`-based
-layout (every editor still uses explicit `Rectangle::removeFrom*`), and
-screenshots/mockups in `README.md` (this sandbox can't render or capture a
-real JUCE window, so the look is described in text there instead).
+layout (every editor still uses explicit `Rectangle::removeFrom*`), a
+light theme, a documented design-token styleguide, professional/licensed
+icon assets (the current icons are original simple line art, not a
+Feather/Phosphor-equivalent set), and screenshots/mockups in `README.md`
+(this sandbox can't render or capture a real JUCE window, so the look is
+described in text there instead).
 
 ## Architecture — Localization / i18n (`shared/i18n/`, EarTrainer's editor)
 
@@ -904,6 +926,21 @@ too, only Windows needed the fix (see
 
 ## Roadmap (not yet built)
 
+- A full design-system pass (styleguide, professional icon pack, Figma
+  mockups, FabFilter/iZotope-grade spectrum/meter animations) per the
+  user's UI-overhaul brief — a real design job needing an actual
+  designer/design tool, not something this codebase can produce alone;
+  see [decisions/016](docs/decisions/016-icons-and-site-link.md) for what
+  was built instead (programmatic vector icons for every game/plugin, a
+  soundkorb.ru site link) and why the rest is out of scope here. A
+  user-supplied structured audio-engineering knowledge base
+  (`baza_znanij_audio_plaginy_v2.jsonl`, 90 rules across EQ/compression/
+  spatial effects/psychoacoustics/acoustics/mastering) is also a good
+  candidate for enriching `docs/knowledge_base.md`/the Learner plugins'
+  tooltip text beyond today's coverage — not yet folded in.
+- A dedicated soundkorb.ru page for the plugins themselves — the site
+  link added in this pass just points at the existing site; the user
+  said a specific page for abcTrain there is separate, later work.
 - Training-sounds UX beyond the current first pass (see
   [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)):
   a file-chooser button for a custom root folder (currently only the

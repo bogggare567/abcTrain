@@ -37,6 +37,9 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     titleLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (titleLabel);
 
+    pluginIcon.setIcon (AppIcons::Icon::learnerComp);
+    addAndMakeVisible (pluginIcon);
+
     guideLabel.setJustificationType (juce::Justification::centred);
     guideLabel.setColour (juce::Label::textColourId, juce::Colour (0xffa0a0b0));
     guideLabel.setText (defaultGuideText, juce::dontSendNotification);
@@ -178,6 +181,10 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    addAndMakeVisible (soundkorbLink);
+
     startTimerHz (30);
     setSize (820, 808);
 }
@@ -207,6 +214,8 @@ void LearnerCompEditor::resized()
     titleRow.removeFromRight (8);
     updateButton.setBounds (titleRow.removeFromRight (80));
     titleRow.removeFromRight (8);
+    pluginIcon.setBounds (titleRow.removeFromLeft (28));
+    titleRow.removeFromLeft (4);
     titleLabel.setBounds (titleRow);
 
     guideLabel.setBounds (area.removeFromTop (48));
@@ -240,6 +249,9 @@ void LearnerCompEditor::resized()
     const auto presetWidth = bottomRow.getWidth() / juce::jmax (1, presetButtons.size());
     for (auto* button : presetButtons)
         button->setBounds (bottomRow.removeFromLeft (presetWidth).reduced (4, 0));
+
+    area.removeFromTop (8);
+    soundkorbLink.setBounds (area.removeFromTop (18).removeFromRight (130));
 }
 
 void LearnerCompEditor::timerCallback()

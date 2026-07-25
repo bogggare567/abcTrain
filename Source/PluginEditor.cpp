@@ -79,6 +79,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     languageSelector.onChange = [this] { languageSelected(); };
     addAndMakeVisible (languageSelector);
 
+    addAndMakeVisible (gameIcon);
+
     auto& gameManager = processor.getGameManager();
     rebuildGameSelectorItems();
     gameSelector.setSelectedId (gameManager.getActiveGameIndex() + 1, juce::dontSendNotification);
@@ -221,6 +223,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addAndMakeVisible (trainingSoundsButton);
 
+    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont(), false, juce::Justification::centredRight);
+    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
+    addAndMakeVisible (soundkorbLink);
+
     choiceSlider.onChoiceSelected = [this] (int choiceIndex) { choiceButtonClicked (choiceIndex); };
     addAndMakeVisible (choiceSlider);
 
@@ -272,7 +278,10 @@ void EarTrainerEditor::resized()
     titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
     area.removeFromTop (8);
-    gameSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (280, 24));
+    auto gameRow = area.removeFromTop (28).withSizeKeepingCentre (316, 24);
+    gameIcon.setBounds (gameRow.removeFromLeft (24));
+    gameRow.removeFromLeft (8);
+    gameSelector.setBounds (gameRow);
     area.removeFromTop (8);
     instructionLabel.setBounds (area.removeFromTop (24));
     area.removeFromTop (8);
@@ -299,6 +308,9 @@ void EarTrainerEditor::resized()
 
     area.removeFromTop (8);
     dailyChallengeLabel.setBounds (area.removeFromTop (20));
+
+    area.removeFromTop (8);
+    soundkorbLink.setBounds (area.removeFromTop (18).removeFromRight (130));
 
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not it's currently visible.
@@ -410,6 +422,8 @@ void EarTrainerEditor::refreshFromGameState()
     // an answer.
     if (! game.hasAnswered() && choiceSlider.getNumChoices() != game.getNumChoices())
         rebuildChoiceSlider();
+
+    gameIcon.setIcon (AppIcons::iconForGameName (game.getName()));
 
     instructionLabel.setText (translateGameInstructions (game.getName(), game.getInstructions(), localisation),
                                juce::dontSendNotification);
