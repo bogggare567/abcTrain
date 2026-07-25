@@ -58,5 +58,6 @@
   "ui.modeSurvival": "Survival",
   "ui.modeBlitz": "Blitz",
   "ui.runOver": "Run over —",
-  "ui.mode": "Mode"
+  "ui.mode": "Mode",
+  "ui.dragToChoose": "Click a zone to answer"
 }

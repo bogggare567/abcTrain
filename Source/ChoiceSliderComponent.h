@@ -26,6 +26,14 @@ public:
     void setChoices (const juce::StringArray& labels);
     int getNumChoices() const noexcept { return choiceLabels.size(); }
 
+    // Caption under the scale, e.g. "< 100 Hz - 12.8k Hz >". The editor
+    // derives it from the first and last choice labels, so it's correct
+    // for every game without any per-game code.
+    void setAxisCaption (const juce::String& caption);
+
+    // Shown in place of the big value readout before anything is picked.
+    void setPlaceholderText (const juce::String& text);
+
     // Back to the plain "nothing picked yet" state for a fresh round with
     // the same choice count (setChoices() already implies this once).
     void resetForNewRound();
@@ -50,12 +58,30 @@ public:
 private:
     void timerCallback() override;
 
-    juce::Rectangle<int> getTrackArea() const;
-    float xForIndex (int index, const juce::Rectangle<int>& trackArea) const;
-    int indexForX (float x, const juce::Rectangle<int>& trackArea) const;
+    // paint() is split in two because the zoned panel is drawn inside a
+    // rounded clip region, and the value readout above it and caption
+    // below it sit outside that panel - drawing them within the clip
+    // would silently crop them.
+    void paintScale (juce::Graphics&);
+    void paintOverPanel (juce::Graphics&);
+
+    // The recessed scale panel itself - the zoned band the choices live
+    // in, excluding the big value readout above and the caption below.
+    juce::Rectangle<int> getScaleArea() const;
+
+    // One choice occupies one vertical zone of the scale, rather than a
+    // point on a line. A zone is a much larger click target than a tick,
+    // and (per the reference this was rebuilt to match) it makes the
+    // scale read as a set of regions you choose between rather than a
+    // continuous value you have to land exactly on.
+    juce::Rectangle<float> zoneForIndex (int index, juce::Rectangle<float> scaleArea) const;
+    int indexForX (float x, juce::Rectangle<float> scaleArea) const;
+
     void updatePreviewFromMouse (const juce::MouseEvent& e);
 
     juce::StringArray choiceLabels;
+    juce::String axisCaption;
+    juce::String placeholderText { "Drag to choose" };
 
     // Live drag position before release, or (once answered) the index the
     // player actually picked - whichever is relevant is what paint() shows

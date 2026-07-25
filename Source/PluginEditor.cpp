@@ -318,7 +318,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the "everything breathes" feel, and that space has to come from
     // somewhere. Same "grew the window to fit new content" precedent as
     // the slider redesign (015) and the Learner guide labels (010).
-    setSize (680, 596);
+    setSize (680, 664);
 
     applyTheme();
     session.startRun();
@@ -441,7 +441,7 @@ void EarTrainerEditor::resized()
     area.removeFromTop (Spacing::medium);
 
     // --- answer section: feedback, the slider itself, score/new round ---
-    answerSection = area.removeFromTop (208);
+    answerSection = area.removeFromTop (274);
     {
         auto inner = answerSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);
@@ -449,7 +449,11 @@ void EarTrainerEditor::resized()
         feedbackLabel.setBounds (inner.removeFromTop (26));
         inner.removeFromTop (Spacing::small);
 
-        choiceSlider.setBounds (inner.removeFromTop (92).reduced (Spacing::small, 0));
+        // The scale needs real height to read as a panel of zones rather
+        // than a thin strip: 40px of it is the value readout and 18px the
+        // caption, so anything under ~120 leaves the zones too shallow to
+        // fit staggered labels. Found by building it at 92 and looking.
+        choiceSlider.setBounds (inner.removeFromTop (150).reduced (Spacing::small, 0));
 
         inner.removeFromTop (Spacing::medium);
 
@@ -669,6 +673,20 @@ void EarTrainerEditor::rebuildChoiceSlider()
     // already assigned, so there's no destroy/recreate-before-layout
     // ordering hazard here to begin with.
     choiceSlider.setChoices (labels);
+
+    // "< first - last >" tells the player which way the scale runs, which
+    // matters most on the games whose labels aren't self-evidently ordered
+    // (pan, width). Derived from the labels themselves, so it needs no
+    // per-game table and can't go stale when a game's choices change.
+    if (labels.size() >= 2)
+        choiceSlider.setAxisCaption (juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xb9 "))
+                                          + labels[0] + juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  "))
+                                          + labels[labels.size() - 1]
+                                          + juce::String (juce::CharPointer_UTF8 (" \xe2\x80\xba")));
+    else
+        choiceSlider.setAxisCaption ({});
+
+    choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
 }
 
 void EarTrainerEditor::choiceButtonClicked (int choiceIndex)

@@ -99,6 +99,7 @@ juce_add_plugin(EarTrainer
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Ear Trainer"
     ICON_BIG assets/icons/eartrainer.png
+    ICON_SMALL assets/icons/eartrainer_small.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -163,6 +164,7 @@ juce_add_plugin(LearnerEQ
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Learner EQ"
     ICON_BIG assets/icons/learnereq.png
+    ICON_SMALL assets/icons/learnereq_small.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -216,6 +218,7 @@ juce_add_plugin(LearnerComp
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Learner Comp"
     ICON_BIG assets/icons/learnercomp.png
+    ICON_SMALL assets/icons/learnercomp_small.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -268,6 +271,7 @@ juce_add_plugin(LearnerVerb
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Learner Verb"
     ICON_BIG assets/icons/learnerverb.png
+    ICON_SMALL assets/icons/learnerverb_small.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE

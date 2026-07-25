@@ -58,5 +58,6 @@
   "ui.modeSurvival": "Выживание",
   "ui.modeBlitz": "Блиц",
   "ui.runOver": "Забег окончен —",
-  "ui.mode": "Режим"
+  "ui.mode": "Режим",
+  "ui.dragToChoose": "Нажми на зону, чтобы ответить"
 }
