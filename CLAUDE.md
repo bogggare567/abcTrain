@@ -686,12 +686,14 @@ destroyed) and a pre-existing, previously-invisible flakiness in
 across separate runs of the same binary on the same machine, since CI's
 containers are always fresh but this was the first time the binary had
 ever been run twice locally) were both found and fixed. **The per-OS
-installer commit (macOS `.pkg`/DMG, Windows Inno Setup, Linux
-`tar.gz`/`install.sh`) has not been confirmed on CI as of this writing** —
-macOS and Linux were verified locally end-to-end (this sandbox can
-actually run `pkgbuild`/`productbuild`/`hdiutil`), but the Windows `.iss`
-has never been compiled anywhere; CI is its first real test, watch it
-closely (see [decisions/008](docs/decisions/008-installers.md)).
+installer commit's first real CI run (`61c5e2c`) did fail** — Windows
+only, on `iscc`'s first real compile of `windows_setup.iss`: a typo'd
+`[Files]` flag (`createallsubdirdirs` instead of the real
+`createallsubdirs`), caught from the actual CI log text, fixed in
+`0d65778`, and **confirmed green on all three OSes** (run `30135611149`)
+— macOS and Linux installers had already been fine on that first run
+too, only Windows needed the fix (see
+[decisions/008](docs/decisions/008-installers.md)).
 
 ## Conventions
 
