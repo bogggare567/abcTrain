@@ -2,9 +2,10 @@
 
 ## Status
 
-Accepted, implemented. macOS and Linux verified locally end-to-end; the
-Windows Inno Setup script has not been compiled anywhere yet as of this
-writing - see "What's verified vs. what isn't" below.
+Accepted, implemented. macOS and Linux verified locally end-to-end. The
+Windows Inno Setup script **did fail its first real CI compile** (a typo
+in a `[Files]` flag) - caught, fixed, and now confirmed - see "What's
+verified vs. what isn't" below.
 
 ## Context
 
@@ -113,14 +114,24 @@ destination menu, and the Standalone copy all work as written - bash
 logic is fully portable regardless of the actual `.vst3`/binary format
 inside, so this genuinely exercises the same code path Linux CI will run.
 
-**`installer/windows_setup.iss` has not been compiled anywhere** - there's
-no Windows in this environment. It's written against long-stable,
-well-documented Inno Setup 6 syntax and was checked carefully on
-read-through (including catching and fixing the page-ordering bug
-above), but CI is the first real compile of this file. Watch that run
-closely, the same way the visualization-unification commit's build
-failure was watched and fixed in this same repo's history (see
-[docs/diagrams/ci-pipeline.md](../diagrams/ci-pipeline.md), bug 3).
+**`installer/windows_setup.iss` could not be compiled locally** - there's
+no Windows in this environment, so it was checked carefully on
+read-through only (including catching and fixing the page-ordering bug
+above) before its first real CI compile. **That first real compile
+failed**: every `[Files]` line copying a VST3 bundle used
+`Flags: recursesubdirs createallsubdirdirs ignoreversion`, but the real
+Inno Setup 6 flag is `createallsubdirs` (one "dir", not "dirdirs") -
+`iscc` rejected it outright with "Parameter Flags includes an unknown
+flag" on the first such line and aborted before compiling anything else.
+Read-through alone didn't catch it because the misspelled flag still
+*reads* like a plausible real one; only an actual `iscc` run surfaces an
+unknown-flag error. Fixed by correcting all four occurrences (one per
+plugin's VST3 line) to `createallsubdirs`. Same lesson as the
+visualization-unification commit's build failure earlier in this
+project's history (see
+[docs/diagrams/ci-pipeline.md](../diagrams/ci-pipeline.md), bug 3): a file
+that can't be exercised locally needs its first real CI run watched
+closely, not assumed correct because it reads correctly.
 
 ## Consequences
 

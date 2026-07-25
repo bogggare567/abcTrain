@@ -75,10 +75,10 @@ Name: "learnerverb\standalone"; Description: "Standalone app (runs on its own, n
 ; VST3 (JUCE builds these as bundle-style folders on Windows, same shape
 ; as the macOS .vst3 - hence the "\*" + recursesubdirs pattern rather than
 ; copying a single file).
-Source: "{#RepoRoot}build\EarTrainer_artefacts\Release\VST3\Ear Trainer.vst3\*"; DestDir: "{code:GetVST3Dir}\Ear Trainer.vst3"; Components: eartrainer\vst3; Flags: recursesubdirs createallsubdirdirs ignoreversion
-Source: "{#RepoRoot}build\LearnerEQ_artefacts\Release\VST3\Learner EQ.vst3\*"; DestDir: "{code:GetVST3Dir}\Learner EQ.vst3"; Components: learnereq\vst3; Flags: recursesubdirs createallsubdirdirs ignoreversion
-Source: "{#RepoRoot}build\LearnerComp_artefacts\Release\VST3\Learner Comp.vst3\*"; DestDir: "{code:GetVST3Dir}\Learner Comp.vst3"; Components: learnercomp\vst3; Flags: recursesubdirs createallsubdirdirs ignoreversion
-Source: "{#RepoRoot}build\LearnerVerb_artefacts\Release\VST3\Learner Verb.vst3\*"; DestDir: "{code:GetVST3Dir}\Learner Verb.vst3"; Components: learnerverb\vst3; Flags: recursesubdirs createallsubdirdirs ignoreversion
+Source: "{#RepoRoot}build\EarTrainer_artefacts\Release\VST3\Ear Trainer.vst3\*"; DestDir: "{code:GetVST3Dir}\Ear Trainer.vst3"; Components: eartrainer\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "{#RepoRoot}build\LearnerEQ_artefacts\Release\VST3\Learner EQ.vst3\*"; DestDir: "{code:GetVST3Dir}\Learner EQ.vst3"; Components: learnereq\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "{#RepoRoot}build\LearnerComp_artefacts\Release\VST3\Learner Comp.vst3\*"; DestDir: "{code:GetVST3Dir}\Learner Comp.vst3"; Components: learnercomp\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "{#RepoRoot}build\LearnerVerb_artefacts\Release\VST3\Learner Verb.vst3\*"; DestDir: "{code:GetVST3Dir}\Learner Verb.vst3"; Components: learnerverb\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
 
 ; Standalone .exe (single file, no bundle) into {app} (the directory
 ; chosen on the standard Select Destination Location page, default
