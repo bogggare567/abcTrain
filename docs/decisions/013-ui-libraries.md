@@ -2,9 +2,10 @@
 
 ## Status
 
-In progress. Phase 0 (feasibility) and Phase 1 (JUCE's own animation
-module, one component) done. Phase 2 (`gin`, one component) and Phase 3
-(`foleys_gui_magic`) not started - see "Plan" below.
+In progress. Phase 0 (feasibility), Phase 1 (JUCE's own animation module,
+one component), and Phase 2 investigation (`gin` - **declined**, see
+below) are done. Phase 3 (`foleys_gui_magic`) has had its module metadata
+checked but no actual prototype build attempted yet - see "Plan" below.
 
 ## Context
 
@@ -92,6 +93,71 @@ Verified locally: all four plugin targets build clean, `EarTrainerTests`
 passes in full (116 test groups, unaffected since `EarTrainerTests`
 doesn't compile EarTrainer's own `PluginEditor.cpp`).
 
+## Phase 2: `gin` - investigated, declined
+
+Cloned `FigBug/Gin` to inspect its actual module structure before writing
+any integration code (the plan's own Phase-2 first step). Its top-level
+`CMakeLists.txt` `add_subdirectory()`s its own JUCE checkout and builds
+its own demo/example/test targets - not something to pull in wholesale
+via `FetchContent_MakeAvailable`, since it would fight this project's
+already-fetched JUCE 8.0.15 and drag in unrelated targets. The correct
+pattern would be vendoring just the specific module folder(s) via
+`juce_add_module()` directly, bypassing Gin's own top-level
+`CMakeLists.txt` entirely - the same approach that would work for any
+JUCE module.
+
+That's where it stops, though: **every single module in the repository -
+`gin`, `gin_gui`, `gin_dsp`, `gin_graphics`, `gin_metadata`,
+`gin_network`, `gin_plugin` - declares `minimumCppStandard: 20`** in its
+own `BEGIN_JUCE_MODULE_DECLARATION` block. This project is pinned to
+C++17 (`CMAKE_CXX_STANDARD 17` in the root `CMakeLists.txt`). There's no
+"pick a smaller module to dodge this" option - it's a repository-wide
+policy, checked across all seven modules, not a `gin_gui`-specific
+requirement. Adopting *any* part of `gin` means raising this whole
+project's C++ standard to C++20 as a prerequisite, not something scoped
+to whichever component uses it.
+
+**Declining `gin` for now**, for two independent reasons:
+1. A project-wide C++ standard bump is its own separate, real,
+   independently-risky change (however low the actual likelihood of
+   breakage - JUCE 8 itself is fine with C++20) - it's not something that
+   should ride along as a side effect of wanting one nicer-looking level
+   meter.
+2. `gin`'s own components come with their own visual style, which would
+   need reskinning to match `AbcTrainLookAndFeel`'s existing dark theme
+   (ADR 009) anyway - at which point the actual win over just continuing
+   to invest directly in `AbcTrainLookAndFeel` is small. The "consistent,
+   custom-themed look across all four plugins" goal ADR 009 already
+   delivers is arguably in tension with dropping in a library that ships
+   its own opinionated look.
+
+Revisit if a future need specifically requires something `gin` provides
+that isn't reasonably buildable in-house (its DSP-adjacent modules
+`gin_dsp`/`gin_simd` might be worth a separate look for actual audio
+processing needs, independent of anything GUI-related - but that's a
+different question than this ADR's UI-library scope).
+
+## Phase 3: `foleys_gui_magic` - metadata checked, no build attempted yet
+
+Cloned `ffAudio/foleys_gui_magic` for the same inspection. Its module
+declaration (`modules/foleys_gui_magic/foleys_gui_magic.h`) - unlike
+every `gin` module - **does not declare a `minimumCppStandard`
+requirement at all**; only its own repo's top-level `CMakeLists.txt` (for
+building its own example/test targets) opts into C++20, which - same as
+with Gin - wouldn't be inherited by vendoring just the module folder via
+`juce_add_module()` directly. A quick scan of the module's ~96 source
+files for hard C++20-only constructs (concepts, `<ranges>`, `co_await`,
+`consteval`) found none. This is a promising signal, not proof - the only
+way to actually know is a real compile.
+
+**That real compile hasn't been attempted yet.** A genuine Phase 3
+prototype (an isolated scratch CMake target, not a real plugin, per the
+Plan above) is real, separate work - fetching the module, working out its
+actual API for a `MagicProcessorState`-driven editor, and confirming it
+configures and compiles against this project's pinned JUCE 8.0.15 at
+C++17 - that this session ran out of room for after Phases 0-2. Left as
+the next concrete step if this initiative continues.
+
 ## Consequences
 
 - One real, working, verified animation improvement landed, with zero net
@@ -102,5 +168,10 @@ doesn't compile EarTrainer's own `PluginEditor.cpp`).
   writing integration code against it, same lesson as this project's
   memory-recall guidance around "the memory says X exists" not meaning
   "X exists now."
-- Phases 2 and 3 are unstarted; this ADR will be updated (or superseded)
-  as each lands.
+- `gin` is declined, not deferred - readopting it later would still need
+  the same C++20 discussion, this isn't a "come back to it" item without
+  that being resolved first.
+- Phase 3 (`foleys_gui_magic`) is the one still genuinely open: metadata
+  looks favorable, but nothing has actually been compiled against it yet.
+  This ADR will be updated (or superseded) once a real prototype attempt
+  happens.
