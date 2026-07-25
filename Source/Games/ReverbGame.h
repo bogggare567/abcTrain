@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../TestSignalGenerator.h"
 #include <array>
 
 // "Guess the reverb type" exercise: a repeating percussive noise burst
@@ -26,6 +26,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+    void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -54,7 +55,7 @@ private:
 
     void updateReverbForType();
 
-    PinkNoiseGenerator noise;
+    TestSignalGenerator noise;
     juce::dsp::Reverb reverb;
     std::array<juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
                                                juce::dsp::IIR::Coefficients<float>>, 4> springAllpass;

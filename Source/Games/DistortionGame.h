@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../TestSignalGenerator.h"
 #include <array>
 
 // "Guess the distortion type" exercise: continuous pink noise driven into
@@ -26,6 +26,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+    void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -56,7 +57,7 @@ private:
 
     float waveshape (Type type, float driven) const;
 
-    PinkNoiseGenerator noise;
+    TestSignalGenerator noise;
     double sampleRate = 44100.0;
     float tapeLowpassState = 0.0f;
     float tapeLowpassCoeff = 0.4f;

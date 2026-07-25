@@ -12,7 +12,6 @@ namespace
     // real design complaint, not just a style nitpick.
     const juce::Colour correctColour { 0xff5fbf7d };
     const juce::Colour wrongColour { 0xffd9615f };
-    const juce::Colour neutralButtonColour { 0xff2a2a3a };
     const juce::Colour bodyTextColour { 0xffe0e0e0 };
     const juce::Colour mutedTextColour { 0xffa0a0b0 };
 
@@ -63,7 +62,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     : AudioProcessorEditor (&p),
       localisationProperties (LocalisationManager::makeDefaultOptions()),
       localisation (localisationProperties),
-      processor (p)
+      processor (p),
+      trainingSounds (p)
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -214,12 +214,33 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
-    // setSize() before rebuildChoiceButtons(): the choice buttons' fade-in
-    // (inside rebuildChoiceButtons()) needs real bounds already assigned
-    // by resized() - see the comment there for why.
-    setSize (640, 468);
+    trainingSoundsButton.onClick = [this]
+    {
+        trainingSounds.refresh();
+        trainingSounds.setVisible (true);
+    };
+    addAndMakeVisible (trainingSoundsButton);
 
-    rebuildChoiceButtons();
+    choiceSlider.onChoiceSelected = [this] (int choiceIndex) { choiceButtonClicked (choiceIndex); };
+    addAndMakeVisible (choiceSlider);
+
+    // Added last so it paints on top of every other child, same as
+    // shared/LessonController's integration in the Learner editors - JUCE
+    // paints child components in the order they were added, and this
+    // overlay needs to cover the choice slider/instructions/etc. whenever
+    // it's shown. A real bug, found by actually running the app: adding
+    // this earlier (before choiceSlider) left the slider painting on top
+    // of the "closed" overlay instead of the other way around.
+    addChildComponent (trainingSounds);
+    trainingSounds.onClosed = [this] { resized(); };
+
+    // +32px taller than before the slider redesign, to fit the slider's
+    // own big-value label above the track and tick labels below it (same
+    // "grew the window to fit new content" precedent as the Learner
+    // plugins' guide-label height increases - see decisions/010).
+    setSize (640, 500);
+
+    rebuildChoiceSlider();
     refreshFromGameState();
     refreshFromProgressState();
     refreshLocalisedText();
@@ -247,6 +268,8 @@ void EarTrainerEditor::resized()
     titleRow.removeFromRight (8);
     updateButton.setBounds (titleRow.removeFromRight (80));
     titleRow.removeFromRight (8);
+    trainingSoundsButton.setBounds (titleRow.removeFromRight (110));
+    titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
     area.removeFromTop (8);
     gameSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (280, 24));
@@ -257,13 +280,8 @@ void EarTrainerEditor::resized()
     feedbackLabel.setBounds (area.removeFromTop (28));
     area.removeFromTop (8);
 
-    auto buttonRow = area.removeFromTop (56);
-    if (! choiceButtons.isEmpty())
-    {
-        const auto buttonWidth = buttonRow.getWidth() / choiceButtons.size();
-        for (auto* button : choiceButtons)
-            button->setBounds (buttonRow.removeFromLeft (buttonWidth).reduced (4));
-    }
+    auto choiceSliderRow = area.removeFromTop (88);
+    choiceSlider.setBounds (choiceSliderRow.reduced (8, 0));
 
     area.removeFromTop (16);
 
@@ -281,6 +299,10 @@ void EarTrainerEditor::resized()
 
     area.removeFromTop (8);
     dailyChallengeLabel.setBounds (area.removeFromTop (20));
+
+    // Unconditional, same as shared/LessonController's integration in the
+    // Learner editors - whether or not it's currently visible.
+    trainingSounds.setBounds (getLocalBounds());
 }
 
 void EarTrainerEditor::gameSelected()
@@ -291,7 +313,7 @@ void EarTrainerEditor::gameSelected()
     gameManager.setActiveGameIndex (gameSelector.getSelectedId() - 1);
 
     gameManager.getActiveGame().addChangeListener (this);
-    rebuildChoiceButtons();
+    rebuildChoiceSlider();
     refreshFromGameState();
     resized();
 }
@@ -337,43 +359,20 @@ void EarTrainerEditor::refreshLocalisedText()
     refreshFromProgressState();
 }
 
-void EarTrainerEditor::rebuildChoiceButtons()
+void EarTrainerEditor::rebuildChoiceSlider()
 {
-    choiceButtons.clear();
-
     auto& game = processor.getGameManager().getActiveGame();
 
+    juce::StringArray labels;
     for (int i = 0; i < game.getNumChoices(); ++i)
-    {
-        auto* button = choiceButtons.add (new juce::TextButton (game.getChoiceLabel (i)));
-        button->onClick = [this, i] { choiceButtonClicked (i); };
-        addAndMakeVisible (button);
-    }
+        labels.add (game.getChoiceLabel (i));
 
-    // Real bug, found by actually running the app and clicking a choice:
-    // juce::ComponentAnimator::fadeIn() snapshots component->getBounds()
-    // as the animation's destination rectangle, and forces the component
-    // back to that exact rectangle once the fade completes (see
-    // ComponentAnimator::AnimationTask::moveToFinalDestination() in
-    // JUCE's own source). Starting the fade before these fresh buttons
-    // had ever been through resized() meant that snapshot was
-    // (0, 0, 0, 0) - so ~200ms after appearing to work, every choice
-    // button silently collapsed to zero size: invisible and unclickable,
-    // in every game, every time the buttons regenerated. resized() here
-    // gives them their real bounds *before* fadeIn() ever looks at them.
-    resized();
-
-    auto& animator = juce::Desktop::getInstance().getAnimator();
-    for (auto* button : choiceButtons)
-    {
-        // Basic fade-in whenever the choice buttons regenerate (switching
-        // games, or a mid-session choice-count change like ReverbGame's
-        // difficulty tiers) - one deliberately simple animation for this
-        // pass, per the redesign's own iterative scope; see
-        // decisions/009-look-and-feel.md for what else was deferred.
-        button->setAlpha (0.0f);
-        animator.fadeIn (button, 200);
-    }
+    // setChoices() itself resets to an unanswered/no-preview state - unlike
+    // the old per-choice TextButtons (see decisions/014's fadeIn-collapse
+    // bug), this is one persistent Component whose bounds resized() has
+    // already assigned, so there's no destroy/recreate-before-layout
+    // ordering hazard here to begin with.
+    choiceSlider.setChoices (labels);
 }
 
 void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
@@ -409,11 +408,8 @@ void EarTrainerEditor::refreshFromGameState()
     // ReverbGame does this. Only rebuild at the start of a fresh round,
     // not mid-reveal, so the button layout doesn't shift while showing
     // an answer.
-    if (! game.hasAnswered() && choiceButtons.size() != game.getNumChoices())
-    {
-        rebuildChoiceButtons();
-        resized();
-    }
+    if (! game.hasAnswered() && choiceSlider.getNumChoices() != game.getNumChoices())
+        rebuildChoiceSlider();
 
     instructionLabel.setText (translateGameInstructions (game.getName(), game.getInstructions(), localisation),
                                juce::dontSendNotification);
@@ -422,24 +418,16 @@ void EarTrainerEditor::refreshFromGameState()
                                                              { "total", juce::String (game.getRoundsPlayed()) } }),
                          juce::dontSendNotification);
 
-    for (auto* button : choiceButtons)
-    {
-        button->setColour (juce::TextButton::buttonColourId, neutralButtonColour);
-        button->setEnabled (! game.hasAnswered());
-    }
-
     if (game.hasAnswered())
     {
-        choiceButtons[game.getCorrectChoiceIndex()]->setColour (juce::TextButton::buttonColourId, correctColour);
-
-        if (! game.wasLastAnswerCorrect())
-            choiceButtons[game.getChosenChoiceIndex()]->setColour (juce::TextButton::buttonColourId, wrongColour);
+        choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
         feedbackLabel.setText (game.getFeedbackText(), juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? correctColour : wrongColour);
     }
     else
     {
+        choiceSlider.resetForNewRound();
         feedbackLabel.setText ({}, juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, bodyTextColour);
     }

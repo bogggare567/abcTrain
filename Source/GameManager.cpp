@@ -20,10 +20,18 @@ GameManager::GameManager()
     games.add (new StereoWidthGame());
     games.add (new DBGame());
     games.add (new FrequencyRangeGame());
+
+    // Every game's default no-op override (see Game::setReferenceAudioLibrary)
+    // means this is harmless even for StereoWidthGame, which deliberately
+    // ignores it.
+    for (auto* game : games)
+        game->setReferenceAudioLibrary (&referenceAudioLibrary);
 }
 
 void GameManager::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    referenceAudioLibrary.prepare (spec.sampleRate);
+
     for (auto* game : games)
         game->prepare (spec);
 }

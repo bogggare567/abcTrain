@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../TestSignalGenerator.h"
 #include <array>
 
 // "Guess the band" exercise: plays pink noise through a peak filter boosting
@@ -21,6 +21,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+    void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -45,7 +46,7 @@ private:
     double sampleRate = 44100.0;
 
     juce::Random random;
-    PinkNoiseGenerator noise;
+    TestSignalGenerator noise;
 
     int correctBandIndex = 0;
     int chosenBandIndex = -1;

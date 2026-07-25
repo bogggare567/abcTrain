@@ -91,8 +91,11 @@ target_sources(EarTrainer
     PRIVATE
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
+        Source/ChoiceSliderComponent.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
+        Source/ReferenceAudioLibrary.cpp
+        Source/TrainingSoundsComponent.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
@@ -297,8 +300,10 @@ target_sources(EarTrainerTests
         tests/LearnerVerbTest.cpp
         tests/MicroLessonTest.cpp
         tests/UpdateCheckerTest.cpp
+        tests/ReferenceAudioLibraryTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
+        Source/ReferenceAudioLibrary.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp

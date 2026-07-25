@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Games/Game.h"
+#include "ReferenceAudioLibrary.h"
 #include <juce_dsp/juce_dsp.h>
 
 // Owns every registered exercise and tracks which one is active. This is
@@ -13,6 +14,9 @@ public:
 
     // Prepares every registered game up front (not just the active one),
     // so switching games never needs a re-prepare on the audio thread.
+    // Also (re)loads whatever reference-audio selection was persisted
+    // from a previous session, now that the real sample rate is known -
+    // see ReferenceAudioLibrary::prepare().
     void prepare (const juce::dsp::ProcessSpec&);
     void process (juce::AudioBuffer<float>&);
 
@@ -29,7 +33,20 @@ public:
 
     void setDifficultyForAllGames (int level);
 
+    // Lets a player practice on real reference audio instead of pink
+    // noise - see ReferenceAudioLibrary/TestSignalGenerator. Shared by
+    // every registered game (each was wired to it via
+    // setReferenceAudioLibrary() in the constructor below); the editor's
+    // Training Sounds screen is the only thing that ever calls into this.
+    ReferenceAudioLibrary& getReferenceAudioLibrary() noexcept { return referenceAudioLibrary; }
+
 private:
+    // Declaration order matters: referenceAudioProperties must be
+    // constructed before referenceAudioLibrary, which holds a reference
+    // to it (same pattern as LocalisationManager/its PropertiesFile).
+    juce::PropertiesFile referenceAudioProperties { ReferenceAudioLibrary::makeDefaultOptions() };
+    ReferenceAudioLibrary referenceAudioLibrary { referenceAudioProperties };
+
     juce::OwnedArray<Game> games;
     int activeIndex = 0;
 };

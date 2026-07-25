@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../TestSignalGenerator.h"
 #include <array>
 
 // "Guess the delay time" exercise: a percussive noise burst through a
@@ -28,6 +28,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+    void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -55,7 +56,7 @@ private:
     // again mid-session, after sampleRate already holds the real value).
     void updateBurstPeriod();
 
-    PinkNoiseGenerator noise;
+    TestSignalGenerator noise;
     juce::dsp::DelayLine<float> delayLine { 96000 };
     double sampleRate = 44100.0;
 

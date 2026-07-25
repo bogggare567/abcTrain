@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../TestSignalGenerator.h"
 #include <array>
 
 // "Name the range" exercise: plays pink noise through a peak filter
@@ -36,6 +36,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+    void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -60,7 +61,7 @@ private:
     double sampleRate = 44100.0;
 
     juce::Random random;
-    PinkNoiseGenerator noise;
+    TestSignalGenerator noise;
 
     int correctRangeIndex = 0;
     float correctFreqHz = 100.0f;

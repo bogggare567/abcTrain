@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../TestSignalGenerator.h"
 #include <array>
 
 // "Guess the gain change" exercise: continuous pink noise at one of five
@@ -29,6 +29,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+    void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -50,7 +51,7 @@ private:
 
     float getDeltaDb (int choiceIndex) const { return (float) ((choiceIndex - 2) * stepDb); }
 
-    PinkNoiseGenerator noise;
+    TestSignalGenerator noise;
 
     // Easy: 6. Medium: 3 (the -6/-3/0/+3/+6 dB set from the original
     // spec). Hard: 2.

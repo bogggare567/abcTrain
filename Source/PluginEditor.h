@@ -3,6 +3,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_animation/juce_animation.h>
 #include "PluginProcessor.h"
+#include "ChoiceSliderComponent.h"
+#include "TrainingSoundsComponent.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/i18n/LocalisationManager.h"
@@ -88,7 +90,7 @@ private:
     void refreshFromProgressState();
     void refreshLocalisedText();
     void rebuildGameSelectorItems();
-    void rebuildChoiceButtons();
+    void rebuildChoiceSlider();
     void choiceButtonClicked (int choiceIndex);
     void gameSelected();
     void languageSelected();
@@ -114,7 +116,9 @@ private:
     juce::Label scoreLabel;
     juce::Label feedbackLabel;
     juce::TextButton newRoundButton { "New Round" };
-    juce::OwnedArray<juce::TextButton> choiceButtons;
+    // Drag-to-select slider replacing the old row of separate choice
+    // buttons - see decisions/015-choice-slider-and-training-sounds.md.
+    ChoiceSliderComponent choiceSlider;
 
     juce::Label levelLabel;
     // Lets a player jump straight to any level (1-10) instead of only
@@ -128,6 +132,14 @@ private:
     juce::Label dailyChallengeLabel;
 
     juce::TextButton updateButton { "Updates" };
+
+    // Overlay screen for picking which of the user's own reference-audio
+    // folders (if any) the games should train on instead of pink noise -
+    // see TrainingSoundsComponent/ReferenceAudioLibrary and decisions/015.
+    // Has no default constructor (needs the processor), so it's
+    // initialised in the constructor's member-init-list, after `processor`.
+    juce::TextButton trainingSoundsButton { "Training Sounds" };
+    TrainingSoundsComponent trainingSounds;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerEditor)
 };

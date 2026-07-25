@@ -78,7 +78,11 @@ adoption of third-party UI libraries, and the finding that the originally
 -named "juce_animate" library doesn't exist, 014 is a real button-collapse
 bug found by actually running the app, the "Updates" button always
 showing an outcome, a childish-colour-palette fix, and manual level
-control), `docs/diagrams/i18n-architecture.md`
+control, 015 is the drag-to-select `ChoiceSliderComponent` replacing every
+game's button row, the opt-in `ReferenceAudioLibrary`/`TestSignalGenerator`
+infrastructure for training on user-supplied reference audio instead of
+pink noise, and why that infrastructure never fetches, bundles, or vets
+the legality of any audio file itself), `docs/diagrams/i18n-architecture.md`
 (how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
@@ -188,14 +192,42 @@ full rationale.
   of 8 fixed band centers, so the player has to learn the range's actual
   boundaries instead of memorizing fixed points.
 - `Source/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
-  economy algorithm) used by every game above; each instance owns its own
-  `juce::Random`, which is what lets `StereoWidthGame` use two decorrelated
-  instances for a real side signal.
+  economy algorithm) used by `StereoWidthGame`'s two channels directly;
+  each instance owns its own `juce::Random`, which is what lets that game
+  use two decorrelated instances for a real side signal.
+- `Source/TestSignalGenerator.h` — drop-in replacement for
+  `PinkNoiseGenerator` (identical `nextSample()` shape) used by the other
+  8 games. Plays looped audio from `ReferenceAudioLibrary::getActiveBuffer()`
+  when a player has selected a reference file (see below), otherwise falls
+  back to real pink noise — real-time safe (one atomic pointer load, no
+  I/O) either way. `StereoWidthGame` keeps a plain `PinkNoiseGenerator`
+  instead, since a single recorded file can't provide the two
+  independently-decorrelated sources its mid/side processing needs. See
+  [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md).
+- `Source/ReferenceAudioLibrary.{h,cpp}` — scans a root folder (default:
+  the user's own music folder + `/ABCTrain`) for one subfolder per
+  category, each holding audio files the *user* supplies; loads a
+  selection (resampled/downmixed, message-thread only) and publishes it
+  to the audio thread via `std::atomic<const AudioBuffer<float>*>`, the
+  same pattern LearnerEQ's processor already uses for its spectrum/
+  waveform registration. Never fetches, bundles, or vets the legality of
+  any file itself — see decisions/015 for why that boundary matters here.
+- `Source/TrainingSoundsComponent.{h,cpp}` — the "Choose Training Sounds"
+  overlay (same full-size show/hide shape as `shared/LessonController`):
+  a Pink Noise button plus one button per detected category, locked/
+  unlocked by `ProgressManager::getMaxLevelReached()`. Reachable via a
+  "Training Sounds" button in `PluginEditor`'s title row.
 - `Source/GameManager.{h,cpp}` — owns all registered `Game`s, tracks the
   active one, prepares *all* games up front in `prepare()` so switching
-  games never needs an audio-thread re-prepare. Also exposes
-  `getNumGames()`/`getGame(int)` (so `ProgressManager` can listen to every
-  game, not just the active one) and `setDifficultyForAllGames(int)`.
+  games never needs an audio-thread re-prepare (also (re)loads whatever
+  reference-audio selection was persisted, now that the real sample rate
+  is known). Also exposes `getNumGames()`/`getGame(int)` (so
+  `ProgressManager` can listen to every game, not just the active one),
+  `setDifficultyForAllGames(int)`, and `getReferenceAudioLibrary()` (the
+  one `ReferenceAudioLibrary` shared by every game, wired in via
+  `Game::setReferenceAudioLibrary` — a non-pure-virtual, default-no-op
+  hook on the `Game` interface, so every existing/future game keeps
+  working unmodified unless it opts in).
 - `Source/ProgressManager.{h,cpp}` — cross-session points/level(1-10)/
   streak/daily-challenge, backed by `juce::PropertiesFile`. Listens to
   every game via `ChangeListener`; on a correct/incorrect answer it calls
@@ -218,26 +250,35 @@ full rationale.
   generates its own test signal via `GameManager::process`. Owns
   `GameManager` then `ProgressManager` in that declaration order (matters
   — `ProgressManager`'s constructor registers listeners on every game).
+- `Source/ChoiceSliderComponent.{h,cpp}` — the answer-selection widget:
+  one horizontal track with an evenly-spaced tick per choice, a big label
+  showing whichever choice is currently highlighted, and a draggable
+  thumb that snaps to the nearest tick on release. Needs nothing from a
+  `Game` beyond `getNumChoices()`/`getChoiceLabel(int)`, so it's identical
+  across all 9 games whether the labels are numbers or names. Replaced
+  the old row of separate `TextButton`s — see
+  [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)
+  for the redesign rationale and two real layout bugs (edge-label
+  clipping; `paint()` silently not using the same inset math as the mouse
+  handlers) found only by actually running the app.
 - `Source/PluginEditor.{h,cpp}` — fully generic: `ComboBox` game selector,
-  choice buttons rebuilt to `getNumChoices()` on switch *or* whenever a
-  fresh round's choice count no longer matches the current button count
-  (needed once `ReverbGame`'s choice count became difficulty-dependent),
-  no per-game editor code. `rebuildChoiceButtons()` lays the new buttons
-  out via an explicit `resized()` call *before* starting their fade-in —
-  see [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)
-  for the real bug this fixes (`ComponentAnimator::fadeIn()` snapshots a
-  component's bounds at call time and forces it back to that snapshot
-  once the fade completes; doing that before layout meant every choice
-  button silently collapsed to zero size ~200ms after appearing). Also
-  shows level/progress-bar/streak/daily-challenge from `ProgressManager`
-  — including a `levelSelector` `ComboBox` (1-10) that calls
-  `ProgressManager::setLevelManually` directly, so difficulty is
-  player-controllable, not just an automatic side effect of points — and
+  a single `ChoiceSliderComponent` rebuilt via `setChoices()` on switch
+  *or* whenever a fresh round's choice count no longer matches (needed
+  once `ReverbGame`'s choice count became difficulty-dependent), no
+  per-game editor code. Being one persistent component (not destroyed/
+  recreated per round like the old buttons) means the fadeIn-collapse bug
+  class from [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)
+  can't recur here. Also shows level/progress-bar/streak/daily-challenge
+  from `ProgressManager` — including a `levelSelector` `ComboBox` (1-10)
+  that calls `ProgressManager::setLevelManually` directly, so difficulty
+  is player-controllable, not just an automatic side effect of points —
   an "Updates" button (`shared/UpdateChecker`, see
   [decisions/007](docs/decisions/007-update-checker.md)) that now always
   shows "Checking..." → a result → (on no response within 6s) "Couldn't
-  check", rather than silently doing nothing when there's nothing to
-  report (see decisions/014).
+  check" (see decisions/014), and a "Training Sounds" button toggling
+  `TrainingSoundsComponent` — added as the *last* child component
+  specifically so it paints on top of everything else (see decisions/015
+  for the real z-order bug this fixes).
 
 Adding a new exercise: create `Source/Games/NewGame.{h,cpp}` implementing
 `Game` (including a real `setDifficulty` — there's no default), register
@@ -618,11 +659,12 @@ below for what was deliberately deferred.
   than one shared static instance, since a host can have several editor
   instances open at once. `setLookAndFeel(&lookAndFeel)` is the first
   constructor statement, `setLookAndFeel(nullptr)` is in the destructor.
-- `Source/PluginEditor.cpp`'s `rebuildChoiceButtons()` fades each new
-  choice button in over 200 ms via
-  `juce::Desktop::getInstance().getAnimator().fadeIn()` — the one
-  animation in this pass, covering both a game switch and a mid-session
-  choice-count change (`ReverbGame`'s difficulty tiers).
+- `Source/PluginEditor.cpp`'s choice selector fade-in
+  (`juce::Desktop::getInstance().getAnimator().fadeIn()`, one animation in
+  this original look-and-feel pass) was retired once the button row was
+  replaced by `ChoiceSliderComponent` (decisions/015) — a single
+  persistent component being re-labelled doesn't need a fade the way
+  freshly created buttons did.
 - `shared/LessonController.cpp` picked up the same font migration and
   background/border colours as the four editors, so the lesson overlay
   matches the rest of the theme.
@@ -862,6 +904,13 @@ too, only Windows needed the fix (see
 
 ## Roadmap (not yet built)
 
+- Training-sounds UX beyond the current first pass (see
+  [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md)):
+  a file-chooser button for a custom root folder (currently only the
+  persisted default, `setRootFolder()` has no UI), a way to audition a
+  category's audio or pick a specific file within it (currently a random
+  pick each time), and LearnerEQ/LearnerComp/LearnerVerb don't have any
+  reference-audio option at all (EarTrainer only, so far).
 - One more teaching plugin: LearnerSat — same pattern as the other three
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).

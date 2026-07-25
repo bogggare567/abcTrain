@@ -3,6 +3,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
 
+class ReferenceAudioLibrary;
+
 // Common shape for every ear-training exercise: play a processed test
 // signal, offer a fixed set of labeled choices, score the player's pick.
 // Concrete games (EQGame, CompressionGame, ...) own their DSP chain and
@@ -18,6 +20,16 @@ public:
 
     virtual void prepare (const juce::dsp::ProcessSpec&) = 0;
     virtual void process (juce::AudioBuffer<float>&) = 0;
+
+    // Optional hook: a game whose test signal is a single TestSignalGenerator
+    // overrides this to receive the shared ReferenceAudioLibrary, so the
+    // player can practice on real reference audio instead of synthesized
+    // noise (see TestSignalGenerator/ReferenceAudioLibrary). Default no-op
+    // keeps every game that doesn't override this - including any future
+    // one - working exactly as before; not every game's DSP is a single
+    // noise source (StereoWidthGame needs two independently-decorrelated
+    // ones, so it deliberately doesn't override this).
+    virtual void setReferenceAudioLibrary (const ReferenceAudioLibrary*) {}
 
     // Adjusts how hard the next round(s) will be, on a 1-10 scale (see
     // docs/decisions/002-difficulty-scaling.md). Takes effect starting
