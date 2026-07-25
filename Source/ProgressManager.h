@@ -60,6 +60,32 @@ public:
     // instead.
     void registerAnswer (int gameIndex, bool wasCorrect);
 
+    // Lifetime per-exercise record, persisted alongside points/level.
+    // Kept separate from each Game's own getScore()/getRoundsPlayed(),
+    // which are deliberately in-memory session counters that reset every
+    // time the plugin is reopened - this is the "how am I doing at this
+    // exercise, ever" number the training picker shows on each card.
+    struct GameStats
+    {
+        int roundsPlayed = 0;
+        int correctAnswers = 0;
+        int bestStreak = 0;
+        int bestSurvivalScore = 0;
+        int bestBlitzScore = 0;
+
+        float getAccuracy() const noexcept
+        {
+            return roundsPlayed > 0 ? (float) correctAnswers / (float) roundsPlayed : 0.0f;
+        }
+    };
+
+    GameStats getStatsForGame (int gameIndex) const;
+
+    // Records a completed Survival/Blitz run's score if it beats the
+    // stored best. Called by SessionManager when a run ends.
+    void recordSurvivalScore (int gameIndex, int score);
+    void recordBlitzScore (int gameIndex, int score);
+
     // Directly sets the level (clamped 1..maxLevel), bypassing the usual
     // points-driven progression - lets a player who wants direct control
     // over difficulty jump straight to a level instead of only ever
@@ -98,6 +124,7 @@ private:
     bool dailyChallengeComplete = false;
 
     std::vector<int> consecutiveCorrectPerGame;
+    std::vector<GameStats> statsPerGame;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressManager)
 };

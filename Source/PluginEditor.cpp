@@ -21,18 +21,19 @@ namespace
         const char* englishName;
         const char* nameKey;
         const char* instructionsKey;
+        const char* benefitKey;   // "what this training gives you"
     };
 
     const std::array<GameI18nKeys, 9> gameI18nKeys {{
-        { "Guess the Band",             "game.eq.name",             "game.eq.instructions" },
-        { "Guess the Compression",      "game.compression.name",    "game.compression.instructions" },
-        { "Guess the Reverb",           "game.reverb.name",         "game.reverb.instructions" },
-        { "Guess the Pan Position",     "game.pan.name",            "game.pan.instructions" },
-        { "Guess the Delay Time",       "game.delay.name",          "game.delay.instructions" },
-        { "Guess the Distortion",       "game.distortion.name",     "game.distortion.instructions" },
-        { "Guess the Stereo Width",     "game.stereowidth.name",    "game.stereowidth.instructions" },
-        { "Guess the Gain Change",      "game.db.name",             "game.db.instructions" },
-        { "Name the Range",             "game.frequencyrange.name", "game.frequencyrange.instructions" }
+        { "Guess the Band",             "game.eq.name",             "game.eq.instructions", "game.eq.benefit" },
+        { "Guess the Compression",      "game.compression.name",    "game.compression.instructions", "game.compression.benefit" },
+        { "Guess the Reverb",           "game.reverb.name",         "game.reverb.instructions", "game.reverb.benefit" },
+        { "Guess the Pan Position",     "game.pan.name",            "game.pan.instructions", "game.pan.benefit" },
+        { "Guess the Delay Time",       "game.delay.name",          "game.delay.instructions", "game.delay.benefit" },
+        { "Guess the Distortion",       "game.distortion.name",     "game.distortion.instructions", "game.distortion.benefit" },
+        { "Guess the Stereo Width",     "game.stereowidth.name",    "game.stereowidth.instructions", "game.stereowidth.benefit" },
+        { "Guess the Gain Change",      "game.db.name",             "game.db.instructions", "game.db.benefit" },
+        { "Name the Range",             "game.frequencyrange.name", "game.frequencyrange.instructions", "game.frequencyrange.benefit" }
     }};
 
     juce::String translateGameName (const juce::String& englishName, const LocalisationManager& loc)
@@ -49,6 +50,20 @@ namespace
             if (englishName == entry.englishName)
                 return loc.getText (entry.instructionsKey);
         return englishInstructions;
+    }
+
+    // Empty for a game with no benefit string yet, rather than the raw key
+    // - the picker card just leaves that line blank in that case, same
+    // graceful-degradation shape as the other two lookups above.
+    juce::String translateGameBenefit (const juce::String& englishName, const LocalisationManager& loc)
+    {
+        for (const auto& entry : gameI18nKeys)
+            if (englishName == entry.englishName)
+            {
+                const auto text = loc.getText (entry.benefitKey);
+                return text == entry.benefitKey ? juce::String() : text;
+            }
+        return {};
     }
 }
 
@@ -90,10 +105,34 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addAndMakeVisible (gameIcon);
 
     auto& gameManager = processor.getGameManager();
-    rebuildGameSelectorItems();
-    gameSelector.setSelectedId (gameManager.getActiveGameIndex() + 1, juce::dontSendNotification);
-    gameSelector.onChange = [this] { gameSelected(); };
-    addAndMakeVisible (gameSelector);
+
+    currentGameLabel.setJustificationType (juce::Justification::centredLeft);
+    currentGameLabel.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
+    addAndMakeVisible (currentGameLabel);
+
+    gameSelectorButton.onClick = [this]
+    {
+        rebuildGamePickerCards();
+        gamePicker.setVisible (true);
+    };
+    addAndMakeVisible (gameSelectorButton);
+
+    gamePicker.onGameChosen = [this] (int index)
+    {
+        gamePicker.setVisible (false);
+        auto& gm = processor.getGameManager();
+        if (index == gm.getActiveGameIndex())
+            return;
+
+        gm.getActiveGame().removeChangeListener (this);
+        gm.setActiveGameIndex (index);
+        gm.getActiveGame().addChangeListener (this);
+
+        rebuildChoiceSlider();
+        refreshFromGameState();
+        resized();
+    };
+    gamePicker.onClosed = [this] { resized(); };
 
     instructionLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (instructionLabel);
@@ -246,6 +285,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (trainingSounds);
     trainingSounds.onClosed = [this] { resized(); };
 
+    addChildComponent (gamePicker);
+
     // Grown again for the grouping/whitespace pass: the three section
     // panels each carry their own padding and caption, which is what buys
     // the "everything breathes" feel, and that space has to come from
@@ -360,10 +401,11 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::large);   // clear the section caption
 
         auto gameRow = inner.removeFromTop (28);
-        auto centred = gameRow.withSizeKeepingCentre (340, 26);
-        gameIcon.setBounds (centred.removeFromLeft (24));
-        centred.removeFromLeft (Spacing::small);
-        gameSelector.setBounds (centred);
+        gameIcon.setBounds (gameRow.removeFromLeft (26));
+        gameRow.removeFromLeft (Spacing::small);
+        gameSelectorButton.setBounds (gameRow.removeFromRight (130));
+        gameRow.removeFromRight (Spacing::small);
+        currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
         instructionLabel.setBounds (inner);
@@ -411,21 +453,9 @@ void EarTrainerEditor::resized()
     soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
 
     // Unconditional, same as shared/LessonController's integration in the
-    // Learner editors - whether or not it's currently visible.
+    // Learner editors - whether or not they're currently visible.
     trainingSounds.setBounds (getLocalBounds());
-}
-
-void EarTrainerEditor::gameSelected()
-{
-    auto& gameManager = processor.getGameManager();
-    gameManager.getActiveGame().removeChangeListener (this);
-
-    gameManager.setActiveGameIndex (gameSelector.getSelectedId() - 1);
-
-    gameManager.getActiveGame().addChangeListener (this);
-    rebuildChoiceSlider();
-    refreshFromGameState();
-    resized();
+    gamePicker.setBounds (getLocalBounds());
 }
 
 void EarTrainerEditor::languageSelected()
@@ -448,16 +478,46 @@ void EarTrainerEditor::levelSelected()
 
 void EarTrainerEditor::rebuildGameSelectorItems()
 {
+    // The nine-name ComboBox is gone (see GamePickerComponent); what's
+    // left in the title area is the *current* exercise's name plus a
+    // button that opens the card grid.
     auto& gameManager = processor.getGameManager();
-    const auto selectedId = gameSelector.getSelectedId();
+    currentGameLabel.setText (translateGameName (gameManager.getActiveGame().getName(), localisation),
+                               juce::dontSendNotification);
+    gameSelectorButton.setButtonText (localisation.getText ("ui.chooseTraining"));
+}
 
-    gameSelector.clear (juce::dontSendNotification);
-    const auto names = gameManager.getGameNames();
-    for (int i = 0; i < names.size(); ++i)
-        gameSelector.addItem (translateGameName (names[i], localisation), i + 1); // ComboBox item IDs are 1-based
+void EarTrainerEditor::rebuildGamePickerCards()
+{
+    auto& gameManager = processor.getGameManager();
+    auto& progress = processor.getProgressManager();
 
-    if (selectedId > 0)
-        gameSelector.setSelectedId (selectedId, juce::dontSendNotification);
+    std::vector<GamePickerComponent::CardInfo> cards;
+    cards.reserve ((size_t) gameManager.getNumGames());
+
+    for (int i = 0; i < gameManager.getNumGames(); ++i)
+    {
+        const auto englishName = gameManager.getGame (i).getName();
+        const auto stats = progress.getStatsForGame (i);
+
+        GamePickerComponent::CardInfo card;
+        card.name = translateGameName (englishName, localisation);
+        card.benefit = translateGameBenefit (englishName, localisation);
+        card.icon = AppIcons::iconForGameName (englishName);
+        card.isCurrent = (i == gameManager.getActiveGameIndex());
+
+        card.statsLine = stats.roundsPlayed == 0
+                             ? localisation.getText ("ui.notPlayedYet")
+                             : localisation.getText ("ui.accuracy") + ": "
+                                   + juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) + "%   "
+                                   + localisation.getText ("ui.bestStreak") + ": "
+                                   + juce::String (stats.bestStreak);
+
+        cards.push_back (std::move (card));
+    }
+
+    gamePicker.setHeading (localisation.getText ("ui.chooseTraining"));
+    gamePicker.setCards (std::move (cards));
 }
 
 void EarTrainerEditor::refreshLocalisedText()
@@ -522,6 +582,14 @@ void EarTrainerEditor::refreshFromGameState()
         rebuildChoiceSlider();
 
     gameIcon.setIcon (AppIcons::iconForGameName (game.getName()));
+
+    // Must be refreshed here, not only in rebuildGameSelectorItems(): a
+    // real bug caught by picking a card and watching the icon and
+    // instructions change while the name above them kept showing the
+    // previous exercise. rebuildGameSelectorItems() only runs on a
+    // language change, which a game switch is not.
+    currentGameLabel.setText (translateGameName (game.getName(), localisation),
+                               juce::dontSendNotification);
 
     instructionLabel.setText (translateGameInstructions (game.getName(), game.getInstructions(), localisation),
                                juce::dontSendNotification);

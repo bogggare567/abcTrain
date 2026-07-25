@@ -5,6 +5,7 @@
 #include "PluginProcessor.h"
 #include "ChoiceSliderComponent.h"
 #include "TrainingSoundsComponent.h"
+#include "GamePickerComponent.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AppIcons.h"
@@ -151,9 +152,9 @@ private:
     void refreshFromProgressState();
     void refreshLocalisedText();
     void rebuildGameSelectorItems();
+    void rebuildGamePickerCards();
     void rebuildChoiceSlider();
     void choiceButtonClicked (int choiceIndex);
-    void gameSelected();
     void languageSelected();
     void levelSelected();
 
@@ -173,10 +174,15 @@ private:
     juce::Label titleLabel;
     juce::ComboBox languageSelector;
     // Icon for whichever game is currently selected (see AppIcons) - kept
-    // in sync with gameSelector in refreshFromGameState(), so switching
-    // games via the combo box or a difficulty-driven change both update it.
+    // in sync with the active game in refreshFromGameState(), so a pick
+    // from the card grid or a difficulty-driven change both update it.
     AppIconComponent gameIcon;
-    juce::ComboBox gameSelector;
+
+    // Opens the card grid. Replaces the plain ComboBox list of nine game
+    // names, which told a player nothing about what each exercise was for
+    // or how they were doing at it - see GamePickerComponent.
+    juce::TextButton gameSelectorButton;
+    juce::Label currentGameLabel;
     juce::Label instructionLabel;
     juce::Label scoreLabel;
     juce::Label feedbackLabel;
@@ -218,6 +224,7 @@ private:
     // initialised in the constructor's member-init-list, after `processor`.
     juce::TextButton trainingSoundsButton { "Training Sounds" };
     TrainingSoundsComponent trainingSounds;
+    GamePickerComponent gamePicker;
 
     // Product site link, shown in a corner of every one of the four
     // editors (see decisions/016) - a dedicated page for the plugins

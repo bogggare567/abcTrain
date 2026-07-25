@@ -118,6 +118,7 @@ target_sources(EarTrainer
         Source/ProgressManager.cpp
         Source/ReferenceAudioLibrary.cpp
         Source/TrainingSoundsComponent.cpp
+        Source/GamePickerComponent.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp

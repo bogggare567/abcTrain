@@ -26,6 +26,7 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
     {
         gameManager.getGame (i).addChangeListener (this);
         consecutiveCorrectPerGame.push_back (0);
+        statsPerGame.push_back ({});
     }
 
     loadState();
@@ -62,12 +63,22 @@ void ProgressManager::changeListenerCallback (juce::ChangeBroadcaster* source)
 
 void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
 {
-    if (gameIndex < 0 || gameIndex >= (int) consecutiveCorrectPerGame.size())
+    // Both vectors are filled in lockstep by the one delegating
+    // constructor, but this indexes raw memory - checking both is cheaper
+    // than relying on that staying true.
+    if (gameIndex < 0
+        || gameIndex >= (int) consecutiveCorrectPerGame.size()
+        || gameIndex >= (int) statsPerGame.size())
         return;
+
+    auto& stats = statsPerGame[(size_t) gameIndex];
+    ++stats.roundsPlayed;
 
     if (wasCorrect)
     {
         ++consecutiveCorrectPerGame[(size_t) gameIndex];
+        ++stats.correctAnswers;
+        stats.bestStreak = juce::jmax (stats.bestStreak, consecutiveCorrectPerGame[(size_t) gameIndex]);
         addPoints (pointsPerCorrectAnswer);
 
         if (! dailyChallengeComplete
@@ -83,6 +94,42 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
         consecutiveCorrectPerGame[(size_t) gameIndex] = 0;
     }
 
+    saveState();
+    sendChangeMessage();
+}
+
+ProgressManager::GameStats ProgressManager::getStatsForGame (int gameIndex) const
+{
+    if (gameIndex < 0 || gameIndex >= (int) statsPerGame.size())
+        return {};
+
+    return statsPerGame[(size_t) gameIndex];
+}
+
+void ProgressManager::recordSurvivalScore (int gameIndex, int score)
+{
+    if (gameIndex < 0 || gameIndex >= (int) statsPerGame.size())
+        return;
+
+    auto& best = statsPerGame[(size_t) gameIndex].bestSurvivalScore;
+    if (score <= best)
+        return;
+
+    best = score;
+    saveState();
+    sendChangeMessage();
+}
+
+void ProgressManager::recordBlitzScore (int gameIndex, int score)
+{
+    if (gameIndex < 0 || gameIndex >= (int) statsPerGame.size())
+        return;
+
+    auto& best = statsPerGame[(size_t) gameIndex].bestBlitzScore;
+    if (score <= best)
+        return;
+
+    best = score;
     saveState();
     sendChangeMessage();
 }
@@ -229,6 +276,21 @@ void ProgressManager::loadState()
     dailyChallengeGameIndex = juce::jlimit (0, juce::jmax (0, gameManager.getNumGames() - 1),
                                              properties->getIntValue ("dailyChallengeGameIndex", 0));
     dailyChallengeComplete = properties->getBoolValue ("dailyChallengeComplete", false);
+
+    // Per-exercise lifetime stats. Keyed by index rather than by name so a
+    // renamed game keeps its record; the trade-off is that *reordering*
+    // GameManager's registration list would shuffle the stats, which is
+    // why new games get appended there rather than inserted.
+    for (size_t i = 0; i < statsPerGame.size(); ++i)
+    {
+        const auto prefix = "game" + juce::String ((int) i) + ".";
+        auto& stats = statsPerGame[i];
+        stats.roundsPlayed      = properties->getIntValue (prefix + "rounds", 0);
+        stats.correctAnswers    = properties->getIntValue (prefix + "correct", 0);
+        stats.bestStreak        = properties->getIntValue (prefix + "bestStreak", 0);
+        stats.bestSurvivalScore = properties->getIntValue (prefix + "bestSurvival", 0);
+        stats.bestBlitzScore    = properties->getIntValue (prefix + "bestBlitz", 0);
+    }
 }
 
 void ProgressManager::saveState()
@@ -240,5 +302,17 @@ void ProgressManager::saveState()
     properties->setValue ("dailyChallengeDate", dailyChallengeDate);
     properties->setValue ("dailyChallengeGameIndex", dailyChallengeGameIndex);
     properties->setValue ("dailyChallengeComplete", dailyChallengeComplete);
+
+    for (size_t i = 0; i < statsPerGame.size(); ++i)
+    {
+        const auto prefix = "game" + juce::String ((int) i) + ".";
+        const auto& stats = statsPerGame[i];
+        properties->setValue (prefix + "rounds", stats.roundsPlayed);
+        properties->setValue (prefix + "correct", stats.correctAnswers);
+        properties->setValue (prefix + "bestStreak", stats.bestStreak);
+        properties->setValue (prefix + "bestSurvival", stats.bestSurvivalScore);
+        properties->setValue (prefix + "bestBlitz", stats.bestBlitzScore);
+    }
+
     properties->saveIfNeeded();
 }
