@@ -14,6 +14,43 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+# Version from git describe, not a hand-bumped literal. `--tags --dirty
+# --always` yields "vX.Y.Z" on an exact tag, "vX.Y.Z-N-gHASH[-dirty]" N
+# commits past one, or (with --always, no tag reachable at all in this
+# clone's history) a bare short hash - the regex below only catches the
+# "no tag reachable" case and turns that bare hash into the spec'd
+# "0.0.0-dev+sha1234567" form; the other two shapes are already a real,
+# usable version string as-is.
+find_package(Git QUIET)
+set(ABCTRAIN_GIT_DESCRIBE "unknown")
+if(Git_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} describe --tags --dirty --always
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE ABCTRAIN_GIT_DESCRIBE_RAW
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE ABCTRAIN_GIT_DESCRIBE_RESULT
+        ERROR_QUIET
+    )
+    if(ABCTRAIN_GIT_DESCRIBE_RESULT EQUAL 0 AND ABCTRAIN_GIT_DESCRIBE_RAW)
+        set(ABCTRAIN_GIT_DESCRIBE ${ABCTRAIN_GIT_DESCRIBE_RAW})
+    endif()
+endif()
+
+if(ABCTRAIN_GIT_DESCRIBE MATCHES "^v?[0-9]+\\.[0-9]+\\.[0-9]+")
+    set(ABCTRAIN_VERSION_STRING ${ABCTRAIN_GIT_DESCRIBE})
+else()
+    set(ABCTRAIN_VERSION_STRING "0.0.0-dev+sha${ABCTRAIN_GIT_DESCRIBE}")
+endif()
+
+message(STATUS "abcTrain version: ${ABCTRAIN_VERSION_STRING} (git describe: ${ABCTRAIN_GIT_DESCRIBE})")
+
+configure_file(
+    shared/VersionInfo.h.in
+    ${CMAKE_BINARY_DIR}/generated/shared/VersionInfo.h
+    @ONLY
+)
+
 # Embeds shared/i18n/strings/*.json into the binary as BinaryData (rather
 # than reading JSON files from a filesystem path relative to the plugin
 # binary, which isn't reliable across VST3/AU/Standalone install
@@ -252,6 +289,7 @@ target_sources(EarTrainerTests
         tests/FrequencyRangeGameTest.cpp
         tests/GameManagerTest.cpp
         tests/LocalisationManagerTest.cpp
+        tests/VersionChannelTest.cpp
         tests/ProgressManagerTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
@@ -305,3 +343,12 @@ target_link_libraries(EarTrainerTests
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+# shared/Version.h #includes the generated shared/VersionInfo.h (see the
+# configure_file() call above) via a path that only resolves through this
+# include directory, not a relative one - every target that pulls in
+# shared/Version.h (all four plugin editors, hence all four plugins plus
+# this test binary) needs it.
+foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests)
+    target_include_directories(${abcTrainTarget} PRIVATE ${CMAKE_BINARY_DIR}/generated)
+endforeach()

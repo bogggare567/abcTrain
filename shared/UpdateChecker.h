@@ -22,6 +22,12 @@ namespace UpdateChecker
         juce::String htmlUrl; // the release's GitHub page, for "open in browser"
     };
 
+    // stable checks GitHub's "latest release" endpoint, which already
+    // excludes pre-releases; beta checks the full releases list and takes
+    // its first (i.e. newest) entry regardless of its prerelease flag, so
+    // a "vX.Y.Z-betaN" tag is visible to anyone who opted into it.
+    enum class Channel { stable, beta };
+
     // Compares two "vX.Y.Z" (or "X.Y.Z") version strings component by
     // component as integers. Returns false (not newer) for anything that
     // doesn't parse as a dotted list of non-negative integers, rather than
@@ -34,12 +40,28 @@ namespace UpdateChecker
     // tagName if the JSON is malformed or missing the fields it needs.
     ReleaseInfo parseReleaseJson (const juce::String& json);
 
+    // Parses GitHub's "list releases" endpoint (a JSON array, newest
+    // first: https://docs.github.com/rest/releases/releases#list-releases)
+    // and returns the first entry - if allowPrerelease is false, the
+    // first entry whose own "prerelease" field is false, skipping any
+    // newer pre-releases in between. Returns a ReleaseInfo with an empty
+    // tagName if the JSON is malformed, isn't an array, or (with
+    // allowPrerelease false) every entry is a pre-release.
+    ReleaseInfo parseReleaseListJson (const juce::String& json, bool allowPrerelease);
+
     // Fetches the latest release from GitHub on a background thread and
     // invokes `callback` on the message thread with (foundNewer, release).
     // Silently does nothing (never calls back) on any failure - no
     // internet, rate limiting, an unexpected response shape - so a plugin
     // running offline or in a network-sandboxed host is never bothered by
-    // this.
-    void checkForUpdatesAsync (const juce::String& currentVersion,
+    // this. The two-argument overload is Channel::stable, unchanged from
+    // before beta-channel support existed.
+    void checkForUpdatesAsync (const juce::String& currentVersion, Channel channel,
                                 std::function<void (bool foundNewer, ReleaseInfo release)> callback);
+
+    inline void checkForUpdatesAsync (const juce::String& currentVersion,
+                                       std::function<void (bool foundNewer, ReleaseInfo release)> callback)
+    {
+        checkForUpdatesAsync (currentVersion, Channel::stable, std::move (callback));
+    }
 }

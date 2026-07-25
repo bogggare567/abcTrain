@@ -70,7 +70,10 @@ what was deliberately deferred from that first redesign pass, 010 is why
 the book-library work stops at a bibliography and never extracts or
 quotes book text, 011 is the flat-JSON-per-language i18n system, why it's
 scoped to a curated core string set rather than every tooltip, and a real
-UTF-8-literal bug it caught),
+UTF-8-literal bug it caught, 012 is deriving the version from `git
+describe` instead of a hand-bumped literal, the stable/beta/dev channel
+detector, and what's still deferred (CI channel wiring, settings
+migration)),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -446,25 +449,42 @@ See [decisions/007-update-checker.md](docs/decisions/007-update-checker.md)
 for the full rationale; summary here.
 
 - `shared/UpdateChecker.h/cpp` — `isNewerVersion(latest, current)` (dotted-
-  integer version comparison, with or without a leading `v`) and
+  integer version comparison, with or without a leading `v`),
   `parseReleaseJson(json)` (pulls `tag_name`/`html_url` out of GitHub's
-  "get latest release" API response) are pure functions with no
+  "get latest release" API response), and `parseReleaseListJson(json,
+  allowPrerelease)` (walks GitHub's "list releases" array for the first
+  entry matching the pre-release constraint) are pure functions with no
   networking or message-thread dependency — this is what
   `tests/UpdateCheckerTest.cpp` exercises directly.
-  `checkForUpdatesAsync(currentVersion, callback)` is the one impure
-  piece: fetches `.../releases/latest` on a background thread
-  (`juce::Thread::launch`) and posts the result back via
-  `juce::MessageManager::callAsync`; any failure (no internet, rate
-  limiting, an unexpected response shape) just means the callback never
-  fires — no error UI, ever.
-- `shared/Version.h` — `CurrentVersion::string`, a plain literal (not
-  `JucePlugin_VersionString`/`ProjectInfo::versionString`) bumped by hand
-  alongside `project(EarTrainer VERSION ...)` in `CMakeLists.txt`. A plain
-  literal specifically because the three Learner `PluginEditor.cpp` files
-  that use it are also compiled into `EarTrainerTests`, where
-  `JucePlugin_*` macros aren't defined — the same reason
-  `LearnerEQProcessor::getName()` returns a literal instead of
+  `checkForUpdatesAsync(currentVersion, channel, callback)` is the one
+  impure piece: `Channel::stable` fetches `.../releases/latest` (already
+  excludes pre-releases); `Channel::beta` fetches the full `.../releases`
+  list and takes the newest entry regardless of its prerelease flag — both
+  on a background thread (`juce::Thread::launch`), posting the result back
+  via `juce::MessageManager::callAsync`. A 2-argument overload (no
+  `channel`) still exists, defaulting to `Channel::stable`, so all four
+  editors' existing call sites needed no changes. Any failure (no
+  internet, rate limiting, an unexpected response shape) just means the
+  callback never fires — no error UI, ever. See
+  [decisions/012](docs/decisions/012-versioning.md) — no editor currently
+  calls the 3-argument overload or exposes a channel/auto-check setting;
+  the fetching logic is real and tested, the UI to pick a channel isn't
+  wired up yet.
+- `shared/Version.h`/`shared/VersionInfo.h` (the latter CMake-generated
+  into the build dir, never committed) — `CurrentVersion::string` is
+  derived from `git describe --tags --dirty --always` at CMake configure
+  time (see decisions/012), not a hand-bumped literal. Still a plain
+  `constexpr const char*`, not `JucePlugin_VersionString`/
+  `ProjectInfo::versionString`, for the same reason as before: the three
+  Learner `PluginEditor.cpp` files that use it are also compiled into
+  `EarTrainerTests`, where `JucePlugin_*` macros aren't defined — the same
+  reason `LearnerEQProcessor::getName()` returns a literal instead of
   `JucePlugin_Name` (see `docs/diagrams/ci-pipeline.md`, bug 1).
+- `shared/VersionChannel.h` — `detect(version)` turns a `"vX.Y.Z"`-shaped
+  string into `stable`/`beta`/`dev` via `std::regex` (JUCE has no
+  general-purpose regex class) — pure, CMake-independent, so
+  `tests/VersionChannelTest.cpp` exercises it with hand-written example
+  strings, no real tagged build needed.
 - Each editor wires its own "Updates" `TextButton` directly (duplicated
   across all four editors rather than pulled into a shared UI helper, so
   `shared/UpdateChecker.h` itself stays free of any GUI dependency — same
@@ -730,6 +750,10 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `setLanguage` switching `getText()` output, `"{{name}}"` placeholder
   substitution, non-empty `getDisplayName()` for every code. See
   [decisions/011](docs/decisions/011-i18n.md).
+- `tests/VersionChannelTest.cpp` — `VersionChannel::detect` on hand-written
+  example strings: exact `vX.Y.Z` tags (stable), `-beta` suffixes
+  (case-insensitive), `-N-gHASH`/`-dirty`/malformed input (all dev). See
+  [decisions/012](docs/decisions/012-versioning.md).
 
 **`juce::ChangeBroadcaster::sendChangeMessage()` is asynchronous** (needs
 a running JUCE message loop to deliver), and `EarTrainerTests` never pumps

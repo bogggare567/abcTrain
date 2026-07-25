@@ -64,6 +64,46 @@ public:
             expect (UpdateChecker::parseReleaseJson ("[1, 2, 3]").tagName.isEmpty()); // valid JSON, not an object
             expect (UpdateChecker::parseReleaseJson (R"({"message": "Not Found"})").tagName.isEmpty()); // GitHub's 404 shape
         }
+
+        beginTest ("parseReleaseListJson(allowPrerelease=true) returns the newest entry regardless of its prerelease flag");
+        {
+            const auto json = R"([
+                { "tag_name": "v1.0.0-beta1", "html_url": "https://example.com/beta1", "prerelease": true },
+                { "tag_name": "v0.9.0", "html_url": "https://example.com/stable", "prerelease": false }
+            ])";
+
+            const auto release = UpdateChecker::parseReleaseListJson (json, true);
+            expectEquals (release.tagName, juce::String ("v1.0.0-beta1"));
+        }
+
+        beginTest ("parseReleaseListJson(allowPrerelease=false) skips leading pre-releases");
+        {
+            const auto json = R"([
+                { "tag_name": "v1.0.0-beta1", "html_url": "https://example.com/beta1", "prerelease": true },
+                { "tag_name": "v0.9.0", "html_url": "https://example.com/stable", "prerelease": false }
+            ])";
+
+            const auto release = UpdateChecker::parseReleaseListJson (json, false);
+            expectEquals (release.tagName, juce::String ("v0.9.0"));
+        }
+
+        beginTest ("parseReleaseListJson returns an empty tagName when every entry is a pre-release and none are allowed");
+        {
+            const auto json = R"([
+                { "tag_name": "v1.0.0-beta2", "html_url": "https://example.com/beta2", "prerelease": true },
+                { "tag_name": "v1.0.0-beta1", "html_url": "https://example.com/beta1", "prerelease": true }
+            ])";
+
+            expect (UpdateChecker::parseReleaseListJson (json, false).tagName.isEmpty());
+        }
+
+        beginTest ("parseReleaseListJson returns an empty tagName for malformed or unexpected JSON");
+        {
+            expect (UpdateChecker::parseReleaseListJson ("not json at all", true).tagName.isEmpty());
+            expect (UpdateChecker::parseReleaseListJson ("", true).tagName.isEmpty());
+            expect (UpdateChecker::parseReleaseListJson (R"({"message": "Not Found"})", true).tagName.isEmpty()); // an object, not an array
+            expect (UpdateChecker::parseReleaseListJson ("[]", true).tagName.isEmpty()); // valid, empty array
+        }
     }
 };
 

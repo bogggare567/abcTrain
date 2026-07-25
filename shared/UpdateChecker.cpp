@@ -7,6 +7,7 @@ namespace UpdateChecker
     namespace
     {
         constexpr const char* latestReleaseApiUrl = "https://api.github.com/repos/bogggare567/abcTrain/releases/latest";
+        constexpr const char* releaseListApiUrl = "https://api.github.com/repos/bogggare567/abcTrain/releases";
 
         // Empty (not {0}) means "didn't parse" - lets isNewerVersion tell
         // "malformed" apart from "version 0".
@@ -74,12 +75,37 @@ namespace UpdateChecker
         return {};
     }
 
-    void checkForUpdatesAsync (const juce::String& currentVersion,
+    ReleaseInfo parseReleaseListJson (const juce::String& json, bool allowPrerelease)
+    {
+        const auto parsed = juce::JSON::parse (json);
+
+        if (auto* array = parsed.getArray())
+        {
+            for (auto& entry : *array)
+            {
+                if (auto* obj = entry.getDynamicObject())
+                {
+                    const auto isPrerelease = (bool) obj->getProperty ("prerelease");
+                    if (allowPrerelease || ! isPrerelease)
+                    {
+                        ReleaseInfo info;
+                        info.tagName = obj->getProperty ("tag_name").toString();
+                        info.htmlUrl = obj->getProperty ("html_url").toString();
+                        return info;
+                    }
+                }
+            }
+        }
+
+        return {};
+    }
+
+    void checkForUpdatesAsync (const juce::String& currentVersion, Channel channel,
                                 std::function<void (bool, ReleaseInfo)> callback)
     {
-        juce::Thread::launch ([currentVersion, callback]
+        juce::Thread::launch ([currentVersion, channel, callback]
         {
-            juce::URL url (latestReleaseApiUrl);
+            const juce::URL url (channel == Channel::beta ? releaseListApiUrl : latestReleaseApiUrl);
 
             auto stream = url.createInputStream (juce::URL::InputStreamOptions (juce::URL::ParameterHandling::inAddress)
                                                       .withConnectionTimeoutMs (5000)
@@ -87,7 +113,10 @@ namespace UpdateChecker
             if (stream == nullptr)
                 return;
 
-            const auto release = parseReleaseJson (stream->readEntireStreamAsString());
+            const auto body = stream->readEntireStreamAsString();
+            const auto release = channel == Channel::beta
+                                      ? parseReleaseListJson (body, true)
+                                      : parseReleaseJson (body);
 
             if (release.tagName.isEmpty())
                 return;
