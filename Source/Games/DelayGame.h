@@ -22,10 +22,10 @@ public:
     juce::String getName() const override { return "Guess the Delay Time"; }
     juce::String getInstructions() const override
     {
-        return "Listen to the echo, then guess the delay time. Very short "
-               "delay times blur into the source instead of sounding like a "
-               "distinct echo - the same effect behind widening and chorus "
-               "tricks.";
+        return "Listen to the echo, then set the scale to how long the "
+               "delay is. Very short delay times blur into the source "
+               "instead of sounding like a distinct echo - the same effect "
+               "behind widening and chorus tricks.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;
@@ -35,6 +35,25 @@ public:
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
+
+    // Continuous: any delay time in the range, with an accept band that
+    // is a constant *ratio* rather than a constant number of
+    // milliseconds - 20 ms out at a 40 ms delay is a completely different
+    // error from 20 ms out at 500 ms, and only the ratio matches how the
+    // ear hears it. That is also why the axis is logarithmic.
+    bool usesContinuousScale() const override { return true; }
+    float getToleranceNormalised() const override;
+    float getCorrectNormalised() const override { return msToNormalised (targetMs); }
+    float getChosenNormalised() const override { return chosenNormalised; }
+    juce::String formatNormalisedValue (float normalised) const override;
+    void submitNormalisedAnswer (float normalised) override;
+    std::vector<GridMark> getGridMarks() const override;
+
+    static constexpr float axisMinMs = 20.0f;
+    static constexpr float axisMaxMs = 640.0f;
+
+    static float normalisedToMs (float normalised) noexcept;
+    static float msToNormalised (float ms) noexcept;
 
     int getNumChoices() const override { return numDelayTimes; }
     juce::String getChoiceLabel (int choiceIndex) const override;
@@ -58,6 +77,14 @@ private:
     // real sample rate) and setDifficulty() (in case difficulty changes
     // again mid-session, after sampleRate already holds the real value).
     void updateBurstPeriod();
+
+    // The real answer, anywhere in the range.
+    float targetMs = 150.0f;
+    float chosenNormalised = -1.0f;
+
+    // Half-width of the accept band, as a ratio (0.35 means "within
+    // +/-35% of the true time").
+    float toleranceRatio = 0.35f;
 
     TestSignalGenerator noise;
     juce::dsp::DelayLine<float> delayLine { 96000 };

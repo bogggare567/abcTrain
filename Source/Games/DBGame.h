@@ -23,9 +23,10 @@ public:
     juce::String getName() const override { return "Guess the Gain Change"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then guess how much the level changed. Differences "
-               "below roughly 1 dB get hard to reliably tell apart, so "
-               "don't expect every step to feel equally obvious.";
+        return "Listen, then set the scale to how much you think the level "
+               "changed. Differences below roughly 1 dB get hard to tell "
+               "apart at all, so the tolerance never asks for more than "
+               "that.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;
@@ -35,6 +36,33 @@ public:
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
+
+    // Continuous: the level change is any value in the range, and the
+    // accept band narrows with difficulty. Five fixed steps meant the
+    // answer was always one of five round numbers, so a player learned
+    // the *set* rather than the sound of a decibel.
+    bool usesContinuousScale() const override { return true; }
+    float getToleranceNormalised() const override { return toleranceDb / axisSpanDb; }
+    float getCorrectNormalised() const override { return dbToNormalised (targetDb); }
+    float getChosenNormalised() const override { return chosenNormalised; }
+    juce::String formatNormalisedValue (float normalised) const override;
+    void submitNormalisedAnswer (float normalised) override;
+    std::vector<GridMark> getGridMarks() const override;
+
+    // Linear in dB, which is already the perceptual unit.
+    static constexpr float axisMinDb = -9.0f;
+    static constexpr float axisMaxDb = 9.0f;
+    static constexpr float axisSpanDb = axisMaxDb - axisMinDb;
+
+    static float normalisedToDb (float normalised) noexcept
+    {
+        return axisMinDb + normalised * axisSpanDb;
+    }
+
+    static float dbToNormalised (float db) noexcept
+    {
+        return juce::jlimit (0.0f, 1.0f, (db - axisMinDb) / axisSpanDb);
+    }
 
     int getNumChoices() const override { return numChoices; }
     juce::String getChoiceLabel (int choiceIndex) const override;
@@ -60,6 +88,15 @@ private:
     int stepDb = 6;
 
     juce::Random random;
+
+    // The real answer, anywhere in the range.
+    float targetDb = 0.0f;
+    float chosenNormalised = -1.0f;
+
+    // Half-width of the accept band, in dB. 1 dB is about where a level
+    // difference stops being reliably audible at all, so the hard tier
+    // sits just above that rather than below it.
+    float toleranceDb = 2.5f;
 
     int correctChoiceIndex = 0;
     int chosenChoiceIndex = -1;

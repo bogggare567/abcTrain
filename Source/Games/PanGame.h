@@ -18,9 +18,10 @@ public:
     juce::String getName() const override { return "Guess the Pan Position"; }
     juce::String getInstructions() const override
     {
-        return "Listen, then guess where the sound is panned. Equal-power "
-               "panning keeps loudness constant across positions, so trust "
-               "your sense of direction rather than loudness.";
+        return "Listen, then point to where the sound sits in the stereo "
+               "field. Equal-power panning keeps loudness constant across "
+               "positions, so trust your sense of direction rather than "
+               "loudness.";
     }
 
     void prepare (const juce::dsp::ProcessSpec&) override;
@@ -30,6 +31,24 @@ public:
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
+
+    // Continuous: the target sits anywhere across the stereo field, and
+    // the accept band narrows with difficulty. Five named positions never
+    // taught where a sound actually *is* - only which of five words to
+    // pick - and "Left" is not a thing you can dial on a console.
+    bool usesContinuousScale() const override { return true; }
+    float getToleranceNormalised() const override { return tolerancePan * 0.5f; }
+    float getCorrectNormalised() const override { return panToNormalised (targetPan); }
+    float getChosenNormalised() const override { return chosenNormalised; }
+    juce::String formatNormalisedValue (float normalised) const override;
+    void submitNormalisedAnswer (float normalised) override;
+    std::vector<GridMark> getGridMarks() const override;
+
+    // Pan runs -1 (hard left) .. +1 (hard right); the axis is linear,
+    // because equal-power panning already makes perceived position track
+    // the control linearly.
+    static float normalisedToPan (float normalised) noexcept { return normalised * 2.0f - 1.0f; }
+    static float panToNormalised (float pan) noexcept { return (pan + 1.0f) * 0.5f; }
 
     int getNumChoices() const override { return numPositions; }
     juce::String getChoiceLabel (int choiceIndex) const override;
@@ -61,6 +80,16 @@ private:
 
     juce::Random random;
 
+    // The real answer, anywhere in -1..+1.
+    float targetPan = 0.0f;
+    float chosenNormalised = -1.0f;
+
+    // Half-width of the accept band, in pan units (so 0.25 means a
+    // quarter of the way to a speaker either side).
+    float tolerancePan = 0.25f;
+
+    // Nearest named position to targetPan, keeping the legacy discrete
+    // path's exact-match semantics intact.
     int correctPositionIndex = 0;
     int chosenPositionIndex = -1;
     bool answered = false;

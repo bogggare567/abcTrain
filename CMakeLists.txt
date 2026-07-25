@@ -346,6 +346,7 @@ target_sources(EarTrainerTests
         tests/VersionChannelTest.cpp
         tests/ProgressManagerTest.cpp
         tests/SessionManagerTest.cpp
+        tests/ContinuousScaleTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
         tests/LearnerVerbTest.cpp
