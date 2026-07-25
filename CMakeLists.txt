@@ -14,6 +14,26 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(JUCE)
 
+# Embeds shared/i18n/strings/*.json into the binary as BinaryData (rather
+# than reading JSON files from a filesystem path relative to the plugin
+# binary, which isn't reliable across VST3/AU/Standalone install
+# locations on every OS) - see shared/i18n/LocalisationManager.cpp for
+# how each language code maps to its BinaryData symbol.
+juce_add_binary_data(I18nData SOURCES
+    shared/i18n/strings/en.json
+    shared/i18n/strings/ru.json
+    shared/i18n/strings/de.json
+    shared/i18n/strings/fr.json
+    shared/i18n/strings/es.json
+    shared/i18n/strings/pt.json
+    shared/i18n/strings/zh-Hans.json
+    shared/i18n/strings/ja.json
+    shared/i18n/strings/ko.json
+    shared/i18n/strings/it.json
+    shared/i18n/strings/pl.json
+    shared/i18n/strings/uk.json
+)
+
 juce_add_plugin(EarTrainer
     COMPANY_NAME "EarSnap"
     PLUGIN_MANUFACTURER_CODE Esnp
@@ -47,6 +67,7 @@ target_sources(EarTrainer
         Source/Games/FrequencyRangeGame.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/i18n/LocalisationManager.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -59,6 +80,7 @@ target_link_libraries(EarTrainer
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        I18nData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -92,6 +114,7 @@ target_sources(LearnerEQ
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/i18n/LocalisationManager.cpp
 )
 
 target_compile_definitions(LearnerEQ
@@ -104,6 +127,7 @@ target_link_libraries(LearnerEQ
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        I18nData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -135,6 +159,7 @@ target_sources(LearnerComp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/i18n/LocalisationManager.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
 
@@ -148,6 +173,7 @@ target_link_libraries(LearnerComp
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        I18nData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -179,6 +205,7 @@ target_sources(LearnerVerb
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/i18n/LocalisationManager.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
 
@@ -192,6 +219,7 @@ target_link_libraries(LearnerVerb
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        I18nData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -223,6 +251,7 @@ target_sources(EarTrainerTests
         tests/DBGameTest.cpp
         tests/FrequencyRangeGameTest.cpp
         tests/GameManagerTest.cpp
+        tests/LocalisationManagerTest.cpp
         tests/ProgressManagerTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
@@ -252,6 +281,7 @@ target_sources(EarTrainerTests
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/i18n/LocalisationManager.cpp
 )
 
 # JUCE_USE_CURL is deliberately left at its default (0) here: this test
@@ -269,6 +299,7 @@ target_link_libraries(EarTrainerTests
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        I18nData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

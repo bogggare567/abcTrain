@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
+#include "../shared/i18n/LocalisationManager.h"
 
 // Generic multiple-choice UI driven entirely by the active Game's
 // interface (name/instructions/choice count/labels/feedback). Adding a
@@ -46,18 +47,28 @@ private:
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void refreshFromGameState();
     void refreshFromProgressState();
+    void refreshLocalisedText();
+    void rebuildGameSelectorItems();
     void rebuildChoiceButtons();
     void choiceButtonClicked (int choiceIndex);
     void gameSelected();
+    void languageSelected();
 
     // Declared first so it's constructed before, and destroyed after,
     // every other Component below that might still reference it during
     // teardown - see the class comment on AbcTrainLookAndFeel.
     AbcTrainLookAndFeel lookAndFeel;
 
+    // Also declared early, before any Component that reads localised
+    // text during construction. localisationProperties must outlive
+    // localisation (which holds a reference to it), hence that order.
+    juce::PropertiesFile localisationProperties;
+    LocalisationManager localisation;
+
     EarTrainerProcessor& processor;
 
     juce::Label titleLabel;
+    juce::ComboBox languageSelector;
     juce::ComboBox gameSelector;
     juce::Label instructionLabel;
     juce::Label scoreLabel;

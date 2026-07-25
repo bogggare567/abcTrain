@@ -68,7 +68,9 @@ free-text custom install path the way Windows/Linux can, 009 is the
 shared `AbcTrainLookAndFeel` dark theme applied to all four editors and
 what was deliberately deferred from that first redesign pass, 010 is why
 the book-library work stops at a bibliography and never extracts or
-quotes book text),
+quotes book text, 011 is the flat-JSON-per-language i18n system, why it's
+scoped to a curated core string set rather than every tooltip, and a real
+UTF-8-literal bug it caught),
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -583,6 +585,64 @@ layout (every editor still uses explicit `Rectangle::removeFrom*`), and
 screenshots/mockups in `README.md` (this sandbox can't render or capture a
 real JUCE window, so the look is described in text there instead).
 
+## Architecture — Localization / i18n (`shared/i18n/`, EarTrainer's editor)
+
+See [decisions/011-i18n.md](docs/decisions/011-i18n.md) for the full
+rationale; summary here.
+
+- `shared/i18n/strings/*.json` — one flat `{"dot.key": "text"}` table per
+  supported language (en, ru, de, fr, es, pt, zh-Hans, ja, ko, it, pl,
+  uk), covering a curated core UI string set (game names/instructions,
+  common labels/buttons) — not every tooltip/lesson string yet.
+  `CMakeLists.txt`'s `juce_add_binary_data(I18nData SOURCES ...)` embeds
+  them into every plugin target + `EarTrainerTests` as `BinaryData`,
+  since a plugin reading a JSON file from a path relative to its own
+  binary isn't reliable across VST3/AU/Standalone install locations.
+- `shared/i18n/LocalisationManager.h/.cpp` — a `juce::ChangeBroadcaster`
+  constructed from a `juce::PropertiesFile&` (same ownership pattern as
+  `ProgressManager`). Auto-detects the system language
+  (`juce::SystemStats::getUserLanguage()`, "zh" specifically maps to
+  "zh-Hans") on first run, falls back to "en" if unsupported, and
+  persists the choice via `makeDefaultOptions()`'s one shared
+  `PropertiesFile` folder ("abcTrain") so the language is a single
+  product-wide preference rather than per-plugin. `getText(key)` falls
+  back English → the literal key string (never silently blank) if a
+  translation is missing; `getText(key, placeholders)` does simple
+  `"{{name}}"` substitution over that. Maps each language code to its
+  `BinaryData` symbol via an explicit if-chain, since `juce_add_binary_data`'s
+  filename sanitizing isn't predictable enough to derive programmatically
+  (`zh-Hans.json` → `zhHans_json`, dash dropped not underscored).
+- **A real bug caught before shipping**: `getDisplayName()`'s non-ASCII
+  names (Русский, 简体中文, etc.) were first written as raw hex-escaped
+  `const char*` literals — `juce::String`'s plain `const char*`
+  constructor does *not* assume UTF-8 (a known JUCE gotcha), so those
+  literals mojibake'd. Caught by a failing test, fixed by wrapping every
+  non-ASCII literal in `juce::CharPointer_UTF8(...)` explicitly; the
+  JSON-loaded strings never had this problem since `loadLanguageTable()`
+  already used the explicit `juce::String::fromUTF8(data, size)` path.
+- `Source/PluginEditor.cpp` (EarTrainer) is the one reference
+  integration: a language `ComboBox` in the title row, plus a small
+  `englishName -> i18n key` lookup table
+  (`translateGameName()`/`translateGameInstructions()`) so all 9 `Game`
+  classes need zero changes to become localizable — a game missing from
+  that table just falls back to its raw English text.
+  `changeListenerCallback` only rebuilds the game-selector's items when
+  `LocalisationManager` itself is the broadcaster (not on every answer/
+  progress tick), since rebuilding a `ComboBox`'s items on every round
+  played would be wasteful and could visibly flicker it.
+- `tests/LocalisationManagerTest.cpp` — loads and checks non-empty output
+  for all 12 languages, unknown-key fallback, unsupported-saved-code
+  fallback, `setLanguage` actually switching `getText()` output,
+  placeholder substitution, and non-empty `getDisplayName()` for every
+  code. Doesn't assert on `ChangeListener` delivery firing synchronously
+  (same `sendChangeMessage()`-is-asynchronous reason `ProgressManager`
+  exposes `registerAnswer()` directly — see Testing below).
+
+Not yet built: LearnerEQ/LearnerComp/LearnerVerb don't have a language
+selector yet (only EarTrainer, as the reference integration); parameter
+tooltips, lesson step text, and each game's dynamic `getFeedbackText()`
+are still English-only.
+
 ## Testing (`tests/`, `shared/`)
 
 `EarTrainerTests` is a plain console app (`juce_add_console_app`, not a
@@ -665,6 +725,11 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `checkForUpdatesAsync`'s real network call is not tested — no network
   access assumed in this console test binary, see
   [decisions/007](docs/decisions/007-update-checker.md).
+- `tests/LocalisationManagerTest.cpp` — all 12 languages load a
+  non-empty table, unknown-key/unsupported-saved-code fallback,
+  `setLanguage` switching `getText()` output, `"{{name}}"` placeholder
+  substitution, non-empty `getDisplayName()` for every code. See
+  [decisions/011](docs/decisions/011-i18n.md).
 
 **`juce::ChangeBroadcaster::sendChangeMessage()` is asynchronous** (needs
 a running JUCE message loop to deliver), and `EarTrainerTests` never pumps

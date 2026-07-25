@@ -1,26 +1,77 @@
 #include "PluginEditor.h"
 #include "../shared/Version.h"
+#include <array>
 
 namespace
 {
     const juce::Colour correctColour { juce::Colours::limegreen };
     const juce::Colour wrongColour { juce::Colours::orangered };
+
+    // Maps each game's English getName()/getInstructions() text to its
+    // i18n key, so the editor can show a localised name/instructions
+    // without the Game interface itself (or any of the 9 game classes)
+    // needing to know about LocalisationManager. A game not in this
+    // table (e.g. a new one added later, before its i18n keys exist)
+    // just falls back to its raw English text - see
+    // translateGameName()/translateGameInstructions() below.
+    struct GameI18nKeys
+    {
+        const char* englishName;
+        const char* nameKey;
+        const char* instructionsKey;
+    };
+
+    const std::array<GameI18nKeys, 9> gameI18nKeys {{
+        { "Guess the Band",             "game.eq.name",             "game.eq.instructions" },
+        { "Guess the Compression",      "game.compression.name",    "game.compression.instructions" },
+        { "Guess the Reverb",           "game.reverb.name",         "game.reverb.instructions" },
+        { "Guess the Pan Position",     "game.pan.name",            "game.pan.instructions" },
+        { "Guess the Delay Time",       "game.delay.name",          "game.delay.instructions" },
+        { "Guess the Distortion",       "game.distortion.name",     "game.distortion.instructions" },
+        { "Guess the Stereo Width",     "game.stereowidth.name",    "game.stereowidth.instructions" },
+        { "Guess the Gain Change",      "game.db.name",             "game.db.instructions" },
+        { "Name the Range",             "game.frequencyrange.name", "game.frequencyrange.instructions" }
+    }};
+
+    juce::String translateGameName (const juce::String& englishName, const LocalisationManager& loc)
+    {
+        for (const auto& entry : gameI18nKeys)
+            if (englishName == entry.englishName)
+                return loc.getText (entry.nameKey);
+        return englishName;
+    }
+
+    juce::String translateGameInstructions (const juce::String& englishName, const juce::String& englishInstructions, const LocalisationManager& loc)
+    {
+        for (const auto& entry : gameI18nKeys)
+            if (englishName == entry.englishName)
+                return loc.getText (entry.instructionsKey);
+        return englishInstructions;
+    }
 }
 
 EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
-    : AudioProcessorEditor (&p), processor (p)
+    : AudioProcessorEditor (&p),
+      localisationProperties (LocalisationManager::makeDefaultOptions()),
+      localisation (localisationProperties),
+      processor (p)
 {
     setLookAndFeel (&lookAndFeel);
 
-    titleLabel.setText ("Ear Trainer", juce::dontSendNotification);
     titleLabel.setFont (AbcTrainLookAndFeel::titleFont());
     titleLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (titleLabel);
 
+    for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
+        languageSelector.addItem (LocalisationManager::getDisplayName (code),
+                                   LocalisationManager::getSupportedLanguageCodes().indexOf (code) + 1);
+    languageSelector.setSelectedId (LocalisationManager::getSupportedLanguageCodes().indexOf (localisation.getCurrentLanguage()) + 1,
+                                     juce::dontSendNotification);
+    languageSelector.onChange = [this] { languageSelected(); };
+    addAndMakeVisible (languageSelector);
+
     auto& gameManager = processor.getGameManager();
-    const auto names = gameManager.getGameNames();
-    for (int i = 0; i < names.size(); ++i)
-        gameSelector.addItem (names[i], i + 1); // ComboBox item IDs are 1-based
+    rebuildGameSelectorItems();
     gameSelector.setSelectedId (gameManager.getActiveGameIndex() + 1, juce::dontSendNotification);
     gameSelector.onChange = [this] { gameSelected(); };
     addAndMakeVisible (gameSelector);
@@ -56,21 +107,30 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     gameManager.getActiveGame().addChangeListener (this);
     processor.getProgressManager().addChangeListener (this);
+    localisation.addChangeListener (this);
 
     updateButton.onClick = [this]
     {
         juce::Component::SafePointer<juce::Component> safeThis (this);
 
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        // Captured now (editor definitely alive), not read from
+        // `localisation` inside the async callback below, which may run
+        // after the editor - and so `localisation` itself - has been
+        // destroyed; the safeThis null check only guards Component use.
+        const auto updateAvailableText = localisation.getText ("ui.updateAvailable");
+        const auto openReleasePageText = localisation.getText ("ui.openReleasePage");
+        const auto laterText = localisation.getText ("ui.later");
+
+        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, updateAvailableText, openReleasePageText, laterText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
         {
             if (! foundNewer || safeThis == nullptr)
                 return;
 
             const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
                 juce::MessageBoxIconType::InfoIcon,
-                "Update Available",
+                updateAvailableText,
                 "Version " + release.tagName + " is available - you're on " + juce::String (CurrentVersion::string) + ".",
-                "Open Release Page", "Later",
+                openReleasePageText, laterText,
                 safeThis.getComponent());
 
             juce::AlertWindow::showAsync (options, [release] (int result)
@@ -88,14 +148,16 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     rebuildChoiceButtons();
     refreshFromGameState();
     refreshFromProgressState();
+    refreshLocalisedText();
 
-    setSize (640, 440);
+    setSize (640, 468);
 }
 
 EarTrainerEditor::~EarTrainerEditor()
 {
     processor.getGameManager().getActiveGame().removeChangeListener (this);
     processor.getProgressManager().removeChangeListener (this);
+    localisation.removeChangeListener (this);
     setLookAndFeel (nullptr);
 }
 
@@ -109,9 +171,12 @@ void EarTrainerEditor::resized()
     auto area = getLocalBounds().reduced (16);
 
     auto titleRow = area.removeFromTop (32);
+    languageSelector.setBounds (titleRow.removeFromRight (90));
+    titleRow.removeFromRight (8);
     updateButton.setBounds (titleRow.removeFromRight (80));
     titleRow.removeFromRight (8);
     titleLabel.setBounds (titleRow);
+    area.removeFromTop (8);
     gameSelector.setBounds (area.removeFromTop (28).withSizeKeepingCentre (280, 24));
     area.removeFromTop (8);
     instructionLabel.setBounds (area.removeFromTop (24));
@@ -158,6 +223,40 @@ void EarTrainerEditor::gameSelected()
     resized();
 }
 
+void EarTrainerEditor::languageSelected()
+{
+    const auto& codes = LocalisationManager::getSupportedLanguageCodes();
+    const auto index = languageSelector.getSelectedId() - 1;
+    if (index < 0 || index >= codes.size())
+        return;
+
+    localisation.setLanguage (codes[index]);
+    refreshLocalisedText();
+}
+
+void EarTrainerEditor::rebuildGameSelectorItems()
+{
+    auto& gameManager = processor.getGameManager();
+    const auto selectedId = gameSelector.getSelectedId();
+
+    gameSelector.clear (juce::dontSendNotification);
+    const auto names = gameManager.getGameNames();
+    for (int i = 0; i < names.size(); ++i)
+        gameSelector.addItem (translateGameName (names[i], localisation), i + 1); // ComboBox item IDs are 1-based
+
+    if (selectedId > 0)
+        gameSelector.setSelectedId (selectedId, juce::dontSendNotification);
+}
+
+void EarTrainerEditor::refreshLocalisedText()
+{
+    titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
+    updateButton.setButtonText (localisation.getText ("ui.updates"));
+    rebuildGameSelectorItems();
+    refreshFromGameState();
+    refreshFromProgressState();
+}
+
 void EarTrainerEditor::rebuildChoiceButtons()
 {
     choiceButtons.clear();
@@ -186,11 +285,21 @@ void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
     processor.getGameManager().getActiveGame().submitAnswer (choiceIndex);
 }
 
-void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster*)
+void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster* source)
 {
-    // Either the active game or ProgressManager could have fired this;
-    // both refreshes are cheap, so just do both rather than tracking
-    // which broadcaster it was.
+    // A language change also needs the game-selector's item text and
+    // title/button text rebuilt, which refreshFromGameState()/
+    // refreshFromProgressState() alone don't cover - but rebuilding the
+    // combo box's items on *every* game-answer/progress tick (not just a
+    // language switch) would be wasteful and could visibly flicker it,
+    // so only take that heavier path when LocalisationManager itself is
+    // the broadcaster.
+    if (source == &localisation)
+    {
+        refreshLocalisedText();
+        return;
+    }
+
     refreshFromGameState();
     refreshFromProgressState();
 }
@@ -210,9 +319,11 @@ void EarTrainerEditor::refreshFromGameState()
         resized();
     }
 
-    instructionLabel.setText (game.getInstructions(), juce::dontSendNotification);
+    instructionLabel.setText (translateGameInstructions (game.getName(), game.getInstructions(), localisation),
+                               juce::dontSendNotification);
 
-    scoreLabel.setText ("Score: " + juce::String (game.getScore()) + " / " + juce::String (game.getRoundsPlayed()),
+    scoreLabel.setText (localisation.getText ("ui.score", { { "correct", juce::String (game.getScore()) },
+                                                             { "total", juce::String (game.getRoundsPlayed()) } }),
                          juce::dontSendNotification);
 
     for (auto* button : choiceButtons)
@@ -242,10 +353,12 @@ void EarTrainerEditor::refreshFromProgressState()
 {
     auto& progress = processor.getProgressManager();
 
-    levelLabel.setText ("Level " + juce::String (progress.getLevel()), juce::dontSendNotification);
+    levelLabel.setText (localisation.getText ("ui.level", { { "level", juce::String (progress.getLevel()) } }),
+                         juce::dontSendNotification);
     levelProgressBar.setProgress (progress.getLevelProgressProportion());
 
-    streakLabel.setText (juce::String (progress.getStreakDays()) + " day streak", juce::dontSendNotification);
+    streakLabel.setText (localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }),
+                          juce::dontSendNotification);
 
     dailyChallengeLabel.setText (progress.getDailyChallengeDescription(), juce::dontSendNotification);
     dailyChallengeLabel.setColour (juce::Label::textColourId,
