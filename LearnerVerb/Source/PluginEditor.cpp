@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "ReverbGuide.h"
 #include "VocalSpaceLesson.h"
+#include "BrightVsDarkTailLesson.h"
 #include "../../shared/Version.h"
 #include <array>
 #include <memory>
@@ -27,7 +28,8 @@ namespace
 
 LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
-      lessonController (p.apvts, buildVocalSpaceLesson())
+      lessonController (p.apvts, buildVocalSpaceLesson()),
+      tailLessonController (p.apvts, buildBrightVsDarkTailLesson())
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -110,11 +112,18 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     processor.setWaveformDisplay (&waveform);
     processor.setSpectrumAnalyzer (&spectrum);
 
-    lessonButton.onClick = [this] { lessonController.showAndStart(); };
-    addAndMakeVisible (lessonButton);
-
-    addChildComponent (lessonController);
-    lessonController.onClosed = [this] { resized(); };
+    lessonSelector.addItem ("Space for Vocals", 1);
+    lessonSelector.addItem ("Bright vs. Dark Tail", 2);
+    lessonSelector.onChange = [this]
+    {
+        // Two lessons, one picker (see decisions/017) - only the selected
+        // one is ever shown/started; the other stays hidden.
+        if (lessonSelector.getSelectedId() == 1)
+            lessonController.showAndStart();
+        else if (lessonSelector.getSelectedId() == 2)
+            tailLessonController.showAndStart();
+    };
+    addAndMakeVisible (lessonSelector);
 
     updateButton.onClick = [this]
     {
@@ -192,6 +201,16 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
     addAndMakeVisible (soundkorbLink);
 
+    // Added last, after every other child, so a shown lesson overlay
+    // actually covers the title-row buttons/link instead of them poking
+    // through on top of it - the same z-order fix as decisions/015's
+    // Training Sounds overlay and decisions/016's soundkorb.ru link.
+    addChildComponent (lessonController);
+    lessonController.onClosed = [this] { resized(); };
+
+    addChildComponent (tailLessonController);
+    tailLessonController.onClosed = [this] { resized(); };
+
     startTimerHz (30);
     setSize (760, 748);
 }
@@ -211,11 +230,12 @@ void LearnerVerbEditor::paint (juce::Graphics& g)
 void LearnerVerbEditor::resized()
 {
     lessonController.setBounds (getLocalBounds());
+    tailLessonController.setBounds (getLocalBounds());
 
     auto area = getLocalBounds().reduced (16);
 
     auto titleRow = area.removeFromTop (32);
-    lessonButton.setBounds (titleRow.removeFromRight (80));
+    lessonSelector.setBounds (titleRow.removeFromRight (150));
     titleRow.removeFromRight (8);
     bypassButton.setBounds (titleRow.removeFromRight (90));
     titleRow.removeFromRight (8);

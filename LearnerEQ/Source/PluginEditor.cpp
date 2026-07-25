@@ -2,6 +2,7 @@
 #include "EQCoefficients.h"
 #include "FrequencyGuide.h"
 #include "VocalEqLesson.h"
+#include "FindResonanceLesson.h"
 #include "../../shared/Version.h"
 #include <memory>
 
@@ -12,7 +13,8 @@ namespace
 
 LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
-      lessonController (p.apvts, buildVocalEqLesson())
+      lessonController (p.apvts, buildVocalEqLesson()),
+      resonanceLessonController (p.apvts, buildFindResonanceLesson())
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -93,11 +95,18 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         processor.apvts, LearnerEQProcessor::bypassParamId, bypassButton);
     addAndMakeVisible (bypassButton);
 
-    lessonButton.onClick = [this] { lessonController.showAndStart(); };
-    addAndMakeVisible (lessonButton);
-
-    addChildComponent (lessonController);
-    lessonController.onClosed = [this] { resized(); };
+    lessonSelector.addItem ("Vocal EQ Basics", 1);
+    lessonSelector.addItem ("Find & Fix a Resonance", 2);
+    lessonSelector.onChange = [this]
+    {
+        // Two lessons, one picker (see decisions/017) - only the selected
+        // one is ever shown/started; the other stays hidden.
+        if (lessonSelector.getSelectedId() == 1)
+            lessonController.showAndStart();
+        else if (lessonSelector.getSelectedId() == 2)
+            resonanceLessonController.showAndStart();
+    };
+    addAndMakeVisible (lessonSelector);
 
     updateButton.onClick = [this]
     {
@@ -175,6 +184,16 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
     addAndMakeVisible (soundkorbLink);
 
+    // Added last, after every other child, so a shown lesson overlay
+    // actually covers the title-row buttons/link instead of them poking
+    // through on top of it - the same z-order fix as decisions/015's
+    // Training Sounds overlay and decisions/016's soundkorb.ru link.
+    addChildComponent (lessonController);
+    lessonController.onClosed = [this] { resized(); };
+
+    addChildComponent (resonanceLessonController);
+    resonanceLessonController.onClosed = [this] { resized(); };
+
     startTimerHz (30);
     setSize (760, 728);
 }
@@ -194,11 +213,12 @@ void LearnerEQEditor::paint (juce::Graphics& g)
 void LearnerEQEditor::resized()
 {
     lessonController.setBounds (getLocalBounds());
+    resonanceLessonController.setBounds (getLocalBounds());
 
     auto area = getLocalBounds().reduced (16);
 
     auto titleRow = area.removeFromTop (32);
-    lessonButton.setBounds (titleRow.removeFromRight (80));
+    lessonSelector.setBounds (titleRow.removeFromRight (150));
     titleRow.removeFromRight (8);
     bypassButton.setBounds (titleRow.removeFromRight (90));
     titleRow.removeFromRight (8);

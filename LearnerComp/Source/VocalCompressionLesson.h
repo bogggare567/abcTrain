@@ -19,6 +19,9 @@ inline MicroLesson buildVocalCompressionLesson()
           { { P::attackParamId, 5.0f } } },
         { "Release 150 ms - a smooth recovery back to unity gain.",
           { { P::releaseParamId, 150.0f } } },
+        { "Add a 6 dB knee - the same ratio now eases in gradually around "
+          "the threshold instead of switching on abruptly.",
+          { { P::kneeParamId, 6.0f } } },
         { "Makeup Gain +4 dB - restore the loudness the compressor took away.",
           { { P::makeupParamId, 4.0f } } }
     });

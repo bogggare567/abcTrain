@@ -19,6 +19,9 @@ inline MicroLesson buildVocalSpaceLesson()
           { { P::preDelayParamId, 40.0f } } },
         { "Increase damping - remove brightness from the tail.",
           { { P::dampingParamId, 70.0f } } },
+        { "Narrow the stereo width a touch - the reverb hugs the center "
+          "instead of surrounding the voice.",
+          { { P::widthParamId, 50.0f } } },
         { "Compare with Hall at 2.5 s decay - a different kind of space entirely.",
           { { P::typeParamId, 1.0f }, { P::decayParamId, 2.5f } } }
     });

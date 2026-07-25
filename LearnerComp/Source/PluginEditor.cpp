@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "ParameterGuide.h"
 #include "VocalCompressionLesson.h"
+#include "BusGlueLesson.h"
 #include "../../shared/Version.h"
 #include <array>
 #include <memory>
@@ -28,7 +29,8 @@ namespace
 
 LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
-      lessonController (p.apvts, buildVocalCompressionLesson())
+      lessonController (p.apvts, buildVocalCompressionLesson()),
+      busGlueLessonController (p.apvts, buildBusGlueLesson())
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -103,11 +105,18 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     processor.setWaveformDisplay (&waveform);
     processor.setSpectrumAnalyzer (&spectrum);
 
-    lessonButton.onClick = [this] { lessonController.showAndStart(); };
-    addAndMakeVisible (lessonButton);
-
-    addChildComponent (lessonController);
-    lessonController.onClosed = [this] { resized(); };
+    lessonSelector.addItem ("Vocal Compression", 1);
+    lessonSelector.addItem ("Bus Glue Compression", 2);
+    lessonSelector.onChange = [this]
+    {
+        // Two lessons, one picker (see decisions/017) - only the selected
+        // one is ever shown/started; the other stays hidden.
+        if (lessonSelector.getSelectedId() == 1)
+            lessonController.showAndStart();
+        else if (lessonSelector.getSelectedId() == 2)
+            busGlueLessonController.showAndStart();
+    };
+    addAndMakeVisible (lessonSelector);
 
     updateButton.onClick = [this]
     {
@@ -185,6 +194,16 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, juce::Colour (0xff5b9bd5));
     addAndMakeVisible (soundkorbLink);
 
+    // Added last, after every other child, so a shown lesson overlay
+    // actually covers the title-row buttons/link instead of them poking
+    // through on top of it - the same z-order fix as decisions/015's
+    // Training Sounds overlay and decisions/016's soundkorb.ru link.
+    addChildComponent (lessonController);
+    lessonController.onClosed = [this] { resized(); };
+
+    addChildComponent (busGlueLessonController);
+    busGlueLessonController.onClosed = [this] { resized(); };
+
     startTimerHz (30);
     setSize (820, 808);
 }
@@ -204,11 +223,12 @@ void LearnerCompEditor::paint (juce::Graphics& g)
 void LearnerCompEditor::resized()
 {
     lessonController.setBounds (getLocalBounds());
+    busGlueLessonController.setBounds (getLocalBounds());
 
     auto area = getLocalBounds().reduced (16);
 
     auto titleRow = area.removeFromTop (32);
-    lessonButton.setBounds (titleRow.removeFromRight (80));
+    lessonSelector.setBounds (titleRow.removeFromRight (150));
     titleRow.removeFromRight (8);
     bypassButton.setBounds (titleRow.removeFromRight (90));
     titleRow.removeFromRight (8);

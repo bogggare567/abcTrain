@@ -56,8 +56,12 @@ private:
 
     juce::OwnedArray<juce::TextButton> presetButtons;
 
-    juce::TextButton lessonButton { "Lesson" };
+    // Two lessons (see decisions/017) means a small picker instead of one
+    // "Lesson" button - each LessonController owns its own MicroLesson, and
+    // only one is ever visible/started at a time (see lessonSelector.onChange).
+    juce::ComboBox lessonSelector;
     LessonController lessonController;
+    LessonController tailLessonController;
 
     juce::TextButton updateButton { "Updates" };
 

@@ -51,8 +51,12 @@ private:
     juce::ToggleButton bypassButton { "Bypass" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
 
-    juce::TextButton lessonButton { "Lesson" };
+    // Two lessons (see decisions/017) means a small picker instead of one
+    // "Lesson" button - each LessonController owns its own MicroLesson, and
+    // only one is ever visible/started at a time (see lessonSelector.onChange).
+    juce::ComboBox lessonSelector;
     LessonController lessonController;
+    LessonController resonanceLessonController;
 
     juce::TextButton updateButton { "Updates" };
 

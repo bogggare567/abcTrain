@@ -14,6 +14,10 @@ inline MicroLesson buildVocalEqLesson()
         { "This is the untreated sound - every band flat.",
           { { P::gainParamId (0), 0.0f }, { P::gainParamId (1), 0.0f },
             { P::gainParamId (2), 0.0f }, { P::gainParamId (3), 0.0f } } },
+        { "Add low-end warmth: boost 60 Hz (the low shelf) by +1.5 dB - a "
+          "shelf reshapes the whole low edge, unlike the narrow bell you'll "
+          "use next for mud.",
+          { { P::freqParamId (0), 60.0f }, { P::gainParamId (0), 1.5f } } },
         { "Add presence: boost 3 kHz by +3 dB.",
           { { P::freqParamId (2), 3000.0f }, { P::gainParamId (2), 3.0f } } },
         { "Clean up mud: cut 250 Hz by -3 dB.",
