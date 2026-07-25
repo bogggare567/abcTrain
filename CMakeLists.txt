@@ -77,6 +77,7 @@ juce_add_plugin(EarTrainer
     PLUGIN_CODE Eqg1
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Ear Trainer"
+    ICON_BIG assets/icons/eartrainer.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -135,6 +136,7 @@ juce_add_plugin(LearnerEQ
     PLUGIN_CODE Leq1
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Learner EQ"
+    ICON_BIG assets/icons/learnereq.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -183,6 +185,7 @@ juce_add_plugin(LearnerComp
     PLUGIN_CODE Lcp1
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Learner Comp"
+    ICON_BIG assets/icons/learnercomp.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -230,6 +233,7 @@ juce_add_plugin(LearnerVerb
     PLUGIN_CODE Lvb1
     FORMATS AU VST3 Standalone
     PRODUCT_NAME "Learner Verb"
+    ICON_BIG assets/icons/learnerverb.png
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE

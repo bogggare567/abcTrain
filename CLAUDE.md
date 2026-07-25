@@ -86,7 +86,12 @@ the legality of any audio file itself, 016 is the programmatic
 `shared/AppIcons` vector icon set for every game/plugin, a soundkorb.ru
 site link added to all four editors, and why a full design-system/Figma
 pass from the user's UI-overhaul brief is explicitly out of scope for
-this codebase to produce on its own), `docs/diagrams/i18n-architecture.md`
+this codebase to produce on its own, 017 is folding a user-supplied
+90-rule audio-engineering knowledge base into `docs/knowledge_base.md`/
+tooltips/instructions/lessons in this project's own words, a real pre-
+existing lesson-overlay z-order bug found while touching that code, and
+real per-plugin `ICON_BIG` app icons replacing the previous blank/default
+one), `docs/diagrams/i18n-architecture.md`
 (how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
@@ -348,10 +353,13 @@ restore with the session (`getStateInformation`/`setStateInformation`).
 - `LearnerEQ/Source/PluginEntry.cpp` — just `createPluginFilter()`,
   deliberately split out of `PluginProcessor.cpp` (see the Testing section
   below for why).
-- `LearnerEQ/Source/VocalEqLesson.h` — `buildVocalEqLesson()`, one
-  `MicroLesson` (flat → boost 3 kHz presence → cut 250 Hz mud → boost
-  10 kHz air → compare) driving a "Lesson" button/`LessonController`
-  overlay in the editor. See the Microlessons section below.
+- `LearnerEQ/Source/VocalEqLesson.h` — `buildVocalEqLesson()`, a
+  `MicroLesson` (flat → boost 60 Hz low shelf warmth → boost 3 kHz
+  presence → cut 250 Hz mud → boost 10 kHz air → compare) driving a
+  `lessonSelector`/`LessonController` overlay in the editor.
+  `LearnerEQ/Source/FindResonanceLesson.h` — `buildFindResonanceLesson()`,
+  a second lesson (boost narrow at 400 Hz to find a resonance → flip it
+  into a cut → widen the Q). See the Microlessons section below.
 
 Not yet built for LearnerEQ: "analyze reference" mode, knowledge-base
 tooltips beyond the one-line frequency description, more than one lesson.
@@ -418,8 +426,11 @@ for why it doesn't use `juce::dsp::Compressor`.
 - `LearnerComp/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as LearnerEQ's.
 - `LearnerComp/Source/VocalCompressionLesson.h` — `buildVocalCompressionLesson()`,
-  one `MicroLesson` (bypass → threshold -18 dB → ratio 3:1 → attack 5 ms →
-  release 150 ms → makeup +4 dB).
+  a `MicroLesson` (bypass → threshold -18 dB → ratio 3:1 → attack 5 ms →
+  release 150 ms → knee 6 dB → makeup +4 dB).
+  `LearnerComp/Source/BusGlueLesson.h` — `buildBusGlueLesson()`, a second
+  lesson (2:1 ratio, high threshold → 30 ms attack → soft knee → aim for
+  only a couple dB of gain reduction → makeup +2 dB).
 
 Not yet built for LearnerComp: knowledge-base content beyond the one-line
 tooltips, more than one lesson, any automated coverage of attack/release
@@ -479,9 +490,13 @@ knob isn't a precise physical measurement.
   pattern as the other two Learner plugins.
 - `LearnerVerb/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as the other two.
-- `LearnerVerb/Source/VocalSpaceLesson.h` — `buildVocalSpaceLesson()`, one
+- `LearnerVerb/Source/VocalSpaceLesson.h` — `buildVocalSpaceLesson()`, a
   `MicroLesson` (dry → Plate 1.5 s/20% wet → pre-delay 40 ms → damping
-  70% → compare with Hall 2.5 s).
+  70% → narrow width to 50% → compare with Hall 2.5 s).
+  `LearnerVerb/Source/BrightVsDarkTailLesson.h` — `buildBrightVsDarkTailLesson()`,
+  a second lesson (Hall with low damping stays bright throughout its
+  decay → raise damping a lot at the same decay time → the high end now
+  dies out much faster than the low end).
 
 Not yet built for LearnerVerb (deliberately trimmed, see ADR 004):
 impulse-response "cloud" visualization, decay-vs-frequency graph, stereo
@@ -504,14 +519,28 @@ for the full rationale; summary here.
   `AudioProcessorValueTreeState&`; on every step change it calls
   `setValueNotifyingHost` for that step's target parameters (same pattern
   `applyPreset` already uses) and updates its text/progress labels.
-  Meant to be added as a full-size child of a Learner editor and toggled
-  visible via a "Lesson" button — every editor's `resized()` sets its
-  bounds to `getLocalBounds()` unconditionally, whether visible or not.
-- Lesson **content** (the three `build...Lesson()` files listed in each
-  plugin's section above) lives per-plugin, not in `shared/` — only the
-  machinery is shared, since the content is inherently tied to that
-  plugin's own parameter IDs. Same reasoning as `CompressorGuide`/
-  `ReverbGuide`'s preset tables.
+  Meant to be added as a full-size child of a Learner editor — every
+  editor's `resized()` sets its bounds to `getLocalBounds()`
+  unconditionally, whether visible or not.
+- Each Learner plugin now has **two** lessons (see
+  [decisions/017](docs/decisions/017-knowledge-base-content-pass-and-app-icons.md)),
+  so each editor owns two `LessonController` members (one per lesson,
+  since one `LessonController` instance only ever holds one `MicroLesson`)
+  and a small `lessonSelector` `ComboBox` — replacing the old single
+  "Lesson" button — picks which one to `showAndStart()`; only the
+  selected one is ever visible. Both `LessonController`s'
+  `addChildComponent()` calls are the *last* thing each constructor does,
+  after every other child (including the "Updates" button and the
+  soundkorb.ru link) — a real bug, found while restructuring this exact
+  code for the second lesson: the original single-lesson wiring added it
+  *before* those controls, so a shown lesson would paint underneath them
+  instead of covering them, the same z-order mistake ADR 015/016 already
+  had to fix once each for other overlays.
+- Lesson **content** (the `build...Lesson()` files listed in each
+  plugin's section above — two per plugin now) lives per-plugin, not in
+  `shared/` — only the machinery is shared, since the content is
+  inherently tied to that plugin's own parameter IDs. Same reasoning as
+  `CompressorGuide`/`ReverbGuide`'s preset tables.
 - **Per-control highlighting was cut from this pass.** Every target
   parameter already has a `SliderAttachment`/`ComboBoxAttachment`, so
   setting it via `LessonController` makes the matching knob visibly move
@@ -687,6 +716,16 @@ below for what was deliberately deferred.
   from, and a real edge-clipping bug in the soundkorb.ru site link
   (`juce::HyperlinkButton`, added to all four editors' bottom-right
   corner in the same pass) found by actually running the app.
+- `assets/icons/{eartrainer,learnereq,learnercomp,learnerverb}.png` — real
+  per-plugin application icons (1024×1024, generated programmatically,
+  reusing `AbcTrainLookAndFeel`'s palette and, for the three Learner
+  plugins, a rasterized version of their own `shared/AppIcons.cpp` glyph)
+  wired via `ICON_BIG <path>` in each `juce_add_plugin()` call in
+  `CMakeLists.txt` — JUCE's own build tooling generates the platform icon
+  format from there. Fixes a real reported bug: every Standalone app
+  previously opened with macOS's generic blank/default icon, since no
+  icon was ever configured. See
+  [decisions/017](docs/decisions/017-knowledge-base-content-pass-and-app-icons.md).
 
 Not yet built (deliberately deferred, see ADR 009 and ADR 016): hover/
 press animations beyond the one fade-in (no `Timer`-driven alpha ramp, no
@@ -952,10 +991,13 @@ too, only Windows needed the fix (see
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).
 - The three Learner plugins' parameter tooltips are now richly rewritten
-  (`ParameterGuide.h`/`ReverbGuide.h`/`FrequencyGuide.h`, see ADR 010 and
-  `docs/knowledge_base.md`); still not done: any of the four `MicroLesson`
-  lessons' step text, and EarTrainer's other 8 games' one-line
-  `getInstructions()` strings.
+  (`ParameterGuide.h`/`ReverbGuide.h`/`FrequencyGuide.h`, see ADR 010,
+  ADR 017, and `docs/knowledge_base.md`), and all 9 EarTrainer games'
+  `getInstructions()` gained a practical tip in all 12 languages (ADR
+  017); still not done: any of the six `MicroLesson`s' *existing* step
+  text beyond the handful of new steps ADR 017 added, and folding the
+  gifted `baza_znanij_audio_plaginy_v2.jsonl` knowledge base any deeper
+  than the paraphrased synthesis already in `docs/knowledge_base.md`.
 - More EarTrainer exercises building on standard, non-book-specific
   terminology - dB SPL vs dB FS, compressor topology (VCA/FET/Opto/
   Vari-Mu) - were considered for this pass; only `FrequencyRangeGame`
@@ -969,7 +1011,8 @@ too, only Windows needed the fix (see
 - Per-control lesson-step highlighting, trimmed from the initial
   MicroLesson build (see ADR 005) — the moving-knob cue from each step's
   own `SliderAttachment`/`ComboBoxAttachment` stands in for it today.
-- More lessons per plugin (each Learner plugin has exactly one today).
+- More lessons per plugin (each Learner plugin has exactly two today, see
+  ADR 017 - still room for more).
 - Golden-file / transient-behavior audio regression tests for LearnerEQ,
   LearnerComp, and LearnerVerb (each currently has only steady-state or
   behavioral assertions, no golden-file comparison).
