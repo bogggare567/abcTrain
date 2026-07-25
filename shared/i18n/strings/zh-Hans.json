@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "猜频段",
     "game.eq.instructions": "先听一下,然后点击你认为被提升或衰减的频段。",
     "game.compression.name": "猜压缩强度",
@@ -22,7 +21,6 @@
     "game.db.instructions": "先听一下,然后猜音量变化了多少。",
     "game.frequencyrange.name": "说出频段名称",
     "game.frequencyrange.instructions": "先听一下,然后点击你认为被提升或衰减的频段名称。",
-
     "ui.level": "等级 {{level}}",
     "ui.points": "{{points}} 分",
     "ui.streak": "连续 {{days}} 天",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "打开发布页面",
     "ui.correct": "正确!",
     "ui.notQuite": "不太对。",
-    "ui.language": "语言"
+    "ui.language": "语言",
+    "ui.checkingForUpdates": "正在检查...",
+    "ui.upToDate": "已是最新",
+    "ui.checkFailed": "检查失败"
 }

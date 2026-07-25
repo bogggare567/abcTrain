@@ -3,6 +3,7 @@
 #include "VocalCompressionLesson.h"
 #include "../../shared/Version.h"
 #include <array>
+#include <memory>
 
 namespace
 {
@@ -107,12 +108,40 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
 
     updateButton.onClick = [this]
     {
-        juce::Component::SafePointer<juce::Component> safeThis (this);
+        // See CLAUDE.md's Update-checking section: without this,
+        // clicking "Updates" gave no visible reaction at all whenever no
+        // newer release was found (or this repo simply had no releases
+        // yet), since checkForUpdatesAsync's callback deliberately never
+        // fires on failure. Now every click gets some visible outcome:
+        // "Checking...", then the update prompt, a brief "Up to date",
+        // or - if nothing came back within a few seconds - "Couldn't
+        // check".
+        juce::Component::SafePointer<LearnerCompEditor> safeThis (this);
+        auto handled = std::make_shared<bool> (false);
 
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        updateButton.setEnabled (false);
+        updateButton.setButtonText ("Checking...");
+
+        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
         {
-            if (! foundNewer || safeThis == nullptr)
+            if (safeThis == nullptr || *handled)
                 return;
+            *handled = true;
+
+            safeThis->updateButton.setEnabled (true);
+
+            if (! foundNewer)
+            {
+                safeThis->updateButton.setButtonText ("Up to date");
+                juce::Timer::callAfterDelay (2500, [safeThis]
+                {
+                    if (safeThis != nullptr)
+                        safeThis->updateButton.setButtonText ("Updates");
+                });
+                return;
+            }
+
+            safeThis->updateButton.setButtonText ("Updates");
 
             const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
                 juce::MessageBoxIconType::InfoIcon,
@@ -128,6 +157,22 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
                 // Release Page") returns 1, button[1] ("Later") returns 0.
                 if (result == 1)
                     juce::URL (release.htmlUrl).launchInDefaultBrowser();
+            });
+        });
+
+        juce::Timer::callAfterDelay (6000, [safeThis, handled]
+        {
+            if (safeThis == nullptr || *handled)
+                return;
+            *handled = true;
+
+            safeThis->updateButton.setEnabled (true);
+            safeThis->updateButton.setButtonText ("Couldn't check");
+
+            juce::Timer::callAfterDelay (2500, [safeThis]
+            {
+                if (safeThis != nullptr)
+                    safeThis->updateButton.setButtonText ("Updates");
             });
         });
     };

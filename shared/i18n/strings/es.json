@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "Adivina la banda",
     "game.eq.instructions": "Escucha y luego haz clic en la banda que crees que se subió o se cortó.",
     "game.compression.name": "Adivina la compresión",
@@ -22,7 +21,6 @@
     "game.db.instructions": "Escucha y luego adivina cuánto cambió el nivel.",
     "game.frequencyrange.name": "Nombra el rango",
     "game.frequencyrange.instructions": "Escucha y luego haz clic en el rango de frecuencias que crees que se subió o se cortó.",
-
     "ui.level": "Nivel {{level}}",
     "ui.points": "{{points}} pts",
     "ui.streak": "Racha de {{days}} días",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "Abrir página de la versión",
     "ui.correct": "¡Correcto!",
     "ui.notQuite": "No exactamente.",
-    "ui.language": "Idioma"
+    "ui.language": "Idioma",
+    "ui.checkingForUpdates": "Comprobando...",
+    "ui.upToDate": "Actualizado",
+    "ui.checkFailed": "No se pudo comprobar"
 }

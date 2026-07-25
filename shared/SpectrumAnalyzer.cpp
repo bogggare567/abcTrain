@@ -76,9 +76,13 @@ void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
     spectrumPath.lineTo (bounds.getRight(), bounds.getBottom());
     spectrumPath.closeSubPath();
 
-    g.setColour (juce::Colours::deepskyblue.withAlpha (0.25f));
+    // The theme's own accent blue (#5b9bd5, see AbcTrainLookAndFeel),
+    // not JUCE's stock Colours::deepskyblue - a brighter, more saturated
+    // "web-safe" blue that clashed with the rest of the dark palette.
+    const juce::Colour accentBlue { 0xff5b9bd5 };
+    g.setColour (accentBlue.withAlpha (0.25f));
     g.fillPath (spectrumPath);
-    g.setColour (juce::Colours::deepskyblue);
+    g.setColour (accentBlue);
     g.strokePath (spectrumPath, juce::PathStrokeType (1.0f));
 
     paintOverlay (g, bounds);

@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "Guess the Band",
     "game.eq.instructions": "Listen, then click the band you think was boosted or cut.",
     "game.compression.name": "Guess the Compression",
@@ -22,7 +21,6 @@
     "game.db.instructions": "Listen, then guess how much the level changed.",
     "game.frequencyrange.name": "Name the Range",
     "game.frequencyrange.instructions": "Listen, then click the frequency range you think was boosted or cut.",
-
     "ui.level": "Level {{level}}",
     "ui.points": "{{points}} pts",
     "ui.streak": "{{days}}-day streak",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "Open Release Page",
     "ui.correct": "Correct!",
     "ui.notQuite": "Not quite.",
-    "ui.language": "Language"
+    "ui.language": "Language",
+    "ui.checkingForUpdates": "Checking...",
+    "ui.upToDate": "Up to date",
+    "ui.checkFailed": "Couldn't check"
 }

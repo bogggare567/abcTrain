@@ -92,6 +92,7 @@ private:
     void choiceButtonClicked (int choiceIndex);
     void gameSelected();
     void languageSelected();
+    void levelSelected();
 
     // Declared first so it's constructed before, and destroyed after,
     // every other Component below that might still reference it during
@@ -116,6 +117,12 @@ private:
     juce::OwnedArray<juce::TextButton> choiceButtons;
 
     juce::Label levelLabel;
+    // Lets a player jump straight to any level (1-10) instead of only
+    // ever reaching it by accumulating points - "progress you can see
+    // and control", not just a passive auto-scaling number. Still backed
+    // by the same points system underneath (see
+    // ProgressManager::setLevelManually), so the two never disagree.
+    juce::ComboBox levelSelector;
     LevelProgressBar levelProgressBar;
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;

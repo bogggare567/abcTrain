@@ -24,6 +24,14 @@ void WaveformDisplay::timerCallback()
 
 void WaveformDisplay::paint (juce::Graphics& g)
 {
+    // Theme-consistent tones (see AbcTrainLookAndFeel's scheme) instead
+    // of JUCE's stock Colours::grey/deepskyblue/red/white, which read as
+    // flatter and more generic against this project's otherwise
+    // deliberate dark palette.
+    const juce::Colour accentBlue { 0xff5b9bd5 };
+    const juce::Colour highlightRed { 0xffd9615f };
+    const juce::Colour bodyText { 0xffe0e0e0 };
+
     const auto bounds = getLocalBounds().toFloat();
     g.fillAll (juce::Colour (0xff14141a));
 
@@ -35,16 +43,16 @@ void WaveformDisplay::paint (juce::Graphics& g)
         const auto x = bounds.getX() + columnWidth * (float) i;
 
         const auto inH = juce::jlimit (0.0f, 1.5f, inputHistory[(size_t) i]) * bounds.getHeight() * 0.5f;
-        g.setColour (juce::Colours::grey.withAlpha (0.6f));
+        g.setColour (bodyText.withAlpha (0.35f));
         g.fillRect (juce::Rectangle<float> (x, midY - inH, columnWidth * 0.5f, inH * 2.0f));
 
         const auto outH = juce::jlimit (0.0f, 1.5f, outputHistory[(size_t) i]) * bounds.getHeight() * 0.5f;
         const auto highlightProportion = juce::jlimit (0.0f, highlightRangeDb, highlightHistory[(size_t) i]) / highlightRangeDb;
-        const auto colour = juce::Colours::deepskyblue.interpolatedWith (juce::Colours::red, highlightProportion);
+        const auto colour = accentBlue.interpolatedWith (highlightRed, highlightProportion);
         g.setColour (colour);
         g.fillRect (juce::Rectangle<float> (x + columnWidth * 0.5f, midY - outH, columnWidth * 0.5f, outH * 2.0f));
     }
 
-    g.setColour (juce::Colours::white.withAlpha (0.2f));
+    g.setColour (bodyText.withAlpha (0.2f));
     g.drawHorizontalLine ((int) midY, bounds.getX(), bounds.getRight());
 }

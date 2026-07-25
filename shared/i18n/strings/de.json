@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "Errate das Band",
     "game.eq.instructions": "Hören Sie zu und klicken Sie dann auf das Band, das Ihrer Meinung nach angehoben oder abgesenkt wurde.",
     "game.compression.name": "Errate die Kompression",
@@ -22,7 +21,6 @@
     "game.db.instructions": "Hören Sie zu und erraten Sie dann, wie stark sich der Pegel geändert hat.",
     "game.frequencyrange.name": "Benenne den Bereich",
     "game.frequencyrange.instructions": "Hören Sie zu und klicken Sie dann auf den Frequenzbereich, der Ihrer Meinung nach angehoben oder abgesenkt wurde.",
-
     "ui.level": "Stufe {{level}}",
     "ui.points": "{{points}} Pkt.",
     "ui.streak": "{{days}}-Tage-Serie",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "Release-Seite öffnen",
     "ui.correct": "Richtig!",
     "ui.notQuite": "Nicht ganz.",
-    "ui.language": "Sprache"
+    "ui.language": "Sprache",
+    "ui.checkingForUpdates": "Wird geprüft...",
+    "ui.upToDate": "Aktuell",
+    "ui.checkFailed": "Prüfung fehlgeschlagen"
 }

@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "Угадай полосу",
     "game.eq.instructions": "Послушайте, затем нажмите на полосу, которую, по вашему мнению, подняли или срезали.",
     "game.compression.name": "Угадай компрессию",
@@ -22,7 +21,6 @@
     "game.db.instructions": "Послушайте, затем угадайте, насколько изменился уровень.",
     "game.frequencyrange.name": "Назови диапазон",
     "game.frequencyrange.instructions": "Послушайте, затем нажмите на частотный диапазон, который, по вашему мнению, подняли или срезали.",
-
     "ui.level": "Уровень {{level}}",
     "ui.points": "{{points}} очк.",
     "ui.streak": "Серия: {{days}} дн.",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "Открыть страницу релиза",
     "ui.correct": "Верно!",
     "ui.notQuite": "Не совсем.",
-    "ui.language": "Язык"
+    "ui.language": "Язык",
+    "ui.checkingForUpdates": "Проверка...",
+    "ui.upToDate": "Обновлений нет",
+    "ui.checkFailed": "Не удалось проверить"
 }

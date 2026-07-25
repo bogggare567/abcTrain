@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "Вгадай смугу",
     "game.eq.instructions": "Послухайте, а потім натисніть на смугу, яку, на вашу думку, підняли або зрізали.",
     "game.compression.name": "Вгадай компресію",
@@ -22,7 +21,6 @@
     "game.db.instructions": "Послухайте, а потім вгадайте, наскільки змінився рівень.",
     "game.frequencyrange.name": "Назви діапазон",
     "game.frequencyrange.instructions": "Послухайте, а потім натисніть на частотний діапазон, який, на вашу думку, підняли або зрізали.",
-
     "ui.level": "Рівень {{level}}",
     "ui.points": "{{points}} очк.",
     "ui.streak": "Серія: {{days}} дн.",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "Відкрити сторінку релізу",
     "ui.correct": "Правильно!",
     "ui.notQuite": "Не зовсім.",
-    "ui.language": "Мова"
+    "ui.language": "Мова",
+    "ui.checkingForUpdates": "Перевірка...",
+    "ui.upToDate": "Оновлень немає",
+    "ui.checkFailed": "Не вдалося перевірити"
 }

@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "대역 맞추기",
     "game.eq.instructions": "듣고 나서 부스트 또는 컷되었다고 생각하는 대역을 클릭하세요.",
     "game.compression.name": "컴프레션 맞추기",
@@ -22,7 +21,6 @@
     "game.db.instructions": "듣고 나서 레벨이 얼마나 변했는지 맞춰보세요.",
     "game.frequencyrange.name": "대역 이름 맞추기",
     "game.frequencyrange.instructions": "듣고 나서 부스트 또는 컷되었다고 생각하는 주파수 대역을 클릭하세요.",
-
     "ui.level": "레벨 {{level}}",
     "ui.points": "{{points}} 점",
     "ui.streak": "{{days}}일 연속",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "릴리스 페이지 열기",
     "ui.correct": "정답!",
     "ui.notQuite": "아쉬워요.",
-    "ui.language": "언어"
+    "ui.language": "언어",
+    "ui.checkingForUpdates": "확인 중...",
+    "ui.upToDate": "최신 버전",
+    "ui.checkFailed": "확인하지 못했습니다"
 }

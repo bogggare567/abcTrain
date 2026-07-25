@@ -87,6 +87,21 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
     sendChangeMessage();
 }
 
+void ProgressManager::setLevelManually (int newLevel)
+{
+    const auto clamped = juce::jlimit (1, maxLevel, newLevel);
+    if (clamped == level)
+        return;
+
+    totalScore = pointsRequiredForLevel (clamped);
+    level = clamped;
+    maxLevelReached = juce::jmax (maxLevelReached, level);
+    gameManager.setDifficultyForAllGames (level);
+
+    saveState();
+    sendChangeMessage();
+}
+
 int ProgressManager::indexOfGame (const Game& game) const noexcept
 {
     for (int i = 0; i < gameManager.getNumGames(); ++i)

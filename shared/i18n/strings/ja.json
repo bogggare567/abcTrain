@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "帯域を当てよう",
     "game.eq.instructions": "聞いてから、ブーストまたはカットされたと思う帯域をクリックしてください。",
     "game.compression.name": "コンプレッションを当てよう",
@@ -22,7 +21,6 @@
     "game.db.instructions": "聞いてから、レベルがどれくらい変化したか当ててください。",
     "game.frequencyrange.name": "レンジの名前を当てよう",
     "game.frequencyrange.instructions": "聞いてから、ブーストまたはカットされたと思う周波数レンジをクリックしてください。",
-
     "ui.level": "レベル {{level}}",
     "ui.points": "{{points}} ポイント",
     "ui.streak": "{{days}}日連続",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "リリースページを開く",
     "ui.correct": "正解!",
     "ui.notQuite": "惜しい。",
-    "ui.language": "言語"
+    "ui.language": "言語",
+    "ui.checkingForUpdates": "確認中...",
+    "ui.upToDate": "最新です",
+    "ui.checkFailed": "確認できませんでした"
 }

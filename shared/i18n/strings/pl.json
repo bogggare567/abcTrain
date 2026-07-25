@@ -3,7 +3,6 @@
     "app.learnereq.name": "Learner EQ",
     "app.learnercomp.name": "Learner Comp",
     "app.learnerverb.name": "Learner Verb",
-
     "game.eq.name": "Zgadnij pasmo",
     "game.eq.instructions": "Posłuchaj, a następnie kliknij pasmo, które Twoim zdaniem zostało podbite lub wycięte.",
     "game.compression.name": "Zgadnij kompresję",
@@ -22,7 +21,6 @@
     "game.db.instructions": "Posłuchaj, a następnie zgadnij, o ile zmienił się poziom.",
     "game.frequencyrange.name": "Nazwij zakres",
     "game.frequencyrange.instructions": "Posłuchaj, a następnie kliknij zakres częstotliwości, który Twoim zdaniem został podbity lub wycięty.",
-
     "ui.level": "Poziom {{level}}",
     "ui.points": "{{points}} pkt",
     "ui.streak": "Seria: {{days}} dni",
@@ -36,5 +34,8 @@
     "ui.openReleasePage": "Otwórz stronę wydania",
     "ui.correct": "Poprawnie!",
     "ui.notQuite": "Niezupełnie.",
-    "ui.language": "Język"
+    "ui.language": "Język",
+    "ui.checkingForUpdates": "Sprawdzanie...",
+    "ui.upToDate": "Aktualna wersja",
+    "ui.checkFailed": "Nie udało się sprawdzić"
 }

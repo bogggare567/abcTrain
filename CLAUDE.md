@@ -75,7 +75,10 @@ describe` instead of a hand-bumped literal, the stable/beta/dev channel
 detector, and what's still deferred (CI channel wiring, settings
 migration), 013 is the phased (one library/one component at a time)
 adoption of third-party UI libraries, and the finding that the originally
--named "juce_animate" library doesn't exist), `docs/diagrams/i18n-architecture.md`
+-named "juce_animate" library doesn't exist, 014 is a real button-collapse
+bug found by actually running the app, the "Updates" button always
+showing an outcome, a childish-colour-palette fix, and manual level
+control), `docs/diagrams/i18n-architecture.md`
 (how a language choice becomes visible text, per ADR 011). `BETA_TESTING.md` and
 `.github/CONTRIBUTING.md` (the latter bilingual EN/RU) are top-level, not
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
@@ -201,9 +204,16 @@ full rationale.
   below for why). On level-up, calls
   `gameManager.setDifficultyForAllGames(level)`. Points-to-next-level is a
   triangular scale (level *L* needs *100·L* points to reach *L+1*, so
-  each level is progressively harder). Games themselves know nothing
-  about points or levels — kept out of the `Game` interface deliberately,
-  see ADR 002 for the one thing that *did* need to go in (`setDifficulty`).
+  each level is progressively harder). `setLevelManually(int)` lets a
+  player jump straight to a level instead of only reaching it via points
+  — it sets `totalScore` to that level's exact threshold
+  (`pointsRequiredForLevel`) rather than adding a second, independent
+  notion of "level", so the two can never disagree; wired to a
+  `levelSelector` `ComboBox` in EarTrainer's editor (see
+  [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)).
+  Games themselves know nothing about points or levels — kept out of the
+  `Game` interface deliberately, see ADR 002 for the one thing that *did*
+  need to go in (`setDifficulty`).
 - `Source/PluginProcessor.{h,cpp}` — ignores host input entirely;
   generates its own test signal via `GameManager::process`. Owns
   `GameManager` then `ProgressManager` in that declaration order (matters
@@ -212,9 +222,22 @@ full rationale.
   choice buttons rebuilt to `getNumChoices()` on switch *or* whenever a
   fresh round's choice count no longer matches the current button count
   (needed once `ReverbGame`'s choice count became difficulty-dependent),
-  no per-game editor code. Also shows level/progress-bar/streak/daily-
-  challenge from `ProgressManager`, and an "Updates" button
-  (`shared/UpdateChecker`, see [decisions/007](docs/decisions/007-update-checker.md)).
+  no per-game editor code. `rebuildChoiceButtons()` lays the new buttons
+  out via an explicit `resized()` call *before* starting their fade-in —
+  see [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)
+  for the real bug this fixes (`ComponentAnimator::fadeIn()` snapshots a
+  component's bounds at call time and forces it back to that snapshot
+  once the fade completes; doing that before layout meant every choice
+  button silently collapsed to zero size ~200ms after appearing). Also
+  shows level/progress-bar/streak/daily-challenge from `ProgressManager`
+  — including a `levelSelector` `ComboBox` (1-10) that calls
+  `ProgressManager::setLevelManually` directly, so difficulty is
+  player-controllable, not just an automatic side effect of points — and
+  an "Updates" button (`shared/UpdateChecker`, see
+  [decisions/007](docs/decisions/007-update-checker.md)) that now always
+  shows "Checking..." → a result → (on no response within 6s) "Couldn't
+  check", rather than silently doing nothing when there's nothing to
+  report (see decisions/014).
 
 Adding a new exercise: create `Source/Games/NewGame.{h,cpp}` implementing
 `Game` (including a real `setDifficulty` — there's no default), register

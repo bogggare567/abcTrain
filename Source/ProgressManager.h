@@ -60,6 +60,17 @@ public:
     // instead.
     void registerAnswer (int gameIndex, bool wasCorrect);
 
+    // Directly sets the level (clamped 1..maxLevel), bypassing the usual
+    // points-driven progression - lets a player who wants direct control
+    // over difficulty jump straight to a level instead of only ever
+    // reaching it by accumulating points. Sets totalScore to that
+    // level's exact point threshold (pointsRequiredForLevel), so the
+    // level/points relationship stays internally consistent - level is
+    // still always *derived* from totalScore (see addPoints()), never a
+    // second independent source of truth. Does not lower
+    // maxLevelReached if the new level is a step down.
+    void setLevelManually (int newLevel);
+
     static constexpr int maxLevel = 10;
     static constexpr int pointsPerCorrectAnswer = 10;
     static constexpr int dailyChallengeBonusPoints = 50;

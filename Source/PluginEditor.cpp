@@ -1,11 +1,20 @@
 #include "PluginEditor.h"
 #include "../shared/Version.h"
 #include <array>
+#include <memory>
 
 namespace
 {
-    const juce::Colour correctColour { juce::Colours::limegreen };
-    const juce::Colour wrongColour { juce::Colours::orangered };
+    // Muted, theme-consistent tones (see shared/AbcTrainLookAndFeel.cpp's
+    // scheme: #5b9bd5 blue, #d98c5f orange) instead of JUCE's stock
+    // Colours::limegreen/orangered, which read as garish/cartoonish
+    // against this project's otherwise sophisticated dark palette - a
+    // real design complaint, not just a style nitpick.
+    const juce::Colour correctColour { 0xff5fbf7d };
+    const juce::Colour wrongColour { 0xffd9615f };
+    const juce::Colour neutralButtonColour { 0xff2a2a3a };
+    const juce::Colour bodyTextColour { 0xffe0e0e0 };
+    const juce::Colour mutedTextColour { 0xffa0a0b0 };
 
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
@@ -88,12 +97,17 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     feedbackLabel.setJustificationType (juce::Justification::centred);
     feedbackLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
-    feedbackLabel.setColour (juce::Label::textColourId, juce::Colours::white);
+    feedbackLabel.setColour (juce::Label::textColourId, bodyTextColour);
     addAndMakeVisible (feedbackLabel);
 
     levelLabel.setJustificationType (juce::Justification::centredLeft);
     levelLabel.setFont (AbcTrainLookAndFeel::monoFont());
     addAndMakeVisible (levelLabel);
+
+    for (int lvl = 1; lvl <= ProgressManager::maxLevel; ++lvl)
+        levelSelector.addItem (juce::String (lvl), lvl); // ComboBox item IDs match the level number directly
+    levelSelector.onChange = [this] { levelSelected(); };
+    addAndMakeVisible (levelSelector);
 
     addAndMakeVisible (levelProgressBar);
 
@@ -111,20 +125,53 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     updateButton.onClick = [this]
     {
-        juce::Component::SafePointer<juce::Component> safeThis (this);
+        // Real bug reported by an actual user: clicking "Updates" gave no
+        // visible reaction at all whenever no newer release was found (or
+        // this repo simply had no releases yet) - checkForUpdatesAsync's
+        // callback deliberately never fires in that case (see
+        // decisions/007-update-checker.md), which used to leave the
+        // button looking like it did nothing. It now shows "Checking...",
+        // then either the existing "update available" prompt, a brief
+        // "up to date" acknowledgement, or - if nothing came back at all
+        // within a few seconds (offline, rate-limited, no releases) - a
+        // brief "couldn't check" message, so every click gets *some*
+        // visible outcome.
+        juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+        auto handled = std::make_shared<bool> (false);
+
+        updateButton.setEnabled (false);
+        updateButton.setButtonText (localisation.getText ("ui.checkingForUpdates"));
 
         // Captured now (editor definitely alive), not read from
         // `localisation` inside the async callback below, which may run
-        // after the editor - and so `localisation` itself - has been
-        // destroyed; the safeThis null check only guards Component use.
+        // after the editor has been destroyed; the safeThis null check
+        // guards every actual use of the editor/its components.
         const auto updateAvailableText = localisation.getText ("ui.updateAvailable");
         const auto openReleasePageText = localisation.getText ("ui.openReleasePage");
         const auto laterText = localisation.getText ("ui.later");
+        const auto updatesText = localisation.getText ("ui.updates");
+        const auto upToDateText = localisation.getText ("ui.upToDate");
 
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, updateAvailableText, openReleasePageText, laterText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled, updateAvailableText, openReleasePageText, laterText, updatesText, upToDateText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
         {
-            if (! foundNewer || safeThis == nullptr)
+            if (safeThis == nullptr || *handled)
                 return;
+            *handled = true;
+
+            safeThis->updateButton.setEnabled (true);
+
+            if (! foundNewer)
+            {
+                safeThis->updateButton.setButtonText (upToDateText);
+                juce::Timer::callAfterDelay (2500, [safeThis, updatesText]
+                {
+                    if (safeThis != nullptr)
+                        safeThis->updateButton.setButtonText (updatesText);
+                });
+                return;
+            }
+
+            safeThis->updateButton.setButtonText (updatesText);
 
             const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
                 juce::MessageBoxIconType::InfoIcon,
@@ -142,15 +189,40 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                     juce::URL (release.htmlUrl).launchInDefaultBrowser();
             });
         });
+
+        // checkForUpdatesAsync's callback never fires at all on failure
+        // (no internet, rate limiting, no releases published yet) - so
+        // without this, the button would be stuck showing "Checking..."
+        // forever. 6s comfortably outlasts the network call's own 5s
+        // connection timeout.
+        const auto checkFailedText = localisation.getText ("ui.checkFailed");
+        juce::Timer::callAfterDelay (6000, [safeThis, handled, updatesText, checkFailedText]
+        {
+            if (safeThis == nullptr || *handled)
+                return;
+            *handled = true;
+
+            safeThis->updateButton.setEnabled (true);
+            safeThis->updateButton.setButtonText (checkFailedText);
+
+            juce::Timer::callAfterDelay (2500, [safeThis, updatesText]
+            {
+                if (safeThis != nullptr)
+                    safeThis->updateButton.setButtonText (updatesText);
+            });
+        });
     };
     addAndMakeVisible (updateButton);
+
+    // setSize() before rebuildChoiceButtons(): the choice buttons' fade-in
+    // (inside rebuildChoiceButtons()) needs real bounds already assigned
+    // by resized() - see the comment there for why.
+    setSize (640, 468);
 
     rebuildChoiceButtons();
     refreshFromGameState();
     refreshFromProgressState();
     refreshLocalisedText();
-
-    setSize (640, 468);
 }
 
 EarTrainerEditor::~EarTrainerEditor()
@@ -203,6 +275,7 @@ void EarTrainerEditor::resized()
 
     auto progressRow = area.removeFromTop (24);
     levelLabel.setBounds (progressRow.removeFromLeft (100));
+    levelSelector.setBounds (progressRow.removeFromLeft (50).reduced (0, 2));
     streakLabel.setBounds (progressRow.removeFromRight (100));
     levelProgressBar.setBounds (progressRow.reduced (8, 4));
 
@@ -234,6 +307,13 @@ void EarTrainerEditor::languageSelected()
     refreshLocalisedText();
 }
 
+void EarTrainerEditor::levelSelected()
+{
+    // ComboBox item IDs were set to the level number directly (1..10),
+    // so the selected ID *is* the target level.
+    processor.getProgressManager().setLevelManually (levelSelector.getSelectedId());
+}
+
 void EarTrainerEditor::rebuildGameSelectorItems()
 {
     auto& gameManager = processor.getGameManager();
@@ -262,14 +342,30 @@ void EarTrainerEditor::rebuildChoiceButtons()
     choiceButtons.clear();
 
     auto& game = processor.getGameManager().getActiveGame();
-    auto& animator = juce::Desktop::getInstance().getAnimator();
 
     for (int i = 0; i < game.getNumChoices(); ++i)
     {
         auto* button = choiceButtons.add (new juce::TextButton (game.getChoiceLabel (i)));
         button->onClick = [this, i] { choiceButtonClicked (i); };
         addAndMakeVisible (button);
+    }
 
+    // Real bug, found by actually running the app and clicking a choice:
+    // juce::ComponentAnimator::fadeIn() snapshots component->getBounds()
+    // as the animation's destination rectangle, and forces the component
+    // back to that exact rectangle once the fade completes (see
+    // ComponentAnimator::AnimationTask::moveToFinalDestination() in
+    // JUCE's own source). Starting the fade before these fresh buttons
+    // had ever been through resized() meant that snapshot was
+    // (0, 0, 0, 0) - so ~200ms after appearing to work, every choice
+    // button silently collapsed to zero size: invisible and unclickable,
+    // in every game, every time the buttons regenerated. resized() here
+    // gives them their real bounds *before* fadeIn() ever looks at them.
+    resized();
+
+    auto& animator = juce::Desktop::getInstance().getAnimator();
+    for (auto* button : choiceButtons)
+    {
         // Basic fade-in whenever the choice buttons regenerate (switching
         // games, or a mid-session choice-count change like ReverbGame's
         // difficulty tiers) - one deliberately simple animation for this
@@ -328,7 +424,7 @@ void EarTrainerEditor::refreshFromGameState()
 
     for (auto* button : choiceButtons)
     {
-        button->setColour (juce::TextButton::buttonColourId, juce::Colours::darkgrey);
+        button->setColour (juce::TextButton::buttonColourId, neutralButtonColour);
         button->setEnabled (! game.hasAnswered());
     }
 
@@ -345,7 +441,7 @@ void EarTrainerEditor::refreshFromGameState()
     else
     {
         feedbackLabel.setText ({}, juce::dontSendNotification);
-        feedbackLabel.setColour (juce::Label::textColourId, juce::Colours::white);
+        feedbackLabel.setColour (juce::Label::textColourId, bodyTextColour);
     }
 }
 
@@ -355,6 +451,7 @@ void EarTrainerEditor::refreshFromProgressState()
 
     levelLabel.setText (localisation.getText ("ui.level", { { "level", juce::String (progress.getLevel()) } }),
                          juce::dontSendNotification);
+    levelSelector.setSelectedId (progress.getLevel(), juce::dontSendNotification);
     levelProgressBar.setProgress (progress.getLevelProgressProportion());
 
     streakLabel.setText (localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }),
@@ -362,5 +459,5 @@ void EarTrainerEditor::refreshFromProgressState()
 
     dailyChallengeLabel.setText (progress.getDailyChallengeDescription(), juce::dontSendNotification);
     dailyChallengeLabel.setColour (juce::Label::textColourId,
-                                    progress.isDailyChallengeComplete() ? correctColour : juce::Colours::lightgrey);
+                                    progress.isDailyChallengeComplete() ? correctColour : mutedTextColour);
 }

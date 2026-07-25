@@ -114,6 +114,46 @@ public:
             expect (gameManager.getGame (2).getNumChoices() == 2);
         }
 
+        beginTest ("setLevelManually jumps directly to a level and applies its difficulty");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("manuallevel"));
+
+            progress.setLevelManually (7);
+
+            expectEquals (progress.getLevel(), 7);
+            expectEquals (progress.getMaxLevelReached(), 7);
+            // Reaching level 7 unlocks ReverbGame's hardest tier (all 4 types).
+            expect (gameManager.getGame (2).getNumChoices() == 4);
+        }
+
+        beginTest ("setLevelManually clamps out-of-range input instead of crashing");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("manuallevelclamp"));
+
+            progress.setLevelManually (999);
+            expectEquals (progress.getLevel(), ProgressManager::maxLevel);
+
+            progress.setLevelManually (-5);
+            expectEquals (progress.getLevel(), 1);
+        }
+
+        beginTest ("setLevelManually keeps totalScore internally consistent with the new level");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("manuallevelscore"));
+
+            progress.setLevelManually (5);
+
+            // Landing exactly on a level's threshold means zero points
+            // into the *current* level yet - the derived level/points
+            // relationship (see ProgressManager::levelForScore) still
+            // agrees with the level that was just set directly.
+            expectEquals (progress.getPointsIntoCurrentLevel(), 0);
+            expectEquals (ProgressManager::levelForScore (progress.getTotalScore()), 5);
+        }
+
         beginTest ("daily challenge completes after the target streak on its own game");
         {
             GameManager gameManager;
