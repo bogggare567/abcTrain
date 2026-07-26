@@ -91,7 +91,7 @@ jobs:
       - name: Build installer (macOS)
         if: runner.os == 'macOS'
         run: |
-          VERSION=$(grep -oE 'VERSION [0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1 | awk '{print $2}')
+          VERSION=$(cat build/abctrain-version.txt)
           bash installer/macos/build_installer.sh build "abcTrain-macOS-${VERSION}.dmg"
 
       - name: Upload macOS installer
@@ -113,7 +113,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $version = (Select-String -Path CMakeLists.txt -Pattern 'VERSION (\d+\.\d+\.\d+)').Matches[0].Groups[1].Value
+          $version = (Get-Content build/abctrain-version.txt).Trim()
           iscc "installer\windows_setup.iss" "/DMyAppVersion=$version"
           Move-Item "installer\abcTrain-$version-setup.exe" "abcTrain-Windows-$version-setup.exe"
 
@@ -128,7 +128,7 @@ jobs:
       - name: Build installer (Linux)
         if: runner.os == 'Linux'
         run: |
-          VERSION=$(grep -oE 'VERSION [0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt | head -1 | awk '{print $2}')
+          VERSION=$(cat build/abctrain-version.txt)
           bash installer/linux/package_tar.sh build "abcTrain-Linux-${VERSION}.tar.gz"
 
       - name: Upload Linux installer

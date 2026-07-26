@@ -6,6 +6,7 @@
 #include "ChoiceSliderComponent.h"
 #include "TrainingSoundsComponent.h"
 #include "HomeScreenComponent.h"
+#include "SupportScreenComponent.h"
 #include "SessionManager.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
@@ -165,7 +166,7 @@ private:
     // Home <-> Training. The editor used to be one flat panel with a
     // picker overlay dropped on top; these are real screens now, and
     // exactly one is visible at a time.
-    enum class Screen { home, training };
+    enum class Screen { support, home, training };
     void showScreen (Screen);
     void rebuildHomeSections();
     void rebuildChoiceSlider();
@@ -307,6 +308,9 @@ private:
     // categories already exceed the window, and the catalogue only grows.
     juce::Viewport homeViewport;
     HomeScreenComponent homeScreen;
+
+    // First launch only, and it blocks nothing - see the class comment.
+    SupportScreenComponent supportScreen;
     Screen currentScreen = Screen::home;
 
     // Product site link, shown in a corner of every one of the four

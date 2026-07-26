@@ -1,29 +1,52 @@
-# abcTrain — Ear Trainer / Learner EQ / Learner Comp / Learner Verb
+<div align="center">
+
+# abcTrain
+
+**Train your ears. Then use plugins that teach you while you mix.**
+
+Nine ear-training exercises and three real, host-automatable effects —
+one free, open-source suite for macOS, Windows and Linux.
 
 [![Build and Test](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
-[![License](https://img.shields.io/badge/license-all%20rights%20reserved-lightgrey)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-blue)](#-download)
-[![Formats](https://img.shields.io/badge/formats-VST3%20%7C%20AU%20%7C%20Standalone-blue)](#-download)
+[![Latest release](https://img.shields.io/github/v/release/bogggare567/abcTrain?label=download)](https://github.com/bogggare567/abcTrain/releases/latest)
+[![Platforms](https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-blue)](#-download)
 [![Languages](https://img.shields.io/badge/languages-12-orange)](#-supported-languages)
-[![GitHub Downloads](https://img.shields.io/github/downloads/bogggare567/abcTrain/total)](https://github.com/bogggare567/abcTrain/releases)
+[![Tests](https://img.shields.io/badge/tests-172%20groups-brightgreen)](docs/testing-strategy.md)
 
-Pre-release, unsigned, actively developed - see [BETA_TESTING.md](BETA_TESTING.md)
-before you dig in, and [docs/roadmap.md](docs/roadmap.md) for what's real vs. planned.
+**[⬇ Download](https://github.com/bogggare567/abcTrain/releases/latest)** ·
+[How it works](#-how-it-works) ·
+[Contribute](docs/orientation.md) ·
+[Roadmap](docs/roadmap.md)
 
-## 🎧 What is abcTrain?
+</div>
 
-Four free VST3/AU/Standalone plugins built with [JUCE](https://juce.com),
-built around one idea: **train your ears on synthetic examples, then
-apply what you hear on your own tracks with real, host-automatable
-effects that teach as you use them.**
+---
 
-- **Ear Trainer** — a multiple-choice ear-training game. Doesn't touch
-  your audio; it generates its own test signal and quizzes you on what a
-  hidden effect changed.
-- **Learner EQ / Learner Comp / Learner Verb** — real, usable EQ/
-  compressor/reverb for your own tracks, each with a live spectrum/
-  waveform display, plain-language tooltips instead of just numbers, and
-  a guided step-by-step "Lesson."
+## The problem
+
+You can read that 300 Hz is "muddy" a hundred times and still not hear it.
+Mixing is a listening skill, and listening skills come from repetition
+with immediate feedback — not from reading.
+
+Most people never get that repetition, because building the exercise is
+harder than doing it.
+
+## 🎧 How it works
+
+**Train.** Nine exercises, each one hiding a change in a sound. You say
+what changed. It tells you immediately whether you were right, and by how
+much you missed.
+
+**Then apply it.** Three companion plugins process your *own* audio — a
+real 4-band EQ, a real compressor, a real reverb — with plain-language
+explanations on every control and step-by-step lessons built in. The
+thing you just trained on is the thing you're now using.
+
+Nothing is locked. There is no account, no subscription, and no telemetry
+— the only network call in the whole suite is the update check, and only
+when you press the button.
+
+---
 
 ## 🎮 9 games
 
@@ -132,65 +155,27 @@ by a native speaker on this project. See
 [docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md)
 for how it fits together.
 
-## 📸 Demo
+## 🎨 What it looks like
 
-No screenshots or recordings yet - this project has been developed in a
-sandbox with no display to capture a real JUCE window from. See
-[assets/screenshots/README.md](assets/screenshots/README.md) and
-[assets/demo/README.md](assets/demo/README.md) for exactly what's needed
-and in what priority, if you're picking this up somewhere that can render
-one. In the meantime, [Look](#look) below describes the actual current
-visual style in text.
+Dark and light themes, both *designed* rather than one inverted into the
+other — a warm off-white page with surfaces stepping up toward white, not
+a dark UI with the lightness flipped. Every colour, spacing step, corner
+radius and animation duration comes from one token layer, so nothing
+drifts.
 
-## Look
+Four UI sizes (S/M/L/XL) scale one logical layout through a transform, so
+every size is the same design rather than four sets of hand-tuned numbers.
 
-All four plugins now share one dark theme (`shared/AbcTrainLookAndFeel`)
-instead of each Learner plugin picking its own accent colour:
+Controls have weight: buttons lift and settle, knobs bloom under the
+pointer, and press eases faster than release — that asymmetry is what
+reads as mass. The spectrum is a smoothed gradient-filled curve over a
+soft grid; the gain-reduction meter fills *downward*, because reduction
+is the one meter where more is lower.
 
-- **Dark and light themes**, both designed rather than one inverted into
-  the other. Dark: `#1e1e2e` under a soft radial gradient, blue accent
-  `#5b9bd5`, warm orange highlight `#d98c5f`. Light: a warm off-white
-  `#e8e6e1` page with panels stepping *up* toward white, deeper accents
-  (a light ground needs more colour weight to read at the same strength)
-  and softer, cooler shadows. Toggle in every plugin's title row; the
-  choice is product-wide and persists.
-- Every colour, spacing step, corner radius and animation duration comes
-  from one token layer (`shared/AbcTrainTheme`) - nothing outside it names
-  a colour.
-- Buttons *lift and settle* rather than switching state: the shadow grows
-  and the surface sinks under a press, all eased over time (press is
-  faster than release - that asymmetry is what reads as mass). Rotary
-  knobs swell slightly and bloom under the pointer.
-- Controls sit on captioned section panels; spectrum and waveform are
-  recessed into wells. The spectrum is a smoothed, gradient-filled curve
-  over a soft frequency grid; the waveform a smoothed symmetric envelope;
-  Learner Comp's gain reduction is an arc that fills *downward* and glows
-  as it works.
-- Guide text floats in over the visualisation only while you're dragging
-  a control, over a real Gaussian blur of what's behind it.
-- 22 px bold titles, 14 px body text, 16 px monospaced numeric readouts
-  (peak meters, score/level) - all via the modern `juce::FontOptions`
-  API, replacing every deprecated `Font(float, styleFlags)` call in the
-  codebase.
-- EarTrainer's level progress bar "breathes" - a slow, low-amplitude glow
-  pulse at the fill's leading edge - independently of its existing eased
-  fill-transition animation. Its choice slider fades a soft glow around
-  the thumb on a correct answer, and gives it a brief decaying wobble on
-  a wrong one, instead of a flat colour swap.
-
-This is a bounded, coding-level polish pass, not the full FabFilter/
-Ableton-grade design system a "premium redesign" implies - that needs a
-real designer/design tool, not something this codebase produces alone.
-Per-widget hover/press *state interpolation* (press-scale-then-spring-
-back), gradient-filled meter curves, pill-shaped tooltip backgrounds, a
-light theme, a licensed custom typeface, and `FlexBox` layout are all
-still scoped out on purpose; see
-[docs/decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md)
-and
-[docs/decisions/018-ui-polish-and-builtin-samples.md](docs/decisions/018-ui-polish-and-builtin-samples.md)
-for the full list of what's deferred and why. No screenshots here since
-this environment can't render and capture a real JUCE window - the
-description above is the accurate current state.
+> **Screenshots:** not in the repo yet. Earlier development ran without a
+> display; capturing them now needs a screen-recording permission that
+> hasn't been granted. [assets/screenshots/README.md](assets/screenshots/README.md)
+> lists exactly which shots are wanted if you'd like to contribute them.
 
 ## Download
 
@@ -241,19 +226,40 @@ separate future work, not done yet.
   page — manual only, no background network calls. See
   [docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md).
 
-## Architecture
+## 🛠 Built to be worked on
 
-The full system diagram (all 9 games, `shared/` components including
-`LocalisationManager`/`AbcTrainLookAndFeel`/`UpdateChecker`, what
-`EarTrainerTests` actually exercises, dashed boxes for what's not built
-yet) lives in
-[docs/diagrams/system-overview.md](docs/diagrams/system-overview.md) —
-kept there as the single copy rather than duplicated here, since a second
-copy in this README is exactly what went stale in an earlier version of
-this file. See also
-[docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) (the `Game`
-interface + all 9 exercises) and
-[docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md).
+This is meant to outlive whoever wrote it. If you want to add an
+exercise, fix something, or fork it entirely:
+
+**[📖 docs/orientation.md](docs/orientation.md)** — the map. The four
+load-bearing ideas, a table of *where to put a change*, and a seven-step
+recipe for adding an exercise. Read it first; it's short.
+
+Beyond that:
+
+| | |
+|---|---|
+| [docs/README.md](docs/README.md) | Index of everything — diagrams, decisions, reference material |
+| [docs/decisions/](docs/decisions/) | **21 ADRs.** Every non-obvious choice with the alternative that was rejected and why, written for someone who wasn't there |
+| [CLAUDE.md](CLAUDE.md) | Per-file breakdown of the whole repo |
+| [docs/testing-strategy.md](docs/testing-strategy.md) | What's covered, what isn't, and which gaps are deliberate |
+
+Three things that make changes safe here:
+
+- **One generic UI drives all nine exercises.** Adding a tenth needs no
+  editor or processor changes — implement `Game`, register it, add a
+  test.
+- **Every capability is an opt-in hook with an inert default.** Nothing
+  you don't override can break.
+- **172 test groups** run on every push across macOS, Windows and Linux.
+  Pure logic is tested directly; the deliberate gaps are documented
+  rather than pretended away.
+
+And one thing that will bite you if nobody says it: **the tests cannot
+see layout.** Every UI pass in this project's history has shipped a bug
+that compiled, passed everything, and was obvious ten seconds after
+launching the app. If you change something visual, build it and look at
+it.
 
 ## Building
 
@@ -283,35 +289,28 @@ TLS support at all. See
 
 ## Testing
 
-Same build also produces a console `EarTrainerTests` target
-(`juce::UnitTestRunner`-based; no plugin host or GUI needed to run it):
-
 ```bash
 cmake --build build --target EarTrainerTests --config Release
 ./build/EarTrainerTests_artefacts/Release/EarTrainerTests
 ```
 
-Exits non-zero if any test fails. Covers the games' scoring/state logic
-(`tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
-`tests/ReverbGameTest.cpp`, `tests/PanGameTest.cpp`, `tests/DelayGameTest.cpp`,
-`tests/DistortionGameTest.cpp`, `tests/StereoWidthGameTest.cpp`,
-`tests/DBGameTest.cpp`, `tests/FrequencyRangeGameTest.cpp`,
-`tests/GameManagerTest.cpp`), progress/level/
-streak/daily-challenge logic (`tests/ProgressManagerTest.cpp`), and DSP/
-behavioral checks for all three Learner plugins (`tests/LearnerEQTest.cpp`
-— boosting a band raises measured output level at that frequency;
-`tests/LearnerCompTest.cpp` — closed-form compression/makeup-gain math,
-bypass passthrough, preset application; `tests/LearnerVerbTest.cpp` — a
-tail persists after the input stops, `dryWet=0` is an exact passthrough,
-bypass forces an exact dry passthrough without clobbering `Dry/Wet`, every
-reverb type produces sound, preset application), the step-navigation
-logic behind the "Lesson" feature (`tests/MicroLessonTest.cpp`), and the
-pure version-comparison/JSON-parsing logic behind the "Check for Updates"
-button (`tests/UpdateCheckerTest.cpp` — the real network call itself
-isn't tested, see
-[docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md)).
-Also runs on push/PR via `.github/workflows/build_and_test.yml` (badge
-above).
+A console app, not a plugin — no host, no GUI. Exits non-zero on any
+failure, and runs on every push/PR across all three OSes.
+
+**172 test groups** covering: every game's scoring and state machine; the
+shared contract for all four continuous-scale games (on-target passes, a
+whole axis away fails, tolerance narrows with difficulty, the axis is
+linear in the unit it claims); training-run rules including every hint
+pricing boundary; progress/level/streak/daily-challenge maths and its
+persistence round-trip; the reference-audio library; lesson step
+navigation; version comparison and release-JSON parsing; all twelve
+translations; and real DSP assertions for each Learner plugin — an EQ
+boost measurably raises output at that frequency, the compressor hits its
+closed-form target, reverb leaves a tail and `dryWet=0` is bit-exact.
+
+What *isn't* tested, and why, is written down in
+[docs/testing-strategy.md](docs/testing-strategy.md) rather than left for
+you to discover.
 
 ## Status
 
@@ -367,55 +366,17 @@ Bypass next to Lesson in the title row) via the newly-extracted
 `shared/SpectrumAnalyzer` — see
 [docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md).
 
-## Documentation
+## 📚 Documentation
 
-- [docs/architecture.md](docs/architecture.md) — the `Game`/`GameManager`
-  design doc and rationale
-- [docs/diagrams/](docs/diagrams/) — system overview, game engine class
-  diagram, Learner-plugin component diagrams, proposed CI pipeline
-- [docs/decisions/001-game-interface.md](docs/decisions/001-game-interface.md) —
-  why one generic `Game` interface instead of per-game UI
-- [docs/decisions/002-difficulty-scaling.md](docs/decisions/002-difficulty-scaling.md) —
-  `setDifficulty`/`ProgressManager`
-- [docs/decisions/003-learnercomp-engine.md](docs/decisions/003-learnercomp-engine.md) —
-  why LearnerComp has a custom compressor engine
-- [docs/decisions/004-learnerverb-scope.md](docs/decisions/004-learnerverb-scope.md) —
-  LearnerVerb's trimmed visualization scope and the decay-to-`roomSize` approximation
-- [docs/decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md) —
-  `MicroLesson`/`LessonController` split and why per-control highlighting was cut
-- [docs/decisions/006-unified-visualization.md](docs/decisions/006-unified-visualization.md) —
-  unifying spectrum/waveform/bypass across all three Learner plugins, and
-  why it isn't tested with a real `SpectrumAnalyzerComponent`
-- [docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md) —
-  CI artifacts/releases, the manual-only "Check for Updates" button, and
-  why it needs `NEEDS_CURL TRUE` on Linux
-- [docs/decisions/008-installers.md](docs/decisions/008-installers.md) —
-  the real per-OS installers (`.pkg`/DMG, Inno Setup, `tar.gz`), and why
-  macOS can't offer a free-text custom install path the way
-  Windows/Linux can
-- [docs/decisions/009-look-and-feel.md](docs/decisions/009-look-and-feel.md) —
-  the shared `AbcTrainLookAndFeel` dark theme, and what was deliberately
-  deferred from this first redesign pass
-- [docs/decisions/010-book-library-scope.md](docs/decisions/010-book-library-scope.md) —
-  why the book-library work stops at a bibliography
-  ([docs/library_catalog.md](docs/library_catalog.md)) plus an original
-  reference doc ([docs/knowledge_base.md](docs/knowledge_base.md))
-  instead of extracting and quoting text from copyrighted books in the
-  shipped plugins
-- [docs/decisions/011-i18n.md](docs/decisions/011-i18n.md) — the
-  flat-JSON-per-language i18n system
-  ([docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md)),
-  why it's scoped to a curated core string set rather than every tooltip,
-  and a real UTF-8-literal bug it caught
-- [docs/decisions/012-versioning.md](docs/decisions/012-versioning.md) —
-  deriving the version from `git describe` instead of a hand-bumped
-  literal, the stable/beta/dev channel detector, and what's still deferred
-- [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md) — the
-  `Game` interface and all 9 exercises' class diagram
-- [docs/testing-strategy.md](docs/testing-strategy.md)
-- [docs/roadmap.md](docs/roadmap.md)
-- [CLAUDE.md](CLAUDE.md) — full per-file architecture breakdown, kept
-  current for anyone (human or Claude) picking this project back up
+All of it is indexed in **[docs/README.md](docs/README.md)** — one list,
+kept in one place, so it can't drift out of step with a second copy here.
+(An earlier version of this README *was* that second copy, and it went
+stale: it stopped at ADR 012 while the repo had 21.)
+
+The short version: start at [docs/orientation.md](docs/orientation.md),
+reach for [docs/decisions/](docs/decisions/) when you want to know why
+something is the way it is, and [CLAUDE.md](CLAUDE.md) when you need the
+per-file map.
 
 ## 🧪 Beta testing
 
@@ -426,9 +387,29 @@ something already tracked).
 
 ## 🤝 Contributing
 
-New games, translations, bug fixes, docs — see
+Good first contributions, roughly in order of how self-contained they are:
+
+- **A translation.** One JSON file in `shared/i18n/strings/`. Nine of the
+  twelve languages have only been machine-checked.
+- **Screenshots.** [assets/screenshots/README.md](assets/screenshots/README.md)
+  lists which ones are wanted.
+- **A new exercise.** Seven steps, all in
+  [docs/orientation.md](docs/orientation.md).
+- **Anything on the [roadmap](docs/roadmap.md)** marked ⏳.
+
 [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) (English + Русский)
-for how this project likes PRs shaped, and the
-[bug report](.github/ISSUE_TEMPLATE/bug_report.md)/
-[feature request](.github/ISSUE_TEMPLATE/feature_request.md) templates
-for filing an issue.
+covers how PRs are shaped here, and there are
+[bug report](.github/ISSUE_TEMPLATE/bug_report.md) and
+[feature request](.github/ISSUE_TEMPLATE/feature_request.md) templates.
+
+## 💛 Supporting it
+
+Free, open source, and staying that way — no paid tier, no subscription,
+nothing locked behind anything.
+
+If it's useful to you, a **[star](https://github.com/bogggare567/abcTrain)**
+helps other people find it, and a donation via
+[soundkorb.ru](https://soundkorb.ru) keeps it moving. Both are optional
+and neither unlocks anything: gating software behind a star is against
+[GitHub's rules on incentivised engagement](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies),
+and would be trivially bypassable anyway.

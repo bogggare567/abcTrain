@@ -12,7 +12,10 @@
 ; through, but CI is the first real compile of this file. Watch it.
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.1.0"
+  ; Overridden by CI with /DMyAppVersion=<version> so the installer
+  ; carries the same version the app reports (see CMakeLists.txt's
+  ; abctrain-version.txt). This literal is only the local-build fallback.
+  #define MyAppVersion "1.0.0"
 #endif
 
 #define MyAppName "abcTrain"

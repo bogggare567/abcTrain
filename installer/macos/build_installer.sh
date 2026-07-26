@@ -22,7 +22,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 BUILD_DIR="$(cd "$BUILD_DIR" && pwd)"
 
-VERSION="$(grep -oE 'VERSION [0-9]+\.[0-9]+\.[0-9]+' "$REPO_ROOT/CMakeLists.txt" | head -1 | awk '{print $2}')"
+# Prefer the version CMake resolved from `git describe` (see the
+# abctrain-version.txt block in CMakeLists.txt); fall back to parsing
+# project() only when packaging outside a configured build tree.
+if [ -f "$BUILD_DIR/abctrain-version.txt" ]; then
+    VERSION="$(tr -d '[:space:]' < "$BUILD_DIR/abctrain-version.txt")"
+else
+    VERSION="$(grep -oE 'VERSION [0-9]+\.[0-9]+\.[0-9]+' "$REPO_ROOT/CMakeLists.txt" | head -1 | awk '{print $2}')"
+fi
 if [ -z "$VERSION" ]; then
     echo "Could not read a VERSION from CMakeLists.txt's project() call" >&2
     exit 1

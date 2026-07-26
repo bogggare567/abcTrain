@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(EarTrainer VERSION 0.1.0)
+project(EarTrainer VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -44,6 +44,21 @@ else()
 endif()
 
 message(STATUS "abcTrain version: ${ABCTRAIN_VERSION_STRING} (git describe: ${ABCTRAIN_GIT_DESCRIBE})")
+
+# The installers and the release workflow need the same version the app
+# reports, not the project() literal - which is exactly the hand-bumped
+# number ADR 012 moved away from. Writing it to a file keeps `git
+# describe` the single source of truth for all of them.
+#
+# Filename-safe: strip a leading "v" and everything from the first
+# pre-release/build separator, so "v1.0.0-3-gabc123" becomes "1.0.0".
+string(REGEX REPLACE "^v" "" ABCTRAIN_VERSION_PLAIN "${ABCTRAIN_VERSION_STRING}")
+string(REGEX REPLACE "[-+].*$" "" ABCTRAIN_VERSION_PLAIN "${ABCTRAIN_VERSION_PLAIN}")
+if(NOT ABCTRAIN_VERSION_PLAIN MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    set(ABCTRAIN_VERSION_PLAIN "${PROJECT_VERSION}")
+endif()
+file(WRITE "${CMAKE_BINARY_DIR}/abctrain-version.txt" "${ABCTRAIN_VERSION_PLAIN}")
+message(STATUS "abcTrain packaging version: ${ABCTRAIN_VERSION_PLAIN}")
 
 configure_file(
     shared/VersionInfo.h.in
@@ -121,6 +136,7 @@ target_sources(EarTrainer
         Source/ReferenceAudioLibrary.cpp
         Source/TrainingSoundsComponent.cpp
         Source/HomeScreenComponent.cpp
+        Source/SupportScreenComponent.cpp
         shared/Vectorscope.cpp
         shared/SpectrumAnalyzer.cpp
         Source/Games/EQGame.cpp

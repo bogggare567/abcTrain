@@ -9,6 +9,7 @@ namespace
     // "abcTrain" PropertiesFile the language preference already uses.
     constexpr const char* themeModeKey = "themeMode";
     constexpr const char* uiScaleKey = "uiScale";
+    constexpr const char* seenSupportKey = "seenSupportScreen";
 
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
@@ -190,6 +191,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         processor.getProgressManager().setFavouriteGame (index, shouldBeFavourite);
         rebuildHomeSections();
     };
+
+    supportScreen.onDismissed = [this]
+    {
+        localisationProperties.setValue (seenSupportKey, true);
+        showScreen (Screen::home);
+    };
+    addChildComponent (supportScreen);
 
     homeViewport.setViewedComponent (&homeScreen, false);
     homeViewport.setScrollBarsShown (true, false);
@@ -423,8 +431,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     refreshFromProgressState();
     refreshLocalisedText();
 
-    // Land on Home, not mid-exercise.
-    showScreen (Screen::home);
+    // First launch gets the support screen once; after that, straight to
+    // Home. Never mid-exercise.
+    showScreen (localisationProperties.getBoolValue (seenSupportKey, false)
+                    ? Screen::home : Screen::support);
 }
 
 void EarTrainerEditor::applyTheme()
@@ -854,16 +864,29 @@ void EarTrainerEditor::showScreen (Screen screen)
     ++pendingAdvanceId;
 
     const auto onHome = (screen == Screen::home);
+    const auto onSupport = (screen == Screen::support);
+    const auto onTraining = (screen == Screen::training);
 
     if (onHome)
         rebuildHomeSections();
 
+    supportScreen.setVisible (onSupport);
+    supportScreen.setBounds (getLocalBounds());
     homeViewport.setVisible (onHome);
 
-    // Nothing to listen for on the menu.
-    processor.setSignalEnabled (! onHome);
+    // Nothing to listen for outside a training.
+    processor.setSignalEnabled (onTraining);
 
     // Everything that belongs to the training screen.
+    // The title-row controls belong to Home and Training, not the
+    // one-time support screen.
+    for (auto* c : { (juce::Component*) &themeButton, (juce::Component*) &updateButton,
+                     (juce::Component*) &trainingSoundsButton, (juce::Component*) &sizeSelector,
+                     (juce::Component*) &languageSelector, (juce::Component*) &soundkorbLink })
+    {
+        c->setVisible (! onSupport);
+    }
+
     for (auto* c : { (juce::Component*) &backButton, (juce::Component*) &gameIcon,
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
@@ -875,7 +898,7 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
                      (juce::Component*) &dailyChallengeLabel })
     {
-        c->setVisible (! onHome);
+        c->setVisible (onTraining);
     }
 
     resized();
