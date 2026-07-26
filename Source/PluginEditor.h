@@ -5,7 +5,7 @@
 #include "PluginProcessor.h"
 #include "ChoiceSliderComponent.h"
 #include "TrainingSoundsComponent.h"
-#include "GamePickerComponent.h"
+#include "HomeScreenComponent.h"
 #include "SessionManager.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
@@ -160,7 +160,12 @@ private:
     void refreshFromProgressState();
     void refreshLocalisedText();
     void rebuildGameSelectorItems();
-    void rebuildGamePickerCards();
+    // Home <-> Training. The editor used to be one flat panel with a
+    // picker overlay dropped on top; these are real screens now, and
+    // exactly one is visible at a time.
+    enum class Screen { home, training };
+    void showScreen (Screen);
+    void rebuildHomeSections();
     void rebuildChoiceSlider();
     void choiceButtonClicked (int choiceIndex);
 
@@ -193,7 +198,8 @@ private:
     // Opens the card grid. Replaces the plain ComboBox list of nine game
     // names, which told a player nothing about what each exercise was for
     // or how they were doing at it - see GamePickerComponent.
-    juce::TextButton gameSelectorButton;
+    // Back to Home from the training screen.
+    juce::TextButton backButton { "< Home" };
     juce::Label currentGameLabel;
     juce::Label instructionLabel;
     juce::Label scoreLabel;
@@ -248,7 +254,11 @@ private:
     // initialised in the constructor's member-init-list, after `processor`.
     juce::TextButton trainingSoundsButton { "Training Sounds" };
     TrainingSoundsComponent trainingSounds;
-    GamePickerComponent gamePicker;
+    // The home screen lives inside a Viewport: nine trainings across four
+    // categories already exceed the window, and the catalogue only grows.
+    juce::Viewport homeViewport;
+    HomeScreenComponent homeScreen;
+    Screen currentScreen = Screen::home;
 
     // Product site link, shown in a corner of every one of the four
     // editors (see decisions/016) - a dedicated page for the plugins

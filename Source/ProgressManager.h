@@ -81,6 +81,13 @@ public:
 
     GameStats getStatsForGame (int gameIndex) const;
 
+    // "Trainings I'm interested in" - the player's own shortlist, pinned
+    // to the top of the home screen. Persisted like everything else here,
+    // because a focus you have to re-pick every launch isn't a focus.
+    bool isFavouriteGame (int gameIndex) const;
+    void setFavouriteGame (int gameIndex, bool shouldBeFavourite);
+    bool hasAnyFavourites() const;
+
     // Records a completed Survival/Blitz run's score if it beats the
     // stored best. Called by SessionManager when a run ends.
     void recordSurvivalScore (int gameIndex, int score);
@@ -125,6 +132,7 @@ private:
 
     std::vector<int> consecutiveCorrectPerGame;
     std::vector<GameStats> statsPerGame;
+    std::vector<bool> favouritePerGame;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressManager)
 };

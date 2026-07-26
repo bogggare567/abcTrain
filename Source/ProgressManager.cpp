@@ -27,6 +27,7 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
         gameManager.getGame (i).addChangeListener (this);
         consecutiveCorrectPerGame.push_back (0);
         statsPerGame.push_back ({});
+        favouritePerGame.push_back (false);
     }
 
     loadState();
@@ -96,6 +97,36 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
 
     saveState();
     sendChangeMessage();
+}
+
+bool ProgressManager::isFavouriteGame (int gameIndex) const
+{
+    if (gameIndex < 0 || gameIndex >= (int) favouritePerGame.size())
+        return false;
+
+    return favouritePerGame[(size_t) gameIndex];
+}
+
+void ProgressManager::setFavouriteGame (int gameIndex, bool shouldBeFavourite)
+{
+    if (gameIndex < 0 || gameIndex >= (int) favouritePerGame.size())
+        return;
+
+    if (favouritePerGame[(size_t) gameIndex] == shouldBeFavourite)
+        return;
+
+    favouritePerGame[(size_t) gameIndex] = shouldBeFavourite;
+    saveState();
+    sendChangeMessage();
+}
+
+bool ProgressManager::hasAnyFavourites() const
+{
+    for (const auto favourite : favouritePerGame)
+        if (favourite)
+            return true;
+
+    return false;
 }
 
 ProgressManager::GameStats ProgressManager::getStatsForGame (int gameIndex) const
@@ -290,6 +321,9 @@ void ProgressManager::loadState()
         stats.bestStreak        = properties->getIntValue (prefix + "bestStreak", 0);
         stats.bestSurvivalScore = properties->getIntValue (prefix + "bestSurvival", 0);
         stats.bestBlitzScore    = properties->getIntValue (prefix + "bestBlitz", 0);
+
+        if (i < favouritePerGame.size())
+            favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);
     }
 }
 
@@ -312,6 +346,9 @@ void ProgressManager::saveState()
         properties->setValue (prefix + "bestStreak", stats.bestStreak);
         properties->setValue (prefix + "bestSurvival", stats.bestSurvivalScore);
         properties->setValue (prefix + "bestBlitz", stats.bestBlitzScore);
+
+        if (i < favouritePerGame.size())
+            properties->setValue (prefix + "favourite", (bool) favouritePerGame[i]);
     }
 
     properties->saveIfNeeded();

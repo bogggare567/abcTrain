@@ -59,5 +59,11 @@
   "ui.modeBlitz": "Блиц",
   "ui.runOver": "Забег окончен —",
   "ui.mode": "Режим",
-  "ui.dragToChoose": "Нажми на зону, чтобы ответить"
+  "ui.dragToChoose": "Нажми на зону, чтобы ответить",
+  "home.section.focus": "Твой фокус",
+  "home.category.frequency": "Частоты",
+  "home.category.dynamics": "Динамика",
+  "home.category.space": "Пространство и стерео",
+  "home.category.character": "Характер",
+  "ui.back": "< Домой"
 }

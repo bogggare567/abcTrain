@@ -36,6 +36,24 @@ namespace
         { "Name the Range",             "game.frequencyrange.name", "game.frequencyrange.instructions", "game.frequencyrange.benefit" }
     }};
 
+    // Which skill each exercise builds. Grouping by this rather than by
+    // registration order is the whole point of the home screen: nine flat
+    // entries are a list, four labelled groups are a map of the subject.
+    const char* categoryForGame (const juce::String& englishName)
+    {
+        if (englishName == "Guess the Band" || englishName == "Name the Range")
+            return "home.category.frequency";
+
+        if (englishName == "Guess the Compression" || englishName == "Guess the Gain Change")
+            return "home.category.dynamics";
+
+        if (englishName == "Guess the Reverb" || englishName == "Guess the Pan Position"
+            || englishName == "Guess the Delay Time" || englishName == "Guess the Stereo Width")
+            return "home.category.space";
+
+        return "home.category.character";
+    }
+
     juce::String translateGameName (const juce::String& englishName, const LocalisationManager& loc)
     {
         for (const auto& entry : gameI18nKeys)
@@ -110,29 +128,37 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     currentGameLabel.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
     addAndMakeVisible (currentGameLabel);
 
-    gameSelectorButton.onClick = [this]
-    {
-        rebuildGamePickerCards();
-        gamePicker.setVisible (true);
-    };
-    addAndMakeVisible (gameSelectorButton);
+    backButton.onClick = [this] { showScreen (Screen::home); };
+    addAndMakeVisible (backButton);
 
-    gamePicker.onGameChosen = [this] (int index)
+    homeScreen.onGameChosen = [this] (int index)
     {
-        gamePicker.setVisible (false);
         auto& gm = processor.getGameManager();
-        if (index == gm.getActiveGameIndex())
-            return;
 
-        gm.getActiveGame().removeChangeListener (this);
-        gm.setActiveGameIndex (index);
-        gm.getActiveGame().addChangeListener (this);
+        if (index != gm.getActiveGameIndex())
+        {
+            gm.getActiveGame().removeChangeListener (this);
+            gm.setActiveGameIndex (index);
+            gm.getActiveGame().addChangeListener (this);
+            rebuildChoiceSlider();
+        }
 
-        rebuildChoiceSlider();
-        refreshFromGameState();
-        resized();
+        // Picking a training starts it - the home screen's job is to get
+        // out of the way, not to make you confirm twice.
+        showScreen (Screen::training);
+        startNewRun();
     };
-    gamePicker.onClosed = [this] { resized(); };
+
+    homeScreen.onFavouriteToggled = [this] (int index, bool shouldBeFavourite)
+    {
+        processor.getProgressManager().setFavouriteGame (index, shouldBeFavourite);
+        rebuildHomeSections();
+    };
+
+    homeViewport.setViewedComponent (&homeScreen, false);
+    homeViewport.setScrollBarsShown (true, false);
+    homeViewport.setScrollBarThickness (8);
+    addAndMakeVisible (homeViewport);
 
     instructionLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (instructionLabel);
@@ -321,8 +347,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (trainingSounds);
     trainingSounds.onClosed = [this] { resized(); };
 
-    addChildComponent (gamePicker);
-
     // Grown again for the grouping/whitespace pass: the three section
     // panels each carry their own padding and caption, which is what buys
     // the "everything breathes" feel, and that space has to come from
@@ -336,6 +360,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     refreshFromGameState();
     refreshFromProgressState();
     refreshLocalisedText();
+
+    // Land on Home, not mid-exercise.
+    showScreen (Screen::home);
 }
 
 void EarTrainerEditor::applyTheme()
@@ -398,12 +425,17 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     // Grouped sections behind the controls: related things now sit on a
     // shared surface with a caption, instead of floating loose on the
     // backdrop with only whitespace implying the grouping.
-    AbcTrainLookAndFeel::paintSectionPanel (g, exerciseSection.toFloat(), "Exercise");
-    AbcTrainLookAndFeel::paintSectionPanel (g, answerSection.toFloat(), "Your answer");
-    AbcTrainLookAndFeel::paintSectionPanel (g, progressSection.toFloat(), "Progress");
+    if (currentScreen == Screen::training)
+    {
+        AbcTrainLookAndFeel::paintSectionPanel (g, exerciseSection.toFloat(), "Exercise");
+        AbcTrainLookAndFeel::paintSectionPanel (g, answerSection.toFloat(), "Your answer");
+        AbcTrainLookAndFeel::paintSectionPanel (g, progressSection.toFloat(), "Progress");
+    }
 
     // The title, letter-spaced. Drawn here rather than through a Label
-    // because JUCE exposes no tracking control on Label/drawText.
+    // because JUCE exposes no tracking control on Label/drawText. The
+    // home screen paints its own header, so this would double up there.
+    if (currentScreen == Screen::training)
     AbcTrainLookAndFeel::drawTrackedText (
         g, titleLabel.getText(),
         juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
@@ -416,6 +448,16 @@ void EarTrainerEditor::paint (juce::Graphics& g)
 void EarTrainerEditor::resized()
 {
     using namespace AbcTrainTheme;
+
+    // The home screen owns everything under the title row; the training
+    // screen's own layout below only runs when it's the visible one.
+    // Below the title row, above the footer link.
+    homeViewport.setBounds (getLocalBounds()
+                                .withTrimmedTop (Spacing::large + 32 + Spacing::small)
+                                .withTrimmedBottom (Spacing::large + 18));
+
+    homeScreen.setSize (juce::jmax (0, homeViewport.getMaximumVisibleWidth()),
+                         juce::jmax (homeViewport.getHeight(), homeScreen.getContentHeight()));
 
     auto area = getLocalBounds().reduced (Spacing::large);
 
@@ -438,10 +480,10 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::large);   // clear the section caption
 
         auto gameRow = inner.removeFromTop (28);
+        backButton.setBounds (gameRow.removeFromLeft (86));
+        gameRow.removeFromLeft (Spacing::medium);
         gameIcon.setBounds (gameRow.removeFromLeft (26));
         gameRow.removeFromLeft (Spacing::small);
-        gameSelectorButton.setBounds (gameRow.removeFromRight (130));
-        gameRow.removeFromRight (Spacing::small);
         currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
@@ -499,7 +541,6 @@ void EarTrainerEditor::resized()
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not they're currently visible.
     trainingSounds.setBounds (getLocalBounds());
-    gamePicker.setBounds (getLocalBounds());
 }
 
 void EarTrainerEditor::languageSelected()
@@ -528,7 +569,7 @@ void EarTrainerEditor::rebuildGameSelectorItems()
     auto& gameManager = processor.getGameManager();
     currentGameLabel.setText (translateGameName (gameManager.getActiveGame().getName(), localisation),
                                juce::dontSendNotification);
-    gameSelectorButton.setButtonText (localisation.getText ("ui.chooseTraining"));
+    backButton.setButtonText (localisation.getText ("ui.back"));
 }
 
 void EarTrainerEditor::timerCallback()
@@ -617,24 +658,55 @@ void EarTrainerEditor::refreshRunStatus()
                                seconds <= 10 ? theme.negative : theme.text);
 }
 
-void EarTrainerEditor::rebuildGamePickerCards()
+void EarTrainerEditor::showScreen (Screen screen)
+{
+    currentScreen = screen;
+
+    // Any auto-advance in flight belongs to a round the player is
+    // leaving; cancel it so it can't fire into the home screen.
+    ++pendingAdvanceId;
+
+    const auto onHome = (screen == Screen::home);
+
+    if (onHome)
+        rebuildHomeSections();
+
+    homeViewport.setVisible (onHome);
+
+    // Everything that belongs to the training screen.
+    for (auto* c : { (juce::Component*) &backButton, (juce::Component*) &gameIcon,
+                     (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
+                     (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
+                     (juce::Component*) &newRoundButton, (juce::Component*) &modeSelector,
+                     (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
+                     (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
+                     (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
+                     (juce::Component*) &dailyChallengeLabel })
+    {
+        c->setVisible (! onHome);
+    }
+
+    resized();
+    repaint();
+}
+
+void EarTrainerEditor::rebuildHomeSections()
 {
     auto& gameManager = processor.getGameManager();
     auto& progress = processor.getProgressManager();
 
-    std::vector<GamePickerComponent::CardInfo> cards;
-    cards.reserve ((size_t) gameManager.getNumGames());
-
-    for (int i = 0; i < gameManager.getNumGames(); ++i)
+    const auto makeCard = [&] (int i)
     {
         const auto englishName = gameManager.getGame (i).getName();
         const auto stats = progress.getStatsForGame (i);
 
-        GamePickerComponent::CardInfo card;
+        HomeScreenComponent::CardInfo card;
+        card.gameIndex = i;
         card.name = translateGameName (englishName, localisation);
         card.benefit = translateGameBenefit (englishName, localisation);
         card.icon = AppIcons::iconForGameName (englishName);
         card.isCurrent = (i == gameManager.getActiveGameIndex());
+        card.isFavourite = progress.isFavouriteGame (i);
 
         card.statsLine = stats.roundsPlayed == 0
                              ? localisation.getText ("ui.notPlayedYet")
@@ -643,11 +715,49 @@ void EarTrainerEditor::rebuildGamePickerCards()
                                    + localisation.getText ("ui.bestStreak") + ": "
                                    + juce::String (stats.bestStreak);
 
-        cards.push_back (std::move (card));
+        return card;
+    };
+
+    std::vector<HomeScreenComponent::Section> sections;
+
+    // Starred trainings first, as their own group - the shortlist is only
+    // worth having if it's the thing you see before anything else.
+    if (progress.hasAnyFavourites())
+    {
+        HomeScreenComponent::Section focus { localisation.getText ("home.section.focus"), {} };
+
+        for (int i = 0; i < gameManager.getNumGames(); ++i)
+            if (progress.isFavouriteGame (i))
+                focus.cards.push_back (makeCard (i));
+
+        sections.push_back (std::move (focus));
     }
 
-    gamePicker.setHeading (localisation.getText ("ui.chooseTraining"));
-    gamePicker.setCards (std::move (cards));
+    // Then every training, grouped by the skill it builds. A starred
+    // training still appears in its own category too, so the map of the
+    // subject stays complete rather than developing holes.
+    for (const char* categoryKey : { "home.category.frequency", "home.category.dynamics",
+                                      "home.category.space", "home.category.character" })
+    {
+        HomeScreenComponent::Section section { localisation.getText (categoryKey), {} };
+
+        for (int i = 0; i < gameManager.getNumGames(); ++i)
+            if (juce::String (categoryForGame (gameManager.getGame (i).getName())) == categoryKey)
+                section.cards.push_back (makeCard (i));
+
+        if (! section.cards.empty())
+            sections.push_back (std::move (section));
+    }
+
+    // Size must be reapplied after a rebuild - the content height changes
+    // when a "Your focus" section appears or disappears.
+    homeScreen.setHeader (localisation.getText ("app.eartrainer.name"),
+                           localisation.getText ("ui.level", { { "level", juce::String (progress.getLevel()) } })
+                               + "   ·   "
+                               + localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }));
+    homeScreen.setSections (std::move (sections));
+    homeScreen.setSize (juce::jmax (0, homeViewport.getMaximumVisibleWidth()),
+                         juce::jmax (homeViewport.getHeight(), homeScreen.getContentHeight()));
 }
 
 void EarTrainerEditor::refreshLocalisedText()
@@ -665,6 +775,7 @@ void EarTrainerEditor::refreshLocalisedText()
     }
 
     rebuildGameSelectorItems();
+    rebuildHomeSections();
     refreshFromGameState();
     refreshFromProgressState();
 }

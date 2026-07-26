@@ -59,5 +59,11 @@
   "ui.modeBlitz": "Blitz",
   "ui.runOver": "Run over —",
   "ui.mode": "Mode",
-  "ui.dragToChoose": "Click a zone to answer"
+  "ui.dragToChoose": "Click a zone to answer",
+  "home.section.focus": "Your focus",
+  "home.category.frequency": "Frequency",
+  "home.category.dynamics": "Dynamics",
+  "home.category.space": "Space & stereo",
+  "home.category.character": "Character",
+  "ui.back": "< Home"
 }
