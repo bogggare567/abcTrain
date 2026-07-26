@@ -781,6 +781,21 @@ rationale; summary here.
   with gain reduction, glow intensifying as it works. Downward on
   purpose (see ADR 019): GR is the one meter where "more is lower", and
   a reused upward level meter would teach the wrong model.
+- `AbcTrainTheme::accentFor (Family)` — the one definition of the four
+  skill-family colours (frequency blue, dynamics amber, space green,
+  character violet). EarTrainer's `tintForGame()` and each Learner
+  plugin's own accent both read it; the three Learner editors pass theirs
+  to `AbcTrainLookAndFeel::refreshFromTheme (accent)`, to
+  `SpectrumAnalyzerComponent`/`WaveformDisplay::setAccentColour` (a
+  per-instance override, since the palette itself is process-wide and two
+  Learner plugins can be open at once), and to `paintPanelBackground`'s
+  tint. `GainReductionMeter` deliberately keeps the palette's own
+  accent→accentWarm sweep: there the gradient is semantic, not
+  decorative. Also in that pass: an eased bypass veil over each analysis
+  section (bypass previously changed nothing on screen at all), a `what`
+  sentence per preset shown in the guide card, and
+  `GuideTooltip::setText`'s `autoDismissMs`. See
+  [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
 - `shared/CompactSelector.h/.cpp` — a one-or-two-glyph value plus a
   hairline chevron, opening a `PopupMenu` on click; no well and no border
   until hovered. Replaces the language and window-size `ComboBox`es in
@@ -954,6 +969,22 @@ plugin) built from the same root `CMakeLists.txt`:
 binary directly — it uses `juce::UnitTestRunner` and exits non-zero on any
 failure. It compiles the game/processor source files directly (not the
 plugin targets), so no plugin host or GUI is needed to run it.
+
+`tools/EditorSnapshots.cpp` (`EditorSnapshots`, a second
+`juce_add_console_app` target) renders all three Learner editors to PNGs
+in **both themes**, with no plugin host — `cmake --build build --target
+EditorSnapshots`, then run the binary with an output folder. It asserts
+nothing on purpose (a golden-file comparison would fail on every
+legitimate design change) and never pumps a message loop, so no `Timer`
+fires and every eased value is captured at rest; it is a contact sheet to
+look at. Its first run found six bugs that compiled and passed all 172
+test groups — amber value arcs on a blue plugin, a gain-reduction meter
+silently clamped to 32px, a blank lesson dropdown, a light-theme display
+well brighter than its own panel, 132px of dead window, and three
+unlabelled knobs per EQ band. EarTrainer's editor is deliberately
+excluded (it writes to the real per-user progress file, so rendering it
+would touch a player's saved record). See
+[decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
 
 - `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
   audio-domain assertions.
