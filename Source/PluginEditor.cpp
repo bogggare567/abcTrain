@@ -203,10 +203,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addChildComponent (supportScreen);
 
-    homeViewport.setViewedComponent (&homeScreen, false);
-    homeViewport.setScrollBarsShown (true, false);
-    homeViewport.setScrollBarThickness (8);
-    addAndMakeVisible (homeViewport);
+    // No Viewport any more: the grid is sized to fit whatever room there
+    // is, so there is nothing left to scroll.
+    addAndMakeVisible (homeScreen);
 
     instructionLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (instructionLabel);
@@ -271,16 +270,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     feedbackLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
     addAndMakeVisible (feedbackLabel);
 
-    levelLabel.setJustificationType (juce::Justification::centredLeft);
-    levelLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    addAndMakeVisible (levelLabel);
 
-    for (int lvl = 1; lvl <= ProgressManager::maxLevel; ++lvl)
-        levelSelector.addItem (juce::String (lvl), lvl); // ComboBox item IDs match the level number directly
-    levelSelector.onChange = [this] { levelSelected(); };
-    addAndMakeVisible (levelSelector);
 
-    addAndMakeVisible (levelProgressBar);
 
     streakLabel.setJustificationType (juce::Justification::centredRight);
     streakLabel.setFont (AbcTrainLookAndFeel::monoFont());
@@ -289,9 +280,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     dailyChallengeLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (dailyChallengeLabel);
 
-    achievementsLabel.setJustificationType (juce::Justification::centredRight);
-    achievementsLabel.setFont (AbcTrainLookAndFeel::captionFont());
-    addAndMakeVisible (achievementsLabel);
 
     // Earning one is the only thing that puts it on screen, and only for
     // as long as it takes to read - the training screen has no permanent
@@ -469,9 +457,7 @@ void EarTrainerEditor::applyTheme()
     // is what makes the light theme possible at all.
     instructionLabel.setColour (juce::Label::textColourId, theme.textDim);
     scoreLabel.setColour (juce::Label::textColourId, theme.text);
-    levelLabel.setColour (juce::Label::textColourId, theme.text);
     streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
-    achievementsLabel.setColour (juce::Label::textColourId, theme.textDim);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
 
     // The icon shows the mode you'd switch *to*, and morphs between the
@@ -586,33 +572,23 @@ void EarTrainerEditor::resized()
     // The home screen owns everything under the title row; the training
     // screen's own layout below only runs when it's the visible one.
     // Below the title row, above the footer link.
-    // The status row that used to sit under every round: level, how far
-    // into it, the streak, the daily challenge and the achievement count.
-    // It belongs here - this is the screen you plan from.
+    // One line of context above the grid - the streak and today's
+    // challenge. The level lives on each tile now, because that is where
+    // it is actually true.
     {
         auto statusRow = getLocalBounds().reduced (Spacing::large, 0)
                              .withTop (Spacing::large + 32 + Spacing::small)
                              .withHeight (homeStatusHeight);
 
-        auto topLine = statusRow.removeFromTop (26);
-        levelLabel.setBounds (topLine.removeFromLeft (92));
-        levelSelector.setBounds (topLine.removeFromLeft (54).reduced (0, 1));
-        streakLabel.setBounds (topLine.removeFromRight (96));
-        levelProgressBar.setBounds (topLine.reduced (Spacing::medium, 8));
-
-        statusRow.removeFromTop (Spacing::tight);
-        auto bottomLine = statusRow.removeFromTop (20);
-        achievementsLabel.setBounds (bottomLine.removeFromRight (150));
-        dailyChallengeLabel.setBounds (bottomLine);
+        streakLabel.setBounds (statusRow.removeFromRight (110));
+        dailyChallengeLabel.setBounds (statusRow);
     }
 
-    homeViewport.setBounds (getLocalBounds()
-                                .withTrimmedTop (Spacing::large + 32 + Spacing::small
-                                                  + homeStatusHeight + Spacing::small)
-                                .withTrimmedBottom (Spacing::large + 18));
-
-    homeScreen.setSize (juce::jmax (0, homeViewport.getMaximumVisibleWidth()),
-                         juce::jmax (homeViewport.getHeight(), homeScreen.getContentHeight()));
+    homeScreen.setBounds (getLocalBounds()
+                              .reduced (Spacing::large, 0)
+                              .withTop (Spacing::large + 32 + Spacing::small
+                                         + homeStatusHeight + Spacing::small)
+                              .withTrimmedBottom (Spacing::large + 18));
 
     auto area = getLocalBounds().reduced (Spacing::large);
 
@@ -767,12 +743,6 @@ void EarTrainerEditor::languageSelected()
     refreshLocalisedText();
 }
 
-void EarTrainerEditor::levelSelected()
-{
-    // ComboBox item IDs were set to the level number directly (1..10),
-    // so the selected ID *is* the target level.
-    processor.getProgressManager().setLevelManually (levelSelector.getSelectedId());
-}
 
 void EarTrainerEditor::rebuildGameSelectorItems()
 {
@@ -944,7 +914,7 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     supportScreen.setVisible (onSupport);
     supportScreen.setBounds (getLocalBounds());
-    homeViewport.setVisible (onHome);
+    homeScreen.setVisible (onHome);
 
     // Nothing to listen for outside a training.
     processor.setSignalEnabled (onTraining);
@@ -972,10 +942,8 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Level, streak and the daily challenge belong to the screen you plan
     // from, not the one you answer on.
-    for (auto* c : { (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
-                     (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
-                     (juce::Component*) &dailyChallengeLabel,
-                     (juce::Component*) &achievementsLabel })
+    for (auto* c : { (juce::Component*) &streakLabel,
+                     (juce::Component*) &dailyChallengeLabel })
     {
         c->setVisible (onHome);
     }
@@ -992,7 +960,6 @@ void EarTrainerEditor::rebuildHomeSections()
     const auto makeCard = [&] (int i)
     {
         const auto englishName = gameManager.getGame (i).getName();
-        const auto stats = progress.getStatsForGame (i);
 
         HomeScreenComponent::CardInfo card;
         card.gameIndex = i;
@@ -1002,56 +969,50 @@ void EarTrainerEditor::rebuildHomeSections()
         card.isCurrent = (i == gameManager.getActiveGameIndex());
         card.isFavourite = progress.isFavouriteGame (i);
 
-        card.statsLine = stats.roundsPlayed == 0
-                             ? localisation.getText ("ui.notPlayedYet")
-                             : localisation.getText ("ui.accuracy") + ": "
-                                   + juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) + "%   "
-                                   + localisation.getText ("ui.bestStreak") + ": "
-                                   + juce::String (stats.bestStreak);
+        card.level = progress.getLevelForGame (i);
+        card.levelProgress = progress.getLevelProgressForGame (i);
+        card.promotionPending = progress.isPromotionPendingForGame (i);
+        card.promotionStreak = progress.getPromotionStreakForGame (i);
+        card.promotionTestLength = ProgressManager::promotionTestLength;
 
         return card;
     };
 
-    std::vector<HomeScreenComponent::Section> sections;
+    // One flat grid, no category headings, no starring-into-its-own-group:
+    // the star sorts a tile to the front instead of duplicating it into a
+    // second section, which is what used to make the catalogue longer the
+    // more you cared about.
+    std::vector<HomeScreenComponent::CardInfo> cards;
 
-    // Starred trainings first, as their own group - the shortlist is only
-    // worth having if it's the thing you see before anything else.
-    if (progress.hasAnyFavourites())
+    for (int i = 0; i < gameManager.getNumGames(); ++i)
+        cards.push_back (makeCard (i));
+
+    homeScreen.setCards (std::move (cards));
+
+    // Achievements as badges. progressTowards() is what lets a locked one
+    // show how close it is rather than being an identical grey disc.
+    const auto snapshot = progress.makeAchievementSnapshot();
+    std::vector<HomeScreenComponent::BadgeInfo> badges;
+
+    for (const auto& definition : Achievements::all())
     {
-        HomeScreenComponent::Section focus { localisation.getText ("home.section.focus"), {} };
+        HomeScreenComponent::BadgeInfo badge;
+        badge.name = localisation.getText (definition.nameKey);
+        badge.description = localisation.getText (definition.descriptionKey);
+        badge.earned = progress.hasAchievement (definition.id);
+        badge.progress = Achievements::progressTowards (definition, snapshot);
+        badge.icon = definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames()
+                         ? AppIcons::iconForGameName (gameManager.getGame (definition.gameIndex).getName())
+                         : AppIcons::Icon::gain;
 
-        for (int i = 0; i < gameManager.getNumGames(); ++i)
-            if (progress.isFavouriteGame (i))
-                focus.cards.push_back (makeCard (i));
-
-        sections.push_back (std::move (focus));
+        badges.push_back (std::move (badge));
     }
 
-    // Then every training, grouped by the skill it builds. A starred
-    // training still appears in its own category too, so the map of the
-    // subject stays complete rather than developing holes.
-    for (const char* categoryKey : { "home.category.frequency", "home.category.dynamics",
-                                      "home.category.space", "home.category.character" })
-    {
-        HomeScreenComponent::Section section { localisation.getText (categoryKey), {} };
-
-        for (int i = 0; i < gameManager.getNumGames(); ++i)
-            if (juce::String (categoryForGame (gameManager.getGame (i).getName())) == categoryKey)
-                section.cards.push_back (makeCard (i));
-
-        if (! section.cards.empty())
-            sections.push_back (std::move (section));
-    }
-
-    // Size must be reapplied after a rebuild - the content height changes
-    // when a "Your focus" section appears or disappears.
-    homeScreen.setHeader (localisation.getText ("app.eartrainer.name"),
-                           localisation.getText ("ui.level", { { "level", juce::String (progress.getLevel()) } })
-                               + "   ·   "
-                               + localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }));
-    homeScreen.setSections (std::move (sections));
-    homeScreen.setSize (juce::jmax (0, homeViewport.getMaximumVisibleWidth()),
-                         juce::jmax (homeViewport.getHeight(), homeScreen.getContentHeight()));
+    homeScreen.setBadges (std::move (badges));
+    homeScreen.setBadgeStripCaption (
+        localisation.getText ("ui.achievements") + "  "
+            + juce::String (progress.getNumAchievementsEarned())
+            + " / " + juce::String ((int) Achievements::all().size()));
 }
 
 void EarTrainerEditor::refreshLocalisedText()
@@ -1351,18 +1312,9 @@ void EarTrainerEditor::refreshFromProgressState()
 {
     auto& progress = processor.getProgressManager();
 
-    levelLabel.setText (localisation.getText ("ui.level", { { "level", juce::String (progress.getLevel()) } }),
-                         juce::dontSendNotification);
-    levelSelector.setSelectedId (progress.getLevel(), juce::dontSendNotification);
-    levelProgressBar.setProgress (progress.getLevelProgressProportion());
-
     streakLabel.setText (localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }),
                           juce::dontSendNotification);
 
-    achievementsLabel.setText (localisation.getText ("ui.achievements") + "  "
-                                    + juce::String (progress.getNumAchievementsEarned())
-                                    + " / " + juce::String ((int) Achievements::all().size()),
-                                juce::dontSendNotification);
 
     // Built here rather than in ProgressManager, so both the sentence and
     // the exercise name inside it are in the player's own language.

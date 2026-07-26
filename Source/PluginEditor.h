@@ -213,7 +213,6 @@ private:
     // own method rather than a few lines inside startNewRun().
     void clearHint();
     void languageSelected();
-    void levelSelected();
 
     // Declared first so it's constructed before, and destroyed after,
     // every other Component below that might still reference it during
@@ -317,22 +316,18 @@ private:
     // buttons - see decisions/015-choice-slider-and-training-sounds.md.
     ChoiceSliderComponent choiceSlider;
 
-    juce::Label levelLabel;
     // Lets a player jump straight to any level (1-10) instead of only
     // ever reaching it by accumulating points - "progress you can see
     // and control", not just a passive auto-scaling number. Still backed
     // by the same points system underneath (see
     // ProgressManager::setLevelManually), so the two never disagree.
-    juce::ComboBox levelSelector;
-    LevelProgressBar levelProgressBar;
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;
 
     // How many of Achievements::all() have been earned. Home screen only.
-    juce::Label achievementsLabel;
 
     // Height of the home screen's status row (level line + daily line).
-    static constexpr int homeStatusHeight = 26 + AbcTrainTheme::Spacing::tight + 20;
+    static constexpr int homeStatusHeight = 20;
 
     void showAchievementToast (const juce::String& achievementId);
 
@@ -366,7 +361,6 @@ private:
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four
     // categories already exceed the window, and the catalogue only grows.
-    juce::Viewport homeViewport;
     HomeScreenComponent homeScreen;
 
     // First launch only, and it blocks nothing - see the class comment.

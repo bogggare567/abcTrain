@@ -7,9 +7,23 @@
 #include <memory>
 #include <vector>
 
-// Cross-session progression: points, level (1-10, driving each game's
-// difficulty via GameManager::setDifficultyForAllGames), a daily login
-// streak, and one daily challenge. Backed by juce::PropertiesFile. Games
+// Cross-session progression: **a level per exercise** (1-10, each driving
+// that game's own difficulty), a daily login streak, and one daily
+// challenge.
+//
+// Levels used to be one global number, plus a dropdown to set it directly.
+// Both are gone. Being good at spotting a reverb tail says nothing about
+// whether you can hear 400 Hz, so one number could only ever be wrong for
+// eight exercises out of nine - and a level you can pick from a menu is a
+// setting, not an achievement. Everyone now starts every exercise at 1 and
+// earns each one separately.
+//
+// How a level is earned (see promoteIfDue): points from correct answers
+// unlock the *chance* to move up, but the move itself needs a short test -
+// promotionTestLength correct in a row. Points alone would mean grinding
+// volume; a test alone would mean a lucky streak on day one. Together they
+// say "you have put the hours in, now show me" - and while the test is
+// live there is something concrete to chase, which is the point. Backed by juce::PropertiesFile. Games
 // themselves know nothing about points/levels - this class listens to
 // every game's ChangeBroadcaster and reacts to correct/incorrect answers
 // from the outside, the same way the editor listens for UI refreshes.
@@ -26,12 +40,30 @@ public:
 
     ~ProgressManager() override;
 
-    int getTotalScore() const noexcept { return totalScore; }
-    int getLevel() const noexcept { return level; }
-    int getMaxLevelReached() const noexcept { return maxLevelReached; }
-    int getPointsIntoCurrentLevel() const noexcept;
-    int getPointsNeededForNextLevel() const noexcept;
-    float getLevelProgressProportion() const noexcept;
+    // ---- per-exercise level ---------------------------------------------
+    //
+    // Everything here takes a game index. Out-of-range returns a harmless
+    // default rather than asserting, the same rule getStatsForGame follows.
+    int getLevelForGame (int gameIndex) const noexcept;
+    int getPointsForGame (int gameIndex) const noexcept;
+
+    // 0..1 through the current level, for a per-exercise indicator.
+    float getLevelProgressForGame (int gameIndex) const noexcept;
+
+    // True while the points threshold is met and the promotion test is
+    // live. getPromotionStreakForGame is how far into it the player is,
+    // out of promotionTestLength.
+    bool isPromotionPendingForGame (int gameIndex) const noexcept;
+    int getPromotionStreakForGame (int gameIndex) const noexcept;
+
+    // Summed across every exercise - the only global number left, and only
+    // because achievements ask about totals.
+    int getTotalScore() const noexcept;
+
+    // The highest level reached in any exercise. Used to unlock training
+    // sound categories, which are a whole-account thing rather than a
+    // per-exercise one.
+    int getMaxLevelReached() const noexcept;
 
     int getStreakDays() const noexcept { return streakDays; }
 
@@ -126,25 +158,18 @@ public:
     void recordSurvivalScore (int gameIndex, int score);
     void recordBlitzScore (int gameIndex, int score);
 
-    // Directly sets the level (clamped 1..maxLevel), bypassing the usual
-    // points-driven progression - lets a player who wants direct control
-    // over difficulty jump straight to a level instead of only ever
-    // reaching it by accumulating points. Sets totalScore to that
-    // level's exact point threshold (pointsRequiredForLevel), so the
-    // level/points relationship stays internally consistent - level is
-    // still always *derived* from totalScore (see addPoints()), never a
-    // second independent source of truth. Does not lower
-    // maxLevelReached if the new level is a step down.
-    void setLevelManually (int newLevel);
-
     static constexpr int maxLevel = 10;
     static constexpr int pointsPerCorrectAnswer = 10;
+
+    // Correct answers in a row needed to actually take a level once the
+    // points have unlocked it. Short on purpose: it is a checkpoint, not a
+    // wall, and a long one would turn every promotion into a chore.
+    static constexpr int promotionTestLength = 5;
     static constexpr int dailyChallengeBonusPoints = 50;
     static constexpr int dailyChallengeTargetStreak = 5;
 
 private:
     void changeListenerCallback (juce::ChangeBroadcaster* source) override;
-    void addPoints (int points);
     void loadState();
     void saveState();
     int indexOfGame (const Game& game) const noexcept;
@@ -152,9 +177,24 @@ private:
     GameManager& gameManager;
     std::unique_ptr<juce::PropertiesFile> properties;
 
-    int totalScore = 0;
-    int level = 1;
-    int maxLevelReached = 1;
+    // One of these per exercise. `points` only ever grows; `level` only
+    // ever grows; a failed promotion test costs the streak, never a level
+    // or a point. Losing a level for a bad run would make people stop
+    // playing the exercises they are worst at, which are the ones worth
+    // playing.
+    struct GameProgress
+    {
+        int points = 0;
+        int level = 1;
+        bool promotionPending = false;
+        int promotionStreak = 0;
+    };
+
+    std::vector<GameProgress> progressPerGame;
+
+    // Applies points, opens a promotion when the threshold is crossed, and
+    // advances or resets the test. Returns true if the level changed.
+    bool applyAnswerToProgress (int gameIndex, bool wasCorrect);
 
     int streakDays = 0;
     juce::String lastSessionDate;

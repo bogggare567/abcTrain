@@ -73,21 +73,88 @@ public:
             expectEquals (progress.getStreakDays(), 1);
         }
 
-        beginTest ("a correct answer awards points and can level up");
+        beginTest ("points and levels are per exercise, and everyone starts at 1");
         {
             GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("scoring"));
+            ProgressManager progress (gameManager, makeTempOptions ("perexercise"));
 
-            expectEquals (progress.getLevel(), 1);
+            for (int i = 0; i < gameManager.getNumGames(); ++i)
+            {
+                expectEquals (progress.getLevelForGame (i), 1);
+                expectEquals (progress.getPointsForGame (i), 0);
+            }
 
             for (int i = 0; i < 10; ++i)
                 progress.registerAnswer (0, true);
 
-            expectEquals (progress.getTotalScore(), 100);
-            expectEquals (progress.getLevel(), 2);
+            // Ten correct answers is exactly the points threshold for
+            // level 2 - but it is *only* the threshold. See below.
+            expectEquals (progress.getPointsForGame (0), 100);
+            expectEquals (progress.getPointsForGame (1), 0);
+            expectEquals (progress.getLevelForGame (1), 1);
         }
 
-        beginTest ("a wrong answer does not award points and resets the streak-in-a-row");
+        beginTest ("points open the promotion, the test closes it");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("promotion"));
+
+            // Interleave a wrong answer so nothing is a lucky run: points
+            // accumulate, the promotion opens on the answer that crosses
+            // the threshold, and the test starts counting from there.
+            for (int i = 0; i < 10; ++i)
+            {
+                progress.registerAnswer (0, true);
+                progress.registerAnswer (0, false);
+            }
+
+            expect (progress.isPromotionPendingForGame (0), "promotion should be open");
+            expectEquals (progress.getLevelForGame (0), 1, "the test has not been passed yet");
+            expectEquals (progress.getPromotionStreakForGame (0), 0);
+
+            // Four in a row is not five.
+            for (int i = 0; i < ProgressManager::promotionTestLength - 1; ++i)
+                progress.registerAnswer (0, true);
+
+            expectEquals (progress.getLevelForGame (0), 1);
+            expectEquals (progress.getPromotionStreakForGame (0),
+                           ProgressManager::promotionTestLength - 1);
+
+            // One wrong answer costs the run, not the level or the points.
+            const auto pointsBefore = progress.getPointsForGame (0);
+            progress.registerAnswer (0, false);
+            expectEquals (progress.getPromotionStreakForGame (0), 0);
+            expectEquals (progress.getLevelForGame (0), 1);
+            expectEquals (progress.getPointsForGame (0), pointsBefore);
+            expect (progress.isPromotionPendingForGame (0), "the promotion stays open");
+
+            for (int i = 0; i < ProgressManager::promotionTestLength; ++i)
+                progress.registerAnswer (0, true);
+
+            expectEquals (progress.getLevelForGame (0), 2);
+            expect (! progress.isPromotionPendingForGame (0));
+            expectEquals (progress.getPromotionStreakForGame (0), 0);
+        }
+
+        beginTest ("levelling one exercise does not touch another's difficulty");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("isolation"));
+
+            // ReverbGame (index 2) reports its tier through its choice
+            // count: 2 at levels 1-3, 3 at 4-6, 4 at 7+. Grinding the EQ
+            // game must leave it exactly where it started.
+            expect (gameManager.getGame (2).getNumChoices() == 2);
+
+            for (int i = 0; i < 200; ++i)
+                progress.registerAnswer (0, true);
+
+            expect (progress.getLevelForGame (0) > 1, "the EQ game should have levelled");
+            expectEquals (progress.getLevelForGame (2), 1);
+            expect (gameManager.getGame (2).getNumChoices() == 2);
+        }
+
+        beginTest ("a wrong answer costs no points");
         {
             GameManager gameManager;
             ProgressManager progress (gameManager, makeTempOptions ("wronganswer"));
@@ -95,63 +162,34 @@ public:
             progress.registerAnswer (0, true);
             progress.registerAnswer (0, false);
 
-            expectEquals (progress.getTotalScore(), 10); // only the first answer counted
+            expectEquals (progress.getPointsForGame (0), 10);
+            expectEquals (progress.getTotalScore(), 10);
         }
 
-        beginTest ("difficulty is applied to every game, not just the active one");
+        beginTest ("getTotalScore sums every exercise");
         {
             GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("difficulty"));
+            ProgressManager progress (gameManager, makeTempOptions ("totalscore"));
 
-            for (int i = 0; i < 10; ++i)
-                progress.registerAnswer (0, true); // -> level 2
+            progress.registerAnswer (0, true);
+            progress.registerAnswer (3, true);
+            progress.registerAnswer (7, true);
 
-            expectEquals (progress.getLevel(), 2);
-            // ReverbGame (index 2) exposes its difficulty tier via choice
-            // count - levels 1-3 -> 2 choices, so this doesn't change yet,
-            // but confirms setDifficulty was actually called (no crash,
-            // choice count still in the valid easy-tier range).
-            expect (gameManager.getGame (2).getNumChoices() == 2);
+            expectEquals (progress.getTotalScore(), 30);
         }
 
-        beginTest ("setLevelManually jumps directly to a level and applies its difficulty");
+        beginTest ("an out-of-range game index is a harmless miss, not a crash");
         {
             GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("manuallevel"));
+            ProgressManager progress (gameManager, makeTempOptions ("outofrange"));
 
-            progress.setLevelManually (7);
+            progress.registerAnswer (999, true);
+            progress.registerAnswer (-1, true);
 
-            expectEquals (progress.getLevel(), 7);
-            expectEquals (progress.getMaxLevelReached(), 7);
-            // Reaching level 7 unlocks ReverbGame's hardest tier (all 4 types).
-            expect (gameManager.getGame (2).getNumChoices() == 4);
-        }
-
-        beginTest ("setLevelManually clamps out-of-range input instead of crashing");
-        {
-            GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("manuallevelclamp"));
-
-            progress.setLevelManually (999);
-            expectEquals (progress.getLevel(), ProgressManager::maxLevel);
-
-            progress.setLevelManually (-5);
-            expectEquals (progress.getLevel(), 1);
-        }
-
-        beginTest ("setLevelManually keeps totalScore internally consistent with the new level");
-        {
-            GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("manuallevelscore"));
-
-            progress.setLevelManually (5);
-
-            // Landing exactly on a level's threshold means zero points
-            // into the *current* level yet - the derived level/points
-            // relationship (see ProgressManager::levelForScore) still
-            // agrees with the level that was just set directly.
-            expectEquals (progress.getPointsIntoCurrentLevel(), 0);
-            expectEquals (ProgressManager::levelForScore (progress.getTotalScore()), 5);
+            expectEquals (progress.getTotalScore(), 0);
+            expectEquals (progress.getLevelForGame (999), 1);
+            expectEquals (progress.getPointsForGame (-1), 0);
+            expect (! progress.isPromotionPendingForGame (999));
         }
 
         beginTest ("daily challenge completes after the target streak on its own game");

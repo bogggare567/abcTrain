@@ -1,18 +1,15 @@
 #include "HomeScreenComponent.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AbcTrainTheme.h"
-#include <cmath>
 
 namespace
 {
     constexpr int tickHz = 60;
-    constexpr int gridGap = AbcTrainTheme::Spacing::small;
-    constexpr float starSize = 18.0f;
 }
 
 HomeScreenComponent::HomeScreenComponent()
 {
-    setOpaque (true);
+    setInterceptsMouseClicks (true, false);
     startTimerHz (tickHz);
 }
 
@@ -21,71 +18,414 @@ HomeScreenComponent::~HomeScreenComponent()
     stopTimer();
 }
 
-void HomeScreenComponent::setHeader (juce::String title, juce::String subtitle)
+void HomeScreenComponent::setCards (std::vector<CardInfo> newCards)
 {
-    headerTitle = std::move (title);
-    headerSubtitle = std::move (subtitle);
-    repaint();
-}
+    // Starred first, then registration order. Sorting here rather than in
+    // the editor keeps "what the player cares about" a property of the
+    // view: nothing about the exercises themselves changes.
+    std::stable_sort (newCards.begin(), newCards.end(),
+                       [] (const CardInfo& a, const CardInfo& b)
+                       {
+                           return a.isFavourite && ! b.isFavourite;
+                       });
 
-void HomeScreenComponent::setSections (std::vector<Section> newSections)
-{
-    sections = std::move (newSections);
-    hoveredCard = -1;
+    cards = std::move (newCards);
+    hoverAmounts.assign (cards.size(), 0.0f);
+    hoveredTile = -1;
     rebuildLayout();
     repaint();
 }
 
-void HomeScreenComponent::rebuildLayout()
+void HomeScreenComponent::setBadges (std::vector<BadgeInfo> newBadges)
 {
-    laidOutCards.clear();
-    laidOutSections.clear();
+    // Earned first: the strip is a shelf, and a shelf shows what is on it
+    // before it shows the gaps.
+    std::stable_sort (newBadges.begin(), newBadges.end(),
+                       [] (const BadgeInfo& a, const BadgeInfo& b)
+                       {
+                           if (a.earned != b.earned)
+                               return a.earned;
 
-    // Width comes from the component (the Viewport sets it); height is an
-    // *output* of this pass, so it must not be read from getLocalBounds().
-    // Deliberately tall: removeFromTop() is clamped by the rectangle's own
-    // height, so starting from a 1px-high rect silently trimmed the header
-    // reserve to 1px and dropped the first section on top of the title.
-    auto area = juce::Rectangle<int> (0, 0, getWidth(), 1 << 20)
-                    .withTrimmedLeft (AbcTrainTheme::Spacing::large)
-                    .withTrimmedRight (AbcTrainTheme::Spacing::large);
-    area.removeFromTop (AbcTrainTheme::Spacing::large);
-    area.removeFromTop (52);   // header
+                           return a.progress > b.progress;
+                       });
 
-    const auto columnWidth = (area.getWidth() - gridGap * (columns - 1)) / columns;
-    auto y = area.getY();
+    badges = std::move (newBadges);
+    hoveredBadge = -1;
+    rebuildLayout();
+    repaint();
+}
 
-    for (int s = 0; s < (int) sections.size(); ++s)
-    {
-        const auto& section = sections[(size_t) s];
-        if (section.cards.empty())
-            continue;
-
-        laidOutSections.push_back ({ { area.getX(), y, area.getWidth(), sectionTitleHeight }, s });
-        y += sectionTitleHeight;
-
-        for (int c = 0; c < (int) section.cards.size(); ++c)
-        {
-            const auto column = c % columns;
-            const auto row = c / columns;
-
-            laidOutCards.push_back ({ { area.getX() + column * (columnWidth + gridGap),
-                                        y + row * (cardHeight + gridGap),
-                                        columnWidth, cardHeight },
-                                      s, c });
-        }
-
-        const auto rows = ((int) section.cards.size() + columns - 1) / columns;
-        y += rows * (cardHeight + gridGap) + AbcTrainTheme::Spacing::medium;
-    }
-
-    contentHeight = y + AbcTrainTheme::Spacing::large;
-    hoverAmounts.assign (laidOutCards.size(), 0.0f);
+void HomeScreenComponent::setBadgeStripCaption (juce::String caption)
+{
+    badgeStripCaption = std::move (caption);
+    repaint();
 }
 
 void HomeScreenComponent::resized()
 {
     rebuildLayout();
+}
+
+void HomeScreenComponent::rebuildLayout()
+{
+    using namespace AbcTrainTheme;
+
+    tileBounds.clear();
+
+    auto area = getLocalBounds();
+
+    if (area.isEmpty())
+        return;
+
+    badgeStrip = area.removeFromBottom (badgeStripHeight);
+    area.removeFromBottom (Spacing::medium);
+
+    const auto rows = (int) ((cards.size() + columns - 1) / columns);
+
+    if (rows <= 0)
+        return;
+
+    // Fill the space that is actually there rather than a fixed tile
+    // height: nine tiles must fit without scrolling at every UI scale, and
+    // a constant would only be right at one of them.
+    const auto gap = Spacing::small;
+    const auto rowHeight = juce::jmax (tileHeight,
+                                        (area.getHeight() - gap * (rows - 1)) / rows);
+
+    for (auto row = 0; row < rows; ++row)
+    {
+        auto rowArea = area.removeFromTop (rowHeight);
+        area.removeFromTop (gap);
+
+        const auto columnWidth = (rowArea.getWidth() - gap * (columns - 1)) / columns;
+
+        for (auto column = 0; column < columns; ++column)
+        {
+            const auto index = row * columns + column;
+
+            if (index >= (int) cards.size())
+                break;
+
+            tileBounds.push_back (rowArea.removeFromLeft (columnWidth));
+            rowArea.removeFromLeft (gap);
+        }
+    }
+
+    const auto contentWidth = (int) badges.size() * (badgeSize + Spacing::small);
+    maxBadgeScroll = juce::jmax (0.0f, (float) (contentWidth - badgeStrip.getWidth() + Spacing::large));
+    badgeScroll = juce::jlimit (0.0f, maxBadgeScroll, badgeScroll);
+}
+
+void HomeScreenComponent::paint (juce::Graphics& g)
+{
+    for (size_t i = 0; i < tileBounds.size() && i < cards.size(); ++i)
+        paintTile (g, cards[i], tileBounds[i],
+                    i < hoverAmounts.size() ? hoverAmounts[i] : 0.0f);
+
+    paintBadgeStrip (g);
+    paintHoverTip (g);
+}
+
+void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
+                                      juce::Rectangle<int> tile, float hover)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto eased = AbcTrainTheme::Ease::out (hover);
+    const auto bounds = tile.toFloat().reduced (1.0f);
+
+    juce::Path shape;
+    shape.addRoundedRectangle (bounds, AbcTrainTheme::Radius::panel);
+
+    if (eased > 0.01f)
+        juce::DropShadow (theme.shadow.withAlpha (0.45f * theme.shadowStrength * eased),
+                           10 + (int) (6.0f * eased), { 0, 2 }).drawForPath (g, shape);
+
+    juce::ColourGradient fill (theme.panelBackground.brighter (0.03f + 0.05f * eased),
+                                bounds.getX(), bounds.getY(),
+                                theme.panelBackground, bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (fill);
+    g.fillPath (shape);
+
+    g.setColour (card.isCurrent ? theme.accent.withAlpha (0.85f)
+                                : theme.outline.withAlpha (0.5f + 0.4f * eased));
+    g.strokePath (shape, juce::PathStrokeType (card.isCurrent ? 1.6f : 1.0f));
+
+    auto inner = bounds.reduced ((float) AbcTrainTheme::Spacing::small);
+
+    // --- the level, top right: the one number worth carrying here -------
+    const auto levelBox = inner.removeFromRight (34.0f).withHeight (18.0f);
+    {
+        const auto pending = card.promotionPending;
+
+        g.setColour ((pending ? theme.positive : theme.accent).withAlpha (pending ? 0.9f : 0.7f));
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+        g.drawText ("L" + juce::String (card.level), levelBox.toNearestInt(),
+                     juce::Justification::centredRight, false);
+    }
+
+    // --- icon + name ----------------------------------------------------
+    auto iconBox = inner.removeFromTop (30.0f).removeFromLeft (30.0f);
+    AppIcons::draw (g, card.icon, iconBox.reduced (2.0f),
+                     card.isCurrent ? theme.accent : theme.text.withAlpha (0.85f + 0.15f * eased));
+
+    inner.removeFromTop (2.0f);
+
+    auto nameArea = inner.removeFromTop (32.0f);
+    g.setColour (theme.textBright);
+    g.setFont (juce::Font (juce::FontOptions (13.0f).withStyle ("Bold")));
+    g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft, 2, 0.85f);
+
+    // --- the bottom line: either level progress, or the live test -------
+    auto track = bounds.reduced ((float) AbcTrainTheme::Spacing::small)
+                     .removeFromBottom (4.0f);
+
+    g.setColour (theme.displayBackground.withAlpha (0.8f));
+    g.fillRoundedRectangle (track, 2.0f);
+
+    if (card.promotionPending)
+    {
+        // A promotion is live: the bar stops reporting distance and starts
+        // reporting the test, in discrete pips, because "3 of 5 in a row"
+        // is a countable thing and a smooth bar would hide that.
+        const auto pips = juce::jmax (1, card.promotionTestLength);
+        const auto pipWidth = (track.getWidth() - 2.0f * (float) (pips - 1)) / (float) pips;
+
+        for (auto i = 0; i < pips; ++i)
+        {
+            const auto pip = track.withWidth (pipWidth)
+                                  .withX (track.getX() + (float) i * (pipWidth + 2.0f));
+
+            g.setColour (i < card.promotionStreak ? theme.positive
+                                                  : theme.positive.withAlpha (0.22f));
+            g.fillRoundedRectangle (pip, 2.0f);
+        }
+    }
+    else if (card.levelProgress > 0.001f)
+    {
+        g.setColour (theme.accent.withAlpha (0.75f));
+        g.fillRoundedRectangle (track.withWidth (juce::jmax (4.0f, track.getWidth() * card.levelProgress)),
+                                 2.0f);
+    }
+
+    // --- star ------------------------------------------------------------
+    const auto star = starHitBox (tile).toFloat();
+    juce::Path starPath;
+    starPath.addStar (star.getCentre(), 5, star.getWidth() * 0.26f, star.getWidth() * 0.5f);
+
+    if (card.isFavourite)
+    {
+        g.setColour (theme.accentWarm);
+        g.fillPath (starPath);
+    }
+    else
+    {
+        g.setColour (theme.textDim.withAlpha (0.25f + 0.35f * eased));
+        g.strokePath (starPath, juce::PathStrokeType (1.2f));
+    }
+}
+
+void HomeScreenComponent::paintBadgeStrip (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    if (badgeStrip.isEmpty())
+        return;
+
+    auto area = badgeStrip;
+
+    AbcTrainLookAndFeel::drawTrackedText (g, badgeStripCaption.toUpperCase(),
+                                           area.removeFromTop (16).toFloat(),
+                                           AbcTrainLookAndFeel::captionFont(),
+                                           theme.textDim, 1.6f);
+
+    area.removeFromTop (AbcTrainTheme::Spacing::tight);
+
+    // Clipped so a scrolled strip can't paint over the tiles above it.
+    juce::Graphics::ScopedSaveState clip (g);
+    g.reduceClipRegion (area);
+
+    auto x = (float) area.getX() - badgeScroll;
+
+    for (size_t i = 0; i < badges.size(); ++i)
+    {
+        const auto& badge = badges[i];
+        const auto box = juce::Rectangle<float> (x, (float) area.getY(),
+                                                  (float) badgeSize, (float) badgeSize);
+        x += (float) (badgeSize + AbcTrainTheme::Spacing::small);
+
+        if (box.getRight() < (float) area.getX() || box.getX() > (float) area.getRight())
+            continue;
+
+        const auto lit = badge.earned;
+        const auto disc = box.reduced (2.0f);
+
+        g.setColour (lit ? theme.positive.withAlpha (0.16f) : theme.displayBackground.withAlpha (0.7f));
+        g.fillEllipse (disc);
+
+        // A locked badge shows how close it is as an arc around its rim -
+        // the difference between "not yet" and "not ever".
+        if (! lit && badge.progress > 0.005f)
+        {
+            juce::Path arc;
+            arc.addCentredArc (disc.getCentreX(), disc.getCentreY(),
+                                disc.getWidth() * 0.5f, disc.getHeight() * 0.5f, 0.0f,
+                                0.0f, juce::MathConstants<float>::twoPi * badge.progress, true);
+            g.setColour (theme.accent.withAlpha (0.7f));
+            g.strokePath (arc, juce::PathStrokeType (2.0f));
+        }
+
+        g.setColour (lit ? theme.positive.withAlpha (0.8f) : theme.outline.withAlpha (0.6f));
+        g.drawEllipse (disc, 1.0f);
+
+        AppIcons::draw (g, badge.icon, disc.reduced (11.0f),
+                         lit ? theme.positive : theme.textDim.withAlpha (0.45f));
+    }
+}
+
+void HomeScreenComponent::paintHoverTip (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    juce::String text;
+    juce::Rectangle<int> anchor;
+
+    if (hoveredBadge >= 0 && hoveredBadge < (int) badges.size())
+    {
+        const auto& badge = badges[(size_t) hoveredBadge];
+        text = badge.name + " — " + badge.description;
+        anchor = badgeStrip;
+    }
+    else if (hoveredTile >= 0 && hoveredTile < (int) cards.size()
+             && hoveredTile < (int) tileBounds.size())
+    {
+        text = cards[(size_t) hoveredTile].benefit;
+        anchor = tileBounds[(size_t) hoveredTile];
+    }
+
+    if (text.isEmpty())
+        return;
+
+    // Above the thing being described where there is room, below it where
+    // there isn't - a tip that covers its own subject explains nothing.
+    const auto width = juce::jmin (getWidth() - AbcTrainTheme::Spacing::large * 2, 320);
+    const auto height = 46;
+
+    auto box = juce::Rectangle<int> (width, height)
+                   .withCentre ({ anchor.getCentreX(), anchor.getY() - height / 2 - 4 });
+
+    if (box.getY() < 0)
+        box.setY (anchor.getBottom() + 4);
+
+    box = box.constrainedWithin (getLocalBounds());
+
+    juce::Path card;
+    card.addRoundedRectangle (box.toFloat(), AbcTrainTheme::Radius::panel);
+
+    juce::DropShadow (theme.shadow.withAlpha (0.55f * theme.shadowStrength), 14, { 0, 3 })
+        .drawForPath (g, card);
+
+    g.setColour (theme.panelBackground.brighter (0.08f));
+    g.fillPath (card);
+    g.setColour (theme.outline);
+    g.strokePath (card, juce::PathStrokeType (1.0f));
+
+    g.setColour (theme.text);
+    g.setFont (juce::Font (juce::FontOptions (12.0f)));
+    g.drawFittedText (text, box.reduced (AbcTrainTheme::Spacing::small),
+                       juce::Justification::centred, 3, 0.9f);
+}
+
+juce::Rectangle<int> HomeScreenComponent::starHitBox (juce::Rectangle<int> tile) const
+{
+    return juce::Rectangle<int> (18, 18)
+               .withPosition (tile.getX() + AbcTrainTheme::Spacing::small,
+                               tile.getBottom() - 18 - AbcTrainTheme::Spacing::small - 6);
+}
+
+int HomeScreenComponent::tileIndexAt (juce::Point<int> position) const
+{
+    for (size_t i = 0; i < tileBounds.size(); ++i)
+        if (tileBounds[i].contains (position))
+            return (int) i;
+
+    return -1;
+}
+
+int HomeScreenComponent::badgeIndexAt (juce::Point<int> position) const
+{
+    if (! badgeStrip.contains (position))
+        return -1;
+
+    const auto stride = badgeSize + AbcTrainTheme::Spacing::small;
+    const auto offset = (float) (position.x - badgeStrip.getX()) + badgeScroll;
+
+    if (offset < 0.0f)
+        return -1;
+
+    const auto index = (int) (offset / (float) stride);
+
+    return index < (int) badges.size() ? index : -1;
+}
+
+void HomeScreenComponent::mouseMove (const juce::MouseEvent& event)
+{
+    const auto tile = tileIndexAt (event.getPosition());
+    const auto badge = badgeIndexAt (event.getPosition());
+    const auto star = tile >= 0 && tile < (int) tileBounds.size()
+                          && starHitBox (tileBounds[(size_t) tile]).contains (event.getPosition());
+
+    if (tile == hoveredTile && badge == hoveredBadge && star == hoveredStar)
+        return;
+
+    hoveredTile = tile;
+    hoveredBadge = badge;
+    hoveredStar = star;
+    repaint();
+}
+
+void HomeScreenComponent::mouseExit (const juce::MouseEvent&)
+{
+    hoveredTile = -1;
+    hoveredBadge = -1;
+    hoveredStar = false;
+    repaint();
+}
+
+void HomeScreenComponent::mouseUp (const juce::MouseEvent& event)
+{
+    const auto tile = tileIndexAt (event.getPosition());
+
+    if (tile < 0 || tile >= (int) cards.size())
+        return;
+
+    const auto& card = cards[(size_t) tile];
+
+    // The star is inside the tile, so it has to be tested first or the
+    // tile would swallow every click meant for it.
+    if (starHitBox (tileBounds[(size_t) tile]).contains (event.getPosition()))
+    {
+        if (onFavouriteToggled != nullptr)
+            onFavouriteToggled (card.gameIndex, ! card.isFavourite);
+
+        return;
+    }
+
+    if (onGameChosen != nullptr)
+        onGameChosen (card.gameIndex);
+}
+
+void HomeScreenComponent::mouseWheelMove (const juce::MouseEvent& event,
+                                           const juce::MouseWheelDetails& wheel)
+{
+    if (maxBadgeScroll <= 0.0f || ! badgeStrip.contains (event.getPosition()))
+        return;
+
+    // Either axis scrolls the strip: a mouse with only a vertical wheel
+    // must still be able to reach the far end of it.
+    const auto delta = (std::abs (wheel.deltaX) > std::abs (wheel.deltaY) ? wheel.deltaX : wheel.deltaY);
+
+    badgeScroll = juce::jlimit (0.0f, maxBadgeScroll, badgeScroll - delta * 220.0f);
+    repaint();
 }
 
 void HomeScreenComponent::timerCallback()
@@ -94,11 +434,11 @@ void HomeScreenComponent::timerCallback()
         return;
 
     const auto step = (float) (1000.0 / (double) tickHz / AbcTrainTheme::Duration::hover);
-    bool needsRepaint = false;
+    auto needsRepaint = false;
 
     for (size_t i = 0; i < hoverAmounts.size(); ++i)
     {
-        const auto target = ((int) i == hoveredCard) ? 1.0f : 0.0f;
+        const auto target = ((int) i == hoveredTile) ? 1.0f : 0.0f;
         auto& value = hoverAmounts[i];
 
         if (std::abs (target - value) <= step)
@@ -108,6 +448,7 @@ void HomeScreenComponent::timerCallback()
                 value = target;
                 needsRepaint = true;
             }
+
             continue;
         }
 
@@ -117,183 +458,4 @@ void HomeScreenComponent::timerCallback()
 
     if (needsRepaint)
         repaint();
-}
-
-juce::Rectangle<float> HomeScreenComponent::starBoundsFor (juce::Rectangle<float> cardBounds) const
-{
-    return { cardBounds.getRight() - starSize - (float) AbcTrainTheme::Spacing::small,
-             cardBounds.getY() + (float) AbcTrainTheme::Spacing::small,
-             starSize, starSize };
-}
-
-int HomeScreenComponent::cardAt (juce::Point<int> position) const
-{
-    for (int i = 0; i < (int) laidOutCards.size(); ++i)
-        if (laidOutCards[(size_t) i].bounds.contains (position))
-            return i;
-
-    return -1;
-}
-
-void HomeScreenComponent::mouseMove (const juce::MouseEvent& e)
-{
-    const auto index = cardAt (e.getPosition());
-    const auto overStar = index >= 0
-                          && starBoundsFor (laidOutCards[(size_t) index].bounds.toFloat())
-                                 .expanded (4.0f).contains (e.position);
-
-    if (index != hoveredCard || overStar != hoveredStar)
-    {
-        hoveredCard = index;
-        hoveredStar = overStar;
-        setMouseCursor (index >= 0 ? juce::MouseCursor::PointingHandCursor
-                                   : juce::MouseCursor::NormalCursor);
-        repaint();
-    }
-}
-
-void HomeScreenComponent::mouseExit (const juce::MouseEvent&)
-{
-    hoveredCard = -1;
-    hoveredStar = false;
-}
-
-void HomeScreenComponent::mouseUp (const juce::MouseEvent& e)
-{
-    const auto index = cardAt (e.getPosition());
-    if (index < 0)
-        return;
-
-    const auto& laidOut = laidOutCards[(size_t) index];
-    const auto& card = sections[(size_t) laidOut.sectionIndex].cards[(size_t) laidOut.cardIndex];
-
-    // The star is a control *inside* the card, so it has to be tested
-    // before the card's own click - otherwise starring a training would
-    // also start it, which is exactly the opposite of what a shortlist is
-    // for.
-    if (starBoundsFor (laidOut.bounds.toFloat()).expanded (4.0f).contains (e.position))
-    {
-        if (onFavouriteToggled != nullptr)
-            onFavouriteToggled (card.gameIndex, ! card.isFavourite);
-        return;
-    }
-
-    if (onGameChosen != nullptr)
-        onGameChosen (card.gameIndex);
-}
-
-void HomeScreenComponent::paintCard (juce::Graphics& g, const CardInfo& card,
-                                      juce::Rectangle<float> bounds, float hoverRaw)
-{
-    const auto& theme = AbcTrainTheme::current();
-    const auto hover = AbcTrainTheme::Ease::out (hoverRaw);
-    const auto lifted = bounds.translated (0.0f, -2.0f * hover);
-
-    juce::Path shape;
-    shape.addRoundedRectangle (lifted, AbcTrainTheme::Radius::panel);
-
-    juce::DropShadow shadow (theme.shadow.withAlpha ((0.18f + 0.20f * hover) * theme.shadowStrength),
-                              (int) (6.0f + 8.0f * hover), { 0, (int) (2.0f + 2.0f * hover) });
-    shadow.drawForPath (g, shape);
-
-    const auto surface = theme.widgetBackground.brighter (0.05f * hover);
-    juce::ColourGradient fill (surface.brighter (0.05f), lifted.getX(), lifted.getY(),
-                                surface.darker (0.04f), lifted.getX(), lifted.getBottom(), false);
-    g.setGradientFill (fill);
-    g.fillRoundedRectangle (lifted, AbcTrainTheme::Radius::panel);
-
-    g.setColour (card.isCurrent ? theme.accent.withAlpha (0.9f)
-                                : theme.outline.withAlpha (0.8f + 0.2f * hover));
-    g.drawRoundedRectangle (lifted, AbcTrainTheme::Radius::panel, card.isCurrent ? 1.6f : 1.0f);
-
-    // ---- star ----
-    const auto star = starBoundsFor (lifted);
-    {
-        juce::Path starPath;
-        starPath.addStar (star.getCentre(), 5, star.getWidth() * 0.28f, star.getWidth() * 0.5f);
-
-        if (card.isFavourite)
-        {
-            g.setColour (theme.accentWarm);
-            g.fillPath (starPath);
-        }
-        else
-        {
-            g.setColour (theme.textDim.withAlpha (0.35f + 0.35f * hover));
-            g.strokePath (starPath, juce::PathStrokeType (1.2f));
-        }
-    }
-
-    auto inner = lifted.reduced ((float) AbcTrainTheme::Spacing::medium);
-    inner.removeFromRight (starSize);   // keep text clear of the star
-
-    auto headerRow = inner.removeFromTop (20.0f);
-    const auto iconBox = headerRow.removeFromLeft (20.0f);
-    AppIcons::draw (g, card.icon, iconBox,
-                    card.isCurrent ? theme.accent : theme.textDim.brighter (0.3f * hover));
-
-    headerRow.removeFromLeft ((float) AbcTrainTheme::Spacing::small);
-    g.setColour (theme.textBright);
-    g.setFont (juce::Font (juce::FontOptions (13.0f, juce::Font::bold)));
-    g.drawText (card.name, headerRow, juce::Justification::centredLeft, true);
-
-    inner.removeFromTop (4.0f);
-
-    if (card.statsLine.isNotEmpty())
-    {
-        const auto statsArea = inner.removeFromBottom (13.0f);
-        g.setColour (theme.textDim.withAlpha (0.8f));
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
-        g.drawText (card.statsLine, statsArea, juce::Justification::centredLeft, true);
-    }
-
-    g.setColour (theme.textDim);
-    g.setFont (juce::Font (juce::FontOptions (11.0f)));
-    g.drawFittedText (card.benefit, inner.toNearestInt(), juce::Justification::topLeft, 3);
-}
-
-void HomeScreenComponent::paint (juce::Graphics& g)
-{
-    const auto& theme = AbcTrainTheme::current();
-
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
-
-    auto headerArea = juce::Rectangle<int> (AbcTrainTheme::Spacing::large,
-                                             AbcTrainTheme::Spacing::large,
-                                             juce::jmax (0, getWidth() - 2 * AbcTrainTheme::Spacing::large),
-                                             46).toFloat();
-
-    AbcTrainLookAndFeel::drawTrackedText (g, headerTitle, headerArea.removeFromTop (28.0f),
-                                           AbcTrainLookAndFeel::titleFont(),
-                                           theme.textBright, 1.6f,
-                                           juce::Justification::centredLeft);
-
-    g.setColour (theme.textDim);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
-    g.drawText (headerSubtitle, headerArea, juce::Justification::centredLeft, true);
-
-    for (const auto& laidOut : laidOutSections)
-    {
-        const auto& section = sections[(size_t) laidOut.sectionIndex];
-        auto titleArea = laidOut.titleBounds.toFloat();
-
-        AbcTrainLookAndFeel::drawTrackedText (g, section.title.toUpperCase(),
-                                               titleArea.withTrimmedBottom (6.0f),
-                                               AbcTrainLookAndFeel::captionFont(),
-                                               theme.textDim.withAlpha (0.8f), 1.3f,
-                                               juce::Justification::bottomLeft);
-
-        const auto lineY = titleArea.getBottom() - 3.0f;
-        g.setColour (theme.divider);
-        g.drawLine (titleArea.getX(), lineY, titleArea.getRight(), lineY, 1.0f);
-    }
-
-    for (int i = 0; i < (int) laidOutCards.size(); ++i)
-    {
-        const auto& laidOut = laidOutCards[(size_t) i];
-        const auto& card = sections[(size_t) laidOut.sectionIndex].cards[(size_t) laidOut.cardIndex];
-        const auto hover = i < (int) hoverAmounts.size() ? hoverAmounts[(size_t) i] : 0.0f;
-
-        paintCard (g, card, laidOut.bounds.toFloat(), hover);
-    }
 }

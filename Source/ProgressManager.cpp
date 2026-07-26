@@ -27,6 +27,7 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
         gameManager.getGame (i).addChangeListener (this);
         consecutiveCorrectPerGame.push_back (0);
         statsPerGame.push_back ({});
+        progressPerGame.push_back ({});
         favouritePerGame.push_back (false);
     }
 
@@ -36,7 +37,9 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
     updateStreakForDate (today);
     generateDailyChallengeForDate (today);
 
-    gameManager.setDifficultyForAllGames (level);
+    // Each exercise gets its own difficulty, not one shared number.
+    for (int i = 0; i < gameManager.getNumGames(); ++i)
+        gameManager.getGame (i).setDifficulty (getLevelForGame (i));
 }
 
 ProgressManager::~ProgressManager()
@@ -69,7 +72,8 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
     // than relying on that staying true.
     if (gameIndex < 0
         || gameIndex >= (int) consecutiveCorrectPerGame.size()
-        || gameIndex >= (int) statsPerGame.size())
+        || gameIndex >= (int) statsPerGame.size()
+        || gameIndex >= (int) progressPerGame.size())
         return;
 
     auto& stats = statsPerGame[(size_t) gameIndex];
@@ -80,20 +84,21 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
         ++consecutiveCorrectPerGame[(size_t) gameIndex];
         ++stats.correctAnswers;
         stats.bestStreak = juce::jmax (stats.bestStreak, consecutiveCorrectPerGame[(size_t) gameIndex]);
-        addPoints (pointsPerCorrectAnswer);
 
         if (! dailyChallengeComplete
             && gameIndex == dailyChallengeGameIndex
             && consecutiveCorrectPerGame[(size_t) gameIndex] >= dailyChallengeTargetStreak)
         {
             dailyChallengeComplete = true;
-            addPoints (dailyChallengeBonusPoints);
+            progressPerGame[(size_t) gameIndex].points += dailyChallengeBonusPoints;
         }
     }
     else
     {
         consecutiveCorrectPerGame[(size_t) gameIndex] = 0;
     }
+
+    applyAnswerToProgress (gameIndex, wasCorrect);
 
     refreshAchievements();
     saveState();
@@ -103,7 +108,7 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
 Achievements::Snapshot ProgressManager::makeAchievementSnapshot() const
 {
     Achievements::Snapshot snapshot;
-    snapshot.level = level;
+    snapshot.level = getMaxLevelReached();
     snapshot.streakDays = streakDays;
     snapshot.games.reserve (statsPerGame.size());
 
@@ -205,21 +210,6 @@ void ProgressManager::recordBlitzScore (int gameIndex, int score)
     sendChangeMessage();
 }
 
-void ProgressManager::setLevelManually (int newLevel)
-{
-    const auto clamped = juce::jlimit (1, maxLevel, newLevel);
-    if (clamped == level)
-        return;
-
-    totalScore = pointsRequiredForLevel (clamped);
-    level = clamped;
-    maxLevelReached = juce::jmax (maxLevelReached, level);
-    gameManager.setDifficultyForAllGames (level);
-
-    saveState();
-    sendChangeMessage();
-}
-
 int ProgressManager::indexOfGame (const Game& game) const noexcept
 {
     for (int i = 0; i < gameManager.getNumGames(); ++i)
@@ -229,17 +219,113 @@ int ProgressManager::indexOfGame (const Game& game) const noexcept
     return -1;
 }
 
-void ProgressManager::addPoints (int points)
+bool ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect)
 {
-    totalScore += points;
+    auto& game = progressPerGame[(size_t) gameIndex];
 
-    const auto newLevel = levelForScore (totalScore);
-    if (newLevel != level)
+    if (! wasCorrect)
     {
-        level = newLevel;
-        maxLevelReached = juce::jmax (maxLevelReached, level);
-        gameManager.setDifficultyForAllGames (level);
+        // A wrong answer costs the promotion test, never a level or a
+        // point. Demotion would make people avoid the exercises they are
+        // worst at, which are exactly the ones worth doing.
+        game.promotionStreak = 0;
+        return false;
     }
+
+    game.points += pointsPerCorrectAnswer;
+
+    if (game.level < maxLevel && ! game.promotionPending
+        && game.points >= pointsRequiredForLevel (game.level + 1))
+    {
+        game.promotionPending = true;
+        game.promotionStreak = 0;
+    }
+
+    if (! game.promotionPending)
+        return false;
+
+    if (++game.promotionStreak < promotionTestLength)
+        return false;
+
+    ++game.level;
+    game.promotionPending = false;
+    game.promotionStreak = 0;
+
+    // Only this exercise gets harder. That is the whole point.
+    gameManager.getGame (gameIndex).setDifficulty (game.level);
+    return true;
+}
+
+int ProgressManager::getLevelForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) progressPerGame.size())
+        return 1;
+
+    return progressPerGame[(size_t) gameIndex].level;
+}
+
+int ProgressManager::getPointsForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) progressPerGame.size())
+        return 0;
+
+    return progressPerGame[(size_t) gameIndex].points;
+}
+
+bool ProgressManager::isPromotionPendingForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) progressPerGame.size())
+        return false;
+
+    return progressPerGame[(size_t) gameIndex].promotionPending;
+}
+
+int ProgressManager::getPromotionStreakForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) progressPerGame.size())
+        return 0;
+
+    return progressPerGame[(size_t) gameIndex].promotionStreak;
+}
+
+float ProgressManager::getLevelProgressForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) progressPerGame.size())
+        return 0.0f;
+
+    const auto& game = progressPerGame[(size_t) gameIndex];
+
+    // Once the test is live the bar is full and the *test* is the thing to
+    // watch - reporting 103% of a level nobody has taken yet would be
+    // meaningless.
+    if (game.promotionPending || game.level >= maxLevel)
+        return 1.0f;
+
+    const auto floorPoints = pointsRequiredForLevel (game.level);
+    const auto needed = pointsRequiredForLevel (game.level + 1) - floorPoints;
+
+    if (needed <= 0)
+        return 1.0f;
+
+    return juce::jlimit (0.0f, 1.0f, (float) (game.points - floorPoints) / (float) needed);
+}
+
+int ProgressManager::getTotalScore() const noexcept
+{
+    auto total = 0;
+    for (const auto& game : progressPerGame)
+        total += game.points;
+
+    return total;
+}
+
+int ProgressManager::getMaxLevelReached() const noexcept
+{
+    auto highest = 1;
+    for (const auto& game : progressPerGame)
+        highest = juce::jmax (highest, game.level);
+
+    return highest;
 }
 
 int ProgressManager::pointsRequiredForLevel (int level) noexcept
@@ -259,26 +345,6 @@ int ProgressManager::levelForScore (int score) noexcept
     while (lvl < maxLevel && score >= pointsRequiredForLevel (lvl + 1))
         ++lvl;
     return lvl;
-}
-
-int ProgressManager::getPointsIntoCurrentLevel() const noexcept
-{
-    return totalScore - pointsRequiredForLevel (level);
-}
-
-int ProgressManager::getPointsNeededForNextLevel() const noexcept
-{
-    if (level >= maxLevel)
-        return 0;
-    return pointsRequiredForLevel (level + 1) - pointsRequiredForLevel (level);
-}
-
-float ProgressManager::getLevelProgressProportion() const noexcept
-{
-    const auto needed = getPointsNeededForNextLevel();
-    if (needed <= 0)
-        return 1.0f;
-    return (float) getPointsIntoCurrentLevel() / (float) needed;
 }
 
 int ProgressManager::daysBetween (const juce::String& isoDateA, const juce::String& isoDateB)
@@ -326,9 +392,6 @@ void ProgressManager::generateDailyChallengeForDate (const juce::String& todayIs
 
 void ProgressManager::loadState()
 {
-    totalScore = properties->getIntValue ("totalScore", 0);
-    level = levelForScore (totalScore);
-    maxLevelReached = juce::jmax (level, properties->getIntValue ("maxLevelReached", level));
     streakDays = properties->getIntValue ("streakDays", 0);
     lastSessionDate = properties->getValue ("lastSessionDate");
     dailyChallengeDate = properties->getValue ("dailyChallengeDate");
@@ -350,6 +413,16 @@ void ProgressManager::loadState()
         stats.bestSurvivalScore = properties->getIntValue (prefix + "bestSurvival", 0);
         stats.bestBlitzScore    = properties->getIntValue (prefix + "bestBlitz", 0);
 
+        // Per-exercise level and points. A save file written before levels
+        // were per-exercise simply has none of these keys, so everyone
+        // starts every exercise at 1 - which is what was asked for, and
+        // beats trying to split one global number nine ways.
+        auto& gameProgress = progressPerGame[i];
+        gameProgress.points          = properties->getIntValue (prefix + "points", 0);
+        gameProgress.level           = juce::jlimit (1, maxLevel, properties->getIntValue (prefix + "level", 1));
+        gameProgress.promotionPending = properties->getBoolValue (prefix + "promotionPending", false);
+        gameProgress.promotionStreak  = juce::jmax (0, properties->getIntValue (prefix + "promotionStreak", 0));
+
         if (i < favouritePerGame.size())
             favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);
     }
@@ -368,8 +441,6 @@ void ProgressManager::loadState()
 
 void ProgressManager::saveState()
 {
-    properties->setValue ("totalScore", totalScore);
-    properties->setValue ("maxLevelReached", maxLevelReached);
     properties->setValue ("streakDays", streakDays);
     properties->setValue ("lastSessionDate", lastSessionDate);
     properties->setValue ("dailyChallengeDate", dailyChallengeDate);
@@ -385,6 +456,12 @@ void ProgressManager::saveState()
         properties->setValue (prefix + "bestStreak", stats.bestStreak);
         properties->setValue (prefix + "bestSurvival", stats.bestSurvivalScore);
         properties->setValue (prefix + "bestBlitz", stats.bestBlitzScore);
+
+        const auto& gameProgress = progressPerGame[i];
+        properties->setValue (prefix + "points", gameProgress.points);
+        properties->setValue (prefix + "level", gameProgress.level);
+        properties->setValue (prefix + "promotionPending", gameProgress.promotionPending);
+        properties->setValue (prefix + "promotionStreak", gameProgress.promotionStreak);
 
         if (i < favouritePerGame.size())
             properties->setValue (prefix + "favourite", (bool) favouritePerGame[i]);

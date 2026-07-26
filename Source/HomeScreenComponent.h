@@ -5,21 +5,29 @@
 #include <functional>
 #include <vector>
 
-// The screen you land on. Replaces the "one flat panel with everything on
-// it" the editor used to be, and absorbs the training picker that briefly
-// lived as an overlay beside it.
+// The screen you land on: every exercise at once, and what you have won.
 //
-// Three jobs, in the order they matter:
-//  1. Say where you are - level, streak, and the day's challenge.
-//  2. Let you pick what to train, grouped by the skill it builds rather
-//     than listed in the order the games happen to be registered in. Nine
-//     flat entries is a list; four labelled groups is a map.
-//  3. Get out of the way - one Start button, and picking a card starts it.
+// It used to be a scrolling list of tall description cards grouped into
+// four named categories. Three things were wrong with that, and all three
+// came from the same instinct to explain rather than to show:
 //
-// A training can be starred, which pins it to a "Your focus" group above
-// everything else. That's the whole "choose what you're interested in"
-// idea: rather than an onboarding questionnaire whose answers go stale,
-// the shortlist is edited in place, whenever, and persists.
+//  - **It scrolled.** Nine exercises, four visible. Choosing between nine
+//    things you cannot see at the same time is not choosing.
+//  - **Every card carried a paragraph.** You read it once, on the first
+//    day, and then it was nine paragraphs of furniture forever.
+//  - **The category headings cost a row each** to say something the icons
+//    and the ordering already say.
+//
+// Now: one flat grid of icon tiles, all nine on screen, no scrolling, no
+// headings. The description moves to a hover tip - there when it is
+// wanted, invisible when it is not. Underneath, achievements as a
+// horizontal strip of badges, earned ones lit and locked ones dim, which
+// is the one place in this app where seeing what you have *not* got yet
+// is the entire point.
+//
+// A tile can be starred, which sorts it to the front. That is the whole
+// "pick what interests you" idea, without an onboarding questionnaire
+// whose answers go stale.
 class HomeScreenComponent : public juce::Component,
                              private juce::Timer
 {
@@ -28,34 +36,38 @@ public:
     {
         int gameIndex = 0;
         juce::String name;
-        juce::String benefit;
-        juce::String statsLine;
+        juce::String benefit;          // hover tip only
         AppIcons::Icon icon = AppIcons::Icon::eq;
+
+        // Per-exercise progression (see ProgressManager): the level this
+        // exercise is at, how far through it, and whether the promotion
+        // test is live right now.
+        int level = 1;
+        float levelProgress = 0.0f;
+        bool promotionPending = false;
+        int promotionStreak = 0;
+        int promotionTestLength = 5;
+
         bool isCurrent = false;
         bool isFavourite = false;
     };
 
-    // A labelled run of cards. Sections are built by the editor so this
-    // component needs no opinion about which game trains what.
-    struct Section
+    struct BadgeInfo
     {
-        juce::String title;
-        std::vector<CardInfo> cards;
+        juce::String name;
+        juce::String description;
+        AppIcons::Icon icon = AppIcons::Icon::eq;
+        bool earned = false;
+        float progress = 0.0f;
     };
 
     HomeScreenComponent();
     ~HomeScreenComponent() override;
 
-    void setSections (std::vector<Section> newSections);
+    void setCards (std::vector<CardInfo> newCards);
+    void setBadges (std::vector<BadgeInfo> newBadges);
+    void setBadgeStripCaption (juce::String caption);
 
-    // Total height the laid-out sections need. The editor puts this
-    // component inside a Viewport and sizes it to this, so the catalogue
-    // can grow past the window rather than being clipped by it - which is
-    // what happened the moment a fourth category existed.
-    int getContentHeight() const noexcept { return contentHeight; }
-    void setHeader (juce::String title, juce::String subtitle);
-
-    // Chosen training, and star toggles.
     std::function<void (int gameIndex)> onGameChosen;
     std::function<void (int gameIndex, bool shouldBeFavourite)> onFavouriteToggled;
 
@@ -64,46 +76,38 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:
     void timerCallback() override;
-
-    // Flattened layout: section headings and cards resolved to absolute
-    // bounds in one pass, so painting and hit-testing can never disagree
-    // about where anything is.
-    struct LaidOutCard
-    {
-        juce::Rectangle<int> bounds;
-        int sectionIndex = 0;
-        int cardIndex = 0;
-    };
-
-    struct LaidOutSection
-    {
-        juce::Rectangle<int> titleBounds;
-        int sectionIndex = 0;
-    };
-
     void rebuildLayout();
-    void paintCard (juce::Graphics&, const CardInfo&, juce::Rectangle<float>, float hover);
-    juce::Rectangle<float> starBoundsFor (juce::Rectangle<float> cardBounds) const;
-    int cardAt (juce::Point<int>) const;
+
+    void paintTile (juce::Graphics&, const CardInfo&, juce::Rectangle<int>, float hover);
+    void paintBadgeStrip (juce::Graphics&);
+    void paintHoverTip (juce::Graphics&);
+
+    juce::Rectangle<int> starHitBox (juce::Rectangle<int> tile) const;
+    int tileIndexAt (juce::Point<int>) const;
+    int badgeIndexAt (juce::Point<int>) const;
 
     static constexpr int columns = 3;
-    static constexpr int cardHeight = 118;
-    static constexpr int sectionTitleHeight = 26;
+    static constexpr int tileHeight = 84;
+    static constexpr int badgeStripHeight = 78;
+    static constexpr int badgeSize = 44;
 
-    std::vector<Section> sections;
-    std::vector<LaidOutCard> laidOutCards;
-    std::vector<LaidOutSection> laidOutSections;
+    std::vector<CardInfo> cards;
+    std::vector<BadgeInfo> badges;
+    juce::String badgeStripCaption;
 
-    // Eased hover per laid-out card, parallel to laidOutCards.
+    std::vector<juce::Rectangle<int>> tileBounds;
     std::vector<float> hoverAmounts;
-    int hoveredCard = -1;
+    int hoveredTile = -1;
     bool hoveredStar = false;
+    int hoveredBadge = -1;
 
-    juce::String headerTitle, headerSubtitle;
-    int contentHeight = 0;
+    juce::Rectangle<int> badgeStrip;
+    float badgeScroll = 0.0f;
+    float maxBadgeScroll = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HomeScreenComponent)
 };
