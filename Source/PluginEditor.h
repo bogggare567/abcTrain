@@ -8,6 +8,7 @@
 #include "HomeScreenComponent.h"
 #include "SupportScreenComponent.h"
 #include "SessionManager.h"
+#include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/CompactSelector.h"
@@ -267,15 +268,35 @@ private:
     SpectrumAnalyzerComponent hintSpectrum;
     bool hintRevealed = false;
 
-    // The scope strip is always in the layout - dimmed and captioned
-    // before it's bought, live after. Reserving the room permanently is
-    // what stops the window resizing under the player mid-round.
-    static constexpr int scopeRowHeight = 82;
+    // The hint panel does not exist until it is bought, and the window
+    // grows to make room for it.
+    //
+    // It used to be reserved permanently - laid out on every round,
+    // dimmed and captioned "not bought yet" - specifically so revealing a
+    // hint could never resize the window under the player. That trade was
+    // wrong: a training screen should hold the thing you are answering
+    // with and nothing else, and a strip of grey placeholder sitting
+    // there every round is worse than a window that changes size on the
+    // rare occasions you actually buy one.
+    static constexpr int hintRowHeight = 82;
+    static constexpr int hintPanelHeight = hintRowHeight + AbcTrainTheme::Spacing::large * 2;
 
     // Logical layout size. The window is this multiplied by uiScale; the
     // layout itself never changes, so every size is the same design.
     static constexpr int logicalWidth = 680;
-    static constexpr int logicalHeight = 792;
+    // Derived from resized(), not guessed: 20 margin + 32 title row + 28
+    // section gap + 124 exercise + 20 + 312 answer + 26 + 18 footer + 20.
+    // Guessing this is what left LearnerComp with 132px of dead window
+    // (decisions/023).
+    static constexpr int logicalBaseHeight = 600;
+
+    // Grows while a hint is on screen; see hintPanelHeight above.
+    int getLogicalHeight() const noexcept
+    {
+        return logicalBaseHeight + (hintRevealed ? hintPanelHeight : 0);
+    }
+
+    void applyWindowSize();
 
     void setUiScale (float newScale);
     float uiScale = 1.0f;
@@ -307,6 +328,14 @@ private:
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;
 
+    // How many of Achievements::all() have been earned. Home screen only.
+    juce::Label achievementsLabel;
+
+    // Height of the home screen's status row (level line + daily line).
+    static constexpr int homeStatusHeight = 26 + AbcTrainTheme::Spacing::tight + 20;
+
+    void showAchievementToast (const juce::String& achievementId);
+
     IconButton updateButton { AppIcons::Icon::download };
 
     // Light/dark switch. The chosen mode is stored in the same shared
@@ -321,7 +350,7 @@ private:
     juce::Rectangle<int> exerciseSection;
     juce::Rectangle<int> answerSection;
     juce::Rectangle<int> progressSection;
-    juce::Rectangle<int> scopeStrip;
+    juce::Rectangle<int> hintSection;
 
     // Overlay screen for picking which of the user's own reference-audio
     // folders (if any) the games should train on instead of pink noise -
@@ -329,6 +358,11 @@ private:
     // Has no default constructor (needs the processor), so it's
     // initialised in the constructor's member-init-list, after `processor`.
     IconButton trainingSoundsButton { AppIcons::Icon::sound };
+    // Declared here, but addChildComponent()'d last in the constructor so
+    // it paints over everything - the same z-order rule the lesson and
+    // training-sounds overlays already had to learn (decisions/015, 017).
+    AchievementToast achievementToast;
+
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four
     // categories already exceed the window, and the catalogue only grows.

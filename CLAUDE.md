@@ -336,6 +336,19 @@ full rationale.
   [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md)),
   the same `juce_animation` module already used by `LevelProgressBar`'s
   fill transition below.
+- `Source/Achievements.{h,cpp}` — the named things a player can earn, as
+  pure data plus pure rules over a `Snapshot` of what `ProgressManager`
+  already records. No `Component`, no `PropertiesFile`, no message loop,
+  so `tests/AchievementsTest` drives every rule directly. Ids are strings
+  (the persistence key, stable across reordering); earned ids are never
+  removed; accuracy rules carry a minimum-rounds floor so three lucky
+  answers can't earn the hardest-sounding badge; and there is deliberately
+  **no "reach level N"** achievement, since level is player-selectable
+  from a dropdown. `ProgressManager` owns the earned set, re-checks after
+  anything that could earn one, backfills silently on load, and reports
+  new ones through `onAchievementEarned`. `Source/AchievementToast.h` is
+  the only thing that appears on the training screen unasked. See
+  [decisions/024](docs/decisions/024-achievements-and-a-quiet-training-screen.md).
 - `Source/SessionManager.{h,cpp}` — the shape of one training run:
   Practice (unlimited), Survival (3 lives, a wrong answer costs one, ends
   at zero), Blitz (90s clock, a wrong answer costs 5 seconds rather than
@@ -1020,6 +1033,13 @@ would touch a player's saved record). See
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
   rather than through the real `ChangeListener` wiring (see below).
+- `tests/AchievementsTest.cpp` — the achievement rules against
+  hand-built `Snapshot`s: unique non-empty ids, unknown id returns null,
+  a blank slate earns nothing, accuracy needs the rounds floor *and* the
+  ratio, totals accumulate across exercises while best-streaks do not,
+  breadth counts exercises touched rather than rounds played, progress is
+  monotonic and clamped, an empty games vector misses rather than reading
+  past the end, and **choosing a level earns nothing** (see ADR 024).
 - `tests/SessionManagerTest.cpp` — the Practice/Survival/Blitz state
   machine driven directly: practice never ends, survival spends exactly
   one life per wrong answer and reports its score once through

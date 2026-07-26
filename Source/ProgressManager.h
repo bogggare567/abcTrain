@@ -2,6 +2,8 @@
 
 #include "GameManager.h"
 #include <juce_data_structures/juce_data_structures.h>
+#include "Achievements.h"
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -90,6 +92,29 @@ public:
 
     // Records a completed Survival/Blitz run's score if it beats the
     // stored best. Called by SessionManager when a run ends.
+    // ---- achievements --------------------------------------------------
+    //
+    // The list itself and the rules live in Achievements.{h,cpp}, which is
+    // pure and testable. This class owns only two things about them: the
+    // set that has been earned (persisted) and *when* to re-check.
+    //
+    // Re-checking happens after any state change that could earn one, and
+    // is idempotent - an achievement already in the set is never announced
+    // twice, which is what stops "you earned X" firing on every answer
+    // after the first.
+    bool hasAchievement (const juce::String& id) const;
+    int getNumAchievementsEarned() const noexcept { return (int) earnedAchievements.size(); }
+
+    // The snapshot the rules are evaluated against - exposed so the UI can
+    // show how far along the *unearned* ones are without this class having
+    // to mirror every rule.
+    Achievements::Snapshot makeAchievementSnapshot() const;
+
+    // Called with each id the moment it is first earned. The editor uses
+    // it to show a toast; nothing else in this class depends on it, and a
+    // null callback is fine.
+    std::function<void (const juce::String&)> onAchievementEarned;
+
     void recordSurvivalScore (int gameIndex, int score);
     void recordBlitzScore (int gameIndex, int score);
 
@@ -132,6 +157,11 @@ private:
 
     std::vector<int> consecutiveCorrectPerGame;
     std::vector<GameStats> statsPerGame;
+
+    // Ids, not indices: an achievement's id is stable across releases even
+    // as the list is reordered or added to, which an index would not be.
+    juce::StringArray earnedAchievements;
+    void refreshAchievements();
     std::vector<bool> favouritePerGame;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressManager)

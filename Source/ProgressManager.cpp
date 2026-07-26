@@ -95,8 +95,46 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
         consecutiveCorrectPerGame[(size_t) gameIndex] = 0;
     }
 
+    refreshAchievements();
     saveState();
     sendChangeMessage();
+}
+
+Achievements::Snapshot ProgressManager::makeAchievementSnapshot() const
+{
+    Achievements::Snapshot snapshot;
+    snapshot.level = level;
+    snapshot.streakDays = streakDays;
+    snapshot.games.reserve (statsPerGame.size());
+
+    for (const auto& stats : statsPerGame)
+        snapshot.games.push_back ({ stats.roundsPlayed, stats.correctAnswers, stats.bestStreak,
+                                    stats.bestSurvivalScore, stats.bestBlitzScore });
+
+    return snapshot;
+}
+
+bool ProgressManager::hasAchievement (const juce::String& id) const
+{
+    return earnedAchievements.contains (id);
+}
+
+void ProgressManager::refreshAchievements()
+{
+    // Idempotent by construction: only ids not already in the set are
+    // added, and only those are announced. Nothing is ever removed - an
+    // achievement is a record of something that happened, so it must not
+    // un-earn itself if a later run drags an average back down.
+    for (const auto& id : Achievements::evaluate (makeAchievementSnapshot()))
+    {
+        if (earnedAchievements.contains (id))
+            continue;
+
+        earnedAchievements.add (id);
+
+        if (onAchievementEarned != nullptr)
+            onAchievementEarned (id);
+    }
 }
 
 bool ProgressManager::isFavouriteGame (int gameIndex) const
@@ -147,6 +185,7 @@ void ProgressManager::recordSurvivalScore (int gameIndex, int score)
         return;
 
     best = score;
+    refreshAchievements();
     saveState();
     sendChangeMessage();
 }
@@ -161,6 +200,7 @@ void ProgressManager::recordBlitzScore (int gameIndex, int score)
         return;
 
     best = score;
+    refreshAchievements();
     saveState();
     sendChangeMessage();
 }
@@ -262,6 +302,7 @@ void ProgressManager::updateStreakForDate (const juce::String& todayIso)
     // else: same day as the last recorded session - streak already counted.
 
     lastSessionDate = todayIso;
+    refreshAchievements();
     saveState();
 }
 
@@ -325,6 +366,17 @@ void ProgressManager::loadState()
         if (i < favouritePerGame.size())
             favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);
     }
+
+    earnedAchievements.clear();
+    earnedAchievements.addTokens (properties->getValue ("achievements"), ",", "");
+    earnedAchievements.removeEmptyStrings();
+
+    // Anything the saved state already qualifies for but predates - a
+    // player who had 500 correct answers before achievements existed
+    // should not have to earn "your first hundred" again. Deliberately
+    // silent: onAchievementEarned isn't set yet at load time, so this
+    // backfills without a burst of toasts on first launch.
+    refreshAchievements();
 }
 
 void ProgressManager::saveState()
@@ -350,6 +402,8 @@ void ProgressManager::saveState()
         if (i < favouritePerGame.size())
             properties->setValue (prefix + "favourite", (bool) favouritePerGame[i]);
     }
+
+    properties->setValue ("achievements", earnedAchievements.joinIntoString (","));
 
     properties->saveIfNeeded();
 }

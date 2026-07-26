@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "Achievements.h"
 #include "../shared/Version.h"
 #include <array>
 #include <memory>
@@ -285,8 +286,22 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     streakLabel.setFont (AbcTrainLookAndFeel::monoFont());
     addAndMakeVisible (streakLabel);
 
-    dailyChallengeLabel.setJustificationType (juce::Justification::centred);
+    dailyChallengeLabel.setJustificationType (juce::Justification::centredLeft);
     addAndMakeVisible (dailyChallengeLabel);
+
+    achievementsLabel.setJustificationType (juce::Justification::centredRight);
+    achievementsLabel.setFont (AbcTrainLookAndFeel::captionFont());
+    addAndMakeVisible (achievementsLabel);
+
+    // Earning one is the only thing that puts it on screen, and only for
+    // as long as it takes to read - the training screen has no permanent
+    // progress furniture any more.
+    processor.getProgressManager().onAchievementEarned =
+        [safeThis = juce::Component::SafePointer<EarTrainerEditor> (this)] (const juce::String& id)
+        {
+            if (safeThis != nullptr)
+                safeThis->showAchievementToast (id);
+        };
 
     gameManager.getActiveGame().addChangeListener (this);
     processor.getProgressManager().addChangeListener (this);
@@ -415,6 +430,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // this earlier (before choiceSlider) left the slider painting on top
     // of the "closed" overlay instead of the other way around.
     addChildComponent (trainingSounds);
+
+    // Last of all, so it paints over the training screen and both
+    // overlays. It never takes mouse events (see AchievementToast).
+    addChildComponent (achievementToast);
     trainingSounds.onClosed = [this] { resized(); };
 
     // Grown again for the grouping/whitespace pass: the three section
@@ -452,6 +471,7 @@ void EarTrainerEditor::applyTheme()
     scoreLabel.setColour (juce::Label::textColourId, theme.text);
     levelLabel.setColour (juce::Label::textColourId, theme.text);
     streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
+    achievementsLabel.setColour (juce::Label::textColourId, theme.textDim);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
 
     // The icon shows the mode you'd switch *to*, and morphs between the
@@ -537,27 +557,13 @@ void EarTrainerEditor::paint (juce::Graphics& g)
                                                    localisation.getText ("ui.sectionExercise"));
         AbcTrainLookAndFeel::paintSectionHeading (g, answerSection.toFloat(),
                                                    localisation.getText ("ui.sectionAnswer"));
-        AbcTrainLookAndFeel::paintSectionHeading (g, progressSection.toFloat(),
-                                                   localisation.getText ("ui.sectionProgress"));
 
-        // The scope strip keeps its room whether or not it's been bought,
-        // so the window never resizes mid-round. Unbought, it draws as a
-        // quiet placeholder rather than an empty hole.
-        if (! hintRevealed && ! scopeStrip.isEmpty())
-        {
-            const auto& theme = AbcTrainTheme::current();
-            const auto strip = scopeStrip.toFloat();
 
-            g.setColour (theme.displayBackground.withAlpha (0.45f));
-            g.fillRoundedRectangle (strip, AbcTrainTheme::Radius::well);
-            g.setColour (theme.outline.withAlpha (0.35f));
-            g.drawRoundedRectangle (strip, AbcTrainTheme::Radius::well, 1.0f);
-
-            g.setColour (theme.textDim.withAlpha (0.5f));
-            g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (localisation.getText ("ui.hintPlaceholder"), strip,
-                         juce::Justification::centred, false);
-        }
+        // Only drawn when the hint has actually been bought - the panel
+        // does not exist otherwise, and neither does its heading.
+        if (hintRevealed && ! hintSection.isEmpty())
+            AbcTrainLookAndFeel::paintSectionHeading (g, hintSection.toFloat(),
+                                                       localisation.getText ("ui.sectionHint"));
     }
 
     // The title, letter-spaced. Drawn here rather than through a Label
@@ -580,8 +586,29 @@ void EarTrainerEditor::resized()
     // The home screen owns everything under the title row; the training
     // screen's own layout below only runs when it's the visible one.
     // Below the title row, above the footer link.
+    // The status row that used to sit under every round: level, how far
+    // into it, the streak, the daily challenge and the achievement count.
+    // It belongs here - this is the screen you plan from.
+    {
+        auto statusRow = getLocalBounds().reduced (Spacing::large, 0)
+                             .withTop (Spacing::large + 32 + Spacing::small)
+                             .withHeight (homeStatusHeight);
+
+        auto topLine = statusRow.removeFromTop (26);
+        levelLabel.setBounds (topLine.removeFromLeft (92));
+        levelSelector.setBounds (topLine.removeFromLeft (54).reduced (0, 1));
+        streakLabel.setBounds (topLine.removeFromRight (96));
+        levelProgressBar.setBounds (topLine.reduced (Spacing::medium, 8));
+
+        statusRow.removeFromTop (Spacing::tight);
+        auto bottomLine = statusRow.removeFromTop (20);
+        achievementsLabel.setBounds (bottomLine.removeFromRight (150));
+        dailyChallengeLabel.setBounds (bottomLine);
+    }
+
     homeViewport.setBounds (getLocalBounds()
-                                .withTrimmedTop (Spacing::large + 32 + Spacing::small)
+                                .withTrimmedTop (Spacing::large + 32 + Spacing::small
+                                                  + homeStatusHeight + Spacing::small)
                                 .withTrimmedBottom (Spacing::large + 18));
 
     homeScreen.setSize (juce::jmax (0, homeViewport.getMaximumVisibleWidth()),
@@ -629,11 +656,32 @@ void EarTrainerEditor::resized()
 
     area.removeFromTop (Spacing::large);
 
+    // --- the hint, if it has been bought: only then does it exist ---
+    // Between hearing and answering, which is the order you use it in.
+    if (hintRevealed)
+    {
+        hintSection = area.removeFromTop (hintPanelHeight);
+
+        auto inner = hintSection;
+        inner.removeFromTop (Spacing::large);   // clear the section heading
+
+        auto hintRow = inner.removeFromTop (hintRowHeight).reduced (Spacing::small, 0);
+        vectorscope.setBounds (hintRow.removeFromLeft (hintRow.getHeight()));
+        hintRow.removeFromLeft (Spacing::small);
+        hintSpectrum.setBounds (hintRow);
+
+        area.removeFromTop (Spacing::large);
+    }
+    else
+    {
+        hintSection = {};
+    }
+
+    vectorscope.setVisible (hintRevealed && currentScreen == Screen::training);
+    hintSpectrum.setVisible (hintRevealed && currentScreen == Screen::training);
+
     // --- answer section: feedback, the slider itself, score/new round ---
-    // The scopes need their own room. Stealing it from the scale left it
-    // 10px tall and unusable - found immediately on revealing a hint - so
-    // the section (and the window) grow instead.
-    answerSection = area.removeFromTop (274 + scopeRowHeight + Spacing::small + 38);
+    answerSection = area.removeFromTop (274 + 38);
     {
         auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
@@ -645,20 +693,6 @@ void EarTrainerEditor::resized()
         // than a thin strip: 40px of it is the value readout and 18px the
         // caption, so anything under ~120 leaves the zones too shallow to
         // fit staggered labels. Found by building it at 92 and looking.
-        // The scope strip is always laid out, bought or not - its room is
-        // reserved so revealing a hint never resizes the window under the
-        // player. paint() draws the dimmed "not bought yet" state.
-        scopeStrip = inner.removeFromTop (scopeRowHeight).reduced (Spacing::small, 0);
-        {
-            auto scopeRow = scopeStrip;
-            vectorscope.setBounds (scopeRow.removeFromLeft (scopeRow.getHeight()));
-            scopeRow.removeFromLeft (Spacing::small);
-            hintSpectrum.setBounds (scopeRow);
-        }
-        vectorscope.setVisible (hintRevealed && currentScreen == Screen::training);
-        hintSpectrum.setVisible (hintRevealed && currentScreen == Screen::training);
-        inner.removeFromTop (Spacing::small);
-
         choiceSlider.setBounds (inner.removeFromTop (150).reduced (Spacing::small, 0));
 
         inner.removeFromTop (Spacing::medium);
@@ -687,21 +721,14 @@ void EarTrainerEditor::resized()
 
     area.removeFromTop (Spacing::large);
 
-    // --- progress section: level, bar, streak, daily challenge ---
-    progressSection = area.removeFromTop (100);
-    {
-        auto inner = progressSection;
-        inner.removeFromTop (Spacing::large);
-
-        auto progressRow = inner.removeFromTop (26);
-        levelLabel.setBounds (progressRow.removeFromLeft (92));
-        levelSelector.setBounds (progressRow.removeFromLeft (54).reduced (0, 1));
-        streakLabel.setBounds (progressRow.removeFromRight (96));
-        levelProgressBar.setBounds (progressRow.reduced (Spacing::medium, 8));
-
-        inner.removeFromTop (Spacing::small);
-        dailyChallengeLabel.setBounds (inner.removeFromTop (20));
-    }
+    // The progress section used to live here - level, a bar, streak and
+    // the daily challenge, on screen through every round. It has moved to
+    // the home screen. A bar answers "how far to the next level", which is
+    // a question about the app rather than about hearing, and a training
+    // screen should hold the thing you are answering with and nothing
+    // else. What replaces it *during* a run is a toast: nothing until you
+    // earn something, then a moment of it. See decisions/024.
+    progressSection = {};
 
     // --- footer ---
     soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
@@ -709,6 +736,24 @@ void EarTrainerEditor::resized()
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not they're currently visible.
     trainingSounds.setBounds (getLocalBounds());
+
+    // Centred under the title row, wide enough for an achievement name.
+    achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
+                                                 .withHeight (52)
+                                                 .withSizeKeepingCentre (
+                                                     juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
+                                                 .withY (Spacing::large + 34));
+}
+
+void EarTrainerEditor::showAchievementToast (const juce::String& achievementId)
+{
+    if (const auto* definition = Achievements::find (achievementId))
+        achievementToast.show (localisation.getText ("ui.achievementEarned"),
+                                localisation.getText (definition->nameKey));
+
+    // An id this build doesn't define (a save from a newer version) shows
+    // nothing rather than an empty card - same graceful-miss rule as the
+    // icon and i18n lookups.
 }
 
 void EarTrainerEditor::languageSelected()
@@ -797,7 +842,7 @@ void EarTrainerEditor::setUiScale (float newScale)
     // hand-tuned sizes that would drift apart. Everything stays exactly
     // the same design at every size.
     setTransform (juce::AffineTransform::scale (uiScale));
-    setSize (logicalWidth, logicalHeight);
+    setSize (logicalWidth, getLogicalHeight());
 
     // Keep the picker in step with the actual scale, including on the
     // restore path - without this it came up blank on launch.
@@ -807,14 +852,28 @@ void EarTrainerEditor::setUiScale (float newScale)
     localisationProperties.setValue (uiScaleKey, (double) uiScale);
 }
 
+void EarTrainerEditor::applyWindowSize()
+{
+    // setSize() only calls resized() when the size actually changed, and
+    // showing or hiding the hint panel is exactly the case where it does.
+    setSize (logicalWidth, getLogicalHeight());
+    resized();
+    repaint();
+}
+
 void EarTrainerEditor::clearHint()
 {
+    if (! hintRevealed)
+        return;
+
     hintRevealed = false;
     vectorscope.setVisible (false);
     hintSpectrum.setVisible (false);
     vectorscope.reset();
     refreshHintButton();
-    repaint();
+
+    // The window shrinks back to the training screen's own height.
+    applyWindowSize();
 }
 
 void EarTrainerEditor::refreshRunStatus()
@@ -906,12 +965,19 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &modeSelector,
                      (juce::Component*) &hintButton, (juce::Component*) &hintCostLabel,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
-                     (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
-                     (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
-                     (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
-                     (juce::Component*) &dailyChallengeLabel })
+                     (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel })
     {
         c->setVisible (onTraining);
+    }
+
+    // Level, streak and the daily challenge belong to the screen you plan
+    // from, not the one you answer on.
+    for (auto* c : { (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
+                     (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
+                     (juce::Component*) &dailyChallengeLabel,
+                     (juce::Component*) &achievementsLabel })
+    {
+        c->setVisible (onHome);
     }
 
     resized();
@@ -1137,15 +1203,13 @@ void EarTrainerEditor::requestHint()
     vectorscope.reset();
     hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
 
-    // Set visibility here rather than leaving it to resized(): this path
-    // doesn't relayout (that's the whole point - the window must not move),
-    // so relying on resized() left the strip blank after paying for it.
-    vectorscope.setVisible (true);
-    hintSpectrum.setVisible (true);
-
     refreshRunStatus();
     refreshHintButton();
-    repaint();
+
+    // The panel does not exist in the layout until now, so the window has
+    // to grow to make room for it - resized() sets the scopes' bounds and
+    // visibility from hintRevealed.
+    applyWindowSize();
 }
 
 void EarTrainerEditor::refreshHintButton()
@@ -1294,6 +1358,11 @@ void EarTrainerEditor::refreshFromProgressState()
 
     streakLabel.setText (localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }),
                           juce::dontSendNotification);
+
+    achievementsLabel.setText (localisation.getText ("ui.achievements") + "  "
+                                    + juce::String (progress.getNumAchievementsEarned())
+                                    + " / " + juce::String ((int) Achievements::all().size()),
+                                juce::dontSendNotification);
 
     dailyChallengeLabel.setText (progress.getDailyChallengeDescription(), juce::dontSendNotification);
     dailyChallengeLabel.setColour (juce::Label::textColourId,

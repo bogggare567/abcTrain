@@ -1,5 +1,30 @@
 cmake_minimum_required(VERSION 3.22)
 
+# Link the MSVC runtime statically on Windows.
+#
+# A reported failure on a real user's machine: "VCRUNTIME140_1.dll was not
+# found". The default /MD build makes every binary depend on the Visual
+# C++ Redistributable being installed - which it is on a developer's
+# machine and on a GitHub Actions runner, and often is not on a listener's
+# PC, an older machine, or a fresh install. The person then has to know
+# what a redistributable is and go and find it, which is not a thing to
+# ask of someone who just wanted to try an ear trainer.
+#
+# Bundling vc_redist.exe with the installer would also work, but it needs
+# admin rights, adds a reboot prompt in some cases, and does nothing for
+# anyone who unzips the portable build instead of running the installer.
+# Static linking removes the dependency entirely: the binaries carry what
+# they need. The cost is a few hundred KB per binary, which against a
+# plugin that already embeds JUCE is nothing.
+#
+# Must be set *before* project(), and needs CMP0091 (CMake >= 3.15) so
+# CMake manages the runtime flag itself instead of it being baked into
+# CMAKE_CXX_FLAGS - hence the explicit policy line rather than relying on
+# the 3.22 minimum above to set it.
+cmake_policy(SET CMP0091 NEW)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+    CACHE STRING "MSVC runtime library (static, so no redistributable is needed)")
+
 project(EarTrainer VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -132,6 +157,7 @@ target_sources(EarTrainer
         Source/ChoiceSliderComponent.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
+        Source/Achievements.cpp
         Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
         Source/TrainingSoundsComponent.cpp
@@ -368,6 +394,7 @@ target_sources(EarTrainerTests
         tests/VersionChannelTest.cpp
         tests/ProgressManagerTest.cpp
         tests/SessionManagerTest.cpp
+        tests/AchievementsTest.cpp
         tests/ContinuousScaleTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
@@ -377,6 +404,7 @@ target_sources(EarTrainerTests
         tests/ReferenceAudioLibraryTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
+        Source/Achievements.cpp
         Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
         Source/Games/EQGame.cpp
