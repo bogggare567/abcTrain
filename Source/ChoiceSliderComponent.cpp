@@ -127,18 +127,25 @@ void ChoiceSliderComponent::startFeedbackAnimation (bool wasCorrect)
     {
         feedbackGlow = 0.0f;
 
-        // A short, decaying oscillation (sine envelope shrinking as t
-        // grows) reads as a gentle "disappointed" wobble rather than an
-        // aggressive shake - three quick back-and-forths, each smaller
-        // than the last.
+        // A decaying oscillation, tuned as a *sway* rather than a shake.
+        // The first version ran 2.5 cycles in 450 ms - about 5.5 Hz, which
+        // is squarely in the range the eye reads as vibration, and it is
+        // exactly the kind of jitter that makes an interface feel cheap.
+        // 1.5 cycles over 720 ms is roughly 2 Hz: slow enough to read as a
+        // deliberate head-shake. The envelope is squared rather than
+        // linear so the motion has already almost stopped by the time the
+        // animation ends, instead of being cut off with velocity left in
+        // it - a linear envelope is what makes the *end* of a wobble look
+        // clipped even when the wobble itself is gentle.
         feedbackAnimator = juce::ValueAnimatorBuilder{}
                                .withEasing (juce::Easings::createLinear())
-                               .withDurationMs (450.0)
+                               .withDurationMs (AbcTrainTheme::Duration::sway)
                                .withValueChangedCallback ([this] (float t)
                                {
-                                   constexpr float maxWobblePx = 5.0f;
-                                   feedbackWobblePx = std::sin (t * juce::MathConstants<float>::twoPi * 2.5f)
-                                                     * (1.0f - t) * maxWobblePx;
+                                   constexpr float maxSwayPx = 6.0f;
+                                   const auto decay = (1.0f - t) * (1.0f - t);
+                                   feedbackWobblePx = std::sin (t * juce::MathConstants<float>::twoPi * 1.5f)
+                                                     * decay * maxSwayPx;
                                    repaint();
                                })
                                .build();

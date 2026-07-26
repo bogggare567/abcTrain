@@ -133,10 +133,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     themeButton.onClick = [this] { toggleTheme(); };
     addAndMakeVisible (themeButton);
 
-    sizeSelector.addItem ("S", 1);
-    sizeSelector.addItem ("M", 2);
-    sizeSelector.addItem ("L", 3);
-    sizeSelector.addItem ("XL", 4);
+    sizeSelector.addItem ("Small", 1, "S");
+    sizeSelector.addItem ("Medium", 2, "M");
+    sizeSelector.addItem ("Large", 3, "L");
+    sizeSelector.addItem ("Extra large", 4, "XL");
     sizeSelector.onChange = [this]
     {
         switch (sizeSelector.getSelectedId())
@@ -151,7 +151,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
         languageSelector.addItem (LocalisationManager::getDisplayName (code),
-                                   LocalisationManager::getSupportedLanguageCodes().indexOf (code) + 1);
+                                   LocalisationManager::getSupportedLanguageCodes().indexOf (code) + 1,
+                                   code.upToFirstOccurrenceOf ("-", false, false).toUpperCase());
     languageSelector.setSelectedId (LocalisationManager::getSupportedLanguageCodes().indexOf (localisation.getCurrentLanguage()) + 1,
                                      juce::dontSendNotification);
     languageSelector.onChange = [this] { languageSelected(); };
@@ -514,7 +515,14 @@ void EarTrainerEditor::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    // Each exercise gets its own room: the backdrop carries a hint of that
+    // training's category colour while you're in it, and goes neutral on
+    // the home screen where nine tints at once would be noise.
+    AbcTrainLookAndFeel::paintPanelBackground (
+        g, getLocalBounds().toFloat(),
+        currentScreen == Screen::training
+            ? tintForGame (processor.getGameManager().getActiveGame().getName())
+            : juce::Colours::transparentBlack);
 
     // Grouped sections behind the controls: related things now sit on a
     // shared surface with a caption, instead of floating loose on the
@@ -585,9 +593,12 @@ void EarTrainerEditor::resized()
     // the title bar for controls pressed once a session.
     constexpr int iconSize = 30;
 
-    languageSelector.setBounds (titleRow.removeFromRight (86));
-    titleRow.removeFromRight (Spacing::small);
-    sizeSelector.setBounds (titleRow.removeFromRight (56));
+    // Indicators, not form fields: each asks for exactly the width its
+    // own widest value needs (see CompactSelector) instead of a fixed
+    // well sized for the longest item in some other language.
+    languageSelector.setBounds (titleRow.removeFromRight (languageSelector.getPreferredWidth()));
+    titleRow.removeFromRight (Spacing::tight);
+    sizeSelector.setBounds (titleRow.removeFromRight (sizeSelector.getPreferredWidth()));
     titleRow.removeFromRight (Spacing::medium);
     themeButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
     titleRow.removeFromRight (Spacing::tight);

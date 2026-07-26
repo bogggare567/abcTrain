@@ -152,6 +152,7 @@ target_sources(EarTrainer
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
+        shared/CompactSelector.cpp
         shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
 )
@@ -208,6 +209,7 @@ target_sources(LearnerEQ
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
+        shared/CompactSelector.cpp
         shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
 )
@@ -260,6 +262,7 @@ target_sources(LearnerComp
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
+        shared/CompactSelector.cpp
         shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
         LearnerComp/Source/PluginEntry.cpp
@@ -313,6 +316,7 @@ target_sources(LearnerVerb
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
+        shared/CompactSelector.cpp
         shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
         LearnerVerb/Source/PluginEntry.cpp
@@ -400,6 +404,7 @@ target_sources(EarTrainerTests
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
+        shared/CompactSelector.cpp
         shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp
 )

@@ -112,6 +112,7 @@ namespace AbcTrainTheme
         constexpr double release    = 260.0;   // ...so it settles, not snaps
         constexpr double transition = 320.0;   // panel/game changes
         constexpr double feedback   = 900.0;   // correct-answer glow decay
+        constexpr double sway       = 720.0;   // wrong-answer settle
         constexpr double breath     = 3400.0;  // progress-bar idle pulse
     }
 

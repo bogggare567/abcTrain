@@ -52,6 +52,7 @@ Written to be readable by someone who wasn't there.
 | [019](decisions/019-design-system-and-light-theme.md) | Design tokens, a designed light theme, eased widget state |
 | [020](decisions/020-continuous-answers.md) | Continuous answers with a difficulty-scaled tolerance band |
 | [021](decisions/021-sessions-and-navigation.md) | Training runs with a shape; Home → Training screens |
+| [022](decisions/022-motion-audit-and-indicators.md) | The motion audit; compact indicators; a tint per exercise |
 
 ## Repo-level files
 

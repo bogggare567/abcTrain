@@ -781,6 +781,16 @@ rationale; summary here.
   with gain reduction, glow intensifying as it works. Downward on
   purpose (see ADR 019): GR is the one meter where "more is lower", and
   a reused upward level meter would teach the wrong model.
+- `shared/CompactSelector.h/.cpp` — a one-or-two-glyph value plus a
+  hairline chevron, opening a `PopupMenu` on click; no well and no border
+  until hovered. Replaces the language and window-size `ComboBox`es in
+  EarTrainer's title row (142px of well → ~75px of indicator). Not a
+  `ComboBox` subclass on purpose: restyling would have gone through
+  `LookAndFeel::drawComboBox`, shared with every combo box in all four
+  plugins that genuinely *is* a form field. Menu label and indicator label
+  are separate fields, since the menu must say "Русский" where the
+  indicator has room only for "RU". See
+  [decisions/022](docs/decisions/022-motion-audit-and-indicators.md).
 - `shared/GuideTooltip.h/.cpp` — the Learner plugins' contextual guide
   text, now a card that eases in over the visualisation only while a
   control is dragged, over a **real** Gaussian blur

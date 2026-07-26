@@ -10,6 +10,7 @@
 #include "SessionManager.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
+#include "../shared/CompactSelector.h"
 #include "../shared/AppIcons.h"
 #include "../shared/Vectorscope.h"
 #include "../shared/SpectrumAnalyzer.h"
@@ -53,16 +54,25 @@ private:
 
             targetProgress = target;
 
-            // Fast-track any still-running animation to completion first,
-            // so its own onComplete callback removes *itself* from
-            // `updater` before `currentAnimator` gets reassigned below -
-            // otherwise that callback (which reads the member by name,
-            // not by captured value) would end up removing the new
-            // animator instead of the one it actually belongs to.
+            // Where the bar actually *is* right now - read before the
+            // complete() below, which jumps the outgoing animation to its
+            // own end value. Reading it afterwards meant a retarget while
+            // one was still running snapped the fill to the previous
+            // target and only then eased to the new one: a visible jump
+            // in the middle of what should be one continuous move. It
+            // only shows up when two answers land inside 400 ms, which is
+            // routine in Blitz and rare enough elsewhere to have hidden.
+            const auto startValue = displayedProgress;
+
+            // Fast-track any still-running animation to completion, so its
+            // own onComplete callback removes *itself* from `updater`
+            // before `currentAnimator` gets reassigned below - otherwise
+            // that callback (which reads the member by name, not by
+            // captured value) would end up removing the new animator
+            // instead of the one it actually belongs to.
             if (! currentAnimator.isComplete())
                 currentAnimator.complete();
 
-            const auto startValue = displayedProgress;
             const auto endValue = target;
 
             currentAnimator = juce::ValueAnimatorBuilder{}
@@ -98,14 +108,22 @@ private:
             if (displayedProgress <= 0.001f)
                 return;
 
-            auto fillBounds = bounds.withWidth (juce::jmax (bounds.getHeight(),
-                                                            bounds.getWidth() * displayedProgress));
+            // The fill can never be narrower than its own corner radius or
+            // it stops being a rounded shape - so the first few percent
+            // are shown by fading a minimum-width pill in rather than
+            // popping one into existence at full opacity.
+            const auto minWidth = bounds.getHeight();
+            const auto naturalWidth = bounds.getWidth() * displayedProgress;
+            auto fillBounds = bounds.withWidth (juce::jmax (minWidth, naturalWidth));
+            const auto emergence = juce::jlimit (0.0f, 1.0f, naturalWidth / minWidth);
 
             juce::ColourGradient fillGradient (theme.accent.darker (0.1f), fillBounds.getX(), fillBounds.getY(),
                                                 theme.accent.brighter (0.2f), fillBounds.getRight(), fillBounds.getY(),
                                                 false);
             g.setGradientFill (fillGradient);
+            g.setOpacity (AbcTrainTheme::Ease::out (emergence));
             g.fillRoundedRectangle (fillBounds, radius);
+            g.setOpacity (1.0f);
 
             // The "breathing" glow: a soft, slowly-pulsing highlight right
             // at the leading edge of the fill - only drawn once there's
@@ -113,7 +131,10 @@ private:
             // pulse for no reason.
             if (displayedProgress > 0.02f)
             {
-                const auto glowAlpha = 0.10f + 0.12f * (0.5f + 0.5f * std::sin (breathPhase));
+                // Faded in over the same first stretch as the fill, so the
+                // glow doesn't switch on the instant progress crosses 2%.
+                const auto glowFade = juce::jlimit (0.0f, 1.0f, (displayedProgress - 0.02f) * 25.0f);
+                const auto glowAlpha = glowFade * (0.10f + 0.12f * (0.5f + 0.5f * std::sin (breathPhase)));
                 const auto glowWidth = juce::jmin (20.0f, fillBounds.getWidth());
                 auto glowBounds = fillBounds.removeFromRight (glowWidth);
                 g.setColour (theme.textBright.withAlpha (glowAlpha));
@@ -130,7 +151,12 @@ private:
             breathPhase += 0.03f;
             if (breathPhase > juce::MathConstants<float>::twoPi)
                 breathPhase -= juce::MathConstants<float>::twoPi;
-            repaint();
+
+            // Nothing breathes on an empty bar, so nothing needs
+            // repainting either - this timer used to redraw the widget
+            // 30 times a second for a picture that never changed.
+            if (displayedProgress > 0.02f)
+                repaint();
         }
 
         float targetProgress = 0.0f;
@@ -202,7 +228,7 @@ private:
     EarTrainerProcessor& processor;
 
     juce::Label titleLabel;
-    juce::ComboBox languageSelector;
+    CompactSelector languageSelector;
     // Icon for whichever game is currently selected (see AppIcons) - kept
     // in sync with the active game in refreshFromGameState(), so a pick
     // from the card grid or a difficulty-driven change both update it.
@@ -253,7 +279,7 @@ private:
 
     void setUiScale (float newScale);
     float uiScale = 1.0f;
-    juce::ComboBox sizeSelector;
+    CompactSelector sizeSelector;
 
     // Practice / Survival / Blitz. A run in the latter two ends on its
     // own terms (lives or clock) and posts a score against the exercise;
