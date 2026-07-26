@@ -96,7 +96,12 @@ editors plus five originally-synthesized built-in training samples
 (`assets/samples/`) exposed through the existing opt-in
 `ReferenceAudioLibrary`, and why a folder of real commercial "name your
 price" albums pointed at during that same request was deliberately never
-read or embedded, 019 is the `shared/AbcTrainTheme` design-token layer, a
+read or embedded, 020 is the optional continuous-answer mode on the
+`Game` interface (a tolerance band that narrows with difficulty, and why
+its unit differs per game), 021 is training runs having a shape
+(Practice/Survival/Blitz, lives, auto-advance) plus the Home->Training
+screen split and why "what interests you" is a star rather than a
+first-run questionnaire, 019 is the `shared/AbcTrainTheme` design-token layer, a
 genuinely designed (not inverted) light theme, `shared/WidgetStateRegistry`
 solving the eased-hover problem ADR 018 recorded as unsolvable, tracked
 typography, gradient-filled visualisations, the `GainReductionMeter`,
@@ -139,11 +144,28 @@ full rationale.
 - `Source/Games/Game.h` — the interface: `prepare`/`process`,
   `setDifficulty(int level)` (1-10, see ADR 002), `newRound`/
   `submitAnswer(int)`, `getNumChoices`/`getChoiceLabel(int)`, answer/
-  feedback getters, score getters. Is a `juce::ChangeBroadcaster`.
-- `Source/Games/EQGame.{h,cpp}` — "guess the band": pink noise through an
-  `IIR` peak filter, random octave band (100 Hz–12.8 kHz, 8 choices).
-  `setDifficulty` scales the boost/cut amount: 9 dB (levels 1-3) → 6 dB
-  (4-6) → 3 dB (7-10). Choice count never changes.
+  feedback getters, score getters. Is a `juce::ChangeBroadcaster`. Also
+  carries an **optional continuous-answer mode**
+  (`usesContinuousScale`/`getToleranceNormalised`/`getCorrectNormalised`/
+  `getChosenNormalised`/`formatNormalisedValue`/`submitNormalisedAnswer`/
+  `getGridMarks`) for the four games whose skill is a *value* rather than
+  a category — everything in normalised 0..1 axis space, with the game
+  owning the mapping to real units so the slider stays a dumb ruler. All
+  non-pure-virtual with inert defaults, same shape as
+  `setReferenceAudioLibrary`, so the five categorical games and every
+  existing `submitAnswer(int)` call site are untouched. See
+  [decisions/020](docs/decisions/020-continuous-answers.md).
+- `Source/Games/EQGame.{h,cpp}` — "find the frequency": pink noise through
+  an `IIR` peak filter at a frequency drawn **log-uniformly across the
+  whole 100 Hz–12.8 kHz range**, not snapped to one of eight octave
+  centres (fixed centres were memorisable as positions without learning
+  what a frequency sounds like). Continuous scale, log axis running half
+  an octave past each end so 100 Hz and 12.8 kHz sit inside it.
+  `setDifficulty` scales *both* the boost/cut (9/6/3 dB) and — the real
+  lever now — the accept band: ±1.0 → 0.6 → 0.35 **octaves**, so the
+  slack is the same ratio at 200 Hz as at 8 kHz. The eight octave
+  frequencies survive as the emphasised grid marks, which is also what
+  keeps the legacy `submitAnswer(int)` path working unchanged.
 - `Source/Games/CompressionGame.{h,cpp}` — "guess the compression":
   repeating percussive noise burst through `juce::dsp::Compressor` at one
   of 3 threshold/ratio presets (weak/medium/strong), with a fixed
@@ -168,16 +190,22 @@ full rationale.
 - `Source/Games/PanGame.{h,cpp}` — "guess the pan position": pink noise
   panned with an equal-power law (`gainL=cos(theta)`, `gainR=sin(theta)`,
   which is loudness-equalized for free) to one of 5 positions (Hard
-  Left/Left/Center/Right/Hard Right). `setDifficulty` follows
-  `CompressionGame`'s precedent exactly: same 5 labels throughout, but
-  swaps between 3 position tables whose values converge toward center at
-  higher tiers.
+  Left/Left/Center/Right/Hard Right). Now **continuous**: the target sits
+  anywhere in -1..+1 rather than on one of five named points ("Left" is
+  not a pan value), on a linear axis since equal-power panning already
+  makes perceived position track the control linearly. Reads as C / L86 /
+  R40. `setDifficulty` narrows the accept band (±0.35 → 0.22 → 0.12 of
+  the field); the three position tables remain, driving only the legacy
+  discrete path.
 - `Source/Games/DelayGame.{h,cpp}` — "guess the delay time": a percussive
-  noise burst through a `juce::dsp::DelayLine` at one of 4 fixed times
-  (50/150/300/500 ms), feedback 0, fixed 50% dry/wet. Those four times
-  never change with difficulty (they're the literal spec) — instead
-  `setDifficulty` shortens the burst repeat period (1.4s → 0.9s → 0.6s),
-  giving less time to judge the delay before the next burst.
+  noise burst through a `juce::dsp::DelayLine`, feedback 0, fixed 50%
+  dry/wet. Now **continuous**: any time in 20–640 ms (quantised to 5 ms so
+  the answer stays nameable), on a **log** axis, with the tolerance as a
+  **ratio** (±35% → 22% → 13%) rather than a fixed number of milliseconds
+  — being 20 ms out at 40 ms and at 500 ms are completely different
+  mistakes. `setDifficulty` still also shortens the burst repeat period
+  (1.4s → 0.9s → 0.6s). The four original times (50/150/300/500 ms)
+  remain as grid marks and drive the legacy discrete path.
 - `Source/Games/DistortionGame.{h,cpp}` — "guess the distortion type": a
   waveshaper applied to pink noise, one of 4 types (Soft Clip = `tanh`,
   Hard Clip = `jlimit`, Tape Saturation = `tanh` + a post-clip lowpass,
@@ -193,13 +221,14 @@ full rationale.
   one of 4 named widths (Narrow/Normal/Wide/Extra Wide, no numbers
   shown). `setDifficulty` converges the underlying width multipliers
   toward 1.0 at higher tiers, same shape as `PanGame`.
-- `Source/Games/DBGame.{h,cpp}` — "guess the gain change": a fixed dB
-  offset (`Decibels::decibelsToGain`) applied to pink noise, 5 choices
-  spaced by a step size in dB. This is the **one** game whose choice
-  *labels* change with difficulty rather than staying fixed — the labels
-  are literally the dB numbers ("-6dB".."+6dB"), so a smaller step at
-  higher tiers ("+3dB" → "+2dB" at the 2 dB step) means the labels
-  themselves get recomputed each tier, not just the DSP behind them.
+- `Source/Games/DBGame.{h,cpp}` — "guess the gain change": a dB offset
+  (`Decibels::decibelsToGain`) applied to pink noise. Now **continuous**:
+  any value in -9..+9 dB, quantised to 0.5 dB, on a linear axis since dB
+  is already the perceptual unit. `setDifficulty` narrows the accept band
+  (±2.5 → 1.5 → 1.0 dB) — and deliberately stops at 1 dB rather than
+  going lower, because below roughly that a level difference stops being
+  reliably audible at all, so a tighter band would test luck rather than
+  hearing. The 5 stepped choices remain for the legacy discrete path.
 - `Source/Games/FrequencyRangeGame.{h,cpp}` — "name the range": a peak
   filter boosts or cuts a frequency chosen log-uniformly *within* one of
   7 standard named ranges (Sub-bass/Bass/Low-mids/Mids/High-mids/
@@ -277,7 +306,15 @@ full rationale.
   [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)).
   Games themselves know nothing about points or levels — kept out of the
   `Game` interface deliberately, see ADR 002 for the one thing that *did*
-  need to go in (`setDifficulty`).
+  need to go in (`setDifficulty`). Also keeps **lifetime per-exercise
+  stats** (`GameStats`: rounds, correct, best streak, best Survival/Blitz
+  score) and a **favourite flag** per game, both persisted and both
+  surfaced on the home screen's cards. Deliberately separate from each
+  `Game`'s own `getScore()`/`getRoundsPlayed()`, which stay in-memory
+  session counters. Keyed by game *index*, so new games must be
+  **appended** to `GameManager`'s registration list, never inserted —
+  nothing in the code enforces that, see
+  [decisions/021](docs/decisions/021-sessions-and-navigation.md).
 - `Source/PluginProcessor.{h,cpp}` — ignores host input entirely;
   generates its own test signal via `GameManager::process`. Owns
   `GameManager` then `ProgressManager` in that declaration order (matters
@@ -299,7 +336,25 @@ full rationale.
   [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md)),
   the same `juce_animation` module already used by `LevelProgressBar`'s
   fill transition below.
-- `Source/PluginEditor.{h,cpp}` — fully generic: `ComboBox` game selector,
+- `Source/SessionManager.{h,cpp}` — the shape of one training run:
+  Practice (unlimited), Survival (3 lives, a wrong answer costs one, ends
+  at zero), Blitz (90s clock, a wrong answer costs 5 seconds rather than
+  ending the run — the pressure is pace, not caution). Also owns the
+  auto-advance delay (~0.9s after correct, ~1.9s after wrong, none once a
+  run has ended). Pure state: no `Game`, no `Component`, no message loop,
+  which is why `tests/SessionManagerTest` can drive every path directly.
+  See [decisions/021](docs/decisions/021-sessions-and-navigation.md).
+- `Source/HomeScreenComponent.{h,cpp}` — the screen you land on, replacing
+  the old `ComboBox` game selector entirely. Header (level, streak), then
+  trainings grouped by the **skill they build** (Frequency / Dynamics /
+  Space & stereo / Character) rather than by registration order, each as a
+  card with its icon, one line on what it gives you, and your own record.
+  A star per card pins it to a "Your focus" group above everything else —
+  the "choose what interests you" idea without a first-run questionnaire
+  whose answers go stale (see ADR 021). Lives in a `juce::Viewport`: nine
+  trainings across four categories already exceed the window.
+- `Source/PluginEditor.{h,cpp}` — fully generic: two screens (Home ⇄
+  Training, exactly one visible at a time),
   a single `ChoiceSliderComponent` rebuilt via `setChoices()` on switch
   *or* whenever a fresh round's choice count no longer matches (needed
   once `ReverbGame`'s choice count became difficulty-dependent), no
@@ -315,6 +370,7 @@ full rationale.
   including a `levelSelector` `ComboBox` (1-10)
   that calls `ProgressManager::setLevelManually` directly, so difficulty
   is player-controllable, not just an automatic side effect of points —
+  a mode selector (Practice/Survival/Blitz) with a lives/clock readout,
   an "Updates" button (`shared/UpdateChecker`, see
   [decisions/007](docs/decisions/007-update-checker.md)) that now always
   shows "Checking..." → a result → (on no response within 6s) "Couldn't
@@ -324,9 +380,14 @@ full rationale.
   for the real z-order bug this fixes).
 
 Adding a new exercise: create `Source/Games/NewGame.{h,cpp}` implementing
-`Game` (including a real `setDifficulty` — there's no default), register
-it in `GameManager`'s constructor, add the two files to `CMakeLists.txt`.
-No processor/editor changes needed.
+`Game` (including a real `setDifficulty` — there's no default),
+**append** it to `GameManager`'s constructor, add the two files to
+`CMakeLists.txt`, and add it to `categoryForGame()` in
+`Source/PluginEditor.cpp` so it lands in a home-screen group (anything
+unrecognised falls into "Character"). Append rather than insert:
+`ProgressManager`'s per-exercise stats and favourites are keyed by index,
+so reordering the list shuffles every player's saved record. No
+processor changes needed.
 
 Each game's own `getScore()`/`getRoundsPlayed()` (the "Score: X / Y" label
 per game) stay in-memory-only, session-scoped counters — unrelated to
@@ -904,17 +965,37 @@ plugin targets), so no plugin host or GUI is needed to run it.
   `StereoWidthGameTest` additionally checks left and right samples
   actually differ, verifying the two independent `PinkNoiseGenerator`s
   really decorrelate. `DBGameTest` checks the choice labels themselves at
-  three difficulty levels, since `DBGame` is the one game whose labels
-  are recomputed per tier. `FrequencyRangeGameTest` checks the 7 choice
+  three difficulty levels, since `DBGame`'s legacy discrete labels are
+  recomputed per tier. `FrequencyRangeGameTest` checks the 7 choice
   labels match the standard range names exactly. Note `ReverbGame` now
   defaults to the easy tier (2 choices) *before* `setDifficulty` is ever
   called, matching the other games' easy-tier defaults — tests that want
   all 4 types must call `setDifficulty(10)` first. `GameManagerTest`
-  asserts 9 registered games.
+  asserts 9 registered games. Note these all exercise the **discrete**
+  `submitAnswer(int)` path, which the four continuous games deliberately
+  kept verbatim (ADR 020) — which is why every one of them passed
+  unedited through that change.
 - `tests/ProgressManagerTest.cpp` — level/points math, streak, daily
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
   rather than through the real `ChangeListener` wiring (see below).
+- `tests/SessionManagerTest.cpp` — the Practice/Survival/Blitz state
+  machine driven directly: practice never ends, survival spends exactly
+  one life per wrong answer and reports its score once through
+  `onRunEnded`, answers after a run has ended are ignored, blitz spends
+  time rather than lives, ticking does nothing outside blitz, switching
+  mode starts a fresh run, auto-advance waits longer after a wrong answer
+  and not at all once the run is over, and a practice run reports no
+  score. Pure state, so none of the message-loop concerns below apply.
+- `tests/ContinuousScaleTest.cpp` — one shared contract run against all
+  four continuous games (EQ/Pan/dB/Delay): on-target always passes, a
+  whole axis away always fails, tolerance narrows with difficulty, a
+  guess just inside the band passes and just outside fails, repeat
+  answers are ignored, grid marks stay on the axis. Plus the per-game
+  axis-linearity check that is the whole justification for each one's
+  choice of scale — equal ratios take equal distance on the log axes
+  (EQ, Delay), equal dB take equal distance on the linear one. See
+  [decisions/020](docs/decisions/020-continuous-answers.md).
 - `tests/ReferenceAudioLibraryTest.cpp` — writes real WAV files to a temp
   folder and checks `rescan()`'s category/file-count contract (including
   that the two always-present built-in categories, see ADR 018, are

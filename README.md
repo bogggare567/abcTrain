@@ -27,21 +27,41 @@ effects that teach as you use them.**
 
 ## 🎮 9 games
 
-| | Game | What you're guessing |
-|---|---|---|
-| 🎚️ | Guess the Band | Which of 8 octave bands (100 Hz–12.8 kHz) got boosted or cut |
-| 🥁 | Guess the Compression | How strong the compression is (weak/medium/strong) |
-| 🏛️ | Guess the Reverb | Room / Hall / Plate / Spring |
-| ↔️ | Guess the Pan Position | Hard Left – Left – Center – Right – Hard Right |
-| ⏱️ | Guess the Delay Time | 50 / 150 / 300 / 500 ms |
-| 🔥 | Guess the Distortion | Soft Clip / Hard Clip / Tape Saturation / Overdrive |
-| 📐 | Guess the Stereo Width | Narrow – Normal – Wide – Extra Wide |
-| 🔊 | Guess the Gain Change | ±dB (the one game whose choice labels change with difficulty) |
-| 🎯 | Name the Range | Sub-bass / Bass / Low-mids / Mids / High-mids / Presence / Air |
+| | Game | What you're guessing | Answer |
+|---|---|---|---|
+| 🎚️ | Find the Frequency | Which frequency got boosted or cut, anywhere in 100 Hz–12.8 kHz | scale |
+| ↔️ | Guess the Pan Position | Where it sits across the stereo field | scale |
+| 🔊 | Guess the Gain Change | How much the level moved, −9…+9 dB | scale |
+| ⏱️ | Guess the Delay Time | How long the echo is, 20–640 ms | scale |
+| 🥁 | Guess the Compression | How strong the compression is (weak/medium/strong) | choice |
+| 🏛️ | Guess the Reverb | Room / Hall / Plate / Spring | choice |
+| 🔥 | Guess the Distortion | Soft Clip / Hard Clip / Tape Saturation / Overdrive | choice |
+| 📐 | Guess the Stereo Width | Narrow – Normal – Wide – Extra Wide | choice |
+| 🎯 | Name the Range | Sub-bass / Bass / Low-mids / Mids / High-mids / Presence / Air | choice |
 
 Every game shares one `Game` interface, one generic UI, adaptive
 difficulty (level 1–10), a daily login streak, and a daily challenge — see
 [docs/diagrams/game-engine.md](docs/diagrams/game-engine.md).
+
+**Four of them ask for a value, not a choice.** EQ, pan, gain and delay
+draw a real target from the whole range each round — 425 Hz, L86, −3.5 dB,
+185 ms — and you drag along a scale to answer. Difficulty narrows the
+tolerance band rather than making the sound weaker, so harder means *more
+precise* instead of *less audible*. The band is in the unit the ear works
+in: octaves for frequency, a ratio for delay, dB for gain. See
+[decisions/020](docs/decisions/020-continuous-answers.md). The other five
+stay multiple-choice, because their answer genuinely is a category
+(which reverb, which kind of saturation).
+
+**Runs have a shape.** *Practice* is unlimited. *Survival* gives you three
+lives and ends when they're gone. *Blitz* is a 90-second clock where a
+wrong answer costs five seconds instead of a life. Rounds advance on their
+own after an answer, and every exercise keeps its own lifetime record. See
+[decisions/021](docs/decisions/021-sessions-and-navigation.md).
+
+You land on a home screen that groups the trainings by the skill they
+build — frequency, dynamics, space & stereo, character — with a star to
+pin the ones you're focusing on.
 
 By default every game generates its own pink noise, chosen deliberately
 for its flat spectrum (fair for any frequency/width question). A
