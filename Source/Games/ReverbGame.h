@@ -99,6 +99,10 @@ private:
 
     juce::Random random;
 
+    // Redrawn every round - see applyType/newRound.
+    float roundSizeJitter = 0.0f;
+    float roundDampingJitter = 0.0f;
+
     int correctTypeIndex = 0;
     int chosenTypeIndex = -1;
     bool answered = false;

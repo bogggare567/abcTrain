@@ -267,21 +267,33 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // The price stays as text beside the icon: an icon alone cannot say
     // "this costs you a life", and a cost you discover after paying is
     // exactly the thing decisions/014 was written about.
-    hintCostLabel.setJustificationType (juce::Justification::centredLeft);
-    hintCostLabel.setFont (AbcTrainLookAndFeel::captionFont());
-    addAndMakeVisible (hintCostLabel);
 
     processor.setVectorscope (&vectorscope);
     processor.setSpectrumAnalyzer (&hintSpectrum);
     addChildComponent (vectorscope);
     addChildComponent (hintSpectrum);
 
-    modeSelector.addItem (localisation.getText ("ui.modePractice"), 1);
-    modeSelector.addItem (localisation.getText ("ui.modeSurvival"), 2);
-    modeSelector.addItem (localisation.getText ("ui.modeBlitz"), 3);
-    modeSelector.setSelectedId (1, juce::dontSendNotification);
-    modeSelector.onChange = [this] { modeSelected(); };
-    addAndMakeVisible (modeSelector);
+    // Three pills, always all visible. setClickingTogglesState makes JUCE
+    // draw the active one with buttonOnColourId, which the shared theme
+    // already fills - so "which mode am I in" is answered by looking,
+    // never by opening anything.
+    {
+        auto index = 1;
+
+        for (auto* button : { &practiceButton, &survivalButton, &blitzButton })
+        {
+            button->setClickingTogglesState (true);
+            button->setRadioGroupId (modeRadioGroup);
+            button->setConnectedEdges (index == 1 ? juce::Button::ConnectedOnRight
+                                                  : (index == 3 ? juce::Button::ConnectedOnLeft
+                                                                : juce::Button::ConnectedOnLeft | juce::Button::ConnectedOnRight));
+            button->onClick = [this] { modeSelected(); };
+            addAndMakeVisible (button);
+            ++index;
+        }
+
+        practiceButton.setToggleState (true, juce::dontSendNotification);
+    }
 
     runStatusLabel.setJustificationType (juce::Justification::centredRight);
     runStatusLabel.setFont (AbcTrainLookAndFeel::monoFont());
@@ -524,7 +536,6 @@ void EarTrainerEditor::applyTheme()
                                                                   : AppIcons::Icon::sun);
     themeButton.setTooltip (localisation.getText (theme.mode == AbcTrainTheme::Mode::light
                                                        ? "ui.themeDark" : "ui.themeLight"));
-    hintCostLabel.setColour (juce::Label::textColourId, theme.textDim);
 
     currentGameLabel.setColour (juce::Label::textColourId, theme.textBright);
     feedbackLabel.setColour (juce::Label::textColourId, theme.text);
@@ -611,16 +622,21 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     }
 
     // The title, letter-spaced. Drawn here rather than through a Label
-    // because JUCE exposes no tracking control on Label/drawText. The
-    // home screen paints its own header, so this would double up there.
-    if (currentScreen == Screen::training)
-    AbcTrainLookAndFeel::drawTrackedText (
-        g, titleLabel.getText(),
-        juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
-                                 (float) AbcTrainTheme::Spacing::medium,
-                                 (float) getWidth() * 0.5f, 32.0f),
-        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
-        juce::Justification::centredLeft);
+    // because JUCE exposes no tracking control on Label/drawText.
+    //
+    // Both screens carry one now. The home screen's top strip used to hold
+    // six control buttons, which made the first thing anyone read a
+    // toolbar; those are on a bar along the bottom and this says where you
+    // are instead.
+    if (currentScreen != Screen::support)
+        AbcTrainLookAndFeel::drawTrackedText (
+            g, currentScreen == Screen::training ? titleLabel.getText()
+                                                 : localisation.getText ("app.eartrainer.name"),
+            juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
+                                     (float) AbcTrainTheme::Spacing::medium,
+                                     (float) getWidth() * 0.6f, 32.0f),
+            AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
+            juce::Justification::centredLeft);
 }
 
 void EarTrainerEditor::resized()
@@ -646,30 +662,42 @@ void EarTrainerEditor::resized()
                               .reduced (Spacing::large, 0)
                               .withTop (Spacing::large + 32 + Spacing::small
                                          + homeStatusHeight + Spacing::small)
-                              .withTrimmedBottom (Spacing::large + 18));
+                              .withTrimmedBottom (Spacing::large + 30 + Spacing::small));
 
     auto area = getLocalBounds().reduced (Spacing::large);
 
-    // --- title row: identity on the left, global controls on the right ---
-    auto titleRow = area.removeFromTop (32);
-    // Square icon buttons: the old row of wide text buttons took most of
-    // the title bar for controls pressed once a session.
-    constexpr int iconSize = 30;
+    // --- title row: just the name of where you are ---------------------
+    // The app's controls used to live up here, six of them in a row, and
+    // that made the first thing anyone read a toolbar. They are on a bar
+    // along the bottom now (see below); the top is a title.
+    area.removeFromTop (32);
 
-    // Indicators, not form fields: each asks for exactly the width its
-    // own widest value needs (see CompactSelector) instead of a fixed
-    // well sized for the longest item in some other language.
-    languageSelector.setBounds (titleRow.removeFromRight (languageSelector.getPreferredWidth()));
-    titleRow.removeFromRight (Spacing::tight);
-    sizeSelector.setBounds (titleRow.removeFromRight (sizeSelector.getPreferredWidth()));
-    titleRow.removeFromRight (Spacing::medium);
-    themeButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
-    titleRow.removeFromRight (Spacing::tight);
-    updateButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
-    titleRow.removeFromRight (Spacing::tight);
-    trainingSoundsButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
-    titleRow.removeFromRight (Spacing::tight);
-    settingsButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
+    // --- the tool bar, bottom left ---------------------------------------
+    {
+        constexpr int iconSize = 30;
+
+        auto bar = getLocalBounds().reduced (Spacing::large)
+                       .removeFromBottom (iconSize);
+
+        settingsButton.setBounds (bar.removeFromLeft (iconSize));
+        bar.removeFromLeft (Spacing::tight);
+        trainingSoundsButton.setBounds (bar.removeFromLeft (iconSize));
+        bar.removeFromLeft (Spacing::tight);
+        themeButton.setBounds (bar.removeFromLeft (iconSize));
+        bar.removeFromLeft (Spacing::tight);
+        updateButton.setBounds (bar.removeFromLeft (iconSize));
+        bar.removeFromLeft (Spacing::medium);
+
+        // Indicators, not form fields: each asks for exactly the width its
+        // own widest value needs (see CompactSelector).
+        sizeSelector.setBounds (bar.removeFromLeft (sizeSelector.getPreferredWidth())
+                                    .withSizeKeepingCentre (sizeSelector.getPreferredWidth(), 22));
+        bar.removeFromLeft (Spacing::tight);
+        languageSelector.setBounds (bar.removeFromLeft (languageSelector.getPreferredWidth())
+                                        .withSizeKeepingCentre (languageSelector.getPreferredWidth(), 22));
+
+        soundkorbLink.setBounds (bar.removeFromRight (130).withSizeKeepingCentre (130, 18));
+    }
 
     area.removeFromTop (Spacing::section);
 
@@ -679,10 +707,13 @@ void EarTrainerEditor::resized()
         auto inner = exerciseSection;
         inner.removeFromTop (Spacing::large);   // clear the section heading
 
-        auto gameRow = inner.removeFromTop (28);
-        backButton.setBounds (gameRow.removeFromLeft (28).withSizeKeepingCentre (28, 28));
-        gameRow.removeFromLeft (Spacing::medium);
-        gameIcon.setBounds (gameRow.removeFromLeft (26));
+        // "Home" as a word, not a 28px house. A labelled button is the
+        // one control on this screen a lost player is looking for, and an
+        // icon they have to decode is exactly the wrong shape for that.
+        auto gameRow = inner.removeFromTop (30);
+        backButton.setBounds (gameRow.removeFromLeft (104).withSizeKeepingCentre (104, 30));
+        gameRow.removeFromLeft (Spacing::large);
+        gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
         currentGameLabel.setBounds (gameRow);
 
@@ -746,13 +777,22 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::small);
 
         auto bottomRow = inner.removeFromTop (34);
-        modeSelector.setBounds (bottomRow.removeFromLeft (118));
-        bottomRow.removeFromLeft (Spacing::small);
-        hintButton.setBounds (bottomRow.removeFromLeft (30).withSizeKeepingCentre (30, 30));
-        bottomRow.removeFromLeft (Spacing::tight);
-        hintCostLabel.setBounds (bottomRow.removeFromLeft (120));
+
+        // The hint used to be a 30px glyph with a separate caption beside
+        // it, and the glyph read as a "no entry" sign - so the one control
+        // you reach for when stuck looked disabled and unlabelled. It is
+        // one button now, with its own price written on it.
+        hintButton.setBounds (bottomRow.removeFromRight (168).withSizeKeepingCentre (168, 30));
+        bottomRow.removeFromRight (Spacing::medium);
+
+        const auto pillWidth = 84;
+        practiceButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
+        survivalButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
+        blitzButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
+
+        bottomRow.removeFromLeft (Spacing::medium);
         runStatusLabel.setBounds (bottomRow.removeFromRight (120));
-        scoreLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
+        scoreLabel.setBounds (bottomRow);
     }
 
     area.removeFromTop (Spacing::large);
@@ -765,9 +805,6 @@ void EarTrainerEditor::resized()
     // else. What replaces it *during* a run is a toast: nothing until you
     // earn something, then a moment of it. See decisions/024.
     progressSection = {};
-
-    // --- footer ---
-    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
 
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not they're currently visible.
@@ -834,12 +871,9 @@ void EarTrainerEditor::modeSelected()
 {
     // setMode() starts a fresh run itself, so this is one call, not two.
     // The price changes with the mode, so the button's label must too.
-    switch (modeSelector.getSelectedId())
-    {
-        case 2:  session.setMode (SessionManager::Mode::survival); break;
-        case 3:  session.setMode (SessionManager::Mode::blitz); break;
-        default: session.setMode (SessionManager::Mode::practice); break;
-    }
+    session.setMode (survivalButton.getToggleState() ? SessionManager::Mode::survival
+                     : blitzButton.getToggleState()   ? SessionManager::Mode::blitz
+                                                      : SessionManager::Mode::practice);
 
     startNewRun();
 }
@@ -994,8 +1028,9 @@ void EarTrainerEditor::showScreen (Screen screen)
     for (auto* c : { (juce::Component*) &backButton, (juce::Component*) &gameIcon,
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
-                     (juce::Component*) &modeSelector,
-                     (juce::Component*) &hintButton, (juce::Component*) &hintCostLabel,
+                     (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
+                     (juce::Component*) &blitzButton,
+                     (juce::Component*) &hintButton,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel })
     {
@@ -1106,15 +1141,12 @@ void EarTrainerEditor::refreshLocalisedText()
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));
     trainingSoundsButton.setTooltip (localisation.getText ("ui.trainingSounds"));
-    backButton.setTooltip (localisation.getText ("ui.back"));
+    backButton.setButtonText (localisation.getText ("ui.back"));
 
     {
-        const auto selected = modeSelector.getSelectedId();
-        modeSelector.clear (juce::dontSendNotification);
-        modeSelector.addItem (localisation.getText ("ui.modePractice"), 1);
-        modeSelector.addItem (localisation.getText ("ui.modeSurvival"), 2);
-        modeSelector.addItem (localisation.getText ("ui.modeBlitz"), 3);
-        modeSelector.setSelectedId (selected > 0 ? selected : 1, juce::dontSendNotification);
+        practiceButton.setButtonText (localisation.getText ("ui.modePractice"));
+        survivalButton.setButtonText (localisation.getText ("ui.modeSurvival"));
+        blitzButton.setButtonText (localisation.getText ("ui.modeBlitz"));
     }
 
     rebuildGameSelectorItems();
@@ -1230,8 +1262,7 @@ void EarTrainerEditor::requestHint()
     {
         // Refused - say why rather than doing nothing, the same rule the
         // "Updates" button had to learn (see decisions/014).
-        hintCostLabel.setText (localisation.getText ("ui.hintTooExpensive"), juce::dontSendNotification);
-        hintCostLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().negative);
+        hintButton.setButtonText (localisation.getText ("ui.hintTooExpensive"));
 
         juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
         juce::Timer::callAfterDelay (2000, [safeThis]
@@ -1239,8 +1270,6 @@ void EarTrainerEditor::requestHint()
             if (safeThis == nullptr)
                 return;
 
-            safeThis->hintCostLabel.setColour (juce::Label::textColourId,
-                                                AbcTrainTheme::current().textDim);
             safeThis->refreshHintButton();
         });
         return;
@@ -1261,28 +1290,29 @@ void EarTrainerEditor::requestHint()
 
 void EarTrainerEditor::refreshHintButton()
 {
+    // The price goes on the button, not next to it. A caption beside a
+    // glyph made you read two things to answer one question, and made the
+    // glyph itself look like a decoration rather than the control.
     if (hintRevealed)
     {
         hintButton.setEnabled (false);
-        hintCostLabel.setText (localisation.getText ("ui.hintShown"), juce::dontSendNotification);
+        hintButton.setButtonText (localisation.getText ("ui.hintShown"));
         return;
     }
 
     hintButton.setEnabled (session.isRunActive());
-    hintButton.setTooltip (localisation.getText ("ui.hintFree"));
 
     switch (session.getMode())
     {
         case SessionManager::Mode::survival:
-            hintCostLabel.setText (localisation.getText ("ui.hintCostLife"), juce::dontSendNotification);
+            hintButton.setButtonText (localisation.getText ("ui.hintCostLife"));
             break;
         case SessionManager::Mode::blitz:
-            hintCostLabel.setText (localisation.getText ("ui.hintCostSeconds",
-                                                          { { "seconds", juce::String (SessionManager::blitzHintSeconds) } }),
-                                    juce::dontSendNotification);
+            hintButton.setButtonText (localisation.getText ("ui.hintCostSeconds",
+                                                            { { "seconds", juce::String (SessionManager::blitzHintSeconds) } }));
             break;
         default:
-            hintCostLabel.setText (localisation.getText ("ui.hintFree"), juce::dontSendNotification);
+            hintButton.setButtonText (localisation.getText ("ui.hintFree"));
             break;
     }
 }
@@ -1370,9 +1400,46 @@ void EarTrainerEditor::refreshFromGameState()
     instructionLabel.setText (translateGameInstructions (game.getName(), game.getInstructions(), localisation),
                                juce::dontSendNotification);
 
-    scoreLabel.setText (localisation.getText ("ui.score", { { "correct", juce::String (game.getScore()) },
-                                                             { "total", juce::String (game.getRoundsPlayed()) } }),
-                         juce::dontSendNotification);
+    // The score line answers "am I getting better" - and now also "what
+    // has to happen for the level to change", which nothing on screen
+    // said before. Three states, because there are exactly three:
+    // climbing toward the threshold, sitting the promotion test, or done.
+    {
+        auto& progress = processor.getProgressManager();
+        const auto index = processor.getGameManager().getActiveGameIndex();
+
+        const auto tally = localisation.getText ("ui.score",
+                                                  { { "correct", juce::String (game.getScore()) },
+                                                    { "total", juce::String (game.getRoundsPlayed()) } });
+
+        juce::String levelLine;
+
+        if (progress.isPromotionPendingForGame (index))
+        {
+            levelLine = localisation.getText ("ui.promotionTest",
+                                               { { "done", juce::String (progress.getPromotionStreakForGame (index)) },
+                                                 { "needed", juce::String (ProgressManager::promotionTestLength) } });
+        }
+        else if (progress.getLevelForGame (index) < ProgressManager::maxLevel)
+        {
+            const auto level = progress.getLevelForGame (index);
+            const auto have = progress.getPointsForGame (index)
+                                  - ProgressManager::pointsRequiredForLevel (level);
+            const auto need = ProgressManager::pointsRequiredForLevel (level + 1)
+                                  - ProgressManager::pointsRequiredForLevel (level);
+
+            levelLine = localisation.getText ("ui.toNextLevel",
+                                               { { "level", juce::String (level + 1) },
+                                                 { "have", juce::String (juce::jmax (0, have)) },
+                                                 { "need", juce::String (need) } });
+        }
+        else
+        {
+            levelLine = localisation.getText ("ui.levelMaxed");
+        }
+
+        scoreLabel.setText (tally + "    " + levelLine, juce::dontSendNotification);
+    }
 
     if (game.hasAnswered())
     {

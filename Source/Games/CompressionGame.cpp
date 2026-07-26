@@ -97,6 +97,19 @@ void CompressionGame::setDifficulty (int level)
 void CompressionGame::newRound()
 {
     correctLevelIndex = random.nextInt (numLevels);
+
+    // A small random nudge on top of the preset, redrawn every round.
+    //
+    // Without it the three settings are three fixed sounds, and after a
+    // few dozen rounds the exercise stops being "how hard is this being
+    // squeezed" and becomes "which of these three recordings is it" -
+    // which is a memory test wearing a listening test's clothes. The
+    // jitter is smaller than the gap between neighbouring presets at every
+    // level, so it makes the sound less memorable without making the
+    // answer ambiguous.
+    roundThresholdJitterDb = random.nextFloat() * 2.0f - 1.0f;
+    roundRatioJitter = random.nextFloat() * 0.4f - 0.2f;
+
     chosenLevelIndex = -1;
     answered = false;
     updateCompressor();
@@ -138,6 +151,6 @@ juce::String CompressionGame::getFeedbackText() const
 void CompressionGame::updateCompressor()
 {
     const auto& preset = presets[(size_t) correctLevelIndex];
-    compressor.setThreshold (preset.thresholdDb);
-    compressor.setRatio (preset.ratio);
+    compressor.setThreshold (preset.thresholdDb + roundThresholdJitterDb);
+    compressor.setRatio (juce::jmax (1.05f, preset.ratio + roundRatioJitter));
 }

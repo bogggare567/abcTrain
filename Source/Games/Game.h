@@ -3,6 +3,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
 #include <vector>
+#include <cmath>
 
 class ReferenceAudioLibrary;
 
@@ -117,6 +118,33 @@ public:
     }
 
     virtual void submitNormalisedAnswer (float normalised) { juce::ignoreUnused (normalised); }
+
+    // How *well* the last answer was given, 0..1, where 1 is dead on the
+    // target and 0 is at the very edge of the accept band. Points scale
+    // with it, so a continuous exercise stops being pass/fail and starts
+    // rewarding precision - which is the actual skill.
+    //
+    // 1.0 by default: a categorical answer is right or wrong and there is
+    // no "nearly", so those games award the flat rate and nothing here
+    // needs to know the difference.
+    virtual float getAnswerQuality() const
+    {
+        // Derived from the continuous hooks rather than reimplemented per
+        // game: every one of them already reports its target, its answer
+        // and its band, so asking each to compute the same ratio again
+        // would be four chances to get it slightly different.
+        if (! usesContinuousScale() || ! hasAnswered())
+            return 1.0f;
+
+        const auto tolerance = getToleranceNormalised();
+
+        if (tolerance <= 0.0f)
+            return 1.0f;
+
+        const auto distance = std::abs (getChosenNormalised() - getCorrectNormalised());
+
+        return juce::jlimit (0.0f, 1.0f, 1.0f - distance / tolerance);
+    }
 
     // ---- A/B: before vs after -----------------------------------------
     //

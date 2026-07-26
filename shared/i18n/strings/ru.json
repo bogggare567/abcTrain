@@ -169,5 +169,8 @@
   "ui.backgroundImage": "Картинка",
   "ui.backgroundDim": "Затемнение",
   "ui.chooseImage": "Выбрать картинку…",
-  "ui.clearImage": "Убрать"
+  "ui.clearImage": "Убрать",
+  "ui.toNextLevel": "До уровня {{level}}: {{have}} / {{need}}",
+  "ui.promotionTest": "Повышение: {{done}} из {{needed}} подряд",
+  "ui.levelMaxed": "Максимальный уровень"
 }

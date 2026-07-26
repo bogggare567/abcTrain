@@ -169,5 +169,8 @@
   "game.distortion.benefit": "Reconhece o carácter que cada tipo de saturação acrescenta e escolhe o que realmente queres.",
   "game.stereowidth.benefit": "Ouve a largura real de uma fonte — o que mantém uma mistura grande sem rasgar o centro.",
   "game.db.benefit": "Calibra o ouvido para mudanças de nível em dB, para que mexer num fader seja consciente.",
-  "game.frequencyrange.benefit": "Aprende as faixas com nome — do sub-bass ao air — para descrever um problema antes de tocar num botão."
+  "game.frequencyrange.benefit": "Aprende as faixas com nome — do sub-bass ao air — para descrever um problema antes de tocar num botão.",
+  "ui.toNextLevel": "Até ao nível {{level}}: {{have}} / {{need}}",
+  "ui.promotionTest": "Subida: {{done}} de {{needed}} seguidas",
+  "ui.levelMaxed": "Nível máximo"
 }

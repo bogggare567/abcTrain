@@ -62,10 +62,10 @@ void ProgressManager::changeListenerCallback (juce::ChangeBroadcaster* source)
     if (gameIndex < 0)
         return;
 
-    registerAnswer (gameIndex, game->wasLastAnswerCorrect());
+    registerAnswer (gameIndex, game->wasLastAnswerCorrect(), game->getAnswerQuality());
 }
 
-void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
+void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float quality)
 {
     // Both vectors are filled in lockstep by the one delegating
     // constructor, but this indexes raw memory - checking both is cheaper
@@ -98,7 +98,7 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
         consecutiveCorrectPerGame[(size_t) gameIndex] = 0;
     }
 
-    applyAnswerToProgress (gameIndex, wasCorrect);
+    applyAnswerToProgress (gameIndex, wasCorrect, juce::jlimit (0.0f, 1.0f, quality));
 
     refreshAchievements();
     saveState();
@@ -222,7 +222,7 @@ int ProgressManager::indexOfGame (const Game& game) const noexcept
     return -1;
 }
 
-bool ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect)
+bool ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality)
 {
     auto& game = progressPerGame[(size_t) gameIndex];
 
@@ -235,7 +235,8 @@ bool ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect)
         return false;
     }
 
-    game.points += pointsPerCorrectAnswer;
+    game.points += pointsPerCorrectAnswer
+                       + juce::roundToInt ((float) precisionBonusPoints * quality);
 
     if (game.level < maxLevel && ! game.promotionPending
         && game.points >= pointsRequiredForLevel (game.level + 1))

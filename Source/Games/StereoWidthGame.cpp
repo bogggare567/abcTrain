@@ -13,7 +13,7 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
-    const auto width = widths[(size_t) correctWidthIndex];
+    const auto width = juce::jmax (0.0f, widths[(size_t) correctWidthIndex] + roundWidthJitter);
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
@@ -56,6 +56,12 @@ void StereoWidthGame::setDifficulty (int level)
 void StereoWidthGame::newRound()
 {
     correctWidthIndex = random.nextInt (numWidths);
+
+    // Same reasoning as CompressionGame::newRound: four fixed widths
+    // become four memorised recordings. Scaled by the current spread, so
+    // the nudge shrinks along with the gaps it has to stay inside.
+    roundWidthJitter = (random.nextFloat() * 0.16f - 0.08f)
+                           * (widths[numWidths - 1] - widths[0]);
     chosenWidthIndex = -1;
     answered = false;
     sendChangeMessage();

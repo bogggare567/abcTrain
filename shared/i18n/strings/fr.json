@@ -169,5 +169,8 @@
   "game.distortion.benefit": "Reconnais le caractère que chaque type de saturation ajoute, et choisis celui que tu veux vraiment.",
   "game.stereowidth.benefit": "Entends la vraie largeur d’une source - ce qui garde un mix grand sans déchirer le centre.",
   "game.db.benefit": "Calibre ton oreille sur les variations de niveau en dB, pour que tes mouvements de fader deviennent conscients.",
-  "game.frequencyrange.benefit": "Apprends les plages nommées - du sub-bass à l’air - pour décrire un problème avant de toucher un bouton."
+  "game.frequencyrange.benefit": "Apprends les plages nommées - du sub-bass à l’air - pour décrire un problème avant de toucher un bouton.",
+  "ui.toNextLevel": "Vers le niveau {{level}} : {{have}} / {{need}}",
+  "ui.promotionTest": "Passage : {{done}} sur {{needed}} d’affilée",
+  "ui.levelMaxed": "Niveau maximum"
 }

@@ -169,5 +169,8 @@
   "ui.backgroundImage": "Image",
   "ui.backgroundDim": "Dim",
   "ui.chooseImage": "Choose image…",
-  "ui.clearImage": "Remove"
+  "ui.clearImage": "Remove",
+  "ui.toNextLevel": "Level {{level}}: {{have}} / {{need}}",
+  "ui.promotionTest": "Level up: {{done}} of {{needed}} in a row",
+  "ui.levelMaxed": "Top level"
 }

@@ -169,5 +169,8 @@
   "game.distortion.benefit": "サチュレーションの種類ごとの性格を聴き分け、本当に欲しいものを選ぶ。",
   "game.stereowidth.benefit": "音源が実際どれだけ広いかを聴く —— 真ん中を裂かずにミックスを大きく保つ力です。",
   "game.db.benefit": "dB 単位のレベル変化に耳を較正し、フェーダー操作を手探りから意識的なものへ。",
-  "game.frequencyrange.benefit": "名前のついた帯域 —— サブベースからエアまで —— を覚え、つまみに手を伸ばす前に問題を言葉にする。"
+  "game.frequencyrange.benefit": "名前のついた帯域 —— サブベースからエアまで —— を覚え、つまみに手を伸ばす前に問題を言葉にする。",
+  "ui.toNextLevel": "レベル{{level}}まで: {{have}} / {{need}}",
+  "ui.promotionTest": "昇格: 連続 {{done}} / {{needed}}",
+  "ui.levelMaxed": "最高レベル"
 }

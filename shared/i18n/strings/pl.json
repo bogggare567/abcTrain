@@ -169,5 +169,8 @@
   "game.distortion.benefit": "Rozpoznaj charakter, jaki dodaje każdy rodzaj przesteru, i wybierz ten, którego naprawdę chcesz.",
   "game.stereowidth.benefit": "Usłysz, jak szerokie jest naprawdę źródło — to, co trzyma miks szeroko bez rozrywania środka.",
   "game.db.benefit": "Skalibruj ucho na zmiany poziomu w dB, żeby ruch fadera był świadomy.",
-  "game.frequencyrange.benefit": "Poznaj nazwane zakresy — od sub-bassu po air — żeby opisać problem, zanim sięgniesz po gałkę."
+  "game.frequencyrange.benefit": "Poznaj nazwane zakresy — od sub-bassu po air — żeby opisać problem, zanim sięgniesz po gałkę.",
+  "ui.toNextLevel": "Do poziomu {{level}}: {{have}} / {{need}}",
+  "ui.promotionTest": "Awans: {{done}} z {{needed}} z rzędu",
+  "ui.levelMaxed": "Najwyższy poziom"
 }

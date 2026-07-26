@@ -86,6 +86,11 @@ private:
 
     juce::Random random;
 
+    // Redrawn every round - see newRound for why the presets are not used
+    // exactly as written.
+    float roundThresholdJitterDb = 0.0f;
+    float roundRatioJitter = 0.0f;
+
     int correctLevelIndex = 0;
     int chosenLevelIndex = -1;
     bool answered = false;

@@ -56,7 +56,7 @@ void DistortionGame::process (juce::AudioBuffer<float>& buffer)
     for (int sample = 0; sample < numSamples; ++sample)
     {
         const auto raw = noise.nextSample();
-        const auto driven = raw * driveAmount;
+        const auto driven = raw * juce::jmax (0.2f, driveAmount + roundDriveJitter);
         auto shaped = waveshape (type, driven);
 
         if (type == Type::tapeSaturation)
@@ -76,17 +76,23 @@ void DistortionGame::process (juce::AudioBuffer<float>& buffer)
 
 void DistortionGame::setDifficulty (int level)
 {
-    if (level <= 3)
-        driveAmount = 6.0f;
-    else if (level <= 6)
-        driveAmount = 3.0f;
-    else
-        driveAmount = 1.5f;
+    // Ramped across all ten levels, like every other game: the drive falls
+    // from an obvious 6x to a subtle 1.2x, where the four types have to be
+    // told apart by the harmonics they add rather than by how loud the
+    // distortion is.
+    driveAmount = rampTolerance (level, 6.0f, 1.2f);
 }
 
 void DistortionGame::newRound()
 {
     correctTypeIndex = random.nextInt (numTypes);
+
+    // A per-round nudge on the drive, for the same reason the other
+    // preset-driven games have one: four fixed drive amounts become four
+    // memorised recordings, and then the exercise is recognition rather
+    // than listening. Scaled by the current drive so it shrinks as the
+    // levels get harder and the margins get thinner.
+    roundDriveJitter = (random.nextFloat() * 0.3f - 0.15f) * driveAmount;
     chosenTypeIndex = -1;
     answered = false;
     tapeLowpassState = 0.0f;

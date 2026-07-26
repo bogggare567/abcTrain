@@ -243,7 +243,10 @@ private:
     // names, which told a player nothing about what each exercise was for
     // or how they were doing at it - see GamePickerComponent.
     // Back to Home from the training screen.
-    IconButton backButton { AppIcons::Icon::home };
+    // A labelled button, not a house glyph: "how do I get back" is the
+    // question a lost player asks, and an icon they have to decode is the
+    // wrong shape for the answer.
+    juce::TextButton backButton;
     juce::Label currentGameLabel;
     juce::Label instructionLabel;
     juce::Label scoreLabel;
@@ -266,8 +269,10 @@ private:
     void setPlayProcessed (bool);
     void refreshBeforeAfter();
 
-    IconButton hintButton { AppIcons::Icon::scope };
-    juce::Label hintCostLabel;
+    // One labelled button carrying its own price, rather than a bare glyph
+    // plus a caption beside it.
+    juce::TextButton hintButton;
+    static constexpr int modeRadioGroup = 8201;
     Vectorscope vectorscope;
     SpectrumAnalyzerComponent hintSpectrum;
     bool hintRevealed = false;
@@ -310,7 +315,11 @@ private:
     // own terms (lives or clock) and posts a score against the exercise;
     // see SessionManager.
     SessionManager session;
-    juce::ComboBox modeSelector;
+    // Three pills, one visibly on. A ComboBox meant the current mode was a
+    // word in a well and the other two were behind a popup - so "what are
+    // my options" cost a click, and the answer appeared as an OS menu that
+    // belongs to no theme at all.
+    juce::TextButton practiceButton, survivalButton, blitzButton;
     juce::Label runStatusLabel;
 
     // Kept so an auto-advance already in flight can be cancelled if the

@@ -60,6 +60,8 @@ private:
 
     juce::Random random;
 
+    float roundWidthJitter = 0.0f;
+
     int correctWidthIndex = 0;
     int chosenWidthIndex = -1;
     bool answered = false;

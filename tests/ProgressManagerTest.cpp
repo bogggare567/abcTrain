@@ -87,9 +87,12 @@ public:
             for (int i = 0; i < 10; ++i)
                 progress.registerAnswer (0, true);
 
-            // Ten correct answers is exactly the points threshold for
-            // level 2 - but it is *only* the threshold. See below.
-            expectEquals (progress.getPointsForGame (0), 100);
+            // A correct answer is worth pointsPerCorrectAnswer plus the
+            // precision bonus scaled by quality; registerAnswer defaults
+            // quality to 1, so these are full marks.
+            expectEquals (progress.getPointsForGame (0),
+                           10 * (ProgressManager::pointsPerCorrectAnswer
+                                  + ProgressManager::precisionBonusPoints));
             expectEquals (progress.getPointsForGame (1), 0);
             expectEquals (progress.getLevelForGame (1), 1);
         }
@@ -162,8 +165,36 @@ public:
             progress.registerAnswer (0, true);
             progress.registerAnswer (0, false);
 
-            expectEquals (progress.getPointsForGame (0), 10);
-            expectEquals (progress.getTotalScore(), 10);
+            const auto full = ProgressManager::pointsPerCorrectAnswer
+                                  + ProgressManager::precisionBonusPoints;
+
+            expectEquals (progress.getPointsForGame (0), full);
+            expectEquals (progress.getTotalScore(), full);
+        }
+
+        beginTest ("precision scales the points a correct answer is worth");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("precision"));
+
+            // Dead on the target is worth the full rate; scraping the edge
+            // of the accept band is worth the base rate and nothing more.
+            progress.registerAnswer (0, true, 1.0f);
+            expectEquals (progress.getPointsForGame (0),
+                           ProgressManager::pointsPerCorrectAnswer
+                               + ProgressManager::precisionBonusPoints);
+
+            progress.registerAnswer (1, true, 0.0f);
+            expectEquals (progress.getPointsForGame (1),
+                           ProgressManager::pointsPerCorrectAnswer);
+
+            // Out-of-range quality is clamped rather than trusted - it
+            // comes from a Game, and a game with a bug should not be able
+            // to award itself a thousand points.
+            progress.registerAnswer (2, true, 9.0f);
+            expectEquals (progress.getPointsForGame (2),
+                           ProgressManager::pointsPerCorrectAnswer
+                               + ProgressManager::precisionBonusPoints);
         }
 
         beginTest ("getTotalScore sums every exercise");
@@ -175,7 +206,9 @@ public:
             progress.registerAnswer (3, true);
             progress.registerAnswer (7, true);
 
-            expectEquals (progress.getTotalScore(), 30);
+            expectEquals (progress.getTotalScore(),
+                           3 * (ProgressManager::pointsPerCorrectAnswer
+                                 + ProgressManager::precisionBonusPoints));
         }
 
         beginTest ("an out-of-range game index is a harmless miss, not a crash");
@@ -252,7 +285,9 @@ public:
 
             GameManager gameManager2;
             ProgressManager reloaded (gameManager2, options);
-            expectEquals (reloaded.getTotalScore(), 10);
+            expectEquals (reloaded.getTotalScore(),
+                           ProgressManager::pointsPerCorrectAnswer
+                               + ProgressManager::precisionBonusPoints);
         }
     }
 

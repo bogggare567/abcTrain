@@ -100,7 +100,12 @@ public:
     // through the real listener chain would be unreliable at best and
     // could hang the test binary at worst. This is the seam tests use
     // instead.
-    void registerAnswer (int gameIndex, bool wasCorrect);
+    // `quality` is 0..1 from Game::getAnswerQuality - how close a
+    // continuous answer landed inside its accept band. It scales the
+    // points awarded, so scraping the edge of the band and hitting the
+    // target dead on are no longer worth the same. Defaults to 1 so every
+    // existing call site and every categorical game is unaffected.
+    void registerAnswer (int gameIndex, bool wasCorrect, float quality = 1.0f);
 
     // Lifetime per-exercise record, persisted alongside points/level.
     // Kept separate from each Game's own getScore()/getRoundsPlayed(),
@@ -161,6 +166,11 @@ public:
     static constexpr int maxLevel = 10;
     static constexpr int pointsPerCorrectAnswer = 10;
 
+    // Awarded on top, scaled by quality: a dead-centre answer is worth
+    // 15, the edge of the band 10. Small on purpose - precision should be
+    // worth chasing, not worth more than showing up.
+    static constexpr int precisionBonusPoints = 5;
+
     // Correct answers in a row needed to actually take a level once the
     // points have unlocked it. Short on purpose: it is a checkpoint, not a
     // wall, and a long one would turn every promotion into a chore.
@@ -194,7 +204,7 @@ private:
 
     // Applies points, opens a promotion when the threshold is crossed, and
     // advances or resets the test. Returns true if the level changed.
-    bool applyAnswerToProgress (int gameIndex, bool wasCorrect);
+    bool applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality);
 
     int streakDays = 0;
     juce::String lastSessionDate;

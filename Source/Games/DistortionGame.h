@@ -78,6 +78,9 @@ private:
     // the curves apart.
     float driveAmount = 6.0f;
 
+    // Redrawn every round - see newRound.
+    float roundDriveJitter = 0.0f;
+
     juce::Random random;
 
     int correctTypeIndex = 0;

@@ -92,6 +92,9 @@ void ReverbGame::newRound()
     // silently marked correct answers wrong as soon as the two orders
     // diverged.
     correctTypeIndex = random.nextInt (activeNumTypes);
+
+    roundSizeJitter = random.nextFloat() * 0.1f - 0.05f;
+    roundDampingJitter = random.nextFloat() * 0.12f - 0.06f;
     chosenTypeIndex = -1;
     answered = false;
 
@@ -167,6 +170,13 @@ void ReverbGame::updateReverbForType()
         default: // Spring - reverb object unused, allpass cascade handles it
             break;
     }
+
+    // Same reasoning again: without a nudge, "Hall" is one recording and
+    // the exercise degenerates into recognising it rather than hearing
+    // what a hall does. Small enough that no type wanders into another's
+    // territory.
+    params.roomSize = juce::jlimit (0.05f, 1.0f, params.roomSize + roundSizeJitter);
+    params.damping  = juce::jlimit (0.0f, 1.0f, params.damping + roundDampingJitter);
 
     reverb.setParameters (params);
 

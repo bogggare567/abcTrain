@@ -169,5 +169,8 @@
   "game.distortion.benefit": "Erkenne den Charakter jeder Sättigungsart und wähle die, die du wirklich willst.",
   "game.stereowidth.benefit": "Höre, wie breit eine Quelle wirklich ist - die Fertigkeit, die einen Mix groß hält, ohne die Mitte zu zerreißen.",
   "game.db.benefit": "Kalibriere dein Ohr auf Pegeländerungen in dB, damit deine Faderbewegungen bewusst werden statt tastend.",
-  "game.frequencyrange.benefit": "Lerne die benannten Bereiche - von Sub-Bass bis Air - damit du ein Problem beschreiben kannst, bevor du zum Regler greifst."
+  "game.frequencyrange.benefit": "Lerne die benannten Bereiche - von Sub-Bass bis Air - damit du ein Problem beschreiben kannst, bevor du zum Regler greifst.",
+  "ui.toNextLevel": "Bis Level {{level}}: {{have}} / {{need}}",
+  "ui.promotionTest": "Aufstieg: {{done}} von {{needed}} in Folge",
+  "ui.levelMaxed": "Höchstes Level"
 }
