@@ -19,6 +19,32 @@ public:
             expect (UpdateChecker::isNewerVersion ("v0.1.1", "v0.1.0"));
         }
 
+        beginTest ("a build between tags still sees a newer release");
+        {
+            // git describe gives this shape for any commit past a tag.
+            // Rejecting it (which the first implementation did) left the
+            // update check permanently answering "up to date" for anyone
+            // not sitting exactly on a tag.
+            expect (UpdateChecker::isNewerVersion ("v1.1.0", "v1.0.0-3-gabc1234"));
+            expect (UpdateChecker::isNewerVersion ("v1.0.1", "v1.0.0-12-gdeadbee-dirty"));
+
+            // ...and the same build is not told to "update" to the tag it
+            // is already past.
+            expect (! UpdateChecker::isNewerVersion ("v1.0.0", "v1.0.0-3-gabc1234"));
+
+            // Pre-release suffixes compare on their numbers too.
+            expect (UpdateChecker::isNewerVersion ("v2.0.0", "v1.9.9-beta"));
+            expect (! UpdateChecker::isNewerVersion ("v1.0.0-beta", "v1.0.0"));
+        }
+
+        beginTest ("a version that is only metadata is still rejected");
+        {
+            // No numeric part at all - there is nothing to compare, so
+            // guessing would be worse than declining.
+            expect (! UpdateChecker::isNewerVersion ("v1.0.0", "dev"));
+            expect (! UpdateChecker::isNewerVersion ("nightly", "v1.0.0"));
+        }
+
         beginTest ("isNewerVersion is false for an equal or older version");
         {
             expect (! UpdateChecker::isNewerVersion ("v0.1.0", "v0.1.0"));

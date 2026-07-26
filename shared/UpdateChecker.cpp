@@ -20,6 +20,18 @@ namespace UpdateChecker
             if (trimmed.isEmpty())
                 return {};
 
+            // Everything from the first pre-release/build separator on is
+            // metadata, not part of the version being compared: git
+            // describe hands us "v1.0.0-3-gabc123" for any build that
+            // isn't exactly on a tag, and "v1.0.0-beta" for a pre-release.
+            //
+            // This used to reject both outright, which meant *every* build
+            // between two tags silently reported "up to date" forever -
+            // the update check was dead for anyone building from source.
+            const auto separator = trimmed.indexOfAnyOf ("-+");
+            if (separator > 0)
+                trimmed = trimmed.substring (0, separator);
+
             std::vector<int> components;
             for (auto& part : juce::StringArray::fromTokens (trimmed, ".", ""))
             {
