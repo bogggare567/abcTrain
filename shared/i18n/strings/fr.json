@@ -42,5 +42,7 @@
   "ui.hintCostLife": "Voir le son (-1 vie)",
   "ui.hintCostSeconds": "Voir le son (-{{seconds}}s)",
   "ui.hintShown": "Affiché pour cette manche",
-  "ui.sectionHint": "À quoi ressemble le son"
+  "ui.sectionHint": "À quoi ressemble le son",
+  "ui.daily": "Aujourd’hui : {{count}} d’affilée sur « {{game}} »",
+  "ui.dailyDone": "Fait aujourd’hui — {{count}} d’affilée sur « {{game}} » (+{{bonus}})"
 }

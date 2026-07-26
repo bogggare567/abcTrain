@@ -42,5 +42,7 @@
   "ui.hintCostLife": "Показати звук (−1 життя)",
   "ui.hintCostSeconds": "Показати звук (−{{seconds}} с)",
   "ui.hintShown": "Показано на цей раунд",
-  "ui.sectionHint": "Як виглядає звук"
+  "ui.sectionHint": "Як виглядає звук",
+  "ui.daily": "Сьогодні: {{count}} поспіль у «{{game}}»",
+  "ui.dailyDone": "Сьогодні зроблено — {{count}} поспіль у «{{game}}» (+{{bonus}})"
 }

@@ -115,5 +115,7 @@
   "achv.total1000.desc": "1000 correct answers across all exercises",
   "ui.achievements": "Achievements",
   "ui.achievementEarned": "Achievement unlocked",
-  "ui.achievementsLocked": "Not yet earned"
+  "ui.achievementsLocked": "Not yet earned",
+  "ui.daily": "Today: {{count}} in a row on \"{{game}}\"",
+  "ui.dailyDone": "Today done — {{count}} in a row on \"{{game}}\" (+{{bonus}})"
 }

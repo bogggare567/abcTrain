@@ -115,5 +115,7 @@
   "achv.total1000.desc": "1000 верных ответов во всех упражнениях",
   "ui.achievements": "Достижения",
   "ui.achievementEarned": "Достижение получено",
-  "ui.achievementsLocked": "Пока не получено"
+  "ui.achievementsLocked": "Пока не получено",
+  "ui.daily": "Сегодня: {{count}} подряд в «{{game}}»",
+  "ui.dailyDone": "Сегодня сделано — {{count}} подряд в «{{game}}» (+{{bonus}})"
 }

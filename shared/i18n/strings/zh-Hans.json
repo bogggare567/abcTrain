@@ -42,5 +42,7 @@
   "ui.hintCostLife": "看见声音（-1 条命）",
   "ui.hintCostSeconds": "看见声音（-{{seconds}} 秒）",
   "ui.hintShown": "本轮已显示",
-  "ui.sectionHint": "声音长什么样"
+  "ui.sectionHint": "声音长什么样",
+  "ui.daily": "今天：在「{{game}}」中连续答对 {{count}} 次",
+  "ui.dailyDone": "今天已完成 —「{{game}}」连续 {{count}} 次（+{{bonus}}）"
 }

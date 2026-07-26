@@ -480,6 +480,27 @@ juce_generate_juce_header(EditorSnapshots)
 target_sources(EditorSnapshots
     PRIVATE
         tools/EditorSnapshots.cpp
+        Source/PluginProcessor.cpp
+        Source/PluginEditor.cpp
+        Source/GameManager.cpp
+        Source/ProgressManager.cpp
+        Source/Achievements.cpp
+        Source/SessionManager.cpp
+        Source/ReferenceAudioLibrary.cpp
+        Source/ChoiceSliderComponent.cpp
+        Source/HomeScreenComponent.cpp
+        Source/SupportScreenComponent.cpp
+        Source/TrainingSoundsComponent.cpp
+        Source/Games/EQGame.cpp
+        Source/Games/CompressionGame.cpp
+        Source/Games/ReverbGame.cpp
+        Source/Games/PanGame.cpp
+        Source/Games/DelayGame.cpp
+        Source/Games/DistortionGame.cpp
+        Source/Games/StereoWidthGame.cpp
+        Source/Games/DBGame.cpp
+        Source/Games/FrequencyRangeGame.cpp
+        shared/Vectorscope.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
@@ -511,7 +532,9 @@ target_link_libraries(EditorSnapshots
     PRIVATE
         juce::juce_audio_utils
         juce::juce_dsp
+        juce::juce_animation
         I18nData
+        SampleData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

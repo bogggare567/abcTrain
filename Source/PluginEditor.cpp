@@ -1364,7 +1364,20 @@ void EarTrainerEditor::refreshFromProgressState()
                                     + " / " + juce::String ((int) Achievements::all().size()),
                                 juce::dontSendNotification);
 
-    dailyChallengeLabel.setText (progress.getDailyChallengeDescription(), juce::dontSendNotification);
+    // Built here rather than in ProgressManager, so both the sentence and
+    // the exercise name inside it are in the player's own language.
+    {
+        const auto challengeGame = translateGameName (
+            processor.getGameManager().getGame (progress.getDailyChallengeGameIndex()).getName(),
+            localisation);
+
+        dailyChallengeLabel.setText (
+            localisation.getText (progress.isDailyChallengeComplete() ? "ui.dailyDone" : "ui.daily",
+                                   { { "count", juce::String (progress.getDailyChallengeTargetStreak()) },
+                                     { "game", challengeGame },
+                                     { "bonus", juce::String (progress.getDailyChallengeBonusPoints()) } }),
+            juce::dontSendNotification);
+    }
     dailyChallengeLabel.setColour (juce::Label::textColourId,
                                     progress.isDailyChallengeComplete() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().textDim);
 }

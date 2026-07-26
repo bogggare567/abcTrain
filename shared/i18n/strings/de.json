@@ -42,5 +42,7 @@
   "ui.hintCostLife": "Klang anzeigen (-1 Leben)",
   "ui.hintCostSeconds": "Klang anzeigen (-{{seconds}}s)",
   "ui.hintShown": "Für diese Runde gezeigt",
-  "ui.sectionHint": "So sieht der Klang aus"
+  "ui.sectionHint": "So sieht der Klang aus",
+  "ui.daily": "Heute: {{count}} in Folge bei „{{game}}“",
+  "ui.dailyDone": "Heute geschafft — {{count}} in Folge bei „{{game}}“ (+{{bonus}})"
 }

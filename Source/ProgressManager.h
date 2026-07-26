@@ -35,7 +35,15 @@ public:
 
     int getStreakDays() const noexcept { return streakDays; }
 
-    juce::String getDailyChallengeDescription() const;
+    // Deliberately *not* a formatted sentence. It used to return English
+    // prose built right here - "Daily challenge: get 5 correct in a row on
+    // \"Guess the Distortion\"" - which then appeared verbatim inside a
+    // Russian UI, complete with the English exercise name. This class has
+    // no LocalisationManager and shouldn't: it reports the numbers, and
+    // the editor (which does know the language, and knows how to translate
+    // an exercise name) writes the sentence.
+    int getDailyChallengeTargetStreak() const noexcept { return dailyChallengeTargetStreak; }
+    int getDailyChallengeBonusPoints() const noexcept { return dailyChallengeBonusPoints; }
     bool isDailyChallengeComplete() const noexcept { return dailyChallengeComplete; }
     int getDailyChallengeGameIndex() const noexcept { return dailyChallengeGameIndex; }
 

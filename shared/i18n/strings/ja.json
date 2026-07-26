@@ -42,5 +42,7 @@
   "ui.hintCostLife": "音を見る（-1 ライフ）",
   "ui.hintCostSeconds": "音を見る（-{{seconds}}秒）",
   "ui.hintShown": "このラウンドで表示中",
-  "ui.sectionHint": "音の見た目"
+  "ui.sectionHint": "音の見た目",
+  "ui.daily": "今日：「{{game}}」で{{count}}回連続",
+  "ui.dailyDone": "今日達成 —「{{game}}」で{{count}}回連続（+{{bonus}}）"
 }

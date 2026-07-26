@@ -32,6 +32,8 @@
 #include "../LearnerComp/Source/PluginEditor.h"
 #include "../LearnerVerb/Source/PluginProcessor.h"
 #include "../LearnerVerb/Source/PluginEditor.h"
+#include "../Source/PluginProcessor.h"
+#include "../Source/PluginEditor.h"
 #include "../shared/AbcTrainTheme.h"
 #include "../shared/i18n/LocalisationManager.h"
 
@@ -139,10 +141,38 @@ int main (int argc, char* argv[])
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
 
-    // EarTrainer's editor is deliberately not here: it owns a
-    // ProgressManager writing to the real per-user PropertiesFile, so
-    // rendering it would touch the running player's saved progress. Its
-    // screens are verified by launching the standalone app instead.
+    // EarTrainer's editor owns a ProgressManager writing to the real
+    // per-user settings file, so rendering it *does* touch a player's
+    // saved progress. Copy the file aside first and put it back after -
+    // and skip EarTrainer entirely if that copy fails, rather than
+    // rendering anyway and risking someone's record for a screenshot.
+    {
+        const auto settings = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                                  .getChildFile ("abcTrain").getChildFile ("abcTrain.settings");
+        const auto backup = settings.getSiblingFile ("abcTrain.settings.snapshot-backup");
+
+        const auto hadSettings = settings.existsAsFile();
+        const auto backedUp = ! hadSettings || settings.copyFileTo (backup);
+
+        if (! backedUp)
+        {
+            std::cout << "  skipped EarTrainer: couldn't back up " << settings.getFullPathName() << "\n";
+        }
+        else
+        {
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer");
+
+            if (hadSettings)
+            {
+                backup.copyFileTo (settings);
+                backup.deleteFile();
+            }
+            else
+            {
+                settings.deleteFile();
+            }
+        }
+    }
 
     {
         juce::PropertiesFile properties (LocalisationManager::makeDefaultOptions());

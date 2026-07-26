@@ -324,19 +324,6 @@ void ProgressManager::generateDailyChallengeForDate (const juce::String& todayIs
     saveState();
 }
 
-juce::String ProgressManager::getDailyChallengeDescription() const
-{
-    const auto& game = gameManager.getGame (dailyChallengeGameIndex);
-
-    if (dailyChallengeComplete)
-        return "Daily challenge complete: " + juce::String (dailyChallengeTargetStreak)
-               + " in a row on \"" + game.getName() + "\" (+"
-               + juce::String (dailyChallengeBonusPoints) + " bonus).";
-
-    return "Daily challenge: get " + juce::String (dailyChallengeTargetStreak)
-           + " correct in a row on \"" + game.getName() + "\".";
-}
-
 void ProgressManager::loadState()
 {
     totalScore = properties->getIntValue ("totalScore", 0);

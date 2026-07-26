@@ -42,5 +42,7 @@
   "ui.hintCostLife": "Ver o som (-1 vida)",
   "ui.hintCostSeconds": "Ver o som (-{{seconds}}s)",
   "ui.hintShown": "Mostrado nesta rodada",
-  "ui.sectionHint": "Como o som se parece"
+  "ui.sectionHint": "Como o som se parece",
+  "ui.daily": "Hoje: {{count}} seguidas em \"{{game}}\"",
+  "ui.dailyDone": "Feito hoje — {{count}} seguidas em \"{{game}}\" (+{{bonus}})"
 }

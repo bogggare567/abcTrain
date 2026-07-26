@@ -21,7 +21,12 @@ public:
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
 
-    const juce::String getName() const override { return JucePlugin_Name; }
+    // A literal rather than JucePlugin_Name, matching all three Learner
+    // processors: the JucePlugin_* macros only exist inside a
+    // juce_add_plugin target, and this file is also compiled into the
+    // EditorSnapshots console app. Same reason recorded in
+    // docs/diagrams/ci-pipeline.md, bug 1.
+    const juce::String getName() const override { return "Ear Trainer"; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
@@ -59,7 +64,16 @@ private:
     GameManager gameManager;
     ProgressManager progressManager { gameManager };
 
-    std::atomic<bool> signalEnabled { true };
+    // Starts *off*, and only the training screen turns it on.
+    //
+    // It used to default to true, which meant the processor generated its
+    // test signal from the moment it was constructed - before any editor
+    // existed to tell it otherwise. On the standalone app that is an
+    // audible half-second of noise on launch, straight into a menu that is
+    // supposed to be silent. Reported by the user; the wrong default was
+    // invisible in every test, because nothing tests "what does it sound
+    // like before you have done anything".
+    std::atomic<bool> signalEnabled { false };
     std::atomic<Vectorscope*> vectorscope { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };
 
