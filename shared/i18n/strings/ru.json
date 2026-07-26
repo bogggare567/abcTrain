@@ -71,5 +71,8 @@
   "ui.hintCostSeconds": "Скопы (−{{seconds}} сек)",
   "ui.hintShown": "Скопы показаны",
   "ui.hintTooExpensive": "Не хватает",
-  "ui.hintPlaceholder": "Скопы — на один раунд, если купишь"
+  "ui.hintPlaceholder": "Скопы — на один раунд, если купишь",
+  "ui.sectionExercise": "Упражнение",
+  "ui.sectionAnswer": "Твой ответ",
+  "ui.sectionProgress": "Прогресс"
 }

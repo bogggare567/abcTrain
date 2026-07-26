@@ -496,6 +496,32 @@ void AbcTrainLookAndFeel::paintSectionPanel (juce::Graphics& g, juce::Rectangle<
     }
 }
 
+void AbcTrainLookAndFeel::paintSectionHeading (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                                const juce::String& caption)
+{
+    if (caption.isEmpty())
+        return;
+
+    const auto& t = current();
+
+    const auto captionArea = bounds.withHeight (14.0f).withTrimmedLeft (2.0f);
+    drawTrackedText (g, caption.toUpperCase(), captionArea, captionFont(),
+                     t.textDim.withAlpha (0.7f), 1.2f, juce::Justification::centredLeft);
+
+    // The rule starts past the caption rather than under it, so the
+    // heading reads as sitting *on* the line rather than being boxed by
+    // it.
+    const auto captionWidth = trackedTextWidth (caption.toUpperCase(), captionFont(), 1.2f);
+    const auto lineY = captionArea.getCentreY();
+    const auto lineStart = captionArea.getX() + captionWidth + 10.0f;
+
+    if (lineStart < bounds.getRight())
+    {
+        g.setColour (t.divider.withAlpha (0.7f));
+        g.drawLine (lineStart, lineY, bounds.getRight(), lineY, 1.0f);
+    }
+}
+
 void AbcTrainLookAndFeel::paintDisplayWell (juce::Graphics& g, juce::Rectangle<float> bounds)
 {
     const auto& t = current();

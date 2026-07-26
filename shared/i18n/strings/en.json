@@ -71,5 +71,8 @@
   "ui.hintCostSeconds": "Scopes (-{{seconds}}s)",
   "ui.hintShown": "Scopes shown",
   "ui.hintTooExpensive": "Can't afford that",
-  "ui.hintPlaceholder": "Scopes — one round, when you buy them"
+  "ui.hintPlaceholder": "Scopes — one round, when you buy them",
+  "ui.sectionExercise": "Exercise",
+  "ui.sectionAnswer": "Your answer",
+  "ui.sectionProgress": "Progress"
 }

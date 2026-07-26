@@ -462,9 +462,14 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     // backdrop with only whitespace implying the grouping.
     if (currentScreen == Screen::training)
     {
-        AbcTrainLookAndFeel::paintSectionPanel (g, exerciseSection.toFloat(), "Exercise");
-        AbcTrainLookAndFeel::paintSectionPanel (g, answerSection.toFloat(), "Your answer");
-        AbcTrainLookAndFeel::paintSectionPanel (g, progressSection.toFloat(), "Progress");
+        // Headings, not boxes: three bordered panels cut one window into
+        // three pieces rather than organising it.
+        AbcTrainLookAndFeel::paintSectionHeading (g, exerciseSection.toFloat(),
+                                                   localisation.getText ("ui.sectionExercise"));
+        AbcTrainLookAndFeel::paintSectionHeading (g, answerSection.toFloat(),
+                                                   localisation.getText ("ui.sectionAnswer"));
+        AbcTrainLookAndFeel::paintSectionHeading (g, progressSection.toFloat(),
+                                                   localisation.getText ("ui.sectionProgress"));
 
         // The scope strip keeps its room whether or not it's been bought,
         // so the window never resizes mid-round. Unbought, it draws as a
@@ -532,8 +537,8 @@ void EarTrainerEditor::resized()
     // --- exercise section: which game, and what you're listening for ---
     exerciseSection = area.removeFromTop (124);
     {
-        auto inner = exerciseSection.reduced (Spacing::medium);
-        inner.removeFromTop (Spacing::large);   // clear the section caption
+        auto inner = exerciseSection;
+        inner.removeFromTop (Spacing::large);   // clear the section heading
 
         auto gameRow = inner.removeFromTop (28);
         backButton.setBounds (gameRow.removeFromLeft (86));
@@ -546,7 +551,7 @@ void EarTrainerEditor::resized()
         instructionLabel.setBounds (inner);
     }
 
-    area.removeFromTop (Spacing::medium);
+    area.removeFromTop (Spacing::large);
 
     // --- answer section: feedback, the slider itself, score/new round ---
     // The scopes need their own room. Stealing it from the scale left it
@@ -554,7 +559,7 @@ void EarTrainerEditor::resized()
     // the section (and the window) grow instead.
     answerSection = area.removeFromTop (274 + scopeRowHeight + Spacing::small);
     {
-        auto inner = answerSection.reduced (Spacing::medium);
+        auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
 
         feedbackLabel.setBounds (inner.removeFromTop (26));
@@ -592,12 +597,12 @@ void EarTrainerEditor::resized()
         scoreLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
     }
 
-    area.removeFromTop (Spacing::medium);
+    area.removeFromTop (Spacing::large);
 
     // --- progress section: level, bar, streak, daily challenge ---
     progressSection = area.removeFromTop (100);
     {
-        auto inner = progressSection.reduced (Spacing::medium);
+        auto inner = progressSection;
         inner.removeFromTop (Spacing::large);
 
         auto progressRow = inner.removeFromTop (26);

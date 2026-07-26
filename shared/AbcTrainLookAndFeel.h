@@ -77,6 +77,15 @@ public:
     static void paintSectionPanel (juce::Graphics&, juce::Rectangle<float> bounds,
                                    const juce::String& caption = {});
 
+    // The quieter alternative: a caption and a hairline rule, no fill and
+    // no border. Grouping by *typography and space* rather than by boxes,
+    // for screens where three bordered panels chopped one window into
+    // three pieces instead of organising it. Used by EarTrainer's
+    // training screen; the Learner plugins keep the panels, where a
+    // raised surface genuinely separates controls from data displays.
+    static void paintSectionHeading (juce::Graphics&, juce::Rectangle<float> bounds,
+                                     const juce::String& caption);
+
     // A recessed well for the spectrum/waveform displays - the inverse
     // treatment of a section panel, so data displays read as cut *into* the
     // surface while controls sit *on* it.
