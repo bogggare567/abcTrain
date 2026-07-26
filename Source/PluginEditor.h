@@ -34,6 +34,18 @@ public:
     // completeReveal for why a rendered still needs this.
     void completeWelcomeReveal() { supportScreen.completeReveal(); }
 
+    // Also for tools/EditorSnapshots: opens a training so the screenshot
+    // tool can photograph it. There is no other way in from outside - the
+    // only route is a mouse click on a home-screen tile - and a product
+    // gallery that cannot show the screen people spend all their time on
+    // is not much of a gallery.
+    void openTrainingForSnapshot (int gameIndex)
+    {
+        processor.getGameManager().setActiveGameIndex (gameIndex);
+        showScreen (Screen::training);
+        refreshFromGameState();
+    }
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -250,6 +262,13 @@ private:
     juce::Label currentGameLabel;
     juce::Label instructionLabel;
     juce::Label scoreLabel;
+
+    // "До уровня 2: 20 / 100". Lives up in the exercise header rather than
+    // in the crowded bottom row, where it had 84px and wrapped onto three
+    // clipped lines - a progress readout that will not tell you the
+    // progress. It also belongs beside the exercise's name: it is a fact
+    // about this exercise, not about the run.
+    juce::Label levelProgressLabel;
     juce::Label feedbackLabel;
     // No "New Round" button: rounds advance on their own, and a button
     // that only duplicates something automatic is a button to remove.
@@ -297,7 +316,9 @@ private:
     // section gap + 124 exercise + 20 + 312 answer + 26 + 18 footer + 20.
     // Guessing this is what left LearnerComp with 132px of dead window
     // (decisions/023).
-    static constexpr int logicalBaseHeight = 600;
+    // 20 margin + 32 title + 28 + 124 exercise + 20 + 318 answer + 20 +
+    // 30 tool bar + 20 margin.
+    static constexpr int logicalBaseHeight = 612;
 
     // Grows while a hint is on screen; see hintPanelHeight above.
     int getLogicalHeight() const noexcept

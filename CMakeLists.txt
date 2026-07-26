@@ -25,7 +25,7 @@ cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     CACHE STRING "MSVC runtime library (static, so no redistributable is needed)")
 
-project(EarTrainer VERSION 1.0.0)
+project(EarTrainer VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

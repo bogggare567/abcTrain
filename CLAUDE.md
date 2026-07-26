@@ -993,7 +993,8 @@ failure. It compiles the game/processor source files directly (not the
 plugin targets), so no plugin host or GUI is needed to run it.
 
 `tools/EditorSnapshots.cpp` (`EditorSnapshots`, a second
-`juce_add_console_app` target) renders all three Learner editors to PNGs
+`juce_add_console_app` target) renders **all four** editors - including
+EarTrainer's home *and* training screens - to PNGs
 in **both themes**, with no plugin host — `cmake --build build --target
 EditorSnapshots`, then run the binary with an output folder. It asserts
 nothing on purpose (a golden-file comparison would fail on every
@@ -1004,8 +1005,11 @@ test groups — amber value arcs on a blue plugin, a gain-reduction meter
 silently clamped to 32px, a blank lesson dropdown, a light-theme display
 well brighter than its own panel, 132px of dead window, and three
 unlabelled knobs per EQ band. EarTrainer's editor is deliberately
-excluded (it writes to the real per-user progress file, so rendering it
-would touch a player's saved record). See
+covered by copying the real per-user settings file aside first and putting
+it back after (skipping EarTrainer entirely if that copy fails, rather
+than risking a player's saved progress for a screenshot). The same tool
+produces `docs/screenshots/`, which is what the README shows - so the
+pictures there can never drift from the code. See
 [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
 
 - `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for

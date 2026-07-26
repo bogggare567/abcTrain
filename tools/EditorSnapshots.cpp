@@ -75,7 +75,7 @@ namespace
     }
 
     template <typename ProcessorType, typename EditorType>
-    int renderOne (const juce::File& outputDir, const juce::String& name)
+    int renderOne (const juce::File& outputDir, const juce::String& name, int openTraining = -1)
     {
         int failures = 0;
 
@@ -88,6 +88,11 @@ namespace
             {
                 juce::PropertiesFile properties (LocalisationManager::makeDefaultOptions());
                 properties.setValue ("themeMode", mode == AbcTrainTheme::Mode::light ? "light" : "dark");
+
+                // English, so the shots are readable to whoever finds the
+                // repo. The player's own language is put back with
+                // everything else in main().
+                properties.setValue ("language", "en");
                 properties.saveIfNeeded();
             }
 
@@ -103,7 +108,12 @@ namespace
             // rest is a blank. Fast-forward it; everything else stays at
             // rest deliberately.
             if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
+            {
                 editor.completeWelcomeReveal();
+
+                if (openTraining >= 0)
+                    editor.openTrainingForSnapshot (openTraining);
+            }
 
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
             const auto file = outputDir.getChildFile (name + suffix + ".png");
@@ -138,10 +148,11 @@ int main (int argc, char* argv[])
     // preference file the editors read - so remember what it said and put
     // it back, or running the snapshot tool would silently flip the theme
     // of the app the user actually uses.
-    juce::String originalThemeMode;
+    juce::String originalThemeMode, originalLanguage;
     {
         juce::PropertiesFile properties (LocalisationManager::makeDefaultOptions());
         originalThemeMode = properties.getValue ("themeMode", "dark");
+        originalLanguage = properties.getValue ("language");
     }
 
     auto failures = 0;
@@ -170,6 +181,11 @@ int main (int argc, char* argv[])
         {
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer");
 
+            // The screen people actually spend their time on. Index 0 is
+            // the EQ exercise - a continuous scale, so the shot shows the
+            // answer slider rather than a row of named choices.
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Training", 0);
+
             if (hadSettings)
             {
                 backup.copyFileTo (settings);
@@ -185,6 +201,7 @@ int main (int argc, char* argv[])
     {
         juce::PropertiesFile properties (LocalisationManager::makeDefaultOptions());
         properties.setValue ("themeMode", originalThemeMode);
+        properties.setValue ("language", originalLanguage);
         properties.saveIfNeeded();
     }
 

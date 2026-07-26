@@ -11,14 +11,53 @@ one free, open-source suite for macOS, Windows and Linux.
 [![Latest release](https://img.shields.io/github/v/release/bogggare567/abcTrain?label=download)](https://github.com/bogggare567/abcTrain/releases/latest)
 [![Platforms](https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-blue)](#-download)
 [![Languages](https://img.shields.io/badge/languages-12-orange)](#-supported-languages)
-[![Tests](https://img.shields.io/badge/tests-172%20groups-brightgreen)](docs/testing-strategy.md)
+[![Tests](https://img.shields.io/badge/tests-187%20groups-brightgreen)](docs/testing-strategy.md)
 
 **[⬇ Download](https://github.com/bogggare567/abcTrain/releases/latest)** ·
+[Screenshots](#-what-it-looks-like) ·
 [How it works](#-how-it-works) ·
 [Contribute](docs/orientation.md) ·
 [Roadmap](docs/roadmap.md)
 
+<br>
+
+<img src="docs/screenshots/EarTrainer-dark.png" width="720" alt="The Ear Trainer home screen: nine exercises, each with its own level, accuracy and rounds played, and a strip of achievement badges below">
+
 </div>
+
+---
+
+## 📸 What it looks like
+
+Every picture here is the real app, rendered from the real code — see
+[`tools/EditorSnapshots.cpp`](tools/EditorSnapshots.cpp), which builds
+each editor and photographs it. Nothing is a mockup.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/EarTrainer-Training-dark.png" alt="A training round: the exercise, an A/B switch between treated and untreated, and a zoned frequency scale to answer on"></td>
+<td width="50%"><img src="docs/screenshots/EarTrainer-Training-light.png" alt="The same training round in the light theme"></td>
+</tr>
+<tr>
+<td colspan="2" align="center"><b>Answering.</b> Drag along the scale; a band that narrows as you level up decides whether you were close enough. <b>A/B</b> switches between the untreated sound and the one with the change in it — the only reliable way to hear a difference.</td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/LearnerEQ-dark.png" alt="Learner EQ: a live spectrum with the response curve drawn over it, and four bands of frequency, gain and Q"></td>
+<td><img src="docs/screenshots/LearnerComp-dark.png" alt="Learner Comp: live spectrum, scrolling waveform, a gain-reduction meter and seven knobs"></td>
+</tr>
+<tr>
+<td align="center"><b>Learner EQ</b> — four bands over a live spectrum, with guide text while you turn a knob.</td>
+<td align="center"><b>Learner Comp</b> — a gain-reduction meter that fills <i>downward</i>, because that is the direction the sound goes.</td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/LearnerVerb-dark.png" alt="Learner Verb: room, chamber, hall, plate and spring, with decay, pre-delay, size, damping, mix and width"></td>
+<td><img src="docs/screenshots/EarTrainer-light.png" alt="The Ear Trainer home screen in the light theme"></td>
+</tr>
+<tr>
+<td align="center"><b>Learner Verb</b> — five reverb types, each with a preset that says <i>why</i> it is set that way.</td>
+<td align="center"><b>A real light theme</b>, designed rather than inverted — warm paper, deeper accents, softer shadows.</td>
+</tr>
+</table>
 
 ---
 

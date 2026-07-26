@@ -133,7 +133,7 @@ cmake --build build --target EarTrainerTests
 JUCE is fetched by CMake — no separate install. On Linux you also need
 `libcurl4-openssl-dev` for the update checker's HTTPS.
 
-172 test groups today. What is and isn't covered, and why, is in
+187 test groups today. What is and isn't covered, and why, is in
 [testing-strategy.md](testing-strategy.md).
 
 **One thing worth internalising:** `juce::ChangeBroadcaster::sendChangeMessage()`
@@ -162,15 +162,19 @@ cmake --build build --target EditorSnapshots
 ./build/EditorSnapshots_artefacts/EditorSnapshots ~/shots
 ```
 
-That renders all three Learner editors to PNGs, in both themes, with no
-plugin host — six pictures, no DAW, no window server. Its first run found
-six bugs that had passed every test, five of which predated the change
-that prompted it. It asserts nothing on purpose; see
+That renders **every** editor to PNGs, in both themes, with no plugin host
+— ten pictures, no DAW, no window server. Its first run found six bugs
+that had passed every test, five of which predated the change that
+prompted it. It asserts nothing on purpose; see
 [ADR 023](decisions/023-learner-plugin-visual-pass.md).
 
-EarTrainer's screens still need the standalone app: its editor writes to
-the real per-user progress file, so rendering it would touch a player's
-saved record.
+The same tool produces the screenshots in the README, which is why they
+can never drift from the code: regenerate and commit.
+
+EarTrainer's editor writes to the real per-user settings file, so the
+tool copies that file aside before rendering and puts it back after — and
+skips EarTrainer entirely if the copy fails, rather than risking someone's
+saved progress for a screenshot.
 
 ## Releases
 

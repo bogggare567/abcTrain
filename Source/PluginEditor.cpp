@@ -247,7 +247,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // is, so there is nothing left to scroll.
     addAndMakeVisible (homeScreen);
 
-    instructionLabel.setJustificationType (juce::Justification::centred);
+    // Left, like every other line on this screen. A centred paragraph in
+    // a left-aligned layout reads as a different document.
+    instructionLabel.setJustificationType (juce::Justification::topLeft);
     addAndMakeVisible (instructionLabel);
 
 
@@ -315,7 +317,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     startTimerHz (1);
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
-    scoreLabel.setFont (AbcTrainLookAndFeel::monoFont());
+    scoreLabel.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+    scoreLabel.setMinimumHorizontalScale (1.0f);
+
+    levelProgressLabel.setJustificationType (juce::Justification::centredRight);
+    levelProgressLabel.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+    addAndMakeVisible (levelProgressLabel);
     addAndMakeVisible (scoreLabel);
 
     feedbackLabel.setJustificationType (juce::Justification::centred);
@@ -526,6 +533,7 @@ void EarTrainerEditor::applyTheme()
     // every one of them now reads the palette rather than a literal, which
     // is what makes the light theme possible at all.
     instructionLabel.setColour (juce::Label::textColourId, theme.textDim);
+    levelProgressLabel.setColour (juce::Label::textColourId, theme.textDim);
     scoreLabel.setColour (juce::Label::textColourId, theme.text);
     streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
@@ -715,6 +723,7 @@ void EarTrainerEditor::resized()
         gameRow.removeFromLeft (Spacing::large);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
+        levelProgressLabel.setBounds (gameRow.removeFromRight (210));
         currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
@@ -748,19 +757,23 @@ void EarTrainerEditor::resized()
     hintSpectrum.setVisible (hintRevealed && currentScreen == Screen::training);
 
     // --- answer section: feedback, the slider itself, score/new round ---
-    answerSection = area.removeFromTop (274 + 38);
+    // 20 heading + 24 feedback + 4 + 186 scale + 12 + 30 A/B + 8 + 34 row.
+    answerSection = area.removeFromTop (318);
     {
         auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
 
-        feedbackLabel.setBounds (inner.removeFromTop (26));
-        inner.removeFromTop (Spacing::small);
+        feedbackLabel.setBounds (inner.removeFromTop (24));
+        inner.removeFromTop (Spacing::tight);
 
         // The scale needs real height to read as a panel of zones rather
         // than a thin strip: 40px of it is the value readout and 18px the
         // caption, so anything under ~120 leaves the zones too shallow to
         // fit staggered labels. Found by building it at 92 and looking.
-        choiceSlider.setBounds (inner.removeFromTop (150).reduced (Spacing::small, 0));
+        // Taller than the 150 it started at: the zoned panel is the thing
+        // you actually work with on this screen, and the space came from
+        // padding that was doing nothing.
+        choiceSlider.setBounds (inner.removeFromTop (186).reduced (Spacing::small, 0));
 
         inner.removeFromTop (Spacing::medium);
 
@@ -791,7 +804,7 @@ void EarTrainerEditor::resized()
         blitzButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
 
         bottomRow.removeFromLeft (Spacing::medium);
-        runStatusLabel.setBounds (bottomRow.removeFromRight (120));
+        runStatusLabel.setBounds (bottomRow.removeFromRight (96));
         scoreLabel.setBounds (bottomRow);
     }
 
@@ -1032,7 +1045,8 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &blitzButton,
                      (juce::Component*) &hintButton,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
-                     (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel })
+                     (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
+                     (juce::Component*) &levelProgressLabel })
     {
         c->setVisible (onTraining);
     }
@@ -1438,7 +1452,11 @@ void EarTrainerEditor::refreshFromGameState()
             levelLine = localisation.getText ("ui.levelMaxed");
         }
 
-        scoreLabel.setText (tally + "    " + levelLine, juce::dontSendNotification);
+        // Two lines, not one: at 120px the pair was ellipsised down to
+        // "До уровня 2: ..." - a progress readout that will not tell you
+        // the progress.
+        scoreLabel.setText (tally, juce::dontSendNotification);
+        levelProgressLabel.setText (levelLine, juce::dontSendNotification);
     }
 
     if (game.hasAnswered())
