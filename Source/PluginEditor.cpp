@@ -166,6 +166,14 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     newRoundButton.onClick = [this] { startNewRun(); };
     addAndMakeVisible (newRoundButton);
 
+    hintButton.onClick = [this] { requestHint(); };
+    addAndMakeVisible (hintButton);
+
+    processor.setVectorscope (&vectorscope);
+    processor.setSpectrumAnalyzer (&hintSpectrum);
+    addChildComponent (vectorscope);
+    addChildComponent (hintSpectrum);
+
     modeSelector.addItem (localisation.getText ("ui.modePractice"), 1);
     modeSelector.addItem (localisation.getText ("ui.modeSurvival"), 2);
     modeSelector.addItem (localisation.getText ("ui.modeBlitz"), 3);
@@ -352,10 +360,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the "everything breathes" feel, and that space has to come from
     // somewhere. Same "grew the window to fit new content" precedent as
     // the slider redesign (015) and the Learner guide labels (010).
-    setSize (680, 664);
+    setSize (680, baseWindowHeight);
 
     applyTheme();
     session.startRun();
+    refreshHintButton();
     rebuildChoiceSlider();
     refreshFromGameState();
     refreshFromProgressState();
@@ -410,6 +419,13 @@ void EarTrainerEditor::toggleTheme()
 
 EarTrainerEditor::~EarTrainerEditor()
 {
+    // Deregister the scope feeds *first*: the audio thread writes into
+    // them every block, and they are members of this editor. Leaving them
+    // registered through teardown is a use-after-free waiting for the
+    // next processBlock.
+    processor.setVectorscope (nullptr);
+    processor.setSpectrumAnalyzer (nullptr);
+
     processor.getGameManager().getActiveGame().removeChangeListener (this);
     processor.getProgressManager().removeChangeListener (this);
     localisation.removeChangeListener (this);
@@ -493,7 +509,10 @@ void EarTrainerEditor::resized()
     area.removeFromTop (Spacing::medium);
 
     // --- answer section: feedback, the slider itself, score/new round ---
-    answerSection = area.removeFromTop (274);
+    // The scopes need their own room. Stealing it from the scale left it
+    // 10px tall and unusable - found immediately on revealing a hint - so
+    // the section (and the window) grow instead.
+    answerSection = area.removeFromTop (hintRevealed ? 274 + scopeRowHeight + Spacing::small : 274);
     {
         auto inner = answerSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);
@@ -505,16 +524,29 @@ void EarTrainerEditor::resized()
         // than a thin strip: 40px of it is the value readout and 18px the
         // caption, so anything under ~120 leaves the zones too shallow to
         // fit staggered labels. Found by building it at 92 and looking.
+        // Scopes first, in their own row above the scale - a hint you
+        // paid for shouldn't crowd the thing you answer with.
+        if (hintRevealed)
+        {
+            auto scopeRow = inner.removeFromTop (scopeRowHeight).reduced (Spacing::small, 0);
+            vectorscope.setBounds (scopeRow.removeFromLeft (scopeRow.getHeight()));
+            scopeRow.removeFromLeft (Spacing::small);
+            hintSpectrum.setBounds (scopeRow);
+            inner.removeFromTop (Spacing::small);
+        }
+
         choiceSlider.setBounds (inner.removeFromTop (150).reduced (Spacing::small, 0));
 
         inner.removeFromTop (Spacing::medium);
 
         auto bottomRow = inner.removeFromTop (34);
-        newRoundButton.setBounds (bottomRow.removeFromLeft (128));
+        newRoundButton.setBounds (bottomRow.removeFromLeft (120));
         bottomRow.removeFromLeft (Spacing::small);
-        modeSelector.setBounds (bottomRow.removeFromLeft (124));
-        runStatusLabel.setBounds (bottomRow.removeFromRight (128));
-        scoreLabel.setBounds (bottomRow.reduced (Spacing::medium, 0));
+        modeSelector.setBounds (bottomRow.removeFromLeft (118));
+        bottomRow.removeFromLeft (Spacing::small);
+        hintButton.setBounds (bottomRow.removeFromLeft (128));
+        runStatusLabel.setBounds (bottomRow.removeFromRight (120));
+        scoreLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
     }
 
     area.removeFromTop (Spacing::medium);
@@ -586,6 +618,7 @@ void EarTrainerEditor::timerCallback()
 void EarTrainerEditor::modeSelected()
 {
     // setMode() starts a fresh run itself, so this is one call, not two.
+    // The price changes with the mode, so the button's label must too.
     switch (modeSelector.getSelectedId())
     {
         case 2:  session.setMode (SessionManager::Mode::survival); break;
@@ -604,8 +637,18 @@ void EarTrainerEditor::startNewRun()
     if (! session.isRunActive())
         session.startRun();
 
+    if (hintRevealed)
+        setSize (getWidth(), baseWindowHeight);
+
+    hintRevealed = false;
+    vectorscope.setVisible (false);
+    hintSpectrum.setVisible (false);
+    vectorscope.reset();
+
     processor.getGameManager().getActiveGame().newRound();
     refreshRunStatus();
+    refreshHintButton();
+    resized();
 }
 
 void EarTrainerEditor::refreshRunStatus()
@@ -678,6 +721,7 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &newRoundButton, (juce::Component*) &modeSelector,
+                     (juce::Component*) &hintButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
                      (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
                      (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
@@ -835,6 +879,66 @@ void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
     auto& game = processor.getGameManager().getActiveGame();
     game.submitAnswer (choiceIndex);
     afterAnswer (game.wasLastAnswerCorrect());
+}
+
+void EarTrainerEditor::requestHint()
+{
+    if (hintRevealed)
+        return;
+
+    if (! session.spendHint())
+    {
+        // Refused - say why rather than doing nothing, the same rule the
+        // "Updates" button had to learn (see decisions/014).
+        hintButton.setButtonText (localisation.getText ("ui.hintTooExpensive"));
+
+        juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+        juce::Timer::callAfterDelay (2000, [safeThis]
+        {
+            if (safeThis != nullptr)
+                safeThis->refreshHintButton();
+        });
+        return;
+    }
+
+    hintRevealed = true;
+    setSize (getWidth(), baseWindowHeight + scopeRowHeight + AbcTrainTheme::Spacing::small);
+    vectorscope.reset();
+    vectorscope.setVisible (true);
+    hintSpectrum.setVisible (true);
+    hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+
+    refreshRunStatus();
+    refreshHintButton();
+    resized();
+}
+
+void EarTrainerEditor::refreshHintButton()
+{
+    if (hintRevealed)
+    {
+        hintButton.setButtonText (localisation.getText ("ui.hintShown"));
+        hintButton.setEnabled (false);
+        return;
+    }
+
+    hintButton.setEnabled (session.isRunActive());
+
+    // The price is on the button, so the cost is known *before* paying
+    // it rather than discovered afterwards.
+    switch (session.getMode())
+    {
+        case SessionManager::Mode::survival:
+            hintButton.setButtonText (localisation.getText ("ui.hintCostLife"));
+            break;
+        case SessionManager::Mode::blitz:
+            hintButton.setButtonText (localisation.getText ("ui.hintCostSeconds",
+                                                            { { "seconds", juce::String (SessionManager::blitzHintSeconds) } }));
+            break;
+        default:
+            hintButton.setButtonText (localisation.getText ("ui.hintFree"));
+            break;
+    }
 }
 
 void EarTrainerEditor::afterAnswer (bool wasCorrect)

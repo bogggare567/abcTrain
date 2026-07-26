@@ -34,6 +34,35 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     // The trainer ignores whatever the host feeds in and generates its own test signal.
     gameManager.process (buffer);
+
+    // Feed the hint scopes from the generated signal. Both are optional -
+    // they only exist while the editor's hint panel is open.
+    const auto numSamples = buffer.getNumSamples();
+    const auto numChannels = buffer.getNumChannels();
+
+    if (auto* scope = vectorscope.load())
+    {
+        // A vectorscope needs two genuinely different channels; a mono
+        // buffer would just draw a vertical line forever, which is
+        // correct but useless, so feed the same sample to both and let it
+        // say so.
+        const auto* left = numChannels > 0 ? buffer.getReadPointer (0) : nullptr;
+        const auto* right = numChannels > 1 ? buffer.getReadPointer (1) : left;
+
+        if (left != nullptr)
+            for (int i = 0; i < numSamples; ++i)
+                scope->pushSample (left[i], right[i]);
+    }
+
+    if (auto* analyzer = spectrum.load())
+    {
+        const auto* left = numChannels > 0 ? buffer.getReadPointer (0) : nullptr;
+        const auto* right = numChannels > 1 ? buffer.getReadPointer (1) : left;
+
+        if (left != nullptr)
+            for (int i = 0; i < numSamples; ++i)
+                analyzer->pushNextSampleIntoFifo (0.5f * (left[i] + right[i]));
+    }
 }
 
 juce::AudioProcessorEditor* EarTrainerProcessor::createEditor()

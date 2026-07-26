@@ -77,6 +77,21 @@ public:
     // another question).
     int getAutoAdvanceDelayMs (bool wasCorrect) const noexcept;
 
+    // ---- hints ----
+    // The scope hint shows the answer's shape, so it has to cost
+    // something or it replaces the exercise. What it costs is the mode's
+    // own currency: nothing in Practice (the mode for learning, where
+    // seeing the shape *is* the lesson), a life in Survival, seconds in
+    // Blitz.
+    static constexpr int blitzHintSeconds = 10;
+
+    bool isHintFree() const noexcept { return mode == Mode::practice; }
+
+    // Pays for a hint out of the current run. Returns false if the run is
+    // over or the cost can't be met, in which case nothing was spent and
+    // the hint must not be shown.
+    bool spendHint();
+
     // Fired when a survival/blitz run ends, with the final score, so the
     // editor can record it against the current exercise.
     std::function<void (int finalScore)> onRunEnded;

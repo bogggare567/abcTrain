@@ -10,6 +10,8 @@
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AppIcons.h"
+#include "../shared/Vectorscope.h"
+#include "../shared/SpectrumAnalyzer.h"
 #include "../shared/i18n/LocalisationManager.h"
 #include <cmath>
 
@@ -172,6 +174,11 @@ private:
     // Shared tail of both answer paths (discrete index and continuous
     // value): scoring, run state, and scheduling the auto-advance.
     void afterAnswer (bool wasCorrect);
+
+    // Buys and reveals the scope hint, or explains why it can't be
+    // afforded. See SessionManager::spendHint for the price per mode.
+    void requestHint();
+    void refreshHintButton();
     void languageSelected();
     void levelSelected();
 
@@ -205,6 +212,20 @@ private:
     juce::Label scoreLabel;
     juce::Label feedbackLabel;
     juce::TextButton newRoundButton { "New Round" };
+
+    // The scope hint: a vectorscope (where it sits in the stereo field,
+    // and whether it's in phase) over a spectrum (where the energy is).
+    // Hidden until bought, and reset on every new round so the previous
+    // round's picture can't linger into the next one.
+    juce::TextButton hintButton;
+    Vectorscope vectorscope;
+    SpectrumAnalyzerComponent hintSpectrum;
+    bool hintRevealed = false;
+
+    // The window grows by exactly this much while the scopes are shown,
+    // rather than the scopes squeezing the answer scale.
+    static constexpr int scopeRowHeight = 82;
+    static constexpr int baseWindowHeight = 664;
 
     // Practice / Survival / Blitz. A run in the latter two ends on its
     // own terms (lives or clock) and posts a score against the exercise;

@@ -65,5 +65,10 @@
   "home.category.dynamics": "Динамика",
   "home.category.space": "Пространство и стерео",
   "home.category.character": "Характер",
-  "ui.back": "< Домой"
+  "ui.back": "< Домой",
+  "ui.hintFree": "Показать скопы",
+  "ui.hintCostLife": "Скопы (−1 жизнь)",
+  "ui.hintCostSeconds": "Скопы (−{{seconds}} сек)",
+  "ui.hintShown": "Скопы показаны",
+  "ui.hintTooExpensive": "Не хватает"
 }

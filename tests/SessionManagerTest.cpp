@@ -148,6 +148,78 @@ public:
             expectEquals (session.getAutoAdvanceDelayMs (false), 0);
         }
 
+        beginTest ("a hint is free in practice, and costs nothing that can be spent");
+        {
+            SessionManager session;
+            session.setMode (SessionManager::Mode::practice);
+            session.startRun();
+
+            expect (session.isHintFree());
+
+            for (int i = 0; i < 5; ++i)
+                expect (session.spendHint());
+
+            expectEquals (session.getLivesRemaining(), 0);
+            expectEquals (session.getSecondsRemaining(), 0);
+            expect (session.isRunActive());
+        }
+
+        beginTest ("a hint costs a life in survival, but never the last one");
+        {
+            SessionManager session;
+            session.setMode (SessionManager::Mode::survival);
+            session.startRun();
+
+            expect (! session.isHintFree());
+
+            // Three lives: two hints are affordable, the third is not,
+            // because spending down to zero would end the run on a hint
+            // the player asked for rather than on a wrong answer.
+            expect (session.spendHint());
+            expectEquals (session.getLivesRemaining(), SessionManager::survivalLives - 1);
+
+            expect (session.spendHint());
+            expectEquals (session.getLivesRemaining(), 1);
+
+            expect (! session.spendHint());
+            expectEquals (session.getLivesRemaining(), 1);
+            expect (session.isRunActive());
+        }
+
+        beginTest ("a hint costs seconds in blitz, and is refused when it would end the run");
+        {
+            SessionManager session;
+            session.setMode (SessionManager::Mode::blitz);
+            session.startRun();
+
+            expect (session.spendHint());
+            expectEquals (session.getSecondsRemaining(),
+                          SessionManager::blitzSeconds - SessionManager::blitzHintSeconds);
+
+            // Wind down to exactly the hint's cost - at which point it
+            // must be refused rather than zeroing the clock.
+            while (session.getSecondsRemaining() > SessionManager::blitzHintSeconds)
+                session.tickOneSecond();
+
+            const auto before = session.getSecondsRemaining();
+            expect (! session.spendHint());
+            expectEquals (session.getSecondsRemaining(), before);
+            expect (session.isRunActive());
+        }
+
+        beginTest ("a hint can't be bought once the run is over");
+        {
+            SessionManager session;
+            session.setMode (SessionManager::Mode::survival);
+            session.startRun();
+
+            for (int i = 0; i < SessionManager::survivalLives; ++i)
+                session.registerAnswer (false);
+
+            expect (! session.isRunActive());
+            expect (! session.spendHint());
+        }
+
         beginTest ("a practice run ending reports no score");
         {
             SessionManager session;

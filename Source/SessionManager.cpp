@@ -78,6 +78,37 @@ bool SessionManager::registerAnswer (bool wasCorrect)
     return true;
 }
 
+bool SessionManager::spendHint()
+{
+    if (! runActive)
+        return false;
+
+    switch (mode)
+    {
+        case Mode::practice:
+            return true;      // free, by design
+
+        case Mode::survival:
+            // Refuse rather than end the run on the hint itself: losing
+            // your last life to a hint you asked for, instead of to an
+            // answer you got wrong, would feel like the app cheated.
+            if (livesRemaining <= 1)
+                return false;
+
+            --livesRemaining;
+            return true;
+
+        case Mode::blitz:
+            if (secondsRemaining <= blitzHintSeconds)
+                return false;
+
+            secondsRemaining -= blitzHintSeconds;
+            return true;
+    }
+
+    return false;
+}
+
 bool SessionManager::tickOneSecond()
 {
     if (! runActive || mode != Mode::blitz)

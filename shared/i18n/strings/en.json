@@ -65,5 +65,10 @@
   "home.category.dynamics": "Dynamics",
   "home.category.space": "Space & stereo",
   "home.category.character": "Character",
-  "ui.back": "< Home"
+  "ui.back": "< Home",
+  "ui.hintFree": "Show scopes",
+  "ui.hintCostLife": "Scopes (-1 life)",
+  "ui.hintCostSeconds": "Scopes (-{{seconds}}s)",
+  "ui.hintShown": "Scopes shown",
+  "ui.hintTooExpensive": "Can't afford that"
 }

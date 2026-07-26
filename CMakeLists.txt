@@ -121,6 +121,8 @@ target_sources(EarTrainer
         Source/ReferenceAudioLibrary.cpp
         Source/TrainingSoundsComponent.cpp
         Source/HomeScreenComponent.cpp
+        shared/Vectorscope.cpp
+        shared/SpectrumAnalyzer.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp

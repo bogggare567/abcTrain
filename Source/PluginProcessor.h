@@ -3,6 +3,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "GameManager.h"
 #include "ProgressManager.h"
+#include "../shared/Vectorscope.h"
+#include "../shared/SpectrumAnalyzer.h"
+#include <atomic>
 
 class EarTrainerProcessor : public juce::AudioProcessor
 {
@@ -36,12 +39,22 @@ public:
     GameManager& getGameManager() noexcept { return gameManager; }
     ProgressManager& getProgressManager() noexcept { return progressManager; }
 
+    // Scope feeds for the editor's hint panel. Raw atomics, null-checked
+    // on the audio thread, because the editor can be closed while the
+    // processor keeps running - the same registration pattern
+    // LearnerEQ/Comp/Verb already use for their own displays.
+    void setVectorscope (Vectorscope* scope) noexcept { vectorscope.store (scope); }
+    void setSpectrumAnalyzer (SpectrumAnalyzerComponent* analyzer) noexcept { spectrum.store (analyzer); }
+
 private:
     // Declaration order matters: gameManager must be constructed before
     // progressManager, since ProgressManager's constructor registers
     // itself as a listener on every game.
     GameManager gameManager;
     ProgressManager progressManager { gameManager };
+
+    std::atomic<Vectorscope*> vectorscope { nullptr };
+    std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerProcessor)
 };
