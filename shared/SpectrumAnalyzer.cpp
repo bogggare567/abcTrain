@@ -148,6 +148,11 @@ void SpectrumAnalyzerComponent::paintGrid (juce::Graphics& g, juce::Rectangle<fl
     }
 }
 
+juce::Colour SpectrumAnalyzerComponent::effectiveAccent() const
+{
+    return accentOverride.isTransparent() ? AbcTrainTheme::current().accent : accentOverride;
+}
+
 void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
@@ -182,18 +187,20 @@ void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
     // fading to nothing at the floor. This is the single biggest visual
     // difference from the old flat 25%-alpha fill - it gives the display
     // depth and makes the loud part of the spectrum read instantly.
-    juce::ColourGradient fillGradient (theme.accent.withAlpha (0.38f), bounds.getCentreX(), bounds.getY(),
-                                        theme.accent.withAlpha (0.02f), bounds.getCentreX(), bounds.getBottom(),
+    const auto accent = effectiveAccent();
+
+    juce::ColourGradient fillGradient (accent.withAlpha (0.38f), bounds.getCentreX(), bounds.getY(),
+                                        accent.withAlpha (0.02f), bounds.getCentreX(), bounds.getBottom(),
                                         false);
-    fillGradient.addColour (0.55, theme.accent.withAlpha (0.14f));
+    fillGradient.addColour (0.55, accent.withAlpha (0.14f));
     g.setGradientFill (fillGradient);
     g.fillPath (filled);
 
     // A soft bloom under the outline, then the crisp line on top - the
     // curve reads as lit rather than drawn.
-    g.setColour (theme.accent.withAlpha (0.18f));
+    g.setColour (accent.withAlpha (0.18f));
     g.strokePath (curve, juce::PathStrokeType (3.5f, juce::PathStrokeType::curved));
-    g.setColour (theme.accent.brighter (0.15f));
+    g.setColour (accent.brighter (0.15f));
     g.strokePath (curve, juce::PathStrokeType (1.4f, juce::PathStrokeType::curved));
 
     paintOverlay (g, bounds);

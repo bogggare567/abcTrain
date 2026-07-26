@@ -33,9 +33,18 @@ public:
     // default) rather than garbage.
     void setSampleRate (double newSampleRate) noexcept { sampleRate = newSampleRate; }
 
+
+    // Per-instance accent, so a host with two Learner plugins open shows
+    // each in its own family colour. The palette itself is deliberately
+    // process-wide (see AbcTrainTheme::current) and so cannot carry this;
+    // transparent means "just use the palette's accent".
+    void setAccentColour (juce::Colour newAccent) { accentOverride = newAccent; repaint(); }
+
     void paint (juce::Graphics&) override;
 
 protected:
+    juce::Colour effectiveAccent() const;
+
     // Hook for a subclass that wants to draw something on top of the
     // spectrum, in the same bounds. Default does nothing - LearnerComp and
     // LearnerVerb use this class as-is, with no overlay.
@@ -44,6 +53,9 @@ protected:
 private:
     void timerCallback() override;
     void drawNextFrameOfSpectrum();
+
+    juce::Colour accentOverride { juce::Colours::transparentBlack };
+
 
     // Builds the smoothed spectrum outline once per paint. Split out so
     // the curve and its gradient fill are guaranteed to be the same shape -

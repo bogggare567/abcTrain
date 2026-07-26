@@ -38,7 +38,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
                                 ? AbcTrainTheme::Mode::light
                                 : AbcTrainTheme::Mode::dark);
-    lookAndFeel.refreshFromTheme();
+    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::space);
+    lookAndFeel.refreshFromTheme (accent);
 
     setLookAndFeel (&lookAndFeel);
 
@@ -89,6 +90,17 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
         addAndMakeVisible (knob.slider);
 
+        // Rebuild the value box now that this slider has a parent, and so
+        // resolves to this editor's LookAndFeel rather than JUCE's default.
+        // A Slider creates its text box in its own constructor - as a
+        // member, long before setLookAndFeel() - so it keeps the default
+        // LookAndFeel's bordered, filled field no matter what colours the
+        // theme sets later. This has to come *after* addAndMakeVisible:
+        // calling it first resolves getLookAndFeel() to the default one
+        // again and changes nothing, which is exactly what the first
+        // attempt at this fix did.
+        knob.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
+
         knob.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
             processor.apvts, spec.paramId, knob.slider);
 
@@ -106,7 +118,14 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     for (int i = 0; i < (int) ReverbGuide::presets.size(); ++i)
     {
         auto* button = presetButtons.add (new juce::TextButton (ReverbGuide::presets[(size_t) i].name));
-        button->onClick = [this, i] { processor.applyPreset (i); };
+        button->onClick = [this, i]
+        {
+            processor.applyPreset (i);
+
+            // The knobs moving is the "what changed"; this is the "why".
+            guideTooltip.setText (juce::String (ReverbGuide::presets[(size_t) i].name) + " - "
+                                   + ReverbGuide::presets[(size_t) i].what, 9000);
+        };
         addAndMakeVisible (button);
     }
 
@@ -128,6 +147,11 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         else if (lessonSelector.getSelectedId() == 2)
             tailLessonController.showAndStart();
     };
+    // Nothing is selected until a lesson is picked, and an unlabelled
+    // empty dropdown in the title row was the result - caught by rendering
+    // the editor (tools/EditorSnapshots). Re-cleared on close below, so
+    // picking the same lesson twice in a row still starts it.
+    lessonSelector.setTextWhenNothingSelected ("Lessons");
     addAndMakeVisible (lessonSelector);
 
     updateButton.onClick = [this]
@@ -144,7 +168,11 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         auto handled = std::make_shared<bool> (false);
 
         updateButton.setEnabled (false);
-        updateButton.setButtonText ("Checking...");
+        // The button is now an icon with no room for text, so the outcome
+        // goes where there is room: the guide card that already floats in
+        // over the visualisation. ADR 014's rule still holds - every click
+        // gets a visible outcome - it just gets a better-looking one.
+        guideTooltip.setText ("Checking for updates...");
 
         UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
         {
@@ -156,16 +184,12 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
             if (! foundNewer)
             {
-                safeThis->updateButton.setButtonText ("Up to date");
-                juce::Timer::callAfterDelay (2500, [safeThis]
-                {
-                    if (safeThis != nullptr)
-                        safeThis->updateButton.setButtonText ("Updates");
-                });
+                safeThis->guideTooltip.setText ("You're on the latest version ("
+                                                 + juce::String (CurrentVersion::string) + ").", 4000);
                 return;
             }
 
-            safeThis->updateButton.setButtonText ("Updates");
+            safeThis->guideTooltip.setText ({});
 
             const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
                 juce::MessageBoxIconType::InfoIcon,
@@ -191,13 +215,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
             *handled = true;
 
             safeThis->updateButton.setEnabled (true);
-            safeThis->updateButton.setButtonText ("Couldn't check");
-
-            juce::Timer::callAfterDelay (2500, [safeThis]
-            {
-                if (safeThis != nullptr)
-                    safeThis->updateButton.setButtonText ("Updates");
-            });
+            safeThis->guideTooltip.setText ("Couldn't reach the update server. "
+                                             "Check your connection and try again.", 5000);
         });
     };
     addAndMakeVisible (updateButton);
@@ -215,15 +234,26 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     // through on top of it - the same z-order fix as decisions/015's
     // Training Sounds overlay and decisions/016's soundkorb.ru link.
     addChildComponent (lessonController);
-    lessonController.onClosed = [this] { resized(); };
+    lessonController.onClosed = [this]
+    {
+        // Back to "Lessons" so the same one can be started again.
+        lessonSelector.setSelectedId (0, juce::dontSendNotification);
+        resized();
+    };
 
     addChildComponent (tailLessonController);
-    tailLessonController.onClosed = [this] { resized(); };
+    tailLessonController.onClosed = [this]
+    {
+        // Back to "Lessons" so the same one can be started again.
+        lessonSelector.setSelectedId (0, juce::dontSendNotification);
+        resized();
+    };
 
     startTimerHz (30);
     // Taller for the section panels' own padding/captions; the guide text
     // no longer needs a permanent strip (it floats on demand instead).
-    setSize (780, 760);
+    // 20 + 32 + 28 + 428 + 12 + 222 + 20, derived from resized().
+    setSize (780, 762);
 
     applyTheme();
 }
@@ -239,7 +269,14 @@ void LearnerVerbEditor::applyTheme()
     for (auto& knob : knobs)
         knob.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
 
-    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+    // The glyph cross-fades rather than cutting, so the toggle reads as
+    // one control changing state (see IconButton).
+    themeButton.setIcon (theme.mode == AbcTrainTheme::Mode::light ? AppIcons::Icon::moon
+                                                                  : AppIcons::Icon::sun);
+
+    spectrum.setAccentColour (accent);
+    waveform.setAccentColour (accent);
+    pluginIcon.setIconColour (accent);
     repaint();
 }
 
@@ -252,7 +289,10 @@ void LearnerVerbEditor::toggleTheme()
     AbcTrainTheme::setMode (newMode);
     themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
 
-    lookAndFeel.refreshFromTheme();
+    // accentFor() returns a different value per mode, so it has to be
+    // asked again rather than reused from construction.
+    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::space);
+    lookAndFeel.refreshFromTheme (accent);
     applyTheme();
 
     for (auto* child : getChildren())
@@ -270,7 +310,10 @@ void LearnerVerbEditor::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    // Each plugin's own room, the same idea EarTrainer applies per
+    // exercise - and the same four family colours, so the trainer and the
+    // plugin that teaches the same skill read as one subject.
+    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat(), accent);
 
     AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
     AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Reverb");
@@ -286,6 +329,28 @@ void LearnerVerbEditor::paint (juce::Graphics& g)
         juce::Justification::centredLeft);
 }
 
+void LearnerVerbEditor::paintOverChildren (juce::Graphics& g)
+{
+    if (bypassVeil <= 0.004f || analysisSection.isEmpty())
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+    const auto eased = AbcTrainTheme::Ease::out (bypassVeil);
+    const auto area = analysisSection.toFloat().reduced (AbcTrainTheme::Spacing::medium);
+
+    // Desaturating the analysis rather than hiding it: you still want to
+    // see the signal going past, you just need to be able to tell at a
+    // glance that nothing is being done to it.
+    g.setColour (theme.windowBackground.withAlpha (0.62f * eased));
+    g.fillRoundedRectangle (area, AbcTrainTheme::Radius::well);
+
+    AbcTrainLookAndFeel::drawTrackedText (g, "BYPASSED", area.withHeight (20.0f)
+                                                              .withY (area.getCentreY() - 10.0f),
+                                           AbcTrainLookAndFeel::captionFont(),
+                                           theme.textDim.withAlpha (eased), 3.0f,
+                                           juce::Justification::centred);
+}
+
 void LearnerVerbEditor::resized()
 {
     using namespace AbcTrainTheme;
@@ -298,9 +363,9 @@ void LearnerVerbEditor::resized()
     auto titleRow = area.removeFromTop (32);
     lessonSelector.setBounds (titleRow.removeFromRight (156));
     titleRow.removeFromRight (Spacing::small);
-    themeButton.setBounds (titleRow.removeFromRight (62));
-    titleRow.removeFromRight (Spacing::small);
-    updateButton.setBounds (titleRow.removeFromRight (76));
+    themeButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
+    titleRow.removeFromRight (Spacing::tight);
+    updateButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
     titleRow.removeFromRight (Spacing::small);
     bypassButton.setBounds (titleRow.removeFromRight (96));
     pluginIcon.setBounds (titleRow.removeFromLeft (28));
@@ -308,14 +373,16 @@ void LearnerVerbEditor::resized()
     area.removeFromTop (Spacing::section);
 
     // --- analysis section: spectrum, waveform, peak readouts ---
-    analysisSection = area.removeFromTop (368);
+    // The 58px that used to be dead window below the controls, spent on
+    // the displays instead (see the same note in LearnerComp).
+    analysisSection = area.removeFromTop (428);
     {
         auto inner = analysisSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);
 
-        spectrum.setBounds (inner.removeFromTop (140).reduced (1));
+        spectrum.setBounds (inner.removeFromTop (165).reduced (1));
         inner.removeFromTop (Spacing::medium);
-        waveform.setBounds (inner.removeFromTop (150).reduced (1));
+        waveform.setBounds (inner.removeFromTop (175).reduced (1));
         inner.removeFromTop (Spacing::small);
 
         auto meterRow = inner.removeFromTop (20);
@@ -362,6 +429,25 @@ void LearnerVerbEditor::resized()
 
 void LearnerVerbEditor::timerCallback()
 {
+    // Bypass used to change nothing on screen, so the only way to know
+    // whether you were hearing the plugin was to look at the checkbox.
+    // Eased on this timer rather than a second one - 30 Hz over ~260 ms is
+    // eight frames, plenty for a fade.
+    {
+        const auto target = processor.apvts.getRawParameterValue (LearnerVerbProcessor::bypassParamId)->load() > 0.5f
+                                ? 1.0f : 0.0f;
+
+        if (! juce::approximatelyEqual (bypassVeil, target))
+        {
+            const auto step = (float) (1000.0 / 30.0 / AbcTrainTheme::Duration::release);
+
+            bypassVeil = std::abs (target - bypassVeil) <= step
+                             ? target
+                             : bypassVeil + (target > bypassVeil ? step : -step);
+            repaint();
+        }
+    }
+
     const auto sr = processor.getSampleRate();
     spectrum.setSampleRate (sr > 0.0 ? sr : 44100.0);
 

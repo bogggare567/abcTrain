@@ -437,6 +437,59 @@ target_link_libraries(EarTrainerTests
 # include directory, not a relative one - every target that pulls in
 # shared/Version.h (all four plugin editors, hence all four plugins plus
 # this test binary) needs it.
-foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests)
+
+# ---------------------------------------------------------------------------
+# EditorSnapshots - renders every Learner editor to a PNG, in both themes,
+# with no plugin host. See tools/EditorSnapshots.cpp for why: the whole
+# class of bug this project keeps shipping is invisible to the unit tests
+# and obvious in a picture.
+juce_add_console_app(EditorSnapshots
+    PRODUCT_NAME "EditorSnapshots"
+)
+
+juce_generate_juce_header(EditorSnapshots)
+
+target_sources(EditorSnapshots
+    PRIVATE
+        tools/EditorSnapshots.cpp
+        LearnerEQ/Source/PluginProcessor.cpp
+        LearnerEQ/Source/PluginEditor.cpp
+        LearnerEQ/Source/SpectrumAnalyser.cpp
+        LearnerComp/Source/PluginProcessor.cpp
+        LearnerComp/Source/PluginEditor.cpp
+        LearnerVerb/Source/PluginProcessor.cpp
+        LearnerVerb/Source/PluginEditor.cpp
+        shared/WaveformDisplay.cpp
+        shared/GainReductionMeter.cpp
+        shared/GuideTooltip.cpp
+        shared/SpectrumAnalyzer.cpp
+        shared/LessonController.cpp
+        shared/UpdateChecker.cpp
+        shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainTheme.cpp
+        shared/WidgetStateRegistry.cpp
+        shared/CompactSelector.cpp
+        shared/AppIcons.cpp
+        shared/i18n/LocalisationManager.cpp
+)
+
+target_compile_definitions(EditorSnapshots
+    PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(EditorSnapshots
+    PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+        I18nData
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
+foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests EditorSnapshots)
     target_include_directories(${abcTrainTarget} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 endforeach()

@@ -44,17 +44,19 @@ namespace
     // legible as families rather than nine unrelated hues.
     juce::Colour tintForGame (const juce::String& englishName)
     {
+        using Family = AbcTrainTheme::Family;
+
         if (englishName == "Guess the Band" || englishName == "Name the Range")
-            return juce::Colour (0xff4fa3c7);   // frequency - cool blue
+            return AbcTrainTheme::accentFor (Family::frequency);
 
         if (englishName == "Guess the Compression" || englishName == "Guess the Gain Change")
-            return juce::Colour (0xffc77f4f);   // dynamics - warm amber
+            return AbcTrainTheme::accentFor (Family::dynamics);
 
         if (englishName == "Guess the Reverb" || englishName == "Guess the Pan Position"
             || englishName == "Guess the Delay Time" || englishName == "Guess the Stereo Width")
-            return juce::Colour (0xff5fb98c);   // space - green
+            return AbcTrainTheme::accentFor (Family::space);
 
-        return juce::Colour (0xffa878c9);       // character - violet
+        return AbcTrainTheme::accentFor (Family::character);
     }
 
     // Which skill each exercise builds. Grouping by this rather than by

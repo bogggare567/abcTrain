@@ -81,6 +81,32 @@ namespace AbcTrainTheme
     void setMode (Mode) noexcept;
     Mode getMode() noexcept;
 
+    // The four skill families the whole product is organised around, and
+    // the colour each one owns.
+    //
+    // EarTrainer groups its nine exercises by these on the home screen and
+    // tints the training backdrop with them; the three Learner plugins are
+    // each squarely one family (EQ is frequency, Comp is dynamics, Verb is
+    // space), so each takes its family's colour as its own accent. That is
+    // what makes "which plugin am I looking at" answerable before you have
+    // read a single word - and it makes the trainer and the plugin that
+    // teaches the same skill visibly the same subject.
+    //
+    // These used to be four hex literals sitting in a helper inside
+    // EarTrainer's PluginEditor.cpp, which is exactly the drift this file
+    // exists to prevent.
+    enum class Family
+    {
+        frequency,   // EQ, named ranges - LearnerEQ
+        dynamics,    // compression, gain - LearnerComp
+        space,       // reverb, pan, delay, width - LearnerVerb
+        character    // distortion and anything unclassified
+    };
+
+    // Adjusted per mode: a light page needs a deeper, slightly less
+    // saturated hue to carry the same visual weight as a dark one.
+    juce::Colour accentFor (Family) noexcept;
+
     // Spacing scale - a 4px base grid. Layout code uses these names instead
     // of bare numbers so "the gap between a control and its label" and "the
     // gap between two groups" can't accidentally end up the same value.

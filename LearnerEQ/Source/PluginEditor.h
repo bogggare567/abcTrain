@@ -21,6 +21,10 @@ public:
     ~LearnerEQEditor() override;
 
     void paint (juce::Graphics&) override;
+
+    // The bypass veil has to go over the spectrum and waveform, which are
+    // child components - paint() runs underneath them.
+    void paintOverChildren (juce::Graphics&) override;
     void resized() override;
 
 private:
@@ -36,6 +40,7 @@ private:
         juce::Slider gainSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
         juce::Slider qSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
         juce::Label nameLabel;
+        std::array<juce::Label, 3> knobLabels;   // Freq / Gain / Q
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> freqAttachment, gainAttachment, qAttachment;
     };
 
@@ -66,11 +71,25 @@ private:
     LessonController lessonController;
     LessonController resonanceLessonController;
 
-    juce::TextButton updateButton { "Updates" };
+    // Icon buttons rather than 76px and 62px of text for two controls
+    // pressed once a session - the same treatment EarTrainer's title row
+    // already had (see decisions/022).
+    IconButton updateButton { AppIcons::Icon::download };
 
     // Light/dark switch, persisted product-wide.
-    juce::TextButton themeButton { "Light" };
+    IconButton themeButton { AppIcons::Icon::sun };
     juce::PropertiesFile themeProperties;
+
+    // This plugin's family colour (see AbcTrainTheme::accentFor). Held as
+    // a member because the light and dark variants differ, so it has to be
+    // recomputed and re-pushed on every theme change, not just once.
+    juce::Colour accent;
+
+    // Eased 0..1 "how bypassed does this look". Driven by the editor's
+    // existing 30 Hz timer rather than a second one: bypass used to change
+    // nothing on screen at all, so you could not tell by looking whether
+    // you were hearing the plugin.
+    float bypassVeil = 0.0f;
 
     // Section backdrops, computed in resized() and drawn in paint().
     juce::Rectangle<int> analysisSection;

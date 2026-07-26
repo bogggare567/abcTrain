@@ -54,7 +54,16 @@ namespace AbcTrainTheme
             p.windowBackground  = juce::Colour (0xffe8e6e1);
             p.panelBackground   = juce::Colour (0xfff1efeb);
             p.widgetBackground  = juce::Colour (0xfff8f7f4);
-            p.displayBackground = juce::Colour (0xfff4f2ee);
+
+            // Darker than the panel it sits in, and the darkest surface in
+            // this palette - the one place the light theme deliberately
+            // steps *down* instead of up. It used to be #f4f2ee, lighter
+            // than the panel, which made the spectrum and waveform read as
+            // raised white plates rather than as wells cut into the
+            // surface, and left a 1px curve to carry itself against the
+            // brightest thing on screen. Caught by rendering the editors in
+            // both themes (tools/EditorSnapshots).
+            p.displayBackground = juce::Colour (0xffdedad2);
 
             p.outline = juce::Colour (0xffc9c5bd);
             p.divider = juce::Colour (0xffd8d4cc);
@@ -109,6 +118,32 @@ namespace AbcTrainTheme
     Mode getMode() noexcept
     {
         return activeMode;
+    }
+
+    juce::Colour accentFor (Family family) noexcept
+    {
+        // Dark-mode values first - these are the hues the whole product was
+        // designed against. The light variants are darkened and slightly
+        // desaturated by the same reasoning the light palette itself uses:
+        // a colour that reads as "clearly blue" on #16161c washes out to a
+        // pastel on warm paper.
+        const auto base = [family]
+        {
+            switch (family)
+            {
+                case Family::frequency: return juce::Colour (0xff4fa3c7);   // cool blue
+                case Family::dynamics:  return juce::Colour (0xffc77f4f);   // warm amber
+                case Family::space:     return juce::Colour (0xff5fb98c);   // green
+                case Family::character: return juce::Colour (0xffa878c9);   // violet
+            }
+
+            return juce::Colour (0xff4fa3c7);
+        }();
+
+        if (activeMode == Mode::light)
+            return base.darker (0.35f).withMultipliedSaturation (0.9f);
+
+        return base;
     }
 
     namespace Ease

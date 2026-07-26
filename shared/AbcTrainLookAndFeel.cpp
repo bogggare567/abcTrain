@@ -45,9 +45,10 @@ AbcTrainLookAndFeel::AbcTrainLookAndFeel()
     refreshFromTheme();
 }
 
-void AbcTrainLookAndFeel::refreshFromTheme()
+void AbcTrainLookAndFeel::refreshFromTheme (juce::Colour accentOverride)
 {
     const auto& t = current();
+    const auto accent = accentOverride.isTransparent() ? t.accent : accentOverride;
 
     // LookAndFeel_V4::initialiseColours() wires each of these nine slots
     // into the specific component colourIds every JUCE widget actually
@@ -58,7 +59,7 @@ void AbcTrainLookAndFeel::refreshFromTheme()
     // call on every individual slider in every editor.
     setColourScheme (juce::LookAndFeel_V4::ColourScheme (
         t.windowBackground, t.widgetBackground, t.panelBackground,
-        t.outline, t.text, t.accent,
+        t.outline, t.text, accent,
         t.text, t.accentWarm, t.text));
 
     setColour (juce::ResizableWindow::backgroundColourId, t.windowBackground);
@@ -71,17 +72,54 @@ void AbcTrainLookAndFeel::refreshFromTheme()
     setColour (juce::ComboBox::arrowColourId, t.textDim);
     setColour (juce::PopupMenu::backgroundColourId, t.panelBackground);
     setColour (juce::PopupMenu::textColourId, t.text);
-    setColour (juce::PopupMenu::highlightedBackgroundColourId, t.accent.withAlpha (0.25f));
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, accent.withAlpha (0.25f));
     setColour (juce::PopupMenu::highlightedTextColourId, t.textBright);
     setColour (juce::TextButton::buttonColourId, t.widgetBackground);
     setColour (juce::TextButton::textColourOffId, t.text);
     setColour (juce::TextButton::textColourOnId, t.textBright);
     setColour (juce::ToggleButton::textColourId, t.text);
     setColour (juce::ToggleButton::tickColourId, t.accentWarm);
-    setColour (juce::HyperlinkButton::textColourId, t.accent);
+    setColour (juce::HyperlinkButton::textColourId, accent);
+
+    // The rotary value arc, explicitly.
+    //
+    // Found by rendering the editors (tools/EditorSnapshots): every knob in
+    // all three Learner plugins drew its arc in amber, including LearnerEQ,
+    // whose whole identity is blue. LookAndFeel_V4 maps
+    // Slider::rotarySliderFillColourId from the scheme's *highlightedFill*
+    // slot, which this class fills with accentWarm - the "you are touching
+    // this" colour - not with the accent. So the family colour reached the
+    // spectrum, the waveform, the icon and the backdrop, and stopped
+    // exactly at the controls. Setting the id directly is narrower than
+    // moving accent into highlightedFill, which would also have restyled
+    // every TextButton's on-state across all four plugins.
+    setColour (juce::Slider::rotarySliderFillColourId, accent);
+    setColour (juce::Slider::rotarySliderOutlineColourId, t.outline);
+    setColour (juce::Slider::thumbColourId, accent);
+    setColour (juce::Slider::trackColourId, accent.withAlpha (0.55f));
+
+    // The value readout under every rotary knob. JUCE's default draws it
+    // as a bordered, filled text field, which puts eighteen little boxes
+    // across a Learner editor and makes the numbers read as inputs rather
+    // than as part of the knob. Transparent well and border; the number
+    // itself gets the bright text colour, because in a plugin whose job is
+    // teaching, the *value* is the thing you are supposed to be learning
+    // to associate with a sound.
+    setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::Slider::textBoxTextColourId, t.textBright);
+    setColour (juce::Slider::textBoxHighlightColourId, accent.withAlpha (0.35f));
 }
 
 // ---------------------------------------------------------------- fonts
+
+juce::Label* AbcTrainLookAndFeel::createSliderTextBox (juce::Slider& slider)
+{
+    auto* label = juce::LookAndFeel_V4::createSliderTextBox (slider);
+    label->setFont (monoFont().withHeight (13.0f));
+    label->setJustificationType (juce::Justification::centred);
+    return label;
+}
 
 juce::Font AbcTrainLookAndFeel::titleFont()
 {

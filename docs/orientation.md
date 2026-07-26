@@ -155,6 +155,23 @@ The ADRs record each one, because they are not accidents — they are the
 category of thing this test suite structurally cannot see. If you change
 anything visual, build it and look at it.
 
+The cheapest way to look:
+
+```bash
+cmake --build build --target EditorSnapshots
+./build/EditorSnapshots_artefacts/EditorSnapshots ~/shots
+```
+
+That renders all three Learner editors to PNGs, in both themes, with no
+plugin host — six pictures, no DAW, no window server. Its first run found
+six bugs that had passed every test, five of which predated the change
+that prompted it. It asserts nothing on purpose; see
+[ADR 023](decisions/023-learner-plugin-visual-pass.md).
+
+EarTrainer's screens still need the standalone app: its editor writes to
+the real per-user progress file, so rendering it would touch a player's
+saved record.
+
 ## Releases
 
 Version comes from `git describe`, not a hand-edited literal. Pushing a

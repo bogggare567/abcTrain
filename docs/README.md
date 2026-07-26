@@ -53,6 +53,7 @@ Written to be readable by someone who wasn't there.
 | [020](decisions/020-continuous-answers.md) | Continuous answers with a difficulty-scaled tolerance band |
 | [021](decisions/021-sessions-and-navigation.md) | Training runs with a shape; Home → Training screens |
 | [022](decisions/022-motion-audit-and-indicators.md) | The motion audit; compact indicators; a tint per exercise |
+| [023](decisions/023-learner-plugin-visual-pass.md) | A colour per plugin, and a tool for actually looking at them |
 
 ## Repo-level files
 

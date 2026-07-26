@@ -11,6 +11,12 @@ namespace CompressorGuide
     struct Preset
     {
         const char* name;
+
+        // One sentence on what this setting is *for*, shown in the guide
+        // card when the preset is applied. A preset that silently moves
+        // seven knobs teaches nothing; a preset that says why it moved
+        // them is the entire point of a plugin called "Learner".
+        const char* what;
         float thresholdDb;
         float ratio;
         float attackMs;
@@ -19,10 +25,26 @@ namespace CompressorGuide
     };
 
     inline const std::array<Preset, 4> presets {{
-        { "Vocal Smoothing", -18.0f, 3.0f,  5.0f,  150.0f, 12.0f },
-        { "Punchy Drums",    -12.0f, 4.0f,  20.0f, 80.0f,  0.0f  },
-        { "Bass Control",    -24.0f, 6.0f,  10.0f, 200.0f, 6.0f  },
-        { "Limiter",         -6.0f,  20.0f, 0.1f,  50.0f,  0.0f  }
+        { "Vocal Smoothing",
+          "Moderate ratio with a soft knee and a fast-but-not-instant attack: "
+          "it evens out a performance without flattening the consonants that "
+          "carry the words.",
+          -18.0f, 3.0f,  5.0f,  150.0f, 12.0f },
+        { "Punchy Drums",
+          "A slow 20 ms attack deliberately lets the stick hit through before "
+          "the compressor closes, so the transient stays sharp and only the "
+          "body behind it is controlled.",
+          -12.0f, 4.0f,  20.0f, 80.0f,  0.0f  },
+        { "Bass Control",
+          "Low threshold and a long release, so the gain settles rather than "
+          "moving with each note - a fast release on bass audibly pumps in "
+          "time with the part.",
+          -24.0f, 6.0f,  10.0f, 200.0f, 6.0f  },
+        { "Limiter",
+          "A very high ratio with near-zero attack: a ceiling rather than a "
+          "compressor. Useful to hear what over-limiting costs you - listen "
+          "for the life going out of the dynamics.",
+          -6.0f,  20.0f, 0.1f,  50.0f,  0.0f  }
     }};
 
     // Text here mirrors docs/knowledge_base.md's "Компрессия и

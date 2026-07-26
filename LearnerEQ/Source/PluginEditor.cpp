@@ -24,7 +24,8 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
                                 ? AbcTrainTheme::Mode::light
                                 : AbcTrainTheme::Mode::dark);
-    lookAndFeel.refreshFromTheme();
+    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::frequency);
+    lookAndFeel.refreshFromTheme (accent);
 
     setLookAndFeel (&lookAndFeel);
 
@@ -59,8 +60,31 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         controls.nameLabel.setJustificationType (juce::Justification::centred);
         addAndMakeVisible (controls.nameLabel);
 
+        // Three identical knobs per band with only the band's name above
+        // them: nothing on screen said which was frequency, which was gain
+        // and which was Q. The numbers underneath don't answer it either -
+        // 0.70 could be a Q or a gain. Obvious in a rendered editor,
+        // invisible to every test.
+        const char* const knobCaptions[] = { "Freq", "Gain", "Q" };
+
+        for (int knob = 0; knob < 3; ++knob)
+        {
+            auto& caption = controls.knobLabels[(size_t) knob];
+            caption.setText (knobCaptions[knob], juce::dontSendNotification);
+            caption.setJustificationType (juce::Justification::centred);
+            caption.setFont (AbcTrainLookAndFeel::captionFont());
+            addAndMakeVisible (caption);
+        }
+
         for (auto* slider : { &controls.freqSlider, &controls.gainSlider, &controls.qSlider })
+        {
             addAndMakeVisible (slider);
+
+            // See the same call in LearnerComp - and note the order: this
+            // must follow addAndMakeVisible, or the slider has no parent
+            // and resolves back to JUCE's default LookAndFeel.
+            slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 56, 18);
+        }
 
         controls.freqAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
             processor.apvts, LearnerEQProcessor::freqParamId (band), controls.freqSlider);
@@ -110,6 +134,11 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         else if (lessonSelector.getSelectedId() == 2)
             resonanceLessonController.showAndStart();
     };
+    // Nothing is selected until a lesson is picked, and an unlabelled
+    // empty dropdown in the title row was the result - caught by rendering
+    // the editor (tools/EditorSnapshots). Re-cleared on close below, so
+    // picking the same lesson twice in a row still starts it.
+    lessonSelector.setTextWhenNothingSelected ("Lessons");
     addAndMakeVisible (lessonSelector);
 
     updateButton.onClick = [this]
@@ -126,7 +155,11 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         auto handled = std::make_shared<bool> (false);
 
         updateButton.setEnabled (false);
-        updateButton.setButtonText ("Checking...");
+        // The button is now an icon with no room for text, so the outcome
+        // goes where there is room: the guide card that already floats in
+        // over the visualisation. ADR 014's rule still holds - every click
+        // gets a visible outcome - it just gets a better-looking one.
+        guideTooltip.setText ("Checking for updates...");
 
         UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
         {
@@ -138,16 +171,12 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
             if (! foundNewer)
             {
-                safeThis->updateButton.setButtonText ("Up to date");
-                juce::Timer::callAfterDelay (2500, [safeThis]
-                {
-                    if (safeThis != nullptr)
-                        safeThis->updateButton.setButtonText ("Updates");
-                });
+                safeThis->guideTooltip.setText ("You're on the latest version ("
+                                                 + juce::String (CurrentVersion::string) + ").", 4000);
                 return;
             }
 
-            safeThis->updateButton.setButtonText ("Updates");
+            safeThis->guideTooltip.setText ({});
 
             const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
                 juce::MessageBoxIconType::InfoIcon,
@@ -173,13 +202,8 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
             *handled = true;
 
             safeThis->updateButton.setEnabled (true);
-            safeThis->updateButton.setButtonText ("Couldn't check");
-
-            juce::Timer::callAfterDelay (2500, [safeThis]
-            {
-                if (safeThis != nullptr)
-                    safeThis->updateButton.setButtonText ("Updates");
-            });
+            safeThis->guideTooltip.setText ("Couldn't reach the update server. "
+                                             "Check your connection and try again.", 5000);
         });
     };
     addAndMakeVisible (updateButton);
@@ -197,15 +221,26 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     // through on top of it - the same z-order fix as decisions/015's
     // Training Sounds overlay and decisions/016's soundkorb.ru link.
     addChildComponent (lessonController);
-    lessonController.onClosed = [this] { resized(); };
+    lessonController.onClosed = [this]
+    {
+        // Back to "Lessons" so the same one can be started again.
+        lessonSelector.setSelectedId (0, juce::dontSendNotification);
+        resized();
+    };
 
     addChildComponent (resonanceLessonController);
-    resonanceLessonController.onClosed = [this] { resized(); };
+    resonanceLessonController.onClosed = [this]
+    {
+        // Back to "Lessons" so the same one can be started again.
+        lessonSelector.setSelectedId (0, juce::dontSendNotification);
+        resized();
+    };
 
     startTimerHz (30);
     // Taller for the section panels' own padding/captions; the guide text
     // no longer needs a permanent strip (it floats on demand instead).
-    setSize (790, 742);
+    // 20 + 32 + 28 + 432 + 12 + 212 + 20, derived from resized().
+    setSize (790, 756);
 
     applyTheme();
 }
@@ -221,7 +256,14 @@ void LearnerEQEditor::applyTheme()
     for (auto& controls : bands)
         controls.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
 
-    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+    // The glyph cross-fades rather than cutting, so the toggle reads as
+    // one control changing state (see IconButton).
+    themeButton.setIcon (theme.mode == AbcTrainTheme::Mode::light ? AppIcons::Icon::moon
+                                                                  : AppIcons::Icon::sun);
+
+    spectrum.setAccentColour (accent);
+    waveform.setAccentColour (accent);
+    pluginIcon.setIconColour (accent);
     repaint();
 }
 
@@ -234,7 +276,10 @@ void LearnerEQEditor::toggleTheme()
     AbcTrainTheme::setMode (newMode);
     themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
 
-    lookAndFeel.refreshFromTheme();
+    // accentFor() returns a different value per mode, so it has to be
+    // asked again rather than reused from construction.
+    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::frequency);
+    lookAndFeel.refreshFromTheme (accent);
     applyTheme();
 
     for (auto* child : getChildren())
@@ -252,7 +297,10 @@ void LearnerEQEditor::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    // Each plugin's own room, the same idea EarTrainer applies per
+    // exercise - and the same four family colours, so the trainer and the
+    // plugin that teaches the same skill read as one subject.
+    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat(), accent);
 
     AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
     AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Bands");
@@ -268,6 +316,28 @@ void LearnerEQEditor::paint (juce::Graphics& g)
         juce::Justification::centredLeft);
 }
 
+void LearnerEQEditor::paintOverChildren (juce::Graphics& g)
+{
+    if (bypassVeil <= 0.004f || analysisSection.isEmpty())
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+    const auto eased = AbcTrainTheme::Ease::out (bypassVeil);
+    const auto area = analysisSection.toFloat().reduced (AbcTrainTheme::Spacing::medium);
+
+    // Desaturating the analysis rather than hiding it: you still want to
+    // see the signal going past, you just need to be able to tell at a
+    // glance that nothing is being done to it.
+    g.setColour (theme.windowBackground.withAlpha (0.62f * eased));
+    g.fillRoundedRectangle (area, AbcTrainTheme::Radius::well);
+
+    AbcTrainLookAndFeel::drawTrackedText (g, "BYPASSED", area.withHeight (20.0f)
+                                                              .withY (area.getCentreY() - 10.0f),
+                                           AbcTrainLookAndFeel::captionFont(),
+                                           theme.textDim.withAlpha (eased), 3.0f,
+                                           juce::Justification::centred);
+}
+
 void LearnerEQEditor::resized()
 {
     using namespace AbcTrainTheme;
@@ -280,9 +350,9 @@ void LearnerEQEditor::resized()
     auto titleRow = area.removeFromTop (32);
     lessonSelector.setBounds (titleRow.removeFromRight (156));
     titleRow.removeFromRight (Spacing::small);
-    themeButton.setBounds (titleRow.removeFromRight (62));
-    titleRow.removeFromRight (Spacing::small);
-    updateButton.setBounds (titleRow.removeFromRight (76));
+    themeButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
+    titleRow.removeFromRight (Spacing::tight);
+    updateButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
     titleRow.removeFromRight (Spacing::small);
     bypassButton.setBounds (titleRow.removeFromRight (96));
     pluginIcon.setBounds (titleRow.removeFromLeft (28));
@@ -308,7 +378,7 @@ void LearnerEQEditor::resized()
     area.removeFromTop (Spacing::medium);
 
     // --- band section: one column of freq/gain/Q per band ---
-    controlSection = area.removeFromTop (198);
+    controlSection = area.removeFromTop (212);   // +14 for the Freq/Gain/Q captions
     {
         auto inner = controlSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);
@@ -325,6 +395,11 @@ void LearnerEQEditor::resized()
             // stacked layout needed 270px of height per column, which is
             // what forced the window so tall and left the bands cramped.
             const auto knobWidth = column.getWidth() / 3;
+
+            auto captionRow = column.removeFromTop (14);
+            for (auto& caption : controls.knobLabels)
+                caption.setBounds (captionRow.removeFromLeft (knobWidth));
+
             controls.freqSlider.setBounds (column.removeFromLeft (knobWidth));
             controls.gainSlider.setBounds (column.removeFromLeft (knobWidth));
             controls.qSlider.setBounds (column);
@@ -342,6 +417,25 @@ void LearnerEQEditor::resized()
 
 void LearnerEQEditor::timerCallback()
 {
+    // Bypass used to change nothing on screen, so the only way to know
+    // whether you were hearing the plugin was to look at the checkbox.
+    // Eased on this timer rather than a second one - 30 Hz over ~260 ms is
+    // eight frames, plenty for a fade.
+    {
+        const auto target = processor.apvts.getRawParameterValue (LearnerEQProcessor::bypassParamId)->load() > 0.5f
+                                ? 1.0f : 0.0f;
+
+        if (! juce::approximatelyEqual (bypassVeil, target))
+        {
+            const auto step = (float) (1000.0 / 30.0 / AbcTrainTheme::Duration::release);
+
+            bypassVeil = std::abs (target - bypassVeil) <= step
+                             ? target
+                             : bypassVeil + (target > bypassVeil ? step : -step);
+            repaint();
+        }
+    }
+
     std::array<float, 4> freqs {}, gains {}, qs {};
 
     for (int band = 0; band < LearnerEQProcessor::numBands; ++band)

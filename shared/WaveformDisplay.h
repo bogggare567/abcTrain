@@ -43,10 +43,21 @@ public:
     float getOutputPeak() const noexcept { return lastOutputPeak; }
     float getCurrentHighlightAmount() const noexcept { return lastHighlight; }
 
+
+    // Per-instance accent, so a host with two Learner plugins open shows
+    // each in its own family colour. The palette itself is deliberately
+    // process-wide (see AbcTrainTheme::current) and so cannot carry this;
+    // transparent means "just use the palette's accent".
+    void setAccentColour (juce::Colour newAccent) { accentOverride = newAccent; repaint(); }
+
     void paint (juce::Graphics&) override;
 
 private:
+    juce::Colour effectiveAccent() const;
     void timerCallback() override;
+
+    juce::Colour accentOverride { juce::Colours::transparentBlack };
+
 
     // One peak column's screen position. `mirrored` picks the bottom half
     // of the symmetric envelope. Static because buildEnvelopeShape needs it

@@ -27,12 +27,23 @@ public:
 
     // Re-reads AbcTrainTheme::current() into JUCE's colour-scheme slots.
     // Call after AbcTrainTheme::setMode(), then repaint the editor.
-    void refreshFromTheme();
+    // `accentOverride` lets one editor run the whole shared theme in its
+    // own family colour (see AbcTrainTheme::accentFor). Each editor owns
+    // its own LookAndFeel instance, so this is per-plugin and two Learner
+    // plugins open at once each keep their own. Transparent (the default)
+    // means "use the palette's accent", which is what EarTrainer wants.
+    void refreshFromTheme (juce::Colour accentOverride = juce::Colours::transparentBlack);
 
     static constexpr float titleFontHeight = 22.0f;
     static constexpr float bodyFontHeight = 14.0f;
     static constexpr float monoFontHeight = 16.0f;
     static constexpr float captionFontHeight = 11.0f;
+
+    // The value readout under a rotary knob, in the mono face - so a knob
+    // sweeping through 9.8 / 10.0 / 10.2 doesn't make the whole number
+    // jiggle sideways as the glyph widths change. JUCE's default uses a
+    // proportional font, which is exactly where that jitter comes from.
+    juce::Label* createSliderTextBox (juce::Slider&) override;
 
     static juce::Font titleFont();
     static juce::Font monoFont();

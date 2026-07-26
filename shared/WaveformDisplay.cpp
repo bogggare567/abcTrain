@@ -87,6 +87,11 @@ juce::Path WaveformDisplay::buildEnvelopeShape (const std::array<float, numColum
     return path;
 }
 
+juce::Colour WaveformDisplay::effectiveAccent() const
+{
+    return accentOverride.isTransparent() ? AbcTrainTheme::current().accent : accentOverride;
+}
+
 void WaveformDisplay::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
@@ -116,7 +121,7 @@ void WaveformDisplay::paint (juce::Graphics& g)
     // column, since a gradient-per-column fill would cost a separate path
     // per column and defeat the point of drawing one smooth envelope.
     const auto highlightProportion = juce::jlimit (0.0f, highlightRangeDb, lastHighlight) / highlightRangeDb;
-    const auto traceColour = theme.accent.interpolatedWith (theme.negative, highlightProportion);
+    const auto traceColour = effectiveAccent().interpolatedWith (theme.negative, highlightProportion);
 
     const auto outputTop = buildEnvelopePath (outputHistory, bounds, false);
     const auto outputBottom = buildEnvelopePath (outputHistory, bounds, true);

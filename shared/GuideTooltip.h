@@ -24,7 +24,15 @@ public:
     ~GuideTooltip() override;
 
     // Empty text dismisses the tooltip (animating out); non-empty shows it.
-    void setText (const juce::String& newText);
+    //
+    // `autoDismissMs` > 0 makes the card take itself away after that long.
+    // Drag-driven guide text doesn't want this - the drag ending is what
+    // dismisses it - but a message with no gesture behind it (a preset
+    // explanation, an update result) would otherwise sit over the
+    // visualisation forever. Counted on this component's own timer, so a
+    // newer message replacing an older one simply restarts the countdown
+    // rather than being cut short by the previous one's callback.
+    void setText (const juce::String& newText, int autoDismissMs = 0);
 
     void paint (juce::Graphics&) override;
 
@@ -34,6 +42,7 @@ private:
     juce::String text;
     float visibility = 0.0f;      // eased 0..1
     float visibilityTarget = 0.0f;
+    int dismissCountdownMs = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GuideTooltip)
 };

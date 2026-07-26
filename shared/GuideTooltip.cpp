@@ -22,16 +22,28 @@ GuideTooltip::~GuideTooltip()
     stopTimer();
 }
 
-void GuideTooltip::setText (const juce::String& newText)
+void GuideTooltip::setText (const juce::String& newText, int autoDismissMs)
 {
     if (newText.isNotEmpty() && newText != text)
         text = newText;
 
     visibilityTarget = newText.isEmpty() ? 0.0f : 1.0f;
+    dismissCountdownMs = newText.isEmpty() ? 0 : juce::jmax (0, autoDismissMs);
 }
 
 void GuideTooltip::timerCallback()
 {
+    if (dismissCountdownMs > 0)
+    {
+        dismissCountdownMs -= (int) (1000.0 / (double) tickHz);
+
+        if (dismissCountdownMs <= 0)
+        {
+            dismissCountdownMs = 0;
+            visibilityTarget = 0.0f;
+        }
+    }
+
     if (std::abs (visibility - visibilityTarget) < 0.001f)
         return;
 

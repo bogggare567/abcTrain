@@ -11,6 +11,11 @@ namespace ReverbGuide
     struct Preset
     {
         const char* name;
+
+        // One sentence on what this setting is *for*, shown in the guide
+        // card when the preset is applied - see the same field on
+        // LearnerComp's CompressorGuide::Preset.
+        const char* what;
         int typeIndex; // 0=Room, 1=Hall, 2=Plate, 3=Spring
         float decaySeconds;
         float preDelayMs;
@@ -21,10 +26,25 @@ namespace ReverbGuide
     };
 
     inline const std::array<Preset, 4> presets {{
-        { "Vocal Ambience", 2, 1.5f, 40.0f, 0.5f, 0.3f, 25.0f, 1.0f },
-        { "Concert Hall",   1, 2.5f, 20.0f, 0.8f, 0.4f, 30.0f, 1.0f },
-        { "Small Room",     0, 0.6f, 10.0f, 0.3f, 0.5f, 20.0f, 0.7f },
-        { "Spring Tank",    3, 2.0f, 0.0f,  0.5f, 0.3f, 35.0f, 0.5f }
+        { "Vocal Ambience",
+          "A short plate with 40 ms of pre-delay. The gap before the tail "
+          "starts is what keeps the voice in front of the reverb instead of "
+          "inside it.",
+          2, 1.5f, 40.0f, 0.5f, 0.3f, 25.0f, 1.0f },
+        { "Concert Hall",
+          "Long decay, large size, wide. Notice how much of the sense of "
+          "space comes from the size rather than the decay time alone.",
+          1, 2.5f, 20.0f, 0.8f, 0.4f, 30.0f, 1.0f },
+        { "Small Room",
+          "Under a second of decay and higher damping - it reads as a room "
+          "rather than as an effect. Small rooms are mostly early "
+          "reflections, which is why this still sounds close.",
+          0, 0.6f, 10.0f, 0.3f, 0.5f, 20.0f, 0.7f },
+        { "Spring Tank",
+          "The metallic, springy character you know from guitar amps. It "
+          "comes from resonant allpass filters, not from a modelled room, "
+          "which is why it colours the sound rather than placing it.",
+          3, 2.0f, 0.0f,  0.5f, 0.3f, 35.0f, 0.5f }
     }};
 
     // Text here mirrors docs/knowledge_base.md's "Реверберация и
