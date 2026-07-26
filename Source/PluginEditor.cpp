@@ -37,6 +37,25 @@ namespace
         { "Name the Range",             "game.frequencyrange.name", "game.frequencyrange.instructions", "game.frequencyrange.benefit" }
     }};
 
+    // A colour per exercise, so each training reads as its own room -
+    // the thing the reference trainers get from a whole different
+    // background per game. Grouped by category, so the four families stay
+    // legible as families rather than nine unrelated hues.
+    juce::Colour tintForGame (const juce::String& englishName)
+    {
+        if (englishName == "Guess the Band" || englishName == "Name the Range")
+            return juce::Colour (0xff4fa3c7);   // frequency - cool blue
+
+        if (englishName == "Guess the Compression" || englishName == "Guess the Gain Change")
+            return juce::Colour (0xffc77f4f);   // dynamics - warm amber
+
+        if (englishName == "Guess the Reverb" || englishName == "Guess the Pan Position"
+            || englishName == "Guess the Delay Time" || englishName == "Guess the Stereo Width")
+            return juce::Colour (0xff5fb98c);   // space - green
+
+        return juce::Colour (0xffa878c9);       // character - violet
+    }
+
     // Which skill each exercise builds. Grouping by this rather than by
     // registration order is the whole point of the home screen: nine flat
     // entries are a list, four labelled groups are a map of the subject.
@@ -180,8 +199,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     instructionLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (instructionLabel);
 
-    newRoundButton.onClick = [this] { startNewRun(); };
-    addAndMakeVisible (newRoundButton);
+
+    restartButton.onClick = [this] { startNewRun(); };
+    addChildComponent (restartButton);
 
     beforeButton.onClick = [this] { setPlayProcessed (false); };
     afterButton.onClick = [this] { setPlayProcessed (true); };
@@ -470,6 +490,7 @@ EarTrainerEditor::~EarTrainerEditor()
     // them every block, and they are members of this editor. Leaving them
     // registered through teardown is a use-after-free waiting for the
     // next processBlock.
+    processor.setSignalEnabled (true);
     processor.setVectorscope (nullptr);
     processor.setSpectrumAnalyzer (nullptr);
 
@@ -623,6 +644,8 @@ void EarTrainerEditor::resized()
         auto abRow = inner.removeFromTop (30);
         {
             auto centred = abRow.withSizeKeepingCentre (240, 28);
+            restartButton.setBounds (centred.withSizeKeepingCentre (160, 28));
+
             beforeButton.setBounds (centred.removeFromLeft (118));
             centred.removeFromLeft (Spacing::tight);
             afterButton.setBounds (centred);
@@ -630,8 +653,6 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::small);
 
         auto bottomRow = inner.removeFromTop (34);
-        newRoundButton.setBounds (bottomRow.removeFromLeft (120));
-        bottomRow.removeFromLeft (Spacing::small);
         modeSelector.setBounds (bottomRow.removeFromLeft (118));
         bottomRow.removeFromLeft (Spacing::small);
         hintButton.setBounds (bottomRow.removeFromLeft (30).withSizeKeepingCentre (30, 30));
@@ -702,7 +723,10 @@ void EarTrainerEditor::timerCallback()
         return;
 
     if (session.tickOneSecond())
+    {
         refreshFromGameState();   // the clock just ended the run
+        refreshBeforeAfter();
+    }
 
     refreshRunStatus();
 }
@@ -731,9 +755,11 @@ void EarTrainerEditor::startNewRun()
 
     clearHint();
 
-    // Start each round on "after": the change is the thing being tested,
-    // so that's the default, and A/B is a comparison you reach for.
-    processor.getGameManager().getActiveGame().setPlayProcessed (true);
+    // Each round starts *unprocessed*: you hear the clean reference
+    // first, then switch to hear what changed. That's the order an
+    // engineer A/Bs in, and it stops the treated version being the only
+    // thing ever heard.
+    processor.getGameManager().getActiveGame().setPlayProcessed (false);
     refreshBeforeAfter();
 
     processor.getGameManager().getActiveGame().newRound();
@@ -834,11 +860,14 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     homeViewport.setVisible (onHome);
 
+    // Nothing to listen for on the menu.
+    processor.setSignalEnabled (! onHome);
+
     // Everything that belongs to the training screen.
     for (auto* c : { (juce::Component*) &backButton, (juce::Component*) &gameIcon,
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
-                     (juce::Component*) &newRoundButton, (juce::Component*) &modeSelector,
+                     (juce::Component*) &modeSelector,
                      (juce::Component*) &hintButton, (juce::Component*) &hintCostLabel,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
@@ -1011,10 +1040,19 @@ void EarTrainerEditor::setPlayProcessed (bool shouldPlayProcessed)
 void EarTrainerEditor::refreshBeforeAfter()
 {
     auto& game = processor.getGameManager().getActiveGame();
-    const auto supported = game.supportsBeforeAfter();
+    const auto onTraining = (currentScreen == Screen::training);
+    const auto runOver = ! session.isRunActive();
 
-    beforeButton.setVisible (supported && currentScreen == Screen::training);
-    afterButton.setVisible (supported && currentScreen == Screen::training);
+    // When a run has ended, the restart button takes the A/B row's place:
+    // comparing before and after is pointless once there's nothing left
+    // to answer, and the one thing you *do* want is another go.
+    restartButton.setVisible (onTraining && runOver);
+    restartButton.setButtonText (localisation.getText ("ui.startAgain"));
+
+    const auto supported = game.supportsBeforeAfter() && ! runOver;
+
+    beforeButton.setVisible (supported && onTraining);
+    afterButton.setVisible (supported && onTraining);
 
     if (! supported)
         return;
@@ -1106,6 +1144,7 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
 {
     session.registerAnswer (wasCorrect);
     refreshRunStatus();
+    refreshBeforeAfter();
 
     // Auto-advance: the player shouldn't have to press a button between
     // every question. The delay is longer after a wrong answer (more to
@@ -1134,7 +1173,7 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
         // auto-advance, so one purchase quietly bought the rest of the
         // run - which is not what was paid for.
         safeThis->clearHint();
-        safeThis->processor.getGameManager().getActiveGame().setPlayProcessed (true);
+        safeThis->processor.getGameManager().getActiveGame().setPlayProcessed (false);
         safeThis->refreshBeforeAfter();
         safeThis->processor.getGameManager().getActiveGame().newRound();
     });

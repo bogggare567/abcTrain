@@ -43,6 +43,12 @@ public:
     // on the audio thread, because the editor can be closed while the
     // processor keeps running - the same registration pattern
     // LearnerEQ/Comp/Verb already use for their own displays.
+    // Silence on the menu. The trainer generates its own signal, so
+    // without this it keeps playing over the home screen where there's
+    // nothing to listen for. Defaults to on, and the editor restores it
+    // on teardown, so a plugin with no UI open still makes sound.
+    void setSignalEnabled (bool shouldBeEnabled) noexcept { signalEnabled.store (shouldBeEnabled); }
+
     void setVectorscope (Vectorscope* scope) noexcept { vectorscope.store (scope); }
     void setSpectrumAnalyzer (SpectrumAnalyzerComponent* analyzer) noexcept { spectrum.store (analyzer); }
 
@@ -53,6 +59,7 @@ private:
     GameManager gameManager;
     ProgressManager progressManager { gameManager };
 
+    std::atomic<bool> signalEnabled { true };
     std::atomic<Vectorscope*> vectorscope { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };
 

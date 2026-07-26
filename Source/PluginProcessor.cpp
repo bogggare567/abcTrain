@@ -35,6 +35,16 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     // The trainer ignores whatever the host feeds in and generates its own test signal.
     gameManager.process (buffer);
 
+    if (! signalEnabled.load())
+    {
+        // Still ran the game's process() above so its internal state (burst
+        // envelopes, delay tails, filter memory) stays continuous - only
+        // the output is silenced. Clearing without processing would make
+        // every return from the menu start mid-burst.
+        buffer.clear();
+        return;
+    }
+
     // Feed the hint scopes from the generated signal. Both are optional -
     // they only exist while the editor's hint panel is open.
     const auto numSamples = buffer.getNumSamples();

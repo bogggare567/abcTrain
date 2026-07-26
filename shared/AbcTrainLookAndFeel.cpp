@@ -441,9 +441,16 @@ void AbcTrainLookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width,
 
 // ------------------------------------------------------ shared painters
 
-void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectangle<float> bounds)
+void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                                 juce::Colour tint)
 {
     const auto& t = current();
+
+    // A little further in light mode: the same mix reads as almost
+    // nothing against a bright page and as plenty against a dark one.
+    const auto tintStrength = t.mode == Mode::light ? 0.16f : 0.11f;
+    const auto base = tint.isTransparent() ? t.windowBackground
+                                           : t.windowBackground.interpolatedWith (tint.withAlpha (1.0f), tintStrength);
 
     // A gentle radial gradient centred above the title row, so the top of
     // the window feels lit and the corners fall away. Subtle by design -
@@ -453,8 +460,8 @@ void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectang
     const auto radius = juce::jmax (bounds.getWidth(), bounds.getHeight()) * 0.9f;
 
     const auto lift = t.mode == Mode::light ? 0.5f : 0.035f;
-    juce::ColourGradient gradient (t.windowBackground.brighter (lift), centre.x, centre.y,
-                                    t.windowBackground.darker (t.mode == Mode::light ? 0.04f : 0.0f),
+    juce::ColourGradient gradient (base.brighter (lift), centre.x, centre.y,
+                                    base.darker (t.mode == Mode::light ? 0.04f : 0.0f),
                                     centre.x, centre.y + radius, true);
     g.setGradientFill (gradient);
     g.fillRect (bounds);

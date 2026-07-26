@@ -69,7 +69,15 @@ public:
 
     // The editor backdrop: a soft radial gradient plus a faint noise tooth
     // (see noiseTexture() for why the grain matters on large flat fills).
-    static void paintPanelBackground (juce::Graphics&, juce::Rectangle<float> bounds);
+    // `tint` gives the backdrop a per-exercise colour cast. Deliberately
+    // a *cast* over the theme's own base rather than a flat colour of its
+    // own: the reference trainers give each exercise a whole different
+    // background, which is memorable, but a saturated page behind a dark
+    // instrument would fight everything drawn on it. Mixing a hint of hue
+    // into the existing gradient gets the "each training has its own
+    // room" feeling without touching contrast.
+    static void paintPanelBackground (juce::Graphics&, juce::Rectangle<float> bounds,
+                                      juce::Colour tint = juce::Colours::transparentBlack);
 
     // A grouped-section container: subtly raised surface, hairline border,
     // optional caption in the top-left. This is what gives related controls

@@ -216,7 +216,11 @@ private:
     juce::Label instructionLabel;
     juce::Label scoreLabel;
     juce::Label feedbackLabel;
-    juce::TextButton newRoundButton { "New Round" };
+    // No "New Round" button: rounds advance on their own, and a button
+    // that only duplicates something automatic is a button to remove.
+    // This one exists *only* while a Survival/Blitz run is over, which is
+    // the one moment nothing advances by itself.
+    juce::TextButton restartButton;
 
     // The scope hint: a vectorscope (where it sits in the stereo field,
     // and whether it's in phase) over a spectrum (where the energy is).

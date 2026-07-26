@@ -77,5 +77,6 @@
   "ui.sectionProgress": "Прогресс",
   "ui.trainingSounds": "Звуки тренировки",
   "ui.themeLight": "Светлая тема",
-  "ui.themeDark": "Тёмная тема"
+  "ui.themeDark": "Тёмная тема",
+  "ui.startAgain": "Начать заново"
 }
