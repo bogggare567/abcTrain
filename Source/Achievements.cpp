@@ -17,63 +17,73 @@ namespace Achievements
 
         const std::vector<Definition> definitions
         {
-            // --- getting started, one per skill family -------------------
-            { "first.hundred", Kind::totalCorrect, 100, -1,
+            // Bronze: reachable in a first sitting or two. These exist so
+            // the shelf is never empty, which is the only reason an easy
+            // achievement is worth having.
+            { "first.hundred",     Kind::totalCorrect,      100, Tier::bronze, -1,
               "achv.firstHundred.name", "achv.firstHundred.desc" },
-            { "breadth.all", Kind::breadth, 9, -1,
+            { "breadth.all",       Kind::breadth,             9, Tier::bronze, -1,
               "achv.breadthAll.name", "achv.breadthAll.desc" },
-
-            // --- frequency ------------------------------------------------
-            { "eq.rounds.200", Kind::exerciseRounds, 200, eq,
-              "achv.eqRounds.name", "achv.eqRounds.desc" },
-            { "eq.accuracy.75", Kind::exerciseAccuracy, 75, eq,
-              "achv.eqAccuracy.name", "achv.eqAccuracy.desc" },
-            { "range.accuracy.80", Kind::exerciseAccuracy, 80, frequencyRange,
-              "achv.rangeAccuracy.name", "achv.rangeAccuracy.desc" },
-
-            // --- dynamics -------------------------------------------------
-            { "comp.accuracy.75", Kind::exerciseAccuracy, 75, compression,
-              "achv.compAccuracy.name", "achv.compAccuracy.desc" },
-            { "gain.accuracy.80", Kind::exerciseAccuracy, 80, gain,
-              "achv.gainAccuracy.name", "achv.gainAccuracy.desc" },
-
-            // --- space and stereo -----------------------------------------
-            { "pan.streak.15", Kind::answerStreak, 15, pan,
-              "achv.panStreak.name", "achv.panStreak.desc" },
-            { "delay.accuracy.70", Kind::exerciseAccuracy, 70, delay,
-              "achv.delayAccuracy.name", "achv.delayAccuracy.desc" },
-            { "reverb.accuracy.75", Kind::exerciseAccuracy, 75, reverb,
-              "achv.reverbAccuracy.name", "achv.reverbAccuracy.desc" },
-            { "width.accuracy.75", Kind::exerciseAccuracy, 75, stereoWidth,
-              "achv.widthAccuracy.name", "achv.widthAccuracy.desc" },
-
-            // --- character ------------------------------------------------
-            { "dist.accuracy.75", Kind::exerciseAccuracy, 75, distortion,
-              "achv.distAccuracy.name", "achv.distAccuracy.desc" },
-
-            // --- how you play ---------------------------------------------
-            { "survival.25", Kind::survivalScore, 25, -1,
-              "achv.survival25.name", "achv.survival25.desc" },
-            { "blitz.30", Kind::blitzScore, 30, -1,
-              "achv.blitz30.name", "achv.blitz30.desc" },
-            { "streak.7days", Kind::dayStreak, 7, -1,
+            { "streak.7days",      Kind::dayStreak,           7, Tier::bronze, -1,
               "achv.streak7.name", "achv.streak7.desc" },
-            { "streak.30days", Kind::dayStreak, 30, -1,
-              "achv.streak30.name", "achv.streak30.desc" },
-            { "total.1000", Kind::totalCorrect, 1000, -1,
-              "achv.total1000.name", "achv.total1000.desc" }
+            { "survival.25",       Kind::survivalScore,      25, Tier::bronze, -1,
+              "achv.survival25.name", "achv.survival25.desc" },
+            { "blitz.30",          Kind::blitzScore,         30, Tier::bronze, -1,
+              "achv.blitz30.name", "achv.blitz30.desc" },
 
-            // No "reached level N" achievement, deliberately, even though
-            // Kind::levelReached exists for it. Level is player-selectable
-            // from a dropdown (ProgressManager::setLevelManually, added so
-            // difficulty isn't only an automatic side effect of points),
-            // and one notion of level is deliberately shared by the earned
-            // and chosen paths - so an achievement for reaching one would
-            // be earned by opening a menu. That is the exact shape of the
-            // participation trophy this list is trying not to have.
+            // Silver: one exercise taken seriously.
+            { "eq.rounds.200",     Kind::exerciseRounds,    200, Tier::silver, eq,
+              "achv.eqRounds.name", "achv.eqRounds.desc" },
+            { "eq.accuracy.75",    Kind::exerciseAccuracy,   75, Tier::silver, eq,
+              "achv.eqAccuracy.name", "achv.eqAccuracy.desc" },
+            { "range.accuracy.80", Kind::exerciseAccuracy,   80, Tier::silver, frequencyRange,
+              "achv.rangeAccuracy.name", "achv.rangeAccuracy.desc" },
+            { "comp.accuracy.75",  Kind::exerciseAccuracy,   75, Tier::silver, compression,
+              "achv.compAccuracy.name", "achv.compAccuracy.desc" },
+            { "gain.accuracy.80",  Kind::exerciseAccuracy,   80, Tier::silver, gain,
+              "achv.gainAccuracy.name", "achv.gainAccuracy.desc" },
+            { "delay.accuracy.70", Kind::exerciseAccuracy,   70, Tier::silver, delay,
+              "achv.delayAccuracy.name", "achv.delayAccuracy.desc" },
+            { "reverb.accuracy.75", Kind::exerciseAccuracy,  75, Tier::silver, reverb,
+              "achv.reverbAccuracy.name", "achv.reverbAccuracy.desc" },
+            { "width.accuracy.75", Kind::exerciseAccuracy,   75, Tier::silver, stereoWidth,
+              "achv.widthAccuracy.name", "achv.widthAccuracy.desc" },
+            { "dist.accuracy.75",  Kind::exerciseAccuracy,   75, Tier::silver, distortion,
+              "achv.distAccuracy.name", "achv.distAccuracy.desc" },
+            { "pan.streak.15",     Kind::answerStreak,       15, Tier::silver, pan,
+              "achv.panStreak.name", "achv.panStreak.desc" },
+
+            // Gold: months, not weeks.
             //
-            // The kind stays because it costs nothing and a future
-            // *earned-only* level counter would use it.
+            // Level achievements are back. They were deliberately left out
+            // when level was one global number you could pick from a
+            // dropdown - an achievement earned by opening a menu. Levels
+            // are now per exercise and have to be earned through a
+            // promotion test, so "level 5 in this exercise" is once again a
+            // real claim about the player. See decisions/025.
+            { "eq.level.5",        Kind::exerciseLevel,       5, Tier::gold, eq,
+              "achv.eqLevel5.name", "achv.eqLevel5.desc" },
+            { "comp.level.5",      Kind::exerciseLevel,       5, Tier::gold, compression,
+              "achv.compLevel5.name", "achv.compLevel5.desc" },
+            { "reverb.level.5",    Kind::exerciseLevel,       5, Tier::gold, reverb,
+              "achv.reverbLevel5.name", "achv.reverbLevel5.desc" },
+            { "streak.30days",     Kind::dayStreak,          30, Tier::gold, -1,
+              "achv.streak30.name", "achv.streak30.desc" },
+            { "total.1000",        Kind::totalCorrect,     1000, Tier::gold, -1,
+              "achv.total1000.name", "achv.total1000.desc" },
+            { "every.level.3",     Kind::everyExerciseLevel,  3, Tier::gold, -1,
+              "achv.everyLevel3.name", "achv.everyLevel3.desc" },
+
+            // Legendary: three of them, and they are supposed to look
+            // impossible from where a new player is standing. A shelf
+            // where everything is collectable in a month is a shelf nobody
+            // looks at twice.
+            { "every.level.10",    Kind::everyExerciseLevel, 10, Tier::legendary, -1,
+              "achv.everyLevel10.name", "achv.everyLevel10.desc" },
+            { "streak.365days",    Kind::dayStreak,         365, Tier::legendary, -1,
+              "achv.streak365.name", "achv.streak365.desc" },
+            { "eq.accuracy.92",    Kind::exerciseAccuracy,   92, Tier::legendary, eq,
+              "achv.eqAccuracy92.name", "achv.eqAccuracy92.desc" }
         };
 
         const Snapshot::PerGame* gameAt (const Snapshot& snapshot, int index)
@@ -165,12 +175,44 @@ namespace Achievements
                 case Kind::dayStreak:
                     return ratio (snapshot.streakDays, definition.threshold);
 
-                case Kind::levelReached:
-                    return ratio (snapshot.level, definition.threshold);
+                case Kind::exerciseLevel:
+                    if (auto* game = gameAt (snapshot, definition.gameIndex))
+                        return ratio (game->level, definition.threshold);
+                    return 0.0f;
+
+                case Kind::everyExerciseLevel:
+                {
+                    if (snapshot.games.empty())
+                        return 0.0f;
+
+                    // The *weakest* exercise decides. Reporting an average
+                    // would show someone with eight beginners and one
+                    // expert as most of the way there, which is the
+                    // opposite of what this asks.
+                    auto lowest = snapshot.games.front().level;
+
+                    for (const auto& game : snapshot.games)
+                        lowest = juce::jmin (lowest, game.level);
+
+                    return ratio (lowest, definition.threshold);
+                }
             }
 
             return 0.0f;
         }
+    }
+
+    juce::Colour colourForTier (Tier tier) noexcept
+    {
+        switch (tier)
+        {
+            case Tier::bronze:    return juce::Colour (0xffb8763f);
+            case Tier::silver:    return juce::Colour (0xffb9c0c9);
+            case Tier::gold:      return juce::Colour (0xffd7ac4e);
+            case Tier::legendary: return juce::Colour (0xff9b6bd6);
+        }
+
+        return juce::Colour (0xffb9c0c9);
     }
 
     const std::vector<Definition>& all()

@@ -974,6 +974,13 @@ void EarTrainerEditor::rebuildHomeSections()
         card.promotionPending = progress.isPromotionPendingForGame (i);
         card.promotionStreak = progress.getPromotionStreakForGame (i);
         card.promotionTestLength = ProgressManager::promotionTestLength;
+        card.accent = tintForGame (englishName);
+
+        const auto stats = progress.getStatsForGame (i);
+        card.statsLine = stats.roundsPlayed == 0
+                             ? juce::String()
+                             : juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) + "%  ·  "
+                                   + juce::String (stats.roundsPlayed);
 
         return card;
     };
@@ -1003,7 +1010,8 @@ void EarTrainerEditor::rebuildHomeSections()
         badge.progress = Achievements::progressTowards (definition, snapshot);
         badge.icon = definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames()
                          ? AppIcons::iconForGameName (gameManager.getGame (definition.gameIndex).getName())
-                         : AppIcons::Icon::gain;
+                         : AppIcons::Icon::award;
+        badge.tint = Achievements::colourForTier (definition.tier);
 
         badges.push_back (std::move (badge));
     }

@@ -117,5 +117,19 @@
   "ui.achievementEarned": "Achievement unlocked",
   "ui.achievementsLocked": "Not yet earned",
   "ui.daily": "Today: {{count}} in a row on \"{{game}}\"",
-  "ui.dailyDone": "Today done — {{count}} in a row on \"{{game}}\" (+{{bonus}})"
+  "ui.dailyDone": "Today done — {{count}} in a row on \"{{game}}\" (+{{bonus}})",
+  "achv.eqLevel5.name": "Frequency, level 5",
+  "achv.eqLevel5.desc": "Reached level 5 on Guess the Band",
+  "achv.compLevel5.name": "Dynamics, level 5",
+  "achv.compLevel5.desc": "Reached level 5 on Guess the Compression",
+  "achv.reverbLevel5.name": "Space, level 5",
+  "achv.reverbLevel5.desc": "Reached level 5 on Guess the Reverb",
+  "achv.everyLevel3.name": "No weak spots",
+  "achv.everyLevel3.desc": "Level 3 or higher in every exercise",
+  "achv.everyLevel10.name": "Mastered",
+  "achv.everyLevel10.desc": "Level 10 in every single exercise",
+  "achv.streak365.name": "A whole year",
+  "achv.streak365.desc": "Practised 365 days in a row",
+  "achv.eqAccuracy92.name": "Golden ears",
+  "achv.eqAccuracy92.desc": "92% accuracy on Guess the Band"
 }

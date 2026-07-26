@@ -46,9 +46,13 @@ public:
 
             expect (Achievements::evaluate (snapshot).empty());
 
+            // Not zero progress on everything, though: everyone starts every
+            // exercise at level 1, so a "reach level 5" rule is genuinely
+            // one fifth of the way there before a single answer. What must
+            // hold is that nothing is *finished*.
             for (const auto& definition : Achievements::all())
-                expectWithinAbsoluteError (Achievements::progressTowards (definition, snapshot),
-                                            0.0f, 0.0001f);
+                expect (Achievements::progressTowards (definition, snapshot) < 1.0f,
+                         juce::String ("earned on a blank slate: ") + definition.id);
         }
 
         beginTest ("accuracy needs a floor of rounds, not just a good ratio");
@@ -185,17 +189,73 @@ public:
                 expect (! Achievements::isEarned (definition, empty));
         }
 
-        beginTest ("no achievement is earned by choosing a level");
+        beginTest ("an every-exercise rule is decided by the weakest exercise");
         {
-            // Level is player-selectable from a dropdown, so an achievement
-            // for reaching one would be earned by opening a menu. See the
-            // note in Achievements.cpp.
-            Achievements::Snapshot topLevel;
-            topLevel.games.resize (9);
-            topLevel.level = 10;
+            const auto* definition = Achievements::find ("every.level.3");
+            expect (definition != nullptr);
 
-            expect (Achievements::evaluate (topLevel).empty());
+            // Eight experts and one beginner is not "most of the way
+            // there" - reporting an average would say it was.
+            Achievements::Snapshot lopsided;
+            lopsided.games.resize (9);
+            for (auto& game : lopsided.games)
+                game.level = 10;
+            lopsided.games[4].level = 1;
+
+            expect (! Achievements::isEarned (*definition, lopsided));
+            expectWithinAbsoluteError (Achievements::progressTowards (*definition, lopsided),
+                                        1.0f / 3.0f, 0.001f);
+
+            for (auto& game : lopsided.games)
+                game.level = 3;
+
+            expect (Achievements::isEarned (*definition, lopsided));
         }
+
+        beginTest ("level achievements exist again, now that levels are earned");
+        {
+            // They were deliberately absent while level was one global
+            // number picked from a dropdown - see decisions/024 and 025.
+            // Levels are now per exercise and gated behind a promotion
+            // test, so they are a real claim again.
+            auto foundLevelRule = false;
+
+            for (const auto& definition : Achievements::all())
+                if (definition.kind == Achievements::Kind::exerciseLevel
+                    || definition.kind == Achievements::Kind::everyExerciseLevel)
+                    foundLevelRule = true;
+
+            expect (foundLevelRule);
+        }
+
+        beginTest ("there are a few legendary ones, and they are out of reach early");
+        {
+            auto legendaryCount = 0;
+
+            Achievements::Snapshot busyFirstWeek;
+            busyFirstWeek.games.resize (9);
+            busyFirstWeek.streakDays = 7;
+
+            for (auto& game : busyFirstWeek.games)
+            {
+                game.roundsPlayed = 120;
+                game.correctAnswers = 100;
+                game.bestStreak = 12;
+                game.level = 2;
+            }
+
+            for (const auto& definition : Achievements::all())
+                if (definition.tier == Achievements::Tier::legendary)
+                {
+                    ++legendaryCount;
+                    expect (! Achievements::isEarned (definition, busyFirstWeek),
+                             juce::String ("a legendary achievement was earned in a first week: ")
+                                 + definition.id);
+                }
+
+            expect (legendaryCount >= 3, "there should be a few genuinely hard ones");
+        }
+
     }
 };
 

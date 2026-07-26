@@ -19,7 +19,12 @@ namespace AppIcons
 
         // Interface icons, for the compact title-row buttons that replaced
         // a row of wide text buttons.
-        sound, download, sun, moon, home, scope
+        sound, download, sun, moon, home, scope,
+
+        // A five-pointed star, for achievements that belong to no single
+        // exercise. The interface glyphs were all wrong here: `scope`
+        // shrunk to badge size reads as a "no entry" sign.
+        award
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().
@@ -37,6 +42,13 @@ namespace AppIcons
     // Component, so it can be used directly inside an existing
     // Component::paint() (e.g. a title row) without adding a child.
     void draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce::Colour colour);
+
+    // The same glyph on a rounded coloured plate, for the places where an
+    // icon has to be *recognised* rather than merely read - the home
+    // screen's nine tiles and the achievement badges. `strength` 0..1 is
+    // how lit it is: a locked achievement draws the same badge dim.
+    void drawBadged (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds,
+                     juce::Colour colour, float strength = 1.0f);
 }
 
 // A square button that is just an icon. Replaces the row of wide text

@@ -108,13 +108,16 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect)
 Achievements::Snapshot ProgressManager::makeAchievementSnapshot() const
 {
     Achievements::Snapshot snapshot;
-    snapshot.level = getMaxLevelReached();
     snapshot.streakDays = streakDays;
     snapshot.games.reserve (statsPerGame.size());
 
-    for (const auto& stats : statsPerGame)
+    for (size_t i = 0; i < statsPerGame.size(); ++i)
+    {
+        const auto& stats = statsPerGame[i];
         snapshot.games.push_back ({ stats.roundsPlayed, stats.correctAnswers, stats.bestStreak,
-                                    stats.bestSurvivalScore, stats.bestBlitzScore });
+                                    stats.bestSurvivalScore, stats.bestBlitzScore,
+                                    i < progressPerGame.size() ? progressPerGame[i].level : 1 });
+    }
 
     return snapshot;
 }

@@ -216,6 +216,13 @@ namespace AppIcons
             return p;
         }
 
+        juce::Path awardPath()
+        {
+            juce::Path p;
+            p.addStar ({ 12.0f, 12.0f }, 5, 4.4f, 9.5f);
+            return p;
+        }
+
         juce::Path scopePath()
         {
             // A circle with a tilted trace - literally what the hint shows.
@@ -231,7 +238,10 @@ namespace AppIcons
         {
             case Icon::eq:             return eqPath();
             case Icon::compression:    return compressionPath();
-            case Icon::reverb:         return reverbPath();
+            // Concentric rings, the same mark LearnerVerb uses. The old
+            // corner ripple read as a wifi symbol, not as a space - which
+            // is what it was supposed to say.
+            case Icon::reverb:         return learnerVerbPath();
             case Icon::pan:            return panPath();
             case Icon::delay:          return delayPath();
             case Icon::distortion:     return distortionPath();
@@ -247,6 +257,7 @@ namespace AppIcons
             case Icon::moon:           return moonPath();
             case Icon::home:           return homePath();
             case Icon::scope:          return scopePath();
+            case Icon::award:          return awardPath();
         }
 
         return eqPath();
@@ -274,6 +285,43 @@ namespace AppIcons
 
         g.setColour (colour);
         g.strokePath (path, juce::PathStrokeType (1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
+    void drawBadged (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds,
+                     juce::Colour colour, float strength)
+    {
+        // The same glyph, on its own coloured plate.
+        //
+        // The thin monochrome line art was the right call for a title-row
+        // button and the wrong one for a nine-tile catalogue: nine grey
+        // outlines at 30px are hard to tell apart at a glance, which is
+        // the only job they have there. A rounded plate in the exercise's
+        // family colour, a soft top-down gradient, and the glyph knocked
+        // out bright on top gives each one a shape *and* a colour to be
+        // recognised by - without an asset pipeline, since it is still the
+        // same juce::Path underneath.
+        strength = juce::jlimit (0.0f, 1.0f, strength);
+
+        const auto plate = bounds.reduced (0.5f);
+        const auto radius = plate.getWidth() * 0.28f;
+
+        juce::ColourGradient fill (colour.withAlpha (0.30f + 0.28f * strength),
+                                    plate.getX(), plate.getY(),
+                                    colour.withAlpha (0.12f + 0.16f * strength),
+                                    plate.getX(), plate.getBottom(), false);
+        g.setGradientFill (fill);
+        g.fillRoundedRectangle (plate, radius);
+
+        g.setColour (colour.withAlpha (0.45f + 0.4f * strength));
+        g.drawRoundedRectangle (plate, radius, 1.0f);
+
+        auto path = getPath (icon);
+        const auto inner = plate.reduced (plate.getWidth() * 0.24f);
+        path.scaleToFit (inner.getX(), inner.getY(), inner.getWidth(), inner.getHeight(), true);
+
+        g.setColour (colour.brighter (0.55f * strength).withAlpha (0.75f + 0.25f * strength));
+        g.strokePath (path, juce::PathStrokeType (1.9f, juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
     }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_core/juce_core.h>
+#include <juce_graphics/juce_graphics.h>
 #include <vector>
 
 // What a player has actually achieved, as a list of named things rather
@@ -38,9 +39,27 @@ namespace Achievements
         survivalScore,       // a Survival run scoring n
         blitzScore,          // a Blitz run scoring n
         dayStreak,           // n days in a row
-        levelReached,        // level n
+        exerciseLevel,       // level n in one specific exercise
+        everyExerciseLevel,  // level n in *every* exercise
         breadth              // at least one round in n different exercises
     };
+
+    // How hard one is, expressed as colour rather than as a different
+    // glyph per achievement. Four steps is enough to read at a glance;
+    // more would be a taxonomy nobody asked for.
+    //
+    // `legendary` is deliberately near-unreachable - a shelf where
+    // everything is collectable in a month is a shelf nobody looks at
+    // twice.
+    enum class Tier
+    {
+        bronze,
+        silver,
+        gold,
+        legendary
+    };
+
+    juce::Colour colourForTier (Tier) noexcept;
 
     struct Definition
     {
@@ -50,6 +69,7 @@ namespace Achievements
 
         Kind kind;
         int threshold;
+        Tier tier = Tier::bronze;
 
         // Only meaningful for the per-exercise kinds; -1 means "any".
         int gameIndex;
@@ -73,10 +93,10 @@ namespace Achievements
             int bestStreak = 0;
             int bestSurvivalScore = 0;
             int bestBlitzScore = 0;
+            int level = 1;
         };
 
         std::vector<PerGame> games;
-        int level = 1;
         int streakDays = 0;
     };
 

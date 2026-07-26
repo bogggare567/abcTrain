@@ -77,20 +77,23 @@ void HomeScreenComponent::rebuildLayout()
     if (area.isEmpty())
         return;
 
-    badgeStrip = area.removeFromBottom (badgeStripHeight);
-    area.removeFromBottom (Spacing::medium);
-
     const auto rows = (int) ((cards.size() + columns - 1) / columns);
 
     if (rows <= 0)
+    {
+        badgeStrip = area.removeFromBottom (badgeStripHeight);
         return;
+    }
 
-    // Fill the space that is actually there rather than a fixed tile
-    // height: nine tiles must fit without scrolling at every UI scale, and
-    // a constant would only be right at one of them.
     const auto gap = Spacing::small;
-    const auto rowHeight = juce::jmax (tileHeight,
-                                        (area.getHeight() - gap * (rows - 1)) / rows);
+
+    // The grid takes what it needs and no more; the badge strip follows it
+    // immediately rather than being pinned to the bottom edge. Pinning it
+    // left a 200px hole between the two whenever the window was taller
+    // than the tiles required.
+    const auto rowHeight = juce::jlimit (tileHeight, tileHeightCeiling,
+                                          (area.getHeight() - badgeStripHeight - Spacing::medium
+                                            - gap * (rows - 1)) / rows);
 
     for (auto row = 0; row < rows; ++row)
     {
@@ -110,6 +113,9 @@ void HomeScreenComponent::rebuildLayout()
             rowArea.removeFromLeft (gap);
         }
     }
+
+    area.removeFromTop (Spacing::medium);
+    badgeStrip = area.removeFromTop (badgeStripHeight);
 
     const auto contentWidth = (int) badges.size() * (badgeSize + Spacing::small);
     maxBadgeScroll = juce::jmax (0.0f, (float) (contentWidth - badgeStrip.getWidth() + Spacing::large));
@@ -152,28 +158,39 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
 
     auto inner = bounds.reduced ((float) AbcTrainTheme::Spacing::small);
 
-    // --- the level, top right: the one number worth carrying here -------
-    const auto levelBox = inner.removeFromRight (34.0f).withHeight (18.0f);
+    // --- the coloured badge, and the level beside it ---------------------
+    auto topRow = inner.removeFromTop (32.0f);
+    const auto badge = topRow.removeFromLeft (32.0f);
+    AppIcons::drawBadged (g, card.icon, badge, card.accent, 0.75f + 0.25f * eased);
+
+    // The level is the headline number now, so it is set like one: big,
+    // tabular, in the family colour. It used to be an 12px "L1" in the
+    // corner, which read as a footnote about the thing rather than as the
+    // thing.
     {
         const auto pending = card.promotionPending;
+        auto levelBox = topRow.removeFromRight (36.0f);
 
-        g.setColour ((pending ? theme.positive : theme.accent).withAlpha (pending ? 0.9f : 0.7f));
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
-        g.drawText ("L" + juce::String (card.level), levelBox.toNearestInt(),
+        g.setColour (pending ? theme.positive : card.accent);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (20.0f));
+        g.drawText (juce::String (card.level), levelBox.removeFromTop (22.0f).toNearestInt(),
                      juce::Justification::centredRight, false);
     }
 
-    // --- icon + name ----------------------------------------------------
-    auto iconBox = inner.removeFromTop (30.0f).removeFromLeft (30.0f);
-    AppIcons::draw (g, card.icon, iconBox.reduced (2.0f),
-                     card.isCurrent ? theme.accent : theme.text.withAlpha (0.85f + 0.15f * eased));
+    inner.removeFromTop (4.0f);
 
-    inner.removeFromTop (2.0f);
-
-    auto nameArea = inner.removeFromTop (32.0f);
+    auto nameArea = inner.removeFromTop (30.0f);
     g.setColour (theme.textBright);
     g.setFont (juce::Font (juce::FontOptions (13.0f).withStyle ("Bold")));
     g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft, 2, 0.85f);
+
+    if (card.statsLine.isNotEmpty())
+    {
+        g.setColour (theme.textDim.withAlpha (0.8f));
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
+        g.drawText (card.statsLine, inner.removeFromTop (14.0f).toNearestInt(),
+                     juce::Justification::centredLeft, false);
+    }
 
     // --- the bottom line: either level progress, or the live test -------
     auto track = bounds.reduced ((float) AbcTrainTheme::Spacing::small)
@@ -202,25 +219,31 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
     }
     else if (card.levelProgress > 0.001f)
     {
-        g.setColour (theme.accent.withAlpha (0.75f));
+        g.setColour (card.accent.withAlpha (0.8f));
         g.fillRoundedRectangle (track.withWidth (juce::jmax (4.0f, track.getWidth() * card.levelProgress)),
                                  2.0f);
     }
 
-    // --- star ------------------------------------------------------------
-    const auto star = starHitBox (tile).toFloat();
-    juce::Path starPath;
-    starPath.addStar (star.getCentre(), 5, star.getWidth() * 0.26f, star.getWidth() * 0.5f);
+    // --- star -------------------------------------------------------------
+    // Small, top right, and invisible unless it is either set or under the
+    // pointer. Nine permanent outlined stars was nine pieces of furniture
+    // saying "you could star this", every launch, forever.
+    if (card.isFavourite || eased > 0.02f)
+    {
+        const auto star = starHitBox (tile).toFloat().reduced (3.0f);
+        juce::Path starPath;
+        starPath.addStar (star.getCentre(), 5, star.getWidth() * 0.24f, star.getWidth() * 0.48f);
 
-    if (card.isFavourite)
-    {
-        g.setColour (theme.accentWarm);
-        g.fillPath (starPath);
-    }
-    else
-    {
-        g.setColour (theme.textDim.withAlpha (0.25f + 0.35f * eased));
-        g.strokePath (starPath, juce::PathStrokeType (1.2f));
+        if (card.isFavourite)
+        {
+            g.setColour (theme.accentWarm);
+            g.fillPath (starPath);
+        }
+        else
+        {
+            g.setColour (theme.textDim.withAlpha (0.55f * eased));
+            g.strokePath (starPath, juce::PathStrokeType (1.2f));
+        }
     }
 }
 
@@ -258,27 +281,21 @@ void HomeScreenComponent::paintBadgeStrip (juce::Graphics& g)
 
         const auto lit = badge.earned;
         const auto disc = box.reduced (2.0f);
+        const auto tint = badge.tint;
 
-        g.setColour (lit ? theme.positive.withAlpha (0.16f) : theme.displayBackground.withAlpha (0.7f));
-        g.fillEllipse (disc);
-
-        // A locked badge shows how close it is as an arc around its rim -
+        // Locked ones show how close they are as an arc around the rim -
         // the difference between "not yet" and "not ever".
         if (! lit && badge.progress > 0.005f)
         {
             juce::Path arc;
             arc.addCentredArc (disc.getCentreX(), disc.getCentreY(),
-                                disc.getWidth() * 0.5f, disc.getHeight() * 0.5f, 0.0f,
+                                disc.getWidth() * 0.62f, disc.getHeight() * 0.62f, 0.0f,
                                 0.0f, juce::MathConstants<float>::twoPi * badge.progress, true);
-            g.setColour (theme.accent.withAlpha (0.7f));
+            g.setColour (tint.withAlpha (0.6f));
             g.strokePath (arc, juce::PathStrokeType (2.0f));
         }
 
-        g.setColour (lit ? theme.positive.withAlpha (0.8f) : theme.outline.withAlpha (0.6f));
-        g.drawEllipse (disc, 1.0f);
-
-        AppIcons::draw (g, badge.icon, disc.reduced (11.0f),
-                         lit ? theme.positive : theme.textDim.withAlpha (0.45f));
+        AppIcons::drawBadged (g, badge.icon, disc, tint, lit ? 1.0f : 0.12f);
     }
 }
 
@@ -337,9 +354,9 @@ void HomeScreenComponent::paintHoverTip (juce::Graphics& g)
 
 juce::Rectangle<int> HomeScreenComponent::starHitBox (juce::Rectangle<int> tile) const
 {
-    return juce::Rectangle<int> (18, 18)
-               .withPosition (tile.getX() + AbcTrainTheme::Spacing::small,
-                               tile.getBottom() - 18 - AbcTrainTheme::Spacing::small - 6);
+    return juce::Rectangle<int> (20, 20)
+               .withPosition (tile.getRight() - 20 - AbcTrainTheme::Spacing::tight,
+                               tile.getY() + AbcTrainTheme::Spacing::tight);
 }
 
 int HomeScreenComponent::tileIndexAt (juce::Point<int> position) const

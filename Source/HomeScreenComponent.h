@@ -48,6 +48,16 @@ public:
         int promotionStreak = 0;
         int promotionTestLength = 5;
 
+        // "72% · 148" - accuracy and rounds played, small. The paragraph
+        // of description moved to the hover tip; these two numbers are the
+        // only thing about an exercise that is worth carrying every day.
+        juce::String statsLine;
+
+        // This exercise's family colour (see AbcTrainTheme::accentFor) -
+        // resolved by the editor so this component keeps no opinion about
+        // which exercise trains what.
+        juce::Colour accent;
+
         bool isCurrent = false;
         bool isFavourite = false;
     };
@@ -57,6 +67,12 @@ public:
         juce::String name;
         juce::String description;
         AppIcons::Icon icon = AppIcons::Icon::eq;
+
+        // Difficulty tier, drawn as colour rather than as a different
+        // glyph per achievement - bronze through to the near-unreachable
+        // ones. Kept as a plain colour so this component needs no table.
+        juce::Colour tint;
+
         bool earned = false;
         float progress = 0.0f;
     };
@@ -91,7 +107,13 @@ private:
     int badgeIndexAt (juce::Point<int>) const;
 
     static constexpr int columns = 3;
-    static constexpr int tileHeight = 84;
+    // What the tile's own contents add up to: 8 padding + 32 badge row +
+    // 4 + 30 name + 14 stats + 4 track + 8 padding. Derived, not guessed -
+    // at 76 the stats line and the progress track drew on top of each
+    // other, which is exactly the kind of thing a rendered screenshot
+    // shows in a second and no test ever will.
+    static constexpr int tileHeight = 100;
+    static constexpr int tileHeightCeiling = 112;
     static constexpr int badgeStripHeight = 78;
     static constexpr int badgeSize = 44;
 

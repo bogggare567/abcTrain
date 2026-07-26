@@ -117,5 +117,19 @@
   "ui.achievementEarned": "Достижение получено",
   "ui.achievementsLocked": "Пока не получено",
   "ui.daily": "Сегодня: {{count}} подряд в «{{game}}»",
-  "ui.dailyDone": "Сегодня сделано — {{count}} подряд в «{{game}}» (+{{bonus}})"
+  "ui.dailyDone": "Сегодня сделано — {{count}} подряд в «{{game}}» (+{{bonus}})",
+  "achv.eqLevel5.name": "Частоты, 5 уровень",
+  "achv.eqLevel5.desc": "5 уровень в «Угадай полосу»",
+  "achv.compLevel5.name": "Динамика, 5 уровень",
+  "achv.compLevel5.desc": "5 уровень в «Угадай компрессию»",
+  "achv.reverbLevel5.name": "Пространство, 5 уровень",
+  "achv.reverbLevel5.desc": "5 уровень в «Угадай реверберацию»",
+  "achv.everyLevel3.name": "Без слабых мест",
+  "achv.everyLevel3.desc": "3 уровень и выше в каждом упражнении",
+  "achv.everyLevel10.name": "Мастер",
+  "achv.everyLevel10.desc": "10 уровень в каждом упражнении без исключений",
+  "achv.streak365.name": "Целый год",
+  "achv.streak365.desc": "365 дней подряд",
+  "achv.eqAccuracy92.name": "Золотые уши",
+  "achv.eqAccuracy92.desc": "92% точности в «Угадай полосу»"
 }
