@@ -78,6 +78,39 @@ namespace
         return "home.category.character";
     }
 
+    // The A/B button captions. Each Game returns its own English pair (see
+    // Game::getBeforeLabel); this maps them to i18n keys, the same shape
+    // as translateGameName below - a game whose label isn't listed falls
+    // back to its raw English, so adding one is never a crash.
+    juce::String translateAbLabel (const juce::String& englishLabel, const LocalisationManager& loc)
+    {
+        static const std::array<std::pair<const char*, const char*>, 14> table {{
+            { "A",            "ab.a" },
+            { "B",            "ab.b" },
+            { "EQ Off",       "ab.eqOff" },
+            { "EQ On",        "ab.eqOn" },
+            { "Comp Off",     "ab.compOff" },
+            { "Comp On",      "ab.compOn" },
+            { "Dry",          "ab.dry" },
+            { "With Echo",    "ab.withEcho" },
+            { "Clean",        "ab.clean" },
+            { "Driven",       "ab.driven" },
+            { "Centred",      "ab.centred" },
+            { "Panned",       "ab.panned" },
+            { "Before Gain",  "ab.beforeGain" },
+            { "After Gain",   "ab.afterGain" }
+        }};
+
+        for (const auto& entry : table)
+            if (englishLabel == entry.first)
+                return loc.getText (entry.second);
+
+        if (englishLabel == "Flat")     return loc.getText ("ab.flat");
+        if (englishLabel == "Filtered") return loc.getText ("ab.filtered");
+
+        return englishLabel;
+    }
+
     juce::String translateGameName (const juce::String& englishName, const LocalisationManager& loc)
     {
         for (const auto& entry : gameI18nKeys)
@@ -123,6 +156,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                                 ? AbcTrainTheme::Mode::light
                                 : AbcTrainTheme::Mode::dark);
     lookAndFeel.refreshFromTheme();
+
+    // Restore the stored appearance before anything paints: a saved text
+    // scale or wallpaper that only appeared after visiting Settings would
+    // look like it had not been saved at all.
+    AbcTrainLookAndFeel::setTextScale ((float) localisationProperties.getDoubleValue (
+                                            SettingsScreenComponent::textScaleKey, 1.0));
+    SettingsScreenComponent::applyStoredBackground (localisationProperties);
 
     setLookAndFeel (&lookAndFeel);
 
@@ -417,6 +457,24 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // it's shown. A real bug, found by actually running the app: adding
     // this earlier (before choiceSlider) left the slider painting on top
     // of the "closed" overlay instead of the other way around.
+    settingsButton.onClick = [this]
+    {
+        settingsScreen.setVisible (true);
+        settingsScreen.toFront (false);
+        settingsScreen.refresh();
+    };
+    addAndMakeVisible (settingsButton);
+
+    settingsScreen.onClosed = [this] { resized(); repaint(); };
+    settingsScreen.onSettingsChanged = [this]
+    {
+        // A text-scale change alters how much room every label needs, so
+        // the layout has to be redone rather than merely repainted.
+        resized();
+        repaint();
+    };
+    addChildComponent (settingsScreen);
+
     addChildComponent (trainingSounds);
 
     // Last of all, so it paints over the training screen and both
@@ -610,6 +668,8 @@ void EarTrainerEditor::resized()
     updateButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
     titleRow.removeFromRight (Spacing::tight);
     trainingSoundsButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
+    titleRow.removeFromRight (Spacing::tight);
+    settingsButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
 
     area.removeFromTop (Spacing::section);
 
@@ -712,6 +772,7 @@ void EarTrainerEditor::resized()
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not they're currently visible.
     trainingSounds.setBounds (getLocalBounds());
+    settingsScreen.setBounds (getLocalBounds());
 
     // Centred under the title row, wide enough for an achievement name.
     achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
@@ -923,7 +984,8 @@ void EarTrainerEditor::showScreen (Screen screen)
     // The title-row controls belong to Home and Training, not the
     // one-time support screen.
     for (auto* c : { (juce::Component*) &themeButton, (juce::Component*) &updateButton,
-                     (juce::Component*) &trainingSoundsButton, (juce::Component*) &sizeSelector,
+                     (juce::Component*) &trainingSoundsButton, (juce::Component*) &settingsButton,
+                     (juce::Component*) &sizeSelector,
                      (juce::Component*) &languageSelector, (juce::Component*) &soundkorbLink })
     {
         c->setVisible (! onSupport);
@@ -1030,6 +1092,8 @@ void EarTrainerEditor::rebuildHomeSections()
 void EarTrainerEditor::refreshLocalisedText()
 {
     supportScreen.refresh();
+    settingsScreen.refresh();
+    settingsButton.setTooltip (localisation.getText ("ui.settings"));
 
     trainingSounds.setStrings (localisation.getText ("ui.trainingSounds"),
                                 localisation.getText ("ui.soundsSource"),
@@ -1142,8 +1206,8 @@ void EarTrainerEditor::refreshBeforeAfter()
     if (! supported)
         return;
 
-    beforeButton.setButtonText (game.getBeforeLabel());
-    afterButton.setButtonText (game.getAfterLabel());
+    beforeButton.setButtonText (translateAbLabel (game.getBeforeLabel(), localisation));
+    afterButton.setButtonText (translateAbLabel (game.getAfterLabel(), localisation));
 
     // The active side is coloured; the other is left plain. Two buttons
     // where one is lit says "you are hearing this one" without asking the

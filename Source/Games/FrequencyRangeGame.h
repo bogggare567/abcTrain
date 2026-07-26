@@ -60,8 +60,11 @@ public:
     bool supportsBeforeAfter() const override { return true; }
     void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
     bool isPlayingProcessed() const override { return playProcessed.load(); }
+    // "Filtered", not "Boosted": this game cuts as often as it boosts, so
+    // the old label was a lie half the time - and worse, a lie that told
+    // the player which way the change went before they had listened.
     juce::String getBeforeLabel() const override { return "Flat"; }
-    juce::String getAfterLabel() const override { return "Boosted"; }
+    juce::String getAfterLabel() const override { return "Filtered"; }
 
 private:
     std::atomic<bool> playProcessed { true };

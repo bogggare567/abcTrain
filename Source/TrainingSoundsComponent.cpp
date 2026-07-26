@@ -154,7 +154,12 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
     // The old version read as an error dialog: a hard coloured border
     // around a column of identical full-width buttons, with the folder
     // path in 11px underneath.
-    g.fillAll (theme.windowBackground.withAlpha (0.82f));
+    // Opaque. The first version dimmed the screen to 82% and left the home
+    // screen legible underneath, so the card floated on a blurry mess of
+    // tiles - reported as "нет фона никакого". setOpaque(true) is already
+    // set on this component, and a translucent fill under an opaque
+    // component is a contradiction JUCE will happily draw.
+    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
 
     const auto card = cardBounds().toFloat();
 

@@ -3,6 +3,13 @@
 
 namespace
 {
+    // Process-wide, like the palette and the wallpaper, and for the same
+    // reason: two editors open at once must agree.
+    float sharedTextScale = 1.0f;
+}
+
+namespace
+{
     using namespace AbcTrainTheme;
 
     // Shadow helper: every elevated surface in the UI casts its shadow
@@ -121,9 +128,19 @@ juce::Label* AbcTrainLookAndFeel::createSliderTextBox (juce::Slider& slider)
     return label;
 }
 
+void AbcTrainLookAndFeel::setTextScale (float newScale) noexcept
+{
+    sharedTextScale = juce::jlimit (0.8f, 1.4f, newScale);
+}
+
+float AbcTrainLookAndFeel::getTextScale() noexcept
+{
+    return sharedTextScale;
+}
+
 juce::Font AbcTrainLookAndFeel::titleFont()
 {
-    return juce::Font (juce::FontOptions (titleFontHeight, juce::Font::bold));
+    return juce::Font (juce::FontOptions (titleFontHeight * sharedTextScale, juce::Font::bold));
 }
 
 juce::Font AbcTrainLookAndFeel::monoFont()
@@ -133,32 +150,32 @@ juce::Font AbcTrainLookAndFeel::monoFont()
     // jitter horizontally as digits change width. This is the closest JUCE
     // gets to tabular figures without shipping a licensed typeface.
     return juce::Font (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(),
-                                           monoFontHeight, juce::Font::plain));
+                                           monoFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::captionFont()
 {
-    return juce::Font (juce::FontOptions (captionFontHeight, juce::Font::plain));
+    return juce::Font (juce::FontOptions (captionFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::getLabelFont (juce::Label&)
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight));
+    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
 }
 
 juce::Font AbcTrainLookAndFeel::getTextButtonFont (juce::TextButton&, int)
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight));
+    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
 }
 
 juce::Font AbcTrainLookAndFeel::getComboBoxFont (juce::ComboBox&)
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight));
+    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
 }
 
 juce::Font AbcTrainLookAndFeel::getPopupMenuFont()
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight));
+    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
 }
 
 juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
@@ -168,7 +185,7 @@ juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
 
 juce::Font AbcTrainLookAndFeel::getAlertWindowMessageFont()
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight));
+    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
 }
 
 // -------------------------------------------------------------- buttons
@@ -484,27 +501,69 @@ void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectang
 {
     const auto& t = current();
 
-    // A little further in light mode: the same mix reads as almost
-    // nothing against a bright page and as plenty against a dark one.
-    const auto tintStrength = t.mode == Mode::light ? 0.16f : 0.11f;
+    // A player-supplied image wins over everything below: if someone has
+    // gone to the trouble of choosing a background, the app's own gradient
+    // is not what they want to look at. Drawn to fill and then damped by a
+    // scrim, because a photograph at full strength under 12px labels is
+    // unreadable no matter how nice the photograph is.
+    if (const auto& custom = customBackground(); custom.isValid())
+    {
+        g.drawImage (custom, bounds, juce::RectanglePlacement::fillDestination);
+
+        g.setColour (t.windowBackground.withAlpha (customBackgroundScrim()));
+        g.fillRect (bounds);
+
+        overlayTexture (g, bounds, 0.5f);
+        return;
+    }
+
+    // Each exercise's own room. This used to mix in 11% of the family
+    // colour, which was invisible in practice - it was reported as simply
+    // not implemented, which is a fair description of a change nobody can
+    // see. 32% dark / 26% light is a backdrop you notice on arriving and
+    // stop noticing while answering, which is the whole target.
+    const auto tintStrength = t.mode == Mode::light ? 0.26f : 0.32f;
     const auto base = tint.isTransparent() ? t.windowBackground
                                            : t.windowBackground.interpolatedWith (tint.withAlpha (1.0f), tintStrength);
 
     // A gentle radial gradient centred above the title row, so the top of
-    // the window feels lit and the corners fall away. Subtle by design -
-    // this is a working tool, not a hero image - but it's what keeps a
-    // large flat rectangle from reading as cheap.
+    // the window feels lit and the corners fall away.
     const auto centre = juce::Point<float> (bounds.getCentreX(), bounds.getY() + bounds.getHeight() * 0.15f);
     const auto radius = juce::jmax (bounds.getWidth(), bounds.getHeight()) * 0.9f;
 
-    const auto lift = t.mode == Mode::light ? 0.5f : 0.035f;
+    const auto lift = t.mode == Mode::light ? 0.5f : 0.06f;
     juce::ColourGradient gradient (base.brighter (lift), centre.x, centre.y,
-                                    base.darker (t.mode == Mode::light ? 0.04f : 0.0f),
+                                    base.darker (t.mode == Mode::light ? 0.05f : 0.06f),
                                     centre.x, centre.y + radius, true);
     g.setGradientFill (gradient);
     g.fillRect (bounds);
 
     overlayTexture (g, bounds);
+}
+
+namespace
+{
+    // Process-wide, like the palette itself and for the same reason: two
+    // editors open at once must not disagree about the wallpaper. Message
+    // thread only.
+    juce::Image sharedCustomBackground;
+    float sharedCustomScrim = 0.55f;
+}
+
+const juce::Image& AbcTrainLookAndFeel::customBackground()
+{
+    return sharedCustomBackground;
+}
+
+float AbcTrainLookAndFeel::customBackgroundScrim()
+{
+    return sharedCustomScrim;
+}
+
+void AbcTrainLookAndFeel::setCustomBackground (juce::Image image, float scrim)
+{
+    sharedCustomBackground = std::move (image);
+    sharedCustomScrim = juce::jlimit (0.0f, 0.95f, scrim);
 }
 
 void AbcTrainLookAndFeel::paintSectionPanel (juce::Graphics& g, juce::Rectangle<float> bounds,

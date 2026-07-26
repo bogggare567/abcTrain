@@ -242,10 +242,11 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
     }
 
     // --- star -------------------------------------------------------------
-    // Small, top right, and invisible unless it is either set or under the
-    // pointer. Nine permanent outlined stars was nine pieces of furniture
-    // saying "you could star this", every launch, forever.
-    if (card.isFavourite || eased > 0.02f)
+    // Always there now, rather than appearing on hover. Hiding it made it
+    // undiscoverable: a control you cannot see is a control nobody knows
+    // they have, and "pick what interests you" only works if the picking
+    // is visible. Unset it is a quiet outline; hovering the tile brightens
+    // it, and hovering the star itself brightens it further.
     {
         const auto star = starHitBox (tile).toFloat().reduced (3.0f);
         juce::Path starPath;
@@ -258,8 +259,11 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
         }
         else
         {
-            g.setColour (theme.textDim.withAlpha (0.55f * eased));
-            g.strokePath (starPath, juce::PathStrokeType (1.2f));
+            const auto lit = hoveredStar && hoveredTile >= 0
+                                 && cards[(size_t) hoveredTile].gameIndex == card.gameIndex;
+
+            g.setColour (theme.textDim.withAlpha (lit ? 0.95f : 0.3f + 0.35f * eased));
+            g.strokePath (starPath, juce::PathStrokeType (1.4f));
         }
     }
 }
@@ -383,9 +387,14 @@ void HomeScreenComponent::paintHoverTip (juce::Graphics& g)
 
 juce::Rectangle<int> HomeScreenComponent::starHitBox (juce::Rectangle<int> tile) const
 {
-    return juce::Rectangle<int> (20, 20)
-               .withPosition (tile.getRight() - 20 - AbcTrainTheme::Spacing::tight,
-                               tile.getY() + AbcTrainTheme::Spacing::tight);
+    // Beside the icon, not in the top-right corner: the corner is where
+    // the level lives, and a 20px star sitting on top of a 19px number is
+    // two things fighting for one space. Here it reads as a property of
+    // the exercise - the thing the icon already names - and there is
+    // nothing behind it to cover.
+    return juce::Rectangle<int> (22, 22)
+               .withPosition (tile.getX() + AbcTrainTheme::Spacing::small + 36,
+                               tile.getY() + AbcTrainTheme::Spacing::small + 5);
 }
 
 int HomeScreenComponent::tileIndexAt (juce::Point<int> position) const

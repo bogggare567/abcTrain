@@ -7,6 +7,7 @@
 #include "TrainingSoundsComponent.h"
 #include "HomeScreenComponent.h"
 #include "SupportScreenComponent.h"
+#include "SettingsScreenComponent.h"
 #include "SessionManager.h"
 #include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
@@ -361,6 +362,12 @@ private:
     // it paints over everything - the same z-order rule the lesson and
     // training-sounds overlays already had to learn (decisions/015, 017).
     AchievementToast achievementToast;
+
+    // Theme, window size, text size, wallpaper - the settings that are set
+    // once. Added after trainingSounds so it paints over it, and before
+    // the toast, which paints over everything.
+    IconButton settingsButton { AppIcons::Icon::settings };
+    SettingsScreenComponent settingsScreen { localisation, localisationProperties };
 
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four

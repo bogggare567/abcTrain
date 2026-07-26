@@ -24,7 +24,11 @@ namespace AppIcons
         // A five-pointed star, for achievements that belong to no single
         // exercise. The interface glyphs were all wrong here: `scope`
         // shrunk to badge size reads as a "no entry" sign.
-        award
+        award,
+
+        // A gear, for the settings screen. Distinct from `sun`, which the
+        // theme toggle already owns.
+        settings
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().

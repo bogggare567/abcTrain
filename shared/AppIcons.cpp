@@ -256,6 +256,26 @@ namespace AppIcons
             return p;
         }
 
+        juce::Path settingsPath()
+        {
+            // A gear: a ring with six teeth. Drawn from an arc rather than
+            // an ellipse so the stroke weight matches every other glyph.
+            juce::Path p;
+            p.addEllipse (7.5f, 7.5f, 9.0f, 9.0f);
+
+            for (int i = 0; i < 6; ++i)
+            {
+                const auto angle = juce::MathConstants<float>::twoPi * (float) i / 6.0f;
+                const auto inner = juce::Point<float> (12.0f, 12.0f).getPointOnCircumference (7.0f, angle);
+                const auto outer = juce::Point<float> (12.0f, 12.0f).getPointOnCircumference (10.5f, angle);
+
+                p.startNewSubPath (inner);
+                p.lineTo (outer);
+            }
+
+            return p;
+        }
+
         juce::Path awardPath()
         {
             juce::Path p;
@@ -298,6 +318,7 @@ namespace AppIcons
             case Icon::home:           return homePath();
             case Icon::scope:          return scopePath();
             case Icon::award:          return awardPath();
+            case Icon::settings:       return settingsPath();
         }
 
         return eqPath();

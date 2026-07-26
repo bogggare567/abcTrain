@@ -45,6 +45,13 @@ public:
     // proportional font, which is exactly where that jitter comes from.
     juce::Label* createSliderTextBox (juce::Slider&) override;
 
+    // A multiplier on every font this class hands out, so someone can make
+    // the text bigger without changing the layout. Separate from the
+    // window-size picker, which scales the whole design through an
+    // AffineTransform - see SettingsScreenComponent for why both exist.
+    static void setTextScale (float) noexcept;
+    static float getTextScale() noexcept;
+
     static juce::Font titleFont();
     static juce::Font monoFont();
     static juce::Font captionFont();
@@ -89,6 +96,18 @@ public:
     // room" feeling without touching contrast.
     static void paintPanelBackground (juce::Graphics&, juce::Rectangle<float> bounds,
                                       juce::Colour tint = juce::Colours::transparentBlack);
+
+    // An optional player-supplied wallpaper, drawn instead of the tinted
+    // gradient. `scrim` is how much of the window colour is laid back over
+    // it - without one, a photograph makes 12px labels unreadable, and the
+    // point of letting someone choose a background is not to stop them
+    // using the app. An invalid image turns the feature off.
+    //
+    // Process-wide, like AbcTrainTheme::current(), so two editors open at
+    // once cannot disagree about the wallpaper. Message thread only.
+    static void setCustomBackground (juce::Image, float scrim);
+    static const juce::Image& customBackground();
+    static float customBackgroundScrim();
 
     // A grouped-section container: subtly raised surface, hairline border,
     // optional caption in the top-left. This is what gives related controls
