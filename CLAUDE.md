@@ -316,7 +316,16 @@ full rationale.
   nothing in the code enforces that, see
   [decisions/021](docs/decisions/021-sessions-and-navigation.md).
 - `Source/PluginProcessor.{h,cpp}` — ignores host input entirely;
-  generates its own test signal via `GameManager::process`. Owns
+  generates its own test signal via `GameManager::process`. `signalEnabled`
+  starts **off** - it used to default to true, which meant an audible
+  half-second of noise on launch, before any editor existed to say
+  otherwise. Also owns the **breathing gate**: for the six games whose
+  signal is continuous (i.e. `Game::hasOwnRepeatPause()` is false), the
+  output is faded down for ~0.9s after every ~2.4s of sound, because an
+  unbroken loop stops the ear resolving anything within a minute. The
+  three burst games (compression, reverb, delay) already stop and start
+  on their own and are left alone; `restartSignalCycle()` puts the gate at
+  the top of its sound phase whenever a round begins. Owns
   `GameManager` then `ProgressManager` in that declaration order (matters
   — `ProgressManager`'s constructor registers listeners on every game).
 - `Source/ChoiceSliderComponent.{h,cpp}` — the answer-selection widget:

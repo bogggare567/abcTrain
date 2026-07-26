@@ -101,6 +101,18 @@ public:
     // hidden change applied. A game that has no meaningful "before" (there
     // is no unprocessed version of "which reverb type is this") leaves
     // this off and the editor hides the switch.
+    // True if this game's own signal already stops and starts - the three
+    // burst games (compression, reverb, delay) repeat a short hit with
+    // silence between, because hearing the *tail* is the whole exercise.
+    //
+    // The other six generate continuous noise, and a continuous loop with
+    // no gap is exhausting within a minute and actively harmful to
+    // listening: the ear stops resolving anything and starts filtering.
+    // The processor gives those a breathing gate (see
+    // EarTrainerProcessor::processBlock); a game that says true here is
+    // left alone, since gating a burst would just make it rarer.
+    virtual bool hasOwnRepeatPause() const { return false; }
+
     virtual bool supportsBeforeAfter() const { return false; }
 
     // Audio-thread visible: process() reads it every block, so it's an

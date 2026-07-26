@@ -31,6 +31,10 @@ public:
 
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
+    // Repeats a burst with silence between it already - see
+    // Game::hasOwnRepeatPause.
+    bool hasOwnRepeatPause() const override { return true; }
+
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 

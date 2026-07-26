@@ -801,6 +801,7 @@ void EarTrainerEditor::startNewRun()
     refreshBeforeAfter();
 
     processor.getGameManager().getActiveGame().newRound();
+    processor.restartSignalCycle();
     refreshRunStatus();
 }
 
