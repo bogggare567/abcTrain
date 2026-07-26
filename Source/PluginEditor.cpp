@@ -186,6 +186,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     hintButton.onClick = [this] { requestHint(); };
     addAndMakeVisible (hintButton);
 
+    // The price stays as text beside the icon: an icon alone cannot say
+    // "this costs you a life", and a cost you discover after paying is
+    // exactly the thing decisions/014 was written about.
+    hintCostLabel.setJustificationType (juce::Justification::centredLeft);
+    hintCostLabel.setFont (AbcTrainLookAndFeel::captionFont());
+    addAndMakeVisible (hintCostLabel);
+
     processor.setVectorscope (&vectorscope);
     processor.setSpectrumAnalyzer (&hintSpectrum);
     addChildComponent (vectorscope);
@@ -264,7 +271,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         auto handled = std::make_shared<bool> (false);
 
         updateButton.setEnabled (false);
-        updateButton.setButtonText (localisation.getText ("ui.checkingForUpdates"));
+        updateButton.setTooltip (localisation.getText ("ui.checkingForUpdates"));
 
         // Captured now (editor definitely alive), not read from
         // `localisation` inside the async callback below, which may run
@@ -286,16 +293,16 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
             if (! foundNewer)
             {
-                safeThis->updateButton.setButtonText (upToDateText);
+                safeThis->updateButton.setTooltip (upToDateText);
                 juce::Timer::callAfterDelay (2500, [safeThis, updatesText]
                 {
                     if (safeThis != nullptr)
-                        safeThis->updateButton.setButtonText (updatesText);
+                        safeThis->updateButton.setTooltip (updatesText);
                 });
                 return;
             }
 
-            safeThis->updateButton.setButtonText (updatesText);
+            safeThis->updateButton.setTooltip (updatesText);
 
             const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
                 juce::MessageBoxIconType::InfoIcon,
@@ -327,12 +334,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
             *handled = true;
 
             safeThis->updateButton.setEnabled (true);
-            safeThis->updateButton.setButtonText (checkFailedText);
+            safeThis->updateButton.setTooltip (checkFailedText);
 
             juce::Timer::callAfterDelay (2500, [safeThis, updatesText]
             {
                 if (safeThis != nullptr)
-                    safeThis->updateButton.setButtonText (updatesText);
+                    safeThis->updateButton.setTooltip (updatesText);
             });
         });
     };
@@ -407,7 +414,13 @@ void EarTrainerEditor::applyTheme()
     streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
 
-    themeButton.setButtonText (theme.mode == AbcTrainTheme::Mode::light ? "Dark" : "Light");
+    // The icon shows the mode you'd switch *to*, and morphs between the
+    // two rather than cutting - see IconButton.
+    themeButton.setIcon (theme.mode == AbcTrainTheme::Mode::light ? AppIcons::Icon::moon
+                                                                  : AppIcons::Icon::sun);
+    themeButton.setTooltip (localisation.getText (theme.mode == AbcTrainTheme::Mode::light
+                                                       ? "ui.themeDark" : "ui.themeLight"));
+    hintCostLabel.setColour (juce::Label::textColourId, theme.textDim);
 
     // These two are re-coloured per answer/progress state, so just let
     // the normal refresh paths reapply them from the new palette.
@@ -522,15 +535,19 @@ void EarTrainerEditor::resized()
 
     // --- title row: identity on the left, global controls on the right ---
     auto titleRow = area.removeFromTop (32);
+    // Square icon buttons: the old row of wide text buttons took most of
+    // the title bar for controls pressed once a session.
+    constexpr int iconSize = 30;
+
     languageSelector.setBounds (titleRow.removeFromRight (86));
     titleRow.removeFromRight (Spacing::small);
     sizeSelector.setBounds (titleRow.removeFromRight (56));
-    titleRow.removeFromRight (Spacing::small);
-    themeButton.setBounds (titleRow.removeFromRight (62));
-    titleRow.removeFromRight (Spacing::small);
-    updateButton.setBounds (titleRow.removeFromRight (76));
-    titleRow.removeFromRight (Spacing::small);
-    trainingSoundsButton.setBounds (titleRow.removeFromRight (118));
+    titleRow.removeFromRight (Spacing::medium);
+    themeButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
+    titleRow.removeFromRight (Spacing::tight);
+    updateButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
+    titleRow.removeFromRight (Spacing::tight);
+    trainingSoundsButton.setBounds (titleRow.removeFromRight (iconSize).withSizeKeepingCentre (iconSize, iconSize));
 
     area.removeFromTop (Spacing::section);
 
@@ -541,7 +558,7 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::large);   // clear the section heading
 
         auto gameRow = inner.removeFromTop (28);
-        backButton.setBounds (gameRow.removeFromLeft (86));
+        backButton.setBounds (gameRow.removeFromLeft (28).withSizeKeepingCentre (28, 28));
         gameRow.removeFromLeft (Spacing::medium);
         gameIcon.setBounds (gameRow.removeFromLeft (26));
         gameRow.removeFromLeft (Spacing::small);
@@ -592,7 +609,9 @@ void EarTrainerEditor::resized()
         bottomRow.removeFromLeft (Spacing::small);
         modeSelector.setBounds (bottomRow.removeFromLeft (118));
         bottomRow.removeFromLeft (Spacing::small);
-        hintButton.setBounds (bottomRow.removeFromLeft (128));
+        hintButton.setBounds (bottomRow.removeFromLeft (30).withSizeKeepingCentre (30, 30));
+        bottomRow.removeFromLeft (Spacing::tight);
+        hintCostLabel.setBounds (bottomRow.removeFromLeft (120));
         runStatusLabel.setBounds (bottomRow.removeFromRight (120));
         scoreLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
     }
@@ -649,7 +668,7 @@ void EarTrainerEditor::rebuildGameSelectorItems()
     auto& gameManager = processor.getGameManager();
     currentGameLabel.setText (translateGameName (gameManager.getActiveGame().getName(), localisation),
                                juce::dontSendNotification);
-    backButton.setButtonText (localisation.getText ("ui.back"));
+
 }
 
 void EarTrainerEditor::timerCallback()
@@ -789,7 +808,7 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &newRoundButton, (juce::Component*) &modeSelector,
-                     (juce::Component*) &hintButton,
+                     (juce::Component*) &hintButton, (juce::Component*) &hintCostLabel,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
                      (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
                      (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
@@ -875,7 +894,9 @@ void EarTrainerEditor::rebuildHomeSections()
 void EarTrainerEditor::refreshLocalisedText()
 {
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
-    updateButton.setButtonText (localisation.getText ("ui.updates"));
+    updateButton.setTooltip (localisation.getText ("ui.updates"));
+    trainingSoundsButton.setTooltip (localisation.getText ("ui.trainingSounds"));
+    backButton.setTooltip (localisation.getText ("ui.back"));
 
     {
         const auto selected = modeSelector.getSelectedId();
@@ -958,13 +979,18 @@ void EarTrainerEditor::requestHint()
     {
         // Refused - say why rather than doing nothing, the same rule the
         // "Updates" button had to learn (see decisions/014).
-        hintButton.setButtonText (localisation.getText ("ui.hintTooExpensive"));
+        hintCostLabel.setText (localisation.getText ("ui.hintTooExpensive"), juce::dontSendNotification);
+        hintCostLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().negative);
 
         juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
         juce::Timer::callAfterDelay (2000, [safeThis]
         {
-            if (safeThis != nullptr)
-                safeThis->refreshHintButton();
+            if (safeThis == nullptr)
+                return;
+
+            safeThis->hintCostLabel.setColour (juce::Label::textColourId,
+                                                AbcTrainTheme::current().textDim);
+            safeThis->refreshHintButton();
         });
         return;
     }
@@ -988,26 +1014,26 @@ void EarTrainerEditor::refreshHintButton()
 {
     if (hintRevealed)
     {
-        hintButton.setButtonText (localisation.getText ("ui.hintShown"));
         hintButton.setEnabled (false);
+        hintCostLabel.setText (localisation.getText ("ui.hintShown"), juce::dontSendNotification);
         return;
     }
 
     hintButton.setEnabled (session.isRunActive());
+    hintButton.setTooltip (localisation.getText ("ui.hintFree"));
 
-    // The price is on the button, so the cost is known *before* paying
-    // it rather than discovered afterwards.
     switch (session.getMode())
     {
         case SessionManager::Mode::survival:
-            hintButton.setButtonText (localisation.getText ("ui.hintCostLife"));
+            hintCostLabel.setText (localisation.getText ("ui.hintCostLife"), juce::dontSendNotification);
             break;
         case SessionManager::Mode::blitz:
-            hintButton.setButtonText (localisation.getText ("ui.hintCostSeconds",
-                                                            { { "seconds", juce::String (SessionManager::blitzHintSeconds) } }));
+            hintCostLabel.setText (localisation.getText ("ui.hintCostSeconds",
+                                                          { { "seconds", juce::String (SessionManager::blitzHintSeconds) } }),
+                                    juce::dontSendNotification);
             break;
         default:
-            hintButton.setButtonText (localisation.getText ("ui.hintFree"));
+            hintCostLabel.setText (localisation.getText ("ui.hintFree"), juce::dontSendNotification);
             break;
     }
 }

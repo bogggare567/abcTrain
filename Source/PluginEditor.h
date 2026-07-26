@@ -211,7 +211,7 @@ private:
     // names, which told a player nothing about what each exercise was for
     // or how they were doing at it - see GamePickerComponent.
     // Back to Home from the training screen.
-    juce::TextButton backButton { "< Home" };
+    IconButton backButton { AppIcons::Icon::home };
     juce::Label currentGameLabel;
     juce::Label instructionLabel;
     juce::Label scoreLabel;
@@ -222,7 +222,8 @@ private:
     // and whether it's in phase) over a spectrum (where the energy is).
     // Hidden until bought, and reset on every new round so the previous
     // round's picture can't linger into the next one.
-    juce::TextButton hintButton;
+    IconButton hintButton { AppIcons::Icon::scope };
+    juce::Label hintCostLabel;
     Vectorscope vectorscope;
     SpectrumAnalyzerComponent hintSpectrum;
     bool hintRevealed = false;
@@ -267,12 +268,12 @@ private:
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;
 
-    juce::TextButton updateButton { "Updates" };
+    IconButton updateButton { AppIcons::Icon::download };
 
     // Light/dark switch. The chosen mode is stored in the same shared
     // "abcTrain" PropertiesFile the language preference uses, so it's one
     // product-wide preference rather than per-plugin or per-instance.
-    juce::TextButton themeButton { "Light" };
+    IconButton themeButton { AppIcons::Icon::sun };
 
     // Section backdrops, computed in resized() and drawn in paint(). Held
     // as members because JUCE gives paint() no access to the layout pass,
@@ -288,7 +289,7 @@ private:
     // see TrainingSoundsComponent/ReferenceAudioLibrary and decisions/015.
     // Has no default constructor (needs the processor), so it's
     // initialised in the constructor's member-init-list, after `processor`.
-    juce::TextButton trainingSoundsButton { "Training Sounds" };
+    IconButton trainingSoundsButton { AppIcons::Icon::sound };
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four
     // categories already exceed the window, and the catalogue only grows.

@@ -74,5 +74,8 @@
   "ui.hintPlaceholder": "Скопы — на один раунд, если купишь",
   "ui.sectionExercise": "Упражнение",
   "ui.sectionAnswer": "Твой ответ",
-  "ui.sectionProgress": "Прогресс"
+  "ui.sectionProgress": "Прогресс",
+  "ui.trainingSounds": "Звуки тренировки",
+  "ui.themeLight": "Светлая тема",
+  "ui.themeDark": "Тёмная тема"
 }

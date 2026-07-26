@@ -15,7 +15,11 @@ namespace AppIcons
     enum class Icon
     {
         eq, compression, reverb, pan, delay, distortion, stereoWidth, gain, frequencyRange,
-        learnerEQ, learnerComp, learnerVerb
+        learnerEQ, learnerComp, learnerVerb,
+
+        // Interface icons, for the compact title-row buttons that replaced
+        // a row of wide text buttons.
+        sound, download, sun, moon, home, scope
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().
@@ -34,6 +38,42 @@ namespace AppIcons
     // Component::paint() (e.g. a title row) without adding a child.
     void draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce::Colour colour);
 }
+
+// A square button that is just an icon. Replaces the row of wide text
+// buttons that used to eat most of every title row - "Training Sounds",
+// "Updates", "Light" and so on - which were loud out of all proportion to
+// how often they're pressed.
+//
+// It animates on two axes, both eased through the LookAndFeel's shared
+// WidgetStateRegistry so the feel matches every other control: the icon
+// lifts and brightens under the pointer, and *changing the icon* cross-
+// fades rather than cutting - which is what makes the theme toggle read
+// as one control changing state instead of two different buttons
+// swapping places.
+class IconButton : public juce::Button,
+                    private juce::Timer
+{
+public:
+    explicit IconButton (AppIcons::Icon initialIcon);
+    ~IconButton() override;
+
+    // Cross-fades to the new glyph. Setting the icon it already shows is
+    // a no-op, so this is safe to call from a refresh that runs often.
+    void setIcon (AppIcons::Icon newIcon);
+    AppIcons::Icon getIcon() const noexcept { return icon; }
+
+    void paintButton (juce::Graphics&, bool shouldDrawButtonAsHighlighted,
+                      bool shouldDrawButtonAsDown) override;
+
+private:
+    void timerCallback() override;
+
+    AppIcons::Icon icon;
+    AppIcons::Icon previousIcon;
+    float morph = 1.0f;    // 0 = fully previous, 1 = fully current
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (IconButton)
+};
 
 // Lightweight Component wrapper around AppIcons::draw(), for spots that
 // want the icon as its own addAndMakeVisible()'d child (e.g. next to

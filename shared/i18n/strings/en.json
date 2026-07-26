@@ -74,5 +74,8 @@
   "ui.hintPlaceholder": "Scopes — one round, when you buy them",
   "ui.sectionExercise": "Exercise",
   "ui.sectionAnswer": "Your answer",
-  "ui.sectionProgress": "Progress"
+  "ui.sectionProgress": "Progress",
+  "ui.trainingSounds": "Training sounds",
+  "ui.themeLight": "Light theme",
+  "ui.themeDark": "Dark theme"
 }
