@@ -131,5 +131,12 @@
   "achv.streak365.name": "A whole year",
   "achv.streak365.desc": "Practised 365 days in a row",
   "achv.eqAccuracy92.name": "Golden ears",
-  "achv.eqAccuracy92.desc": "92% accuracy on Guess the Band"
+  "achv.eqAccuracy92.desc": "92% accuracy on Guess the Band",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Support the project",
+  "ui.star": "Star on GitHub",
+  "ui.continue": "Continue",
+  "ui.supportBody": "Ear training for mixing engineers, and three teaching plugins that process your own audio.\n\nFree and open source, and always will be. Neither of the two buttons below is required — nothing here is locked."
 }

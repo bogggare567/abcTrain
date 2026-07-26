@@ -44,5 +44,12 @@
   "ui.hintShown": "Mostrato per questo turno",
   "ui.sectionHint": "Che aspetto ha il suono",
   "ui.daily": "Oggi: {{count}} di fila in «{{game}}»",
-  "ui.dailyDone": "Fatto oggi — {{count}} di fila in «{{game}}» (+{{bonus}})"
+  "ui.dailyDone": "Fatto oggi — {{count}} di fila in «{{game}}» (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Sostieni il progetto",
+  "ui.star": "Stella su GitHub",
+  "ui.continue": "Continua",
+  "ui.supportBody": "Ear training per il mixaggio, e tre plugin didattici che elaborano il tuo audio.\n\nGratuito e open source, per sempre. Nessuno dei due pulsanti è obbligatorio — qui non c’è nulla di bloccato."
 }

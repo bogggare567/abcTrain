@@ -979,7 +979,7 @@ void EarTrainerEditor::rebuildHomeSections()
         const auto stats = progress.getStatsForGame (i);
         card.statsLine = stats.roundsPlayed == 0
                              ? juce::String()
-                             : juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) + "%  ·  "
+                             : juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) + juce::String (juce::CharPointer_UTF8 ("%  \xc2\xb7  "))
                                    + juce::String (stats.roundsPlayed);
 
         return card;
@@ -1025,6 +1025,8 @@ void EarTrainerEditor::rebuildHomeSections()
 
 void EarTrainerEditor::refreshLocalisedText()
 {
+    supportScreen.refresh();
+
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));
     trainingSoundsButton.setTooltip (localisation.getText ("ui.trainingSounds"));

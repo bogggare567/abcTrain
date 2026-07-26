@@ -44,5 +44,12 @@
   "ui.hintShown": "Für diese Runde gezeigt",
   "ui.sectionHint": "So sieht der Klang aus",
   "ui.daily": "Heute: {{count}} in Folge bei „{{game}}“",
-  "ui.dailyDone": "Heute geschafft — {{count}} in Folge bei „{{game}}“ (+{{bonus}})"
+  "ui.dailyDone": "Heute geschafft — {{count}} in Folge bei „{{game}}“ (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Projekt unterstützen",
+  "ui.star": "Auf GitHub sternen",
+  "ui.continue": "Weiter",
+  "ui.supportBody": "Gehörbildung fürs Mischen, plus drei Lern-Plugins, die dein eigenes Audio bearbeiten.\n\nKostenlos und quelloffen, für immer. Keine der beiden Schaltflächen ist nötig — hier ist nichts gesperrt."
 }

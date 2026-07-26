@@ -44,5 +44,12 @@
   "ui.hintShown": "Pokazane w tej rundzie",
   "ui.sectionHint": "Jak wygląda dźwięk",
   "ui.daily": "Dziś: {{count}} z rzędu w „{{game}}”",
-  "ui.dailyDone": "Dziś zrobione — {{count}} z rzędu w „{{game}}” (+{{bonus}})"
+  "ui.dailyDone": "Dziś zrobione — {{count}} z rzędu w „{{game}}” (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Wesprzyj projekt",
+  "ui.star": "Gwiazdka na GitHub",
+  "ui.continue": "Dalej",
+  "ui.supportBody": "Trening słuchu dla realizatorów, plus trzy wtyczki uczące, które przetwarzają twoje własne audio.\n\nDarmowe i otwarte, na zawsze. Żaden z dwóch przycisków nie jest wymagany — nic tu nie jest zablokowane."
 }

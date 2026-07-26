@@ -132,6 +132,18 @@ juce_add_binary_data(SampleData
         assets/samples/Sustained/Tone.wav
 )
 
+# The app icon, embedded so the first screen can draw the *same* mark the
+# player sees in their dock and Finder. It was already wired to
+# juce_add_plugin's ICON_BIG, but that only reaches the platform's own
+# icon slot - nothing inside the editor could read it, so the welcome
+# screen was drawing an unrelated line glyph.
+juce_add_binary_data(BrandData
+    NAMESPACE BrandBinaryData
+    HEADER_NAME BrandBinaryData.h
+    SOURCES
+        assets/icons/eartrainer.png
+)
+
 juce_add_plugin(EarTrainer
     COMPANY_NAME "EarSnap"
     PLUGIN_MANUFACTURER_CODE Esnp
@@ -196,6 +208,7 @@ target_link_libraries(EarTrainer
         juce::juce_animation
         I18nData
         SampleData
+        BrandData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -454,6 +467,7 @@ target_link_libraries(EarTrainerTests
         juce::juce_dsp
         I18nData
         SampleData
+        BrandData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -535,6 +549,7 @@ target_link_libraries(EditorSnapshots
         juce::juce_animation
         I18nData
         SampleData
+        BrandData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

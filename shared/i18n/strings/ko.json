@@ -44,5 +44,12 @@
   "ui.hintShown": "이번 라운드에 표시됨",
   "ui.sectionHint": "소리의 모습",
   "ui.daily": "오늘: 「{{game}}」에서 {{count}}회 연속",
-  "ui.dailyDone": "오늘 완료 — 「{{game}}」에서 {{count}}회 연속 (+{{bonus}})"
+  "ui.dailyDone": "오늘 완료 — 「{{game}}」에서 {{count}}회 연속 (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "프로젝트 후원",
+  "ui.star": "GitHub에 별 주기",
+  "ui.continue": "계속",
+  "ui.supportBody": "믹싱을 위한 청음 훈련과, 당신의 오디오를 직접 처리하는 세 개의 학습용 플러그인.\n\n무료이며 오픈 소스, 앞으로도 계속. 아래 두 버튼 모두 필수가 아닙니다 — 여기에 잠긴 것은 없습니다."
 }

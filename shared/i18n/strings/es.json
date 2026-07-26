@@ -44,5 +44,12 @@
   "ui.hintShown": "Mostrado en esta ronda",
   "ui.sectionHint": "Cómo se ve el sonido",
   "ui.daily": "Hoy: {{count}} seguidas en «{{game}}»",
-  "ui.dailyDone": "Hoy hecho — {{count}} seguidas en «{{game}}» (+{{bonus}})"
+  "ui.dailyDone": "Hoy hecho — {{count}} seguidas en «{{game}}» (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Apoyar el proyecto",
+  "ui.star": "Estrella en GitHub",
+  "ui.continue": "Continuar",
+  "ui.supportBody": "Entrenamiento auditivo para mezcla, y tres plugins didácticos que procesan tu propio audio.\n\nGratis y de código abierto, siempre. Ninguno de los dos botones es obligatorio: aquí no hay nada bloqueado."
 }

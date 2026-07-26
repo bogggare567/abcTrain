@@ -29,6 +29,10 @@ public:
     explicit EarTrainerEditor (EarTrainerProcessor&);
     ~EarTrainerEditor() override;
 
+    // For tools/EditorSnapshots only - see SupportScreenComponent::
+    // completeReveal for why a rendered still needs this.
+    void completeWelcomeReveal() { supportScreen.completeReveal(); }
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -364,7 +368,7 @@ private:
     HomeScreenComponent homeScreen;
 
     // First launch only, and it blocks nothing - see the class comment.
-    SupportScreenComponent supportScreen;
+    SupportScreenComponent supportScreen { localisation };
     Screen currentScreen = Screen::home;
 
     // Product site link, shown in a corner of every one of the four

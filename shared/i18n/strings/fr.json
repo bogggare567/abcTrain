@@ -44,5 +44,12 @@
   "ui.hintShown": "Affiché pour cette manche",
   "ui.sectionHint": "À quoi ressemble le son",
   "ui.daily": "Aujourd’hui : {{count}} d’affilée sur « {{game}} »",
-  "ui.dailyDone": "Fait aujourd’hui — {{count}} d’affilée sur « {{game}} » (+{{bonus}})"
+  "ui.dailyDone": "Fait aujourd’hui — {{count}} d’affilée sur « {{game}} » (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Soutenir le projet",
+  "ui.star": "Étoile sur GitHub",
+  "ui.continue": "Continuer",
+  "ui.supportBody": "Formation de l’oreille pour le mixage, et trois plugins pédagogiques qui traitent votre propre audio.\n\nGratuit et open source, pour toujours. Aucun des deux boutons n’est obligatoire — rien n’est verrouillé ici."
 }

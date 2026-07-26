@@ -25,6 +25,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <iostream>
+#include <type_traits>
 
 #include "../LearnerEQ/Source/PluginProcessor.h"
 #include "../LearnerEQ/Source/PluginEditor.h"
@@ -96,6 +97,13 @@ namespace
             processor.prepareToPlay (44100.0, 512);
 
             EditorType editor (processor);
+
+            // The welcome screen's word reveal is the one animation whose
+            // resting state is "nothing yet", so a still frame of it at
+            // rest is a blank. Fast-forward it; everything else stays at
+            // rest deliberately.
+            if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
+                editor.completeWelcomeReveal();
 
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
             const auto file = outputDir.getChildFile (name + suffix + ".png");

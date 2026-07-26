@@ -44,5 +44,12 @@
   "ui.hintShown": "本轮已显示",
   "ui.sectionHint": "声音长什么样",
   "ui.daily": "今天：在「{{game}}」中连续答对 {{count}} 次",
-  "ui.dailyDone": "今天已完成 —「{{game}}」连续 {{count}} 次（+{{bonus}}）"
+  "ui.dailyDone": "今天已完成 —「{{game}}」连续 {{count}} 次（+{{bonus}}）",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "支持这个项目",
+  "ui.star": "在 GitHub 点星",
+  "ui.continue": "继续",
+  "ui.supportBody": "为混音而做的听觉训练，外加三个处理你自己音频的教学插件。\n\n免费、开源，永远如此。下面两个按钮都不是必需的 —— 这里没有任何内容被锁住。"
 }

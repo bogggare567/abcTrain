@@ -44,5 +44,12 @@
   "ui.hintShown": "Mostrado nesta rodada",
   "ui.sectionHint": "Como o som se parece",
   "ui.daily": "Hoje: {{count}} seguidas em \"{{game}}\"",
-  "ui.dailyDone": "Feito hoje — {{count}} seguidas em \"{{game}}\" (+{{bonus}})"
+  "ui.dailyDone": "Feito hoje — {{count}} seguidas em \"{{game}}\" (+{{bonus}})",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "Apoiar o projeto",
+  "ui.star": "Estrela no GitHub",
+  "ui.continue": "Continuar",
+  "ui.supportBody": "Treino auditivo para mixagem, e três plugins didáticos que processam o seu próprio áudio.\n\nGratuito e de código aberto, sempre. Nenhum dos dois botões é obrigatório — nada aqui está bloqueado."
 }

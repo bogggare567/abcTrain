@@ -44,5 +44,12 @@
   "ui.hintShown": "このラウンドで表示中",
   "ui.sectionHint": "音の見た目",
   "ui.daily": "今日：「{{game}}」で{{count}}回連続",
-  "ui.dailyDone": "今日達成 —「{{game}}」で{{count}}回連続（+{{bonus}}）"
+  "ui.dailyDone": "今日達成 —「{{game}}」で{{count}}回連続（+{{bonus}}）",
+  "brand.a": "ambiance",
+  "brand.b": "balance",
+  "brand.c": "clarity",
+  "ui.support": "プロジェクトを支援",
+  "ui.star": "GitHub でスター",
+  "ui.continue": "続ける",
+  "ui.supportBody": "ミックスのための耳のトレーニングと、自分の音声を処理する3つの学習用プラグイン。\n\n無料でオープンソース、これからもずっと。下の2つのボタンはどちらも必須ではありません — ここに鍵のかかったものはありません。"
 }
