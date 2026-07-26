@@ -1,24 +1,6 @@
 #include "CompressionGame.h"
 #include <cmath>
 
-const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::easyPresets {{
-    { "Weak",   -12.0f, 2.0f, 2.0f  },
-    { "Medium", -18.0f, 4.0f, 6.0f  },
-    { "Strong", -24.0f, 8.0f, 10.0f }
-}};
-
-const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::mediumPresets {{
-    { "Weak",   -15.0f, 3.0f, 4.0f },
-    { "Medium", -18.0f, 4.0f, 6.0f },
-    { "Strong", -21.0f, 5.0f, 8.0f }
-}};
-
-const std::array<CompressionGame::Preset, CompressionGame::numLevels> CompressionGame::hardPresets {{
-    { "Weak",   -17.0f, 3.5f, 5.0f },
-    { "Medium", -18.0f, 4.0f, 6.0f },
-    { "Strong", -19.0f, 4.5f, 7.0f }
-}};
-
 void CompressionGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
@@ -59,7 +41,7 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
         ++samplesSinceBurstStart;
     }
 
-    const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
+    const auto& preset = presets[(size_t) correctLevelIndex];
 
     if (playProcessed.load())
     {
@@ -80,12 +62,36 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
 
 void CompressionGame::setDifficulty (int level)
 {
-    if (level <= 3)
-        activePresets = &easyPresets;
-    else if (level <= 6)
-        activePresets = &mediumPresets;
-    else
-        activePresets = &hardPresets;
+    // The three presets are now interpolated toward each other from one
+    // spread value rather than picked from three fixed tables, so every
+    // level moves them - reaching level 5 used to be indistinguishable
+    // from level 4.
+    //
+    // Medium is the anchor and never moves; Weak and Strong close in on
+    // it. At level 1 the spread is the original -12/-18/-24 dB at 2:1 /
+    // 4:1 / 8:1, which nobody can miss; at level 10 it is roughly
+    // -17.4/-18/-18.7 dB at 3.6:1 / 4:1 / 4.4:1, where only the character
+    // of the squeeze separates them.
+    const auto spread = rampTolerance (level, 1.0f, 0.11f);
+
+    struct Offsets { const char* label; float thresholdDb; float ratio; float makeupDb; };
+
+    const std::array<Offsets, numLevels> offsets {{
+        { "Weak",    6.0f, -2.0f, -4.0f },
+        { "Medium",  0.0f,  0.0f,  0.0f },
+        { "Strong", -6.0f,  4.0f,  4.0f }
+    }};
+
+    for (size_t i = 0; i < presets.size(); ++i)
+    {
+        presets[i].label        = offsets[i].label;
+        presets[i].thresholdDb  = -18.0f + offsets[i].thresholdDb * spread;
+        presets[i].ratio        = 4.0f   + offsets[i].ratio       * spread;
+        presets[i].makeupGainDb = 6.0f   + offsets[i].makeupDb    * spread;
+    }
+
+    // The round in progress keeps whatever it was set up with; the next
+    // newRound() picks the new values up.
 }
 
 void CompressionGame::newRound()
@@ -114,7 +120,7 @@ void CompressionGame::submitAnswer (int choiceIndex)
 
 juce::String CompressionGame::getChoiceLabel (int choiceIndex) const
 {
-    return (*activePresets)[(size_t) choiceIndex].label;
+    return presets[(size_t) choiceIndex].label;
 }
 
 juce::String CompressionGame::getFeedbackText() const
@@ -122,7 +128,7 @@ juce::String CompressionGame::getFeedbackText() const
     if (! answered)
         return {};
 
-    const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
+    const auto& preset = presets[(size_t) correctLevelIndex];
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + preset.label + " compression ("
            + juce::String (preset.ratio, 0) + ":1 at "
@@ -131,7 +137,7 @@ juce::String CompressionGame::getFeedbackText() const
 
 void CompressionGame::updateCompressor()
 {
-    const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
+    const auto& preset = presets[(size_t) correctLevelIndex];
     compressor.setThreshold (preset.thresholdDb);
     compressor.setRatio (preset.ratio);
 }

@@ -29,22 +29,14 @@ void DBGame::process (juce::AudioBuffer<float>& buffer)
 void DBGame::setDifficulty (int level)
 {
     // stepDb still drives the legacy discrete labels; toleranceDb is what
-    // difficulty means on the continuous scale.
-    if (level <= 3)
-    {
-        stepDb = 6;
-        toleranceDb = 2.5f;
-    }
-    else if (level <= 6)
-    {
-        stepDb = 3;
-        toleranceDb = 1.5f;
-    }
-    else
-    {
-        stepDb = 2;
-        toleranceDb = 1.0f;
-    }
+    // difficulty means on the continuous scale, and it ramps across every
+    // level now rather than stepping twice.
+    stepDb = level <= 3 ? 6 : (level <= 6 ? 3 : 2);
+
+    // Stops at 0.8 dB rather than going lower: below roughly that, a level
+    // difference is not reliably audible at all, so a tighter band would
+    // test luck instead of hearing.
+    toleranceDb = rampTolerance (level, 2.5f, 0.8f);
 }
 
 juce::String DBGame::formatNormalisedValue (float normalised) const

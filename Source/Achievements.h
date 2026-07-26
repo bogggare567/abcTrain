@@ -48,15 +48,21 @@ namespace Achievements
     // glyph per achievement. Four steps is enough to read at a glance;
     // more would be a taxonomy nobody asked for.
     //
-    // `legendary` is deliberately near-unreachable - a shelf where
+    // The four metals, in the order everyone already knows them.
+    // `platinum` is deliberately near-unreachable - a shelf where
     // everything is collectable in a month is a shelf nobody looks at
     // twice.
+    //
+    // Colour is doing real work here, which is why it is *only* used here:
+    // a tier is a single fact with a natural ordering, and four metals say
+    // it without a word of text. Everywhere else in the app the colour was
+    // turned down (see AppIcons::drawBadged) so that this reads.
     enum class Tier
     {
         bronze,
         silver,
         gold,
-        legendary
+        platinum
     };
 
     juce::Colour colourForTier (Tier) noexcept;

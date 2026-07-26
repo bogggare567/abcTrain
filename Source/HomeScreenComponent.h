@@ -68,9 +68,9 @@ public:
         juce::String description;
         AppIcons::Icon icon = AppIcons::Icon::eq;
 
-        // Difficulty tier, drawn as colour rather than as a different
-        // glyph per achievement - bronze through to the near-unreachable
-        // ones. Kept as a plain colour so this component needs no table.
+        // Difficulty tier as a colour - bronze, silver, gold, platinum.
+        // This is the only place in the app where colour carries meaning
+        // on its own, which is why everything around it was turned down.
         juce::Colour tint;
 
         bool earned = false;
@@ -83,6 +83,11 @@ public:
     void setCards (std::vector<CardInfo> newCards);
     void setBadges (std::vector<BadgeInfo> newBadges);
     void setBadgeStripCaption (juce::String caption);
+
+    // The word above each tile's level number ("LEVEL" / "УРОВЕНЬ").
+    // Passed in rather than looked up here, so this component stays free
+    // of LocalisationManager like every other view in the project.
+    void setLevelCaption (juce::String caption);
 
     std::function<void (int gameIndex)> onGameChosen;
     std::function<void (int gameIndex, bool shouldBeFavourite)> onFavouriteToggled;
@@ -115,11 +120,12 @@ private:
     static constexpr int tileHeight = 100;
     static constexpr int tileHeightCeiling = 112;
     static constexpr int badgeStripHeight = 78;
-    static constexpr int badgeSize = 44;
+    static constexpr int badgeSize = 46;
 
     std::vector<CardInfo> cards;
     std::vector<BadgeInfo> badges;
     juce::String badgeStripCaption;
+    juce::String levelCaption;
 
     std::vector<juce::Rectangle<int>> tileBounds;
     std::vector<float> hoverAmounts;

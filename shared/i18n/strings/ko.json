@@ -129,5 +129,12 @@
   "ui.startAgain": "다시 시작",
   "ui.achievements": "업적",
   "ui.achievementEarned": "업적 달성",
-  "ui.achievementsLocked": "아직 미획득"
+  "ui.achievementsLocked": "아직 미획득",
+  "ui.levelWord": "레벨",
+  "ui.tileStats": "정답률 {{accuracy}}%  ·  {{rounds}} 라운드",
+  "ui.soundsSource": "소리의 출처",
+  "ui.soundsTrainOn": "무엇으로 훈련할지",
+  "ui.chooseFolder": "폴더 선택…",
+  "ui.pinkNoise": "핑크 노이즈",
+  "ui.soundsEmpty": "아직 카테고리가 없습니다. 직접 만든 오디오 폴더를 지정하세요(카테고리마다 하위 폴더). 위의 내장 사운드를 그냥 써도 됩니다."
 }

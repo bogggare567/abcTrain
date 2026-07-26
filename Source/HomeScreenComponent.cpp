@@ -55,6 +55,12 @@ void HomeScreenComponent::setBadges (std::vector<BadgeInfo> newBadges)
     repaint();
 }
 
+void HomeScreenComponent::setLevelCaption (juce::String caption)
+{
+    levelCaption = std::move (caption);
+    repaint();
+}
+
 void HomeScreenComponent::setBadgeStripCaption (juce::String caption)
 {
     badgeStripCaption = std::move (caption);
@@ -161,19 +167,30 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
     // --- the coloured badge, and the level beside it ---------------------
     auto topRow = inner.removeFromTop (32.0f);
     const auto badge = topRow.removeFromLeft (32.0f);
-    AppIcons::drawBadged (g, card.icon, badge, card.accent, 0.75f + 0.25f * eased);
 
-    // The level is the headline number now, so it is set like one: big,
-    // tabular, in the family colour. It used to be an 12px "L1" in the
-    // corner, which read as a footnote about the thing rather than as the
-    // thing.
+    // Monochrome. The family colour is still carried by the thin progress
+    // line at the bottom of the tile, where it is a hint; nine saturated
+    // squares made the catalogue louder than anything on it.
+    AppIcons::drawBadged (g, card.icon, badge, theme.text, 0.75f + 0.25f * eased);
+
+    // The level, with the word "Level" over it.
+    //
+    // A bare "1" in the corner answered no question anybody was asking -
+    // one what? A small caption above the number costs 11px and removes
+    // the guess entirely.
     {
         const auto pending = card.promotionPending;
-        auto levelBox = topRow.removeFromRight (36.0f);
+        auto levelBox = topRow.removeFromRight (58.0f);
 
-        g.setColour (pending ? theme.positive : card.accent);
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (20.0f));
-        g.drawText (juce::String (card.level), levelBox.removeFromTop (22.0f).toNearestInt(),
+        AbcTrainLookAndFeel::drawTrackedText (g, levelCaption.toUpperCase(),
+                                               levelBox.removeFromTop (11.0f),
+                                               AbcTrainLookAndFeel::captionFont(),
+                                               theme.textDim.withAlpha (0.75f), 1.4f,
+                                               juce::Justification::centredRight);
+
+        g.setColour (pending ? theme.positive : theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (19.0f));
+        g.drawText (juce::String (card.level), levelBox.removeFromTop (21.0f).toNearestInt(),
                      juce::Justification::centredRight, false);
     }
 
@@ -280,22 +297,34 @@ void HomeScreenComponent::paintBadgeStrip (juce::Graphics& g)
             continue;
 
         const auto lit = badge.earned;
-        const auto disc = box.reduced (2.0f);
         const auto tint = badge.tint;
 
-        // Locked ones show how close they are as an arc around the rim -
-        // the difference between "not yet" and "not ever".
+        // The plate sits *inside* the progress ring with a clear gap.
+        // Drawing the arc over the badge - which is what the first version
+        // did - left a stroke cutting across the glyph, and two things
+        // overlapping is read as one broken thing.
+        const auto ring = box.reduced (1.0f);
+        const auto plate = box.reduced (7.0f);
+
         if (! lit && badge.progress > 0.005f)
         {
             juce::Path arc;
-            arc.addCentredArc (disc.getCentreX(), disc.getCentreY(),
-                                disc.getWidth() * 0.62f, disc.getHeight() * 0.62f, 0.0f,
+            arc.addCentredArc (ring.getCentreX(), ring.getCentreY(),
+                                ring.getWidth() * 0.5f, ring.getHeight() * 0.5f, 0.0f,
                                 0.0f, juce::MathConstants<float>::twoPi * badge.progress, true);
-            g.setColour (tint.withAlpha (0.6f));
-            g.strokePath (arc, juce::PathStrokeType (2.0f));
+            g.setColour (tint.withAlpha (0.75f));
+            g.strokePath (arc, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved,
+                                                      juce::PathStrokeType::rounded));
+        }
+        else if (lit)
+        {
+            // Earned ones get the full ring, closed - the shape itself
+            // says "complete" before the colour does.
+            g.setColour (tint.withAlpha (0.9f));
+            g.drawEllipse (ring, 2.2f);
         }
 
-        AppIcons::drawBadged (g, badge.icon, disc, tint, lit ? 1.0f : 0.12f);
+        AppIcons::drawBadged (g, badge.icon, plate, tint, lit ? 1.0f : 0.22f);
     }
 }
 

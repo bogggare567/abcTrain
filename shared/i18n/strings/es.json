@@ -129,5 +129,12 @@
   "ui.startAgain": "Empezar de nuevo",
   "ui.achievements": "Logros",
   "ui.achievementEarned": "Logro desbloqueado",
-  "ui.achievementsLocked": "Aún no conseguido"
+  "ui.achievementsLocked": "Aún no conseguido",
+  "ui.levelWord": "Nivel",
+  "ui.tileStats": "{{accuracy}}% de acierto  ·  {{rounds}} rondas",
+  "ui.soundsSource": "De dónde vienen los sonidos",
+  "ui.soundsTrainOn": "Con qué practicar",
+  "ui.chooseFolder": "Elegir carpeta…",
+  "ui.pinkNoise": "Ruido rosa",
+  "ui.soundsEmpty": "Aún no hay categorías. Elige una carpeta con tu propio audio, una subcarpeta por categoría — o usa los sonidos integrados de arriba."
 }

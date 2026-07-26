@@ -129,5 +129,12 @@
   "ui.startAgain": "Neu starten",
   "ui.achievements": "Erfolge",
   "ui.achievementEarned": "Erfolg freigeschaltet",
-  "ui.achievementsLocked": "Noch nicht erreicht"
+  "ui.achievementsLocked": "Noch nicht erreicht",
+  "ui.levelWord": "Level",
+  "ui.tileStats": "{{accuracy}}% richtig  ·  {{rounds}} Runden",
+  "ui.soundsSource": "Woher die Klänge kommen",
+  "ui.soundsTrainOn": "Woran du übst",
+  "ui.chooseFolder": "Ordner wählen…",
+  "ui.pinkNoise": "Rosa Rauschen",
+  "ui.soundsEmpty": "Noch keine Kategorien. Wähle einen Ordner mit eigenem Audio, ein Unterordner pro Kategorie — oder nutze einfach die eingebauten Klänge oben."
 }

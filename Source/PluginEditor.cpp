@@ -801,7 +801,6 @@ void EarTrainerEditor::startNewRun()
     refreshBeforeAfter();
 
     processor.getGameManager().getActiveGame().newRound();
-    processor.restartSignalCycle();
     refreshRunStatus();
 }
 
@@ -978,10 +977,13 @@ void EarTrainerEditor::rebuildHomeSections()
         card.accent = tintForGame (englishName);
 
         const auto stats = progress.getStatsForGame (i);
+        // Spelled out. "10%  ·  29" made the reader work out which number
+        // was which and what either measured.
         card.statsLine = stats.roundsPlayed == 0
                              ? juce::String()
-                             : juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) + juce::String (juce::CharPointer_UTF8 ("%  \xc2\xb7  "))
-                                   + juce::String (stats.roundsPlayed);
+                             : localisation.getText ("ui.tileStats",
+                                                      { { "accuracy", juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) },
+                                                        { "rounds", juce::String (stats.roundsPlayed) } });
 
         return card;
     };
@@ -995,6 +997,7 @@ void EarTrainerEditor::rebuildHomeSections()
     for (int i = 0; i < gameManager.getNumGames(); ++i)
         cards.push_back (makeCard (i));
 
+    homeScreen.setLevelCaption (localisation.getText ("ui.levelWord"));
     homeScreen.setCards (std::move (cards));
 
     // Achievements as badges. progressTowards() is what lets a locked one
@@ -1027,6 +1030,14 @@ void EarTrainerEditor::rebuildHomeSections()
 void EarTrainerEditor::refreshLocalisedText()
 {
     supportScreen.refresh();
+
+    trainingSounds.setStrings (localisation.getText ("ui.trainingSounds"),
+                                localisation.getText ("ui.soundsSource"),
+                                localisation.getText ("ui.soundsTrainOn"),
+                                localisation.getText ("ui.chooseFolder"),
+                                localisation.getText ("ui.pinkNoise"),
+                                localisation.getText ("ui.close"),
+                                localisation.getText ("ui.soundsEmpty"));
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));

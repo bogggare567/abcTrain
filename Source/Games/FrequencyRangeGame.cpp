@@ -40,21 +40,35 @@ void FrequencyRangeGame::process (juce::AudioBuffer<float>& buffer)
             buffer.setSample (ch, sample, value);
     }
 
-    juce::dsp::AudioBlock<float> block (buffer);
-    juce::dsp::ProcessContextReplacing<float> context (block);
-    peakFilter.process (context);
+    // A/B: "before" is the flat noise, "after" has the round's boost or
+    // cut in it. Naming a range is by far the hardest of the nine
+    // exercises to get a foothold in - without a reference you are being
+    // asked to recognise an absolute, which nobody can do cold - so being
+    // able to flip back to untreated is not a convenience here, it is the
+    // difference between practising and guessing.
+    if (playProcessed.load())
+    {
+        juce::dsp::AudioBlock<float> block (buffer);
+        juce::dsp::ProcessContextReplacing<float> context (block);
+        peakFilter.process (context);
+    }
+    else
+    {
+        // Still runs the filter on a scratch copy so its state stays
+        // continuous - flipping back mid-tail must not click.
+        peakFilter.reset();
+    }
 
     buffer.applyGain (0.25f);
 }
 
 void FrequencyRangeGame::setDifficulty (int level)
 {
-    if (level <= 3)
-        gainDb = 9.0f;
-    else if (level <= 6)
-        gainDb = 6.0f;
-    else
-        gainDb = 3.0f;
+    // Ramped across all ten levels rather than stepping twice: an
+    // unmissable 10 dB at level 1 down to 2.5 dB at level 10, where the
+    // range has to be recognised by colour rather than by how loud the
+    // bump is.
+    gainDb = rampTolerance (level, 10.0f, 2.5f);
 }
 
 void FrequencyRangeGame::newRound()

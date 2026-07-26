@@ -129,5 +129,12 @@
   "ui.startAgain": "Почати спочатку",
   "ui.achievements": "Досягнення",
   "ui.achievementEarned": "Досягнення отримано",
-  "ui.achievementsLocked": "Ще не отримано"
+  "ui.achievementsLocked": "Ще не отримано",
+  "ui.levelWord": "Рівень",
+  "ui.tileStats": "{{accuracy}}% влучань  ·  {{rounds}} раундів",
+  "ui.soundsSource": "Звідки беруться звуки",
+  "ui.soundsTrainOn": "На чому тренуватися",
+  "ui.chooseFolder": "Обрати теку…",
+  "ui.pinkNoise": "Рожевий шум",
+  "ui.soundsEmpty": "Категорій поки немає. Вкажи теку зі своїм аудіо — по підтеці на категорію — або просто користуйся вбудованими звуками вище."
 }

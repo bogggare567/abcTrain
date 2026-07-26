@@ -138,5 +138,12 @@
   "ui.support": "Support the project",
   "ui.star": "Star on GitHub",
   "ui.continue": "Continue",
-  "ui.supportBody": "Ear training for mixing engineers, and three teaching plugins that process your own audio.\n\nFree and open source, and always will be. Neither of the two buttons below is required — nothing here is locked."
+  "ui.supportBody": "Ear training for mixing engineers, and three teaching plugins that process your own audio.\n\nFree and open source, and always will be. Neither of the two buttons below is required — nothing here is locked.",
+  "ui.levelWord": "Level",
+  "ui.tileStats": "{{accuracy}}% correct  ·  {{rounds}} rounds",
+  "ui.soundsSource": "Where the sounds come from",
+  "ui.soundsTrainOn": "What to train on",
+  "ui.chooseFolder": "Choose folder…",
+  "ui.pinkNoise": "Pink noise",
+  "ui.soundsEmpty": "No categories yet. Point this at a folder of your own audio, with one subfolder per category — or just use the built-in sounds above."
 }

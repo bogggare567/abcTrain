@@ -28,33 +28,6 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     gameManager.prepare (spec);
 }
 
-float EarTrainerProcessor::nextGateValue() noexcept
-{
-    const auto sampleRate = getSampleRate() > 0.0 ? getSampleRate() : 44100.0;
-
-    const auto soundSamples = juce::jmax (1, (int) (sampleRate * soundSeconds));
-    const auto gapSamples   = juce::jmax (1, (int) (sampleRate * gapSeconds));
-    const auto fadeSamples  = juce::jmax (1, (int) (sampleRate * fadeSeconds));
-    const auto cycleSamples = soundSamples + gapSamples;
-
-    if (gatePositionSamples >= cycleSamples)
-        gatePositionSamples = 0;
-
-    const auto position = gatePositionSamples++;
-
-    if (position >= soundSamples)
-        return 0.0f;
-
-    // Equal fades at both ends of the sound phase.
-    if (position < fadeSamples)
-        return (float) position / (float) fadeSamples;
-
-    if (position > soundSamples - fadeSamples)
-        return (float) (soundSamples - position) / (float) fadeSamples;
-
-    return 1.0f;
-}
-
 void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -70,27 +43,6 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         // every return from the menu start mid-burst.
         buffer.clear();
         return;
-    }
-
-    // --- the breathing gate ---------------------------------------------
-    // Only for games that do not already stop and start on their own.
-    if (! gameManager.getActiveGame().hasOwnRepeatPause())
-    {
-        if (restartCycleRequested.exchange (false))
-            gatePositionSamples = 0;
-
-        for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
-        {
-            const auto gain = nextGateValue();
-
-            for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
-                buffer.setSample (channel, sample, buffer.getSample (channel, sample) * gain);
-        }
-    }
-    else
-    {
-        restartCycleRequested.store (false);
-        gatePositionSamples = 0;
     }
 
     // Feed the hint scopes from the generated signal. Both are optional -

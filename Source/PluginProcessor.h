@@ -54,10 +54,6 @@ public:
     // on teardown, so a plugin with no UI open still makes sound.
     void setSignalEnabled (bool shouldBeEnabled) noexcept { signalEnabled.store (shouldBeEnabled); }
 
-    // Starts the breathing gate at the top of its sound phase, so a fresh
-    // round never opens halfway into a silence. Called from the editor
-    // wherever a round begins; audio-thread visible, hence the atomic.
-    void restartSignalCycle() noexcept { restartCycleRequested.store (true); }
 
     void setVectorscope (Vectorscope* scope) noexcept { vectorscope.store (scope); }
     void setSpectrumAnalyzer (SpectrumAnalyzerComponent* analyzer) noexcept { spectrum.store (analyzer); }
@@ -80,20 +76,6 @@ private:
     // like before you have done anything".
     std::atomic<bool> signalEnabled { false };
 
-    // The breathing gate for the six games whose signal is continuous
-    // (see Game::hasOwnRepeatPause). Sound, then a gap, then sound - with
-    // short fades at each edge, because a hard gate on pink noise clicks
-    // audibly and a click is the one thing an ear-training app must never
-    // teach you to listen past.
-    static constexpr double soundSeconds = 2.4;
-    static constexpr double gapSeconds = 0.9;
-    static constexpr double fadeSeconds = 0.03;
-
-    int gatePositionSamples = 0;
-    std::atomic<bool> restartCycleRequested { false };
-
-    // The gate's value for one sample, advancing its own position.
-    float nextGateValue() noexcept;
     std::atomic<Vectorscope*> vectorscope { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };
 

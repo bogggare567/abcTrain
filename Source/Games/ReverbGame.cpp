@@ -2,7 +2,7 @@
 #include <cmath>
 
 const std::array<float, 4> ReverbGame::springFrequenciesHz { 320.0f, 730.0f, 1400.0f, 2600.0f };
-const std::array<const char*, ReverbGame::numTypes> ReverbGame::typeLabels { "Room", "Hall", "Plate", "Spring" };
+const std::array<const char*, ReverbGame::numTypes> ReverbGame::typeLabels { "Room", "Chamber", "Hall", "Plate", "Spring" };
 
 void ReverbGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
@@ -49,7 +49,7 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
     juce::dsp::AudioBlock<float> block (buffer);
     juce::dsp::ProcessContextReplacing<float> context (block);
 
-    if (correctTypeIndex == springTypeIndex)
+    if (typeForSlot (correctTypeIndex) == springTypeIndex)
     {
         for (auto& allpass : springAllpass)
             allpass.process (context);
@@ -64,16 +64,33 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
 
 void ReverbGame::setDifficulty (int level)
 {
-    if (level <= 3)
-        activeNumTypes = 2;
-    else if (level <= 6)
-        activeNumTypes = 3;
-    else
-        activeNumTypes = numTypes;
+    // Which types are in play, and in an order chosen so each new one is
+    // harder to separate from what is already there rather than just
+    // "another option".
+    //
+    //   1-2   Room / Hall            - small against large
+    //   3-4   + Plate                - a character that is not a room
+    //   5-7   + Chamber              - now size alone stops working, because
+    //                                  Chamber sits between the first two
+    //   8-10  + Spring               - all five
+    //
+    // This is still the only game where difficulty changes the choice
+    // count, which is why PluginEditor::refreshFromGameState has to cope
+    // with it changing mid-session (see ADR 002).
+    activeNumTypes = level <= 2 ? 2
+                   : level <= 4 ? 3
+                   : level <= 7 ? 4
+                                : numTypes;
 }
 
 void ReverbGame::newRound()
 {
+    // Everything the interface touches - the correct index, the chosen
+    // index, getChoiceLabel - is in *slot* space: 0..activeNumTypes-1, in
+    // unlock order. Only the DSP translates a slot to a type through
+    // typeOrder. Keeping both in one space was the first version, and it
+    // silently marked correct answers wrong as soon as the two orders
+    // diverged.
     correctTypeIndex = random.nextInt (activeNumTypes);
     chosenTypeIndex = -1;
     answered = false;
@@ -103,7 +120,10 @@ void ReverbGame::submitAnswer (int choiceIndex)
 
 juce::String ReverbGame::getChoiceLabel (int choiceIndex) const
 {
-    return typeLabels[(size_t) choiceIndex];
+    if (choiceIndex < 0 || choiceIndex >= activeNumTypes)
+        return {};
+
+    return typeLabels[(size_t) typeForSlot (choiceIndex)];
 }
 
 juce::String ReverbGame::getFeedbackText() const
@@ -112,7 +132,7 @@ juce::String ReverbGame::getFeedbackText() const
         return {};
 
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-           + "It was " + juce::String (typeLabels[(size_t) correctTypeIndex]) + " reverb.";
+           + "It was " + juce::String (typeLabels[(size_t) typeForSlot (correctTypeIndex)]) + " reverb.";
 }
 
 void ReverbGame::updateReverbForType()
@@ -121,21 +141,27 @@ void ReverbGame::updateReverbForType()
     params.dryLevel = 0.0f;
     params.wetLevel = 0.35f;
 
-    switch (correctTypeIndex)
+    switch (typeForSlot (correctTypeIndex))
     {
-        case 0: // Room: small, fairly damped
-            params.roomSize = 0.25f;
-            params.damping = 0.5f;
-            params.width = 0.6f;
+        case 0: // Room: small, fairly damped, narrow
+            params.roomSize = 0.22f;
+            params.damping = 0.55f;
+            params.width = 0.55f;
             break;
-        case 1: // Hall: large, bright, wide tail
-            params.roomSize = 0.85f;
-            params.damping = 0.3f;
+        case 1: // Chamber: medium and darker than a hall - a real room,
+                // but a big one. Sits between Room and Hall on purpose.
+            params.roomSize = 0.55f;
+            params.damping = 0.45f;
+            params.width = 0.8f;
+            break;
+        case 2: // Hall: large, bright, wide tail
+            params.roomSize = 0.9f;
+            params.damping = 0.25f;
             params.width = 1.0f;
             break;
-        case 2: // Plate: dense and bright, not tied to a physical room size
+        case 3: // Plate: dense and bright, not tied to a physical room size
             params.roomSize = 0.5f;
-            params.damping = 0.1f;
+            params.damping = 0.08f;
             params.width = 1.0f;
             break;
         default: // Spring - reverb object unused, allpass cascade handles it

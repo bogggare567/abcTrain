@@ -32,6 +32,34 @@ public:
     // ones, so it deliberately doesn't override this).
     virtual void setReferenceAudioLibrary (const ReferenceAudioLibrary*) {}
 
+    // Smoothly interpolates a difficulty value across the whole 1-10
+    // range, instead of three flat tiers.
+    //
+    // Every game used to switch between three hard-coded values at levels
+    // 4 and 7, which meant seven of the ten levels changed nothing at all:
+    // reaching level 5 felt identical to level 4, and the promotion test
+    // you had just passed had bought you nothing. A ramp makes every level
+    // a real step.
+    //
+    // Geometric, not linear, because these are all *tolerances* - a band
+    // of ±1.0 octaves narrowing to ±0.35 is a series of halvings, and
+    // equal ratios are what feel like equal steps. Linear interpolation
+    // would make the early levels tighten sharply and the late ones barely
+    // move.
+    static float rampTolerance (int level, float atLevelOne, float atLevelTen) noexcept
+    {
+        const auto t = (float) (juce::jlimit (1, 10, level) - 1) / 9.0f;
+        return atLevelOne * std::pow (atLevelTen / atLevelOne, t);
+    }
+
+    // The same ramp for a value that is not a tolerance and can legitimately
+    // pass through zero or change sign.
+    static float rampLinear (int level, float atLevelOne, float atLevelTen) noexcept
+    {
+        const auto t = (float) (juce::jlimit (1, 10, level) - 1) / 9.0f;
+        return atLevelOne + (atLevelTen - atLevelOne) * t;
+    }
+
     // Adjusts how hard the next round(s) will be, on a 1-10 scale (see
     // docs/decisions/002-difficulty-scaling.md). Takes effect starting
     // with the next newRound() call - doesn't retroactively change a
@@ -101,18 +129,6 @@ public:
     // hidden change applied. A game that has no meaningful "before" (there
     // is no unprocessed version of "which reverb type is this") leaves
     // this off and the editor hides the switch.
-    // True if this game's own signal already stops and starts - the three
-    // burst games (compression, reverb, delay) repeat a short hit with
-    // silence between, because hearing the *tail* is the whole exercise.
-    //
-    // The other six generate continuous noise, and a continuous loop with
-    // no gap is exhausting within a minute and actively harmful to
-    // listening: the ear stops resolving anything and starts filtering.
-    // The processor gives those a breathing gate (see
-    // EarTrainerProcessor::processBlock); a game that says true here is
-    // left alone, since gating a burst would just make it rarer.
-    virtual bool hasOwnRepeatPause() const { return false; }
-
     virtual bool supportsBeforeAfter() const { return false; }
 
     // Audio-thread visible: process() reads it every block, so it's an

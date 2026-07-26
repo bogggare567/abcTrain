@@ -33,7 +33,22 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    // Localised strings, pushed in by the editor - this component keeps no
+    // LocalisationManager of its own, like every other view here.
+    void setStrings (juce::String title, juce::String sourceSection, juce::String trainOnSection,
+                     juce::String chooseFolder, juce::String pinkNoise, juce::String close,
+                     juce::String emptyText);
+
 private:
+    juce::Rectangle<int> cardBounds() const;
+
+    static constexpr int categoryColumns = 2;
+    static constexpr int categoryTileHeight = 34;
+
+    juce::String sourceHeading { "Where the sounds come from" };
+    juce::String trainOnHeading { "What to train on" };
+    juce::String emptyMessage;
+
     void selectCategory (int categoryIndex);
     void updateStatusLabel();
 

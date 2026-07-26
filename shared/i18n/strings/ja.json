@@ -129,5 +129,12 @@
   "ui.startAgain": "やり直す",
   "ui.achievements": "実績",
   "ui.achievementEarned": "実績を解除",
-  "ui.achievementsLocked": "未獲得"
+  "ui.achievementsLocked": "未獲得",
+  "ui.levelWord": "レベル",
+  "ui.tileStats": "正答率 {{accuracy}}%  ·  {{rounds}} ラウンド",
+  "ui.soundsSource": "音の出どころ",
+  "ui.soundsTrainOn": "何で練習するか",
+  "ui.chooseFolder": "フォルダを選ぶ…",
+  "ui.pinkNoise": "ピンクノイズ",
+  "ui.soundsEmpty": "カテゴリがまだありません。自分の音声フォルダを指定してください（カテゴリごとにサブフォルダ）。上の内蔵音源をそのまま使っても構いません。"
 }

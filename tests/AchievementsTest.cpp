@@ -228,9 +228,9 @@ public:
             expect (foundLevelRule);
         }
 
-        beginTest ("there are a few legendary ones, and they are out of reach early");
+        beginTest ("there are a few platinum ones, and they are out of reach early");
         {
-            auto legendaryCount = 0;
+            auto platinumCount = 0;
 
             Achievements::Snapshot busyFirstWeek;
             busyFirstWeek.games.resize (9);
@@ -245,15 +245,15 @@ public:
             }
 
             for (const auto& definition : Achievements::all())
-                if (definition.tier == Achievements::Tier::legendary)
+                if (definition.tier == Achievements::Tier::platinum)
                 {
-                    ++legendaryCount;
+                    ++platinumCount;
                     expect (! Achievements::isEarned (definition, busyFirstWeek),
-                             juce::String ("a legendary achievement was earned in a first week: ")
+                             juce::String ("a platinum achievement was earned in a first week: ")
                                  + definition.id);
                 }
 
-            expect (legendaryCount >= 3, "there should be a few genuinely hard ones");
+            expect (platinumCount >= 3, "there should be a few genuinely hard ones");
         }
 
     }

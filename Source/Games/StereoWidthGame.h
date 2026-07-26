@@ -52,10 +52,9 @@ public:
 
 private:
     static const std::array<const char*, numWidths> widthLabels;
-    static const std::array<float, numWidths> easyWidths;
-    static const std::array<float, numWidths> mediumWidths;
-    static const std::array<float, numWidths> hardWidths;
-    const std::array<float, numWidths>* activeWidths = &easyWidths;
+    // Computed in setDifficulty from one ramped spread value - see there
+    // for why this replaced three fixed tables.
+    std::array<float, numWidths> widths { { 0.1f, 0.6f, 1.0f, 1.6f } };
 
     PinkNoiseGenerator noiseL, noiseR;
 

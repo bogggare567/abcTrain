@@ -8,9 +8,8 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     setOpaque (true);
 
     titleLabel.setText ("Choose Training Sounds", juce::dontSendNotification);
-    titleLabel.setJustificationType (juce::Justification::centred);
-    titleLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
-    addAndMakeVisible (titleLabel);
+    // Drawn by paint() with letter-spacing, like every other heading here.
+    titleLabel.setVisible (false);
 
     chooseFolderButton.onClick = [this]
     {
@@ -62,6 +61,22 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
             onClosed();
     };
     addAndMakeVisible (closeButton);
+}
+
+void TrainingSoundsComponent::setStrings (juce::String title, juce::String sourceSection,
+                                           juce::String trainOnSection, juce::String chooseFolder,
+                                           juce::String pinkNoise, juce::String close,
+                                           juce::String emptyText)
+{
+    titleLabel.setText (title, juce::dontSendNotification);
+    sourceHeading = std::move (sourceSection);
+    trainOnHeading = std::move (trainOnSection);
+    chooseFolderButton.setButtonText (chooseFolder);
+    pinkNoiseButton.setButtonText (pinkNoise);
+    closeButton.setButtonText (close);
+    emptyMessage = std::move (emptyText);
+    resized();
+    repaint();
 }
 
 void TrainingSoundsComponent::refresh()
@@ -133,41 +148,116 @@ void TrainingSoundsComponent::updateStatusLabel()
 void TrainingSoundsComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
-    g.setColour (theme.accent.withAlpha (0.55f));
-    g.drawRect (getLocalBounds(), 2);
+
+    // A dimmed backdrop with a real card on top, instead of the whole
+    // window filled edge to edge and outlined in a 2px accent rectangle.
+    // The old version read as an error dialog: a hard coloured border
+    // around a column of identical full-width buttons, with the folder
+    // path in 11px underneath.
+    g.fillAll (theme.windowBackground.withAlpha (0.82f));
+
+    const auto card = cardBounds().toFloat();
+
+    juce::Path shape;
+    shape.addRoundedRectangle (card, AbcTrainTheme::Radius::panel);
+
+    juce::DropShadow (theme.shadow.withAlpha (0.6f * theme.shadowStrength), 24, { 0, 6 })
+        .drawForPath (g, shape);
+
+    g.setColour (theme.panelBackground);
+    g.fillPath (shape);
+    g.setColour (theme.outline);
+    g.strokePath (shape, juce::PathStrokeType (1.0f));
+
+    auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large);
+
+    AbcTrainLookAndFeel::drawTrackedText (g, titleLabel.getText(),
+                                           inner.removeFromTop (26.0f),
+                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+                                           theme.textBright, 1.2f,
+                                           juce::Justification::centredLeft);
+
+    inner.removeFromTop ((float) AbcTrainTheme::Spacing::medium);
+
+    // Section headings, the same treatment the training screen uses, so
+    // the two screens are visibly the same product.
+    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), sourceHeading);
+
+    inner.removeFromTop (36.0f + (float) AbcTrainTheme::Spacing::small + 18.0f
+                          + (float) AbcTrainTheme::Spacing::medium);
+    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), trainOnHeading);
 
     if (categoryButtons.isEmpty())
     {
+        auto empty = cardBounds().reduced (AbcTrainTheme::Spacing::large)
+                         .withTrimmedTop (150);
+
         g.setColour (theme.textDim);
-        g.setFont (juce::Font (juce::FontOptions (13.0f)));
-        g.drawFittedText ("No categories found under " + processor.getGameManager().getReferenceAudioLibrary().getRootFolder().getFullPathName()
-                               + " - add subfolders of your own audio files there, one subfolder per category.",
-                           getLocalBounds().reduced (24).withTrimmedTop (80), juce::Justification::centredTop, 4);
+        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.drawFittedText (emptyMessage, empty, juce::Justification::centredTop, 4);
     }
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
+{
+    // Grows with the number of categories, up to what the window can hold.
+    const auto rows = (categoryButtons.size() + categoryColumns - 1) / categoryColumns;
+    const auto wanted = AbcTrainTheme::Spacing::large * 2 + 26 + AbcTrainTheme::Spacing::medium
+                            + 24 + 36 + AbcTrainTheme::Spacing::small + 18
+                            + AbcTrainTheme::Spacing::medium + 24
+                            + juce::jmax (1, rows) * (categoryTileHeight + AbcTrainTheme::Spacing::small)
+                            + AbcTrainTheme::Spacing::medium + 34;
+
+    return juce::Rectangle<int> (juce::jmin (getWidth() - 48, 520),
+                                  juce::jmin (getHeight() - 48, wanted))
+               .withCentre (getLocalBounds().getCentre());
 }
 
 void TrainingSoundsComponent::resized()
 {
-    auto area = getLocalBounds().reduced (16);
+    using namespace AbcTrainTheme;
 
-    titleLabel.setBounds (area.removeFromTop (28));
-    area.removeFromTop (8);
-    chooseFolderButton.setBounds (area.removeFromTop (32));
-    area.removeFromTop (4);
-    rootFolderLabel.setBounds (area.removeFromTop (16));
-    area.removeFromTop (8);
-    pinkNoiseButton.setBounds (area.removeFromTop (32));
-    area.removeFromTop (8);
+    auto area = cardBounds().reduced (Spacing::large);
 
-    auto bottomRow = area.removeFromBottom (32);
-    closeButton.setBounds (bottomRow.removeFromRight (100));
-    statusLabel.setBounds (bottomRow.reduced (8, 0));
-    area.removeFromBottom (8);
+    area.removeFromTop (26 + Spacing::medium);   // title
+    area.removeFromTop (24);                     // "Where the sounds come from"
 
-    for (auto* button : categoryButtons)
+    chooseFolderButton.setBounds (area.removeFromTop (36));
+    area.removeFromTop (Spacing::small);
+    rootFolderLabel.setBounds (area.removeFromTop (18));
+
+    area.removeFromTop (Spacing::medium);
+    area.removeFromTop (24);                     // "What to train on"
+
+    // A grid, not a column. Nine full-width buttons stacked vertically is
+    // a list of commands; a grid of tiles is a set of things to choose
+    // between, which is what this actually is.
     {
-        button->setBounds (area.removeFromTop (32));
-        area.removeFromTop (6);
+        auto grid = area.removeFromTop (
+            juce::jmax (1, (categoryButtons.size() + categoryColumns - 1) / categoryColumns)
+                * (categoryTileHeight + Spacing::small));
+
+        auto index = 0;
+
+        while (index < categoryButtons.size())
+        {
+            auto row = grid.removeFromTop (categoryTileHeight);
+            grid.removeFromTop (Spacing::small);
+
+            const auto columnWidth = (row.getWidth() - Spacing::small * (categoryColumns - 1))
+                                         / categoryColumns;
+
+            for (auto column = 0; column < categoryColumns && index < categoryButtons.size(); ++column)
+            {
+                categoryButtons[index++]->setBounds (row.removeFromLeft (columnWidth));
+                row.removeFromLeft (Spacing::small);
+            }
+        }
     }
+
+    auto bottomRow = cardBounds().reduced (Spacing::large).removeFromBottom (34);
+    closeButton.setBounds (bottomRow.removeFromRight (110));
+    bottomRow.removeFromRight (Spacing::small);
+    pinkNoiseButton.setBounds (bottomRow.removeFromLeft (150));
+    statusLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
 }

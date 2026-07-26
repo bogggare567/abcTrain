@@ -15,7 +15,12 @@
 class ReverbGame : public Game
 {
 public:
-    static constexpr int numTypes = 4;
+    // Five, not four. Room vs. Hall on its own is a size question and
+    // nothing else - one is short and one is long, and a first-time player
+    // gets it right by accident. Chamber sits deliberately *between* them,
+    // so the easy tier is no longer a coin flip with a giveaway, and the
+    // whole set has to be told apart by character rather than by length.
+    static constexpr int numTypes = 5;
 
     juce::String getName() const override { return "Guess the Reverb"; }
     juce::String getInstructions() const override
@@ -28,10 +33,6 @@ public:
 
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
-    // Repeats a burst with silence between it already - see
-    // Game::hasOwnRepeatPause.
-    bool hasOwnRepeatPause() const override { return true; }
-
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
@@ -55,10 +56,26 @@ public:
     int getRoundsPlayed() const override { return totalCount; }
 
 private:
-    static constexpr int springTypeIndex = 3;
+    // Index into typeLabels, not a slot. Chamber was inserted at index 1,
+    // so Spring moved from 3 to 4 - the kind of silent shift a named
+    // constant exists to make loud.
+    static constexpr int springTypeIndex = 4;
     static constexpr float springQ = 4.0f;
     static const std::array<float, 4> springFrequenciesHz;
     static const std::array<const char*, numTypes> typeLabels;
+
+    // Unlock order: Room, Hall, Plate, Chamber, Spring. Indices into
+    // typeLabels - see setDifficulty for why this order and not label
+    // order.
+    static constexpr std::array<int, numTypes> typeOrder { { 0, 2, 3, 1, 4 } };
+
+    // Slot (what the UI counts in) -> type (what typeLabels and the DSP
+    // switch are indexed by). Out-of-range returns Room rather than
+    // reading past the end.
+    static int typeForSlot (int slot) noexcept
+    {
+        return slot >= 0 && slot < numTypes ? typeOrder[(size_t) slot] : 0;
+    }
 
     void updateReverbForType();
 

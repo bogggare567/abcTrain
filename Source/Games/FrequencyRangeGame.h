@@ -55,7 +55,17 @@ public:
     int getScore() const override { return correctCount; }
     int getRoundsPlayed() const override { return totalCount; }
 
+    // Naming an absolute range is the one exercise where a reference is
+    // not a luxury - see the note in process().
+    bool supportsBeforeAfter() const override { return true; }
+    void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
+    bool isPlayingProcessed() const override { return playProcessed.load(); }
+    juce::String getBeforeLabel() const override { return "Flat"; }
+    juce::String getAfterLabel() const override { return "Boosted"; }
+
 private:
+    std::atomic<bool> playProcessed { true };
+
     void updateFilter();
 
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,

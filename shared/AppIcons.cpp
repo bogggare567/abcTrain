@@ -40,13 +40,22 @@ namespace AppIcons
 
         juce::Path panPath()
         {
+            // A pan knob, turned. The old double-headed arrow said "wide"
+            // rather than "which side" - it was indistinguishable from the
+            // stereo-width glyph at tile size.
             juce::Path p;
-            p.startNewSubPath (3.0f, 12.0f); p.lineTo (21.0f, 12.0f);
-            p.startNewSubPath (3.0f, 12.0f); p.lineTo (6.0f, 9.0f);
-            p.startNewSubPath (3.0f, 12.0f); p.lineTo (6.0f, 15.0f);
-            p.startNewSubPath (21.0f, 12.0f); p.lineTo (18.0f, 9.0f);
-            p.startNewSubPath (21.0f, 12.0f); p.lineTo (18.0f, 15.0f);
-            p.addEllipse (12.5f, 9.5f, 5.0f, 5.0f);
+            p.addCentredArc (12.0f, 13.0f, 7.5f, 7.5f, 0.0f,
+                              juce::MathConstants<float>::pi * -0.75f,
+                              juce::MathConstants<float>::pi * 0.75f, true);
+
+            // The pointer, off-centre to the right: a centred one would
+            // read as "no panning at all".
+            p.startNewSubPath (12.0f, 13.0f);
+            p.lineTo (17.3f, 7.7f);
+
+            // Ticks at the two extremes, so the arc reads as a range.
+            p.startNewSubPath (3.0f, 19.0f);  p.lineTo (5.0f, 19.0f);
+            p.startNewSubPath (19.0f, 19.0f); p.lineTo (21.0f, 19.0f);
             return p;
         }
 
@@ -61,20 +70,44 @@ namespace AppIcons
 
         juce::Path distortionPath()
         {
+            // A wave whose peaks have been squared off against two
+            // ceilings. The old zig-zag was just a jagged line - it read
+            // as "noise" or "spiky", not as clipping.
             juce::Path p;
-            p.startNewSubPath (2.0f, 16.0f);
-            p.lineTo (5.0f, 16.0f); p.lineTo (7.0f, 6.0f); p.lineTo (9.0f, 6.0f);
-            p.lineTo (11.0f, 18.0f); p.lineTo (13.0f, 18.0f);
-            p.lineTo (15.0f, 4.0f); p.lineTo (17.0f, 4.0f);
-            p.lineTo (19.0f, 14.0f); p.lineTo (22.0f, 14.0f);
+
+            // The clip lines are the point of the mark, so they are drawn
+            // first and the wave visibly flattens onto them.
+            p.startNewSubPath (2.0f, 7.0f);  p.lineTo (22.0f, 7.0f);
+            p.startNewSubPath (2.0f, 17.0f); p.lineTo (22.0f, 17.0f);
+
+            p.startNewSubPath (2.0f, 12.0f);
+            p.lineTo (5.0f, 7.0f);
+            p.lineTo (9.0f, 7.0f);            // flat top
+            p.lineTo (12.0f, 12.0f);
+            p.lineTo (15.0f, 17.0f);
+            p.lineTo (19.0f, 17.0f);          // flat bottom
+            p.lineTo (22.0f, 12.0f);
             return p;
         }
 
         juce::Path stereoWidthPath()
         {
+            // A centre point with two speakers pushed apart, and arrows
+            // showing the push. Two overlapping circles read as a Venn
+            // diagram, which says "overlap" - the opposite of width.
             juce::Path p;
-            p.addEllipse (2.0f, 6.0f, 13.0f, 13.0f);
-            p.addEllipse (9.0f, 6.0f, 13.0f, 13.0f);
+            p.addRectangle (2.0f, 8.0f, 4.0f, 8.0f);    // left speaker
+            p.addRectangle (18.0f, 8.0f, 4.0f, 8.0f);   // right speaker
+
+            p.startNewSubPath (12.0f, 12.0f);
+            p.lineTo (8.5f, 12.0f);
+            p.startNewSubPath (8.5f, 12.0f); p.lineTo (10.5f, 10.0f);
+            p.startNewSubPath (8.5f, 12.0f); p.lineTo (10.5f, 14.0f);
+
+            p.startNewSubPath (12.0f, 12.0f);
+            p.lineTo (15.5f, 12.0f);
+            p.startNewSubPath (15.5f, 12.0f); p.lineTo (13.5f, 10.0f);
+            p.startNewSubPath (15.5f, 12.0f); p.lineTo (13.5f, 14.0f);
             return p;
         }
 
@@ -92,14 +125,21 @@ namespace AppIcons
 
         juce::Path frequencyRangePath()
         {
+            // Bars, with a bracket picking out one span of them - naming a
+            // *range* is the exercise. The old version bracketed the
+            // middle three but drew the bracket so far under the bars that
+            // at tile size it read as an underline, not a selection.
             juce::Path p;
-            const float xs[] = { 3.0f, 7.0f, 11.0f, 15.0f, 19.0f };
-            const float heights[] = { 8.0f, 14.0f, 18.0f, 10.0f, 6.0f };
+            const float xs[] = { 3.5f, 8.0f, 12.5f, 17.0f, 21.0f };
+            const float heights[] = { 5.0f, 11.0f, 15.0f, 9.0f, 4.0f };
+
             for (int i = 0; i < 5; ++i)
-                p.addRectangle (xs[i] - 1.5f, 18.0f - heights[i], 3.0f, heights[i]);
-            p.startNewSubPath (5.5f, 20.0f); p.lineTo (5.5f, 22.0f);
-            p.startNewSubPath (5.5f, 22.0f); p.lineTo (16.5f, 22.0f);
-            p.startNewSubPath (16.5f, 22.0f); p.lineTo (16.5f, 20.0f);
+                p.addRectangle (xs[i] - 1.4f, 17.0f - heights[i], 2.8f, heights[i]);
+
+            // The bracket hugs the bars it selects.
+            p.startNewSubPath (6.0f, 20.5f); p.lineTo (6.0f, 22.5f);
+            p.lineTo (15.0f, 22.5f);
+            p.lineTo (15.0f, 20.5f);
             return p;
         }
 
@@ -290,37 +330,52 @@ namespace AppIcons
     void drawBadged (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds,
                      juce::Colour colour, float strength)
     {
-        // The same glyph, on its own coloured plate.
+        // The same glyph on a quiet plate.
         //
-        // The thin monochrome line art was the right call for a title-row
-        // button and the wrong one for a nine-tile catalogue: nine grey
-        // outlines at 30px are hard to tell apart at a glance, which is
-        // the only job they have there. A rounded plate in the exercise's
-        // family colour, a soft top-down gradient, and the glyph knocked
-        // out bright on top gives each one a shape *and* a colour to be
-        // recognised by - without an asset pipeline, since it is still the
-        // same juce::Path underneath.
+        // This started out tinting each exercise its family colour, which
+        // turned the catalogue into nine saturated squares and made the
+        // screen louder than anything on it. The plate is now neutral and
+        // the glyph carries the weight; `colour` still comes through, but
+        // heavily desaturated, so a family is a hint rather than a
+        // declaration. Colour is reserved for the one place it means
+        // something on its own - the achievement tiers.
         strength = juce::jlimit (0.0f, 1.0f, strength);
+
+        const auto& theme = AbcTrainTheme::current();
+        const auto lightMode = theme.mode == AbcTrainTheme::Mode::light;
 
         const auto plate = bounds.reduced (0.5f);
         const auto radius = plate.getWidth() * 0.28f;
 
-        juce::ColourGradient fill (colour.withAlpha (0.30f + 0.28f * strength),
-                                    plate.getX(), plate.getY(),
-                                    colour.withAlpha (0.12f + 0.16f * strength),
-                                    plate.getX(), plate.getBottom(), false);
-        g.setGradientFill (fill);
-        g.fillRoundedRectangle (plate, radius);
+        // The plate is a step away from the surface it sits on, in the
+        // direction that surface has room to move - *down* on a light page,
+        // *up* on a dark one. Building it out of an alpha of the tint (the
+        // first version) meant it all but vanished in light mode, where a
+        // 24% wash of anything over near-white is nothing at all.
+        const auto plateColour = lightMode ? theme.windowBackground.darker (0.07f)
+                                           : theme.widgetBackground.brighter (0.06f);
 
-        g.setColour (colour.withAlpha (0.45f + 0.4f * strength));
+        juce::ColourGradient fill (plateColour.brighter (lightMode ? 0.02f : 0.05f),
+                                    plate.getX(), plate.getY(),
+                                    plateColour, plate.getX(), plate.getBottom(), false);
+        g.setGradientFill (fill);
+        g.setOpacity (0.55f + 0.45f * strength);
+        g.fillRoundedRectangle (plate, radius);
+        g.setOpacity (1.0f);
+
+        g.setColour (theme.outline.withAlpha (0.4f + 0.4f * strength));
         g.drawRoundedRectangle (plate, radius, 1.0f);
 
         auto path = getPath (icon);
-        const auto inner = plate.reduced (plate.getWidth() * 0.24f);
+        const auto inner = plate.reduced (plate.getWidth() * 0.22f);
         path.scaleToFit (inner.getX(), inner.getY(), inner.getWidth(), inner.getHeight(), true);
 
-        g.setColour (colour.brighter (0.55f * strength).withAlpha (0.75f + 0.25f * strength));
-        g.strokePath (path, juce::PathStrokeType (1.9f, juce::PathStrokeType::curved,
+        // The glyph carries the contrast, so it is drawn at close to full
+        // strength even when the plate behind it is faded for a locked
+        // achievement - a shape you cannot make out is not a hint, it is a
+        // blank.
+        g.setColour (colour.withAlpha (0.35f + 0.65f * strength));
+        g.strokePath (path, juce::PathStrokeType (1.8f, juce::PathStrokeType::curved,
                                                    juce::PathStrokeType::rounded));
     }
 }

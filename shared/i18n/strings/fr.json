@@ -129,5 +129,12 @@
   "ui.startAgain": "Recommencer",
   "ui.achievements": "Succès",
   "ui.achievementEarned": "Succès débloqué",
-  "ui.achievementsLocked": "Pas encore obtenu"
+  "ui.achievementsLocked": "Pas encore obtenu",
+  "ui.levelWord": "Niveau",
+  "ui.tileStats": "{{accuracy}}% de réussite  ·  {{rounds}} manches",
+  "ui.soundsSource": "D’où viennent les sons",
+  "ui.soundsTrainOn": "Sur quoi t’entraîner",
+  "ui.chooseFolder": "Choisir un dossier…",
+  "ui.pinkNoise": "Bruit rose",
+  "ui.soundsEmpty": "Aucune catégorie pour l’instant. Indique un dossier de ton propre audio, un sous-dossier par catégorie — ou utilise simplement les sons intégrés ci-dessus."
 }

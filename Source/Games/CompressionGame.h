@@ -26,10 +26,6 @@ public:
 
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
-    // Repeats a burst with silence between it already - see
-    // Game::hasOwnRepeatPause.
-    bool hasOwnRepeatPause() const override { return true; }
-
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
 
@@ -59,7 +55,7 @@ public:
 private:
     struct Preset
     {
-        const char* label;
+        const char* label = "";
         float thresholdDb;
         float ratio;
         // Fixed compensation tuned by ear so the three presets sit at
@@ -68,15 +64,14 @@ private:
         float makeupGainDb;
     };
 
-    // Three difficulty tiers, same labels throughout - only how far apart
-    // the presets sit changes. Easy (levels 1-3) is the original wide
-    // spread; medium/hard (4-6/7-10) converge the threshold/ratio values
-    // (and shrink the makeup-gain compensation to match) so the character
-    // difference between "Weak" and "Strong" gets progressively subtler.
-    static const std::array<Preset, numLevels> easyPresets;
-    static const std::array<Preset, numLevels> mediumPresets;
-    static const std::array<Preset, numLevels> hardPresets;
-    const std::array<Preset, numLevels>* activePresets = &easyPresets;
+    // Computed in setDifficulty from one ramped spread value - see there
+    // for why this replaced three fixed tier tables. Medium is the anchor
+    // and never moves; the other two close in on it as the level rises.
+    std::array<Preset, numLevels> presets {{
+        { "Weak",   -12.0f, 2.0f, 2.0f  },
+        { "Medium", -18.0f, 4.0f, 6.0f  },
+        { "Strong", -24.0f, 8.0f, 10.0f }
+    }};
 
     void updateCompressor();
 

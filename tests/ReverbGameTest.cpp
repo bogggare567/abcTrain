@@ -9,31 +9,55 @@ public:
 
     void runTest() override
     {
+        beginTest ("every choice slot has a distinct, non-empty label");
+        {
+            // A regression guard for a real bug: the choices the UI counts
+            // in (0..getNumChoices()-1) and the indices typeLabels uses are
+            // two different spaces once types are unlocked in a chosen
+            // order rather than in label order. Getting that wrong marks
+            // correct answers wrong, silently.
+            ReverbGame game;
+            game.setDifficulty (10);
+
+            juce::StringArray seen;
+
+            for (int i = 0; i < game.getNumChoices(); ++i)
+            {
+                const auto label = game.getChoiceLabel (i);
+                expect (label.isNotEmpty(), "empty label at slot " + juce::String (i));
+                expect (! seen.contains (label), "duplicate label: " + label);
+                seen.add (label);
+            }
+        }
+
         beginTest ("defaults to the easy tier (2 choices) before setDifficulty is called");
         {
             ReverbGame game;
             expectEquals (game.getNumChoices(), 2);
         }
 
-        beginTest ("setDifficulty unlocks all 4 types at the hard tier");
+        beginTest ("setDifficulty unlocks every type at the hard tier");
         {
             ReverbGame game;
             game.setDifficulty (10);
             expectEquals (game.getNumChoices(), ReverbGame::numTypes);
         }
 
-        beginTest ("setDifficulty tiers: 1-3 -> 2, 4-6 -> 3, 7-10 -> 4");
+        beginTest ("setDifficulty tiers: 1-2 -> 2, 3-4 -> 3, 5-7 -> 4, 8-10 -> 5");
         {
             ReverbGame game;
 
             game.setDifficulty (1);
             expectEquals (game.getNumChoices(), 2);
 
-            game.setDifficulty (4);
+            game.setDifficulty (3);
             expectEquals (game.getNumChoices(), 3);
 
-            game.setDifficulty (7);
+            game.setDifficulty (5);
             expectEquals (game.getNumChoices(), 4);
+
+            game.setDifficulty (8);
+            expectEquals (game.getNumChoices(), 5);
         }
 
         beginTest ("produces a non-silent buffer after newRound()");

@@ -116,23 +116,12 @@ void DelayGame::process (juce::AudioBuffer<float>& buffer)
 
 void DelayGame::setDifficulty (int level)
 {
-    // Two levers now: how isolated each burst is (as before), and how
-    // wide the accept band is on the continuous scale.
-    if (level <= 3)
-    {
-        burstPeriodSeconds = 1.4f;
-        toleranceRatio = 0.35f;
-    }
-    else if (level <= 6)
-    {
-        burstPeriodSeconds = 0.9f;
-        toleranceRatio = 0.22f;
-    }
-    else
-    {
-        burstPeriodSeconds = 0.6f;
-        toleranceRatio = 0.13f;
-    }
+    // Two levers, both ramped: how isolated each burst is, and how wide
+    // the accept band is. The band is a *ratio* rather than a number of
+    // milliseconds - being 20 ms out at 40 ms and at 500 ms are completely
+    // different mistakes.
+    burstPeriodSeconds = rampLinear (level, 1.4f, 0.55f);
+    toleranceRatio = rampTolerance (level, 0.35f, 0.08f);
 
     updateBurstPeriod();
 }

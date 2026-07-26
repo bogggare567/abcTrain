@@ -106,21 +106,13 @@ void EQGame::process (juce::AudioBuffer<float>& buffer)
 
 void EQGame::setDifficulty (int level)
 {
-    if (level <= 3)
-    {
-        gainDb = 9.0f;
-        toleranceOctaves = 1.0f;
-    }
-    else if (level <= 6)
-    {
-        gainDb = 6.0f;
-        toleranceOctaves = 0.6f;
-    }
-    else
-    {
-        gainDb = 3.0f;
-        toleranceOctaves = 0.35f;
-    }
+    // Both levers ramp across all ten levels (see Game::rampTolerance):
+    // the boost shrinks from an unmissable 9 dB to a subtle 2.5 dB, and
+    // the accept band from a whole octave either side down to a fifth of
+    // one. The band is the real lever - it is the same *ratio* of slack at
+    // 200 Hz as at 8 kHz, which a fixed number of hertz would not be.
+    gainDb = rampTolerance (level, 9.0f, 2.5f);
+    toleranceOctaves = rampTolerance (level, 1.0f, 0.2f);
 }
 
 void EQGame::newRound()

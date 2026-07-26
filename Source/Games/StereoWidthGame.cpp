@@ -4,18 +4,6 @@ const std::array<const char*, StereoWidthGame::numWidths> StereoWidthGame::width
     "Narrow", "Normal", "Wide", "Extra Wide"
 };
 
-const std::array<float, StereoWidthGame::numWidths> StereoWidthGame::easyWidths {
-    0.1f, 0.6f, 1.0f, 1.6f
-};
-
-const std::array<float, StereoWidthGame::numWidths> StereoWidthGame::mediumWidths {
-    0.3f, 0.7f, 1.0f, 1.3f
-};
-
-const std::array<float, StereoWidthGame::numWidths> StereoWidthGame::hardWidths {
-    0.5f, 0.8f, 1.0f, 1.2f
-};
-
 void StereoWidthGame::prepare (const juce::dsp::ProcessSpec&)
 {
     newRound();
@@ -25,7 +13,7 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
-    const auto width = (*activeWidths)[(size_t) correctWidthIndex];
+    const auto width = widths[(size_t) correctWidthIndex];
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
@@ -47,12 +35,22 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
 
 void StereoWidthGame::setDifficulty (int level)
 {
-    if (level <= 3)
-        activeWidths = &easyWidths;
-    else if (level <= 6)
-        activeWidths = &mediumWidths;
-    else
-        activeWidths = &hardWidths;
+    // The four named widths are computed from one spread value rather than
+    // picked from three hard-coded tables, so every level is a real step.
+    // At level 1 they are 0.10 / 0.60 / 1.00 / 1.60 - unmistakable. At
+    // level 10 they close to 0.62 / 0.86 / 1.00 / 1.14, which takes real
+    // listening to separate.
+    //
+    // Everything is a distance from Normal (1.0), scaled by that spread,
+    // and the ratios between the four are preserved - so "Wide" is always
+    // wider than "Normal", at every level, which a table per tier could
+    // only guarantee by hand.
+    const auto spread = rampTolerance (level, 1.0f, 0.24f);
+
+    const std::array<float, numWidths> offsets { -0.9f, -0.4f, 0.0f, 0.6f };
+
+    for (size_t i = 0; i < widths.size(); ++i)
+        widths[i] = 1.0f + offsets[i] * spread;
 }
 
 void StereoWidthGame::newRound()

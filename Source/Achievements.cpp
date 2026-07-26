@@ -1,4 +1,5 @@
 #include "Achievements.h"
+#include "../shared/AbcTrainTheme.h"
 
 namespace Achievements
 {
@@ -78,11 +79,11 @@ namespace Achievements
             // impossible from where a new player is standing. A shelf
             // where everything is collectable in a month is a shelf nobody
             // looks at twice.
-            { "every.level.10",    Kind::everyExerciseLevel, 10, Tier::legendary, -1,
+            { "every.level.10",    Kind::everyExerciseLevel, 10, Tier::platinum, -1,
               "achv.everyLevel10.name", "achv.everyLevel10.desc" },
-            { "streak.365days",    Kind::dayStreak,         365, Tier::legendary, -1,
+            { "streak.365days",    Kind::dayStreak,         365, Tier::platinum, -1,
               "achv.streak365.name", "achv.streak365.desc" },
-            { "eq.accuracy.92",    Kind::exerciseAccuracy,   92, Tier::legendary, eq,
+            { "eq.accuracy.92",    Kind::exerciseAccuracy,   92, Tier::platinum, eq,
               "achv.eqAccuracy92.name", "achv.eqAccuracy92.desc" }
         };
 
@@ -207,9 +208,9 @@ namespace Achievements
         switch (tier)
         {
             case Tier::bronze:    return juce::Colour (0xffb8763f);
-            case Tier::silver:    return juce::Colour (0xffb9c0c9);
+            case Tier::silver:    return juce::Colour (0xffb2bac4);
             case Tier::gold:      return juce::Colour (0xffd7ac4e);
-            case Tier::legendary: return juce::Colour (0xff9b6bd6);
+            case Tier::platinum:  return juce::Colour (0xffbfe0e6);
         }
 
         return juce::Colour (0xffb9c0c9);

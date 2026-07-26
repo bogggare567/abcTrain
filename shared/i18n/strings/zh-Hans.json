@@ -129,5 +129,12 @@
   "ui.startAgain": "重新开始",
   "ui.achievements": "成就",
   "ui.achievementEarned": "成就解锁",
-  "ui.achievementsLocked": "尚未获得"
+  "ui.achievementsLocked": "尚未获得",
+  "ui.levelWord": "等级",
+  "ui.tileStats": "正确率 {{accuracy}}%  ·  {{rounds}} 轮",
+  "ui.soundsSource": "声音从哪来",
+  "ui.soundsTrainOn": "用什么练",
+  "ui.chooseFolder": "选择文件夹…",
+  "ui.pinkNoise": "粉红噪声",
+  "ui.soundsEmpty": "还没有类别。指向一个你自己的音频文件夹，每个类别一个子文件夹 —— 或者直接用上面的内置音源。"
 }

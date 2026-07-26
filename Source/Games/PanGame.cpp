@@ -49,24 +49,13 @@ void PanGame::process (juce::AudioBuffer<float>& buffer)
 
 void PanGame::setDifficulty (int level)
 {
-    // The position tables still drive the legacy discrete path; what
+    // The three position tables still drive the legacy discrete path; what
     // difficulty means for the continuous one is how wide the accept band
-    // is. 0.35 of the field either side is generous, 0.12 is tight.
-    if (level <= 3)
-    {
-        activePositions = &easyPositions;
-        tolerancePan = 0.35f;
-    }
-    else if (level <= 6)
-    {
-        activePositions = &mediumPositions;
-        tolerancePan = 0.22f;
-    }
-    else
-    {
-        activePositions = &hardPositions;
-        tolerancePan = 0.12f;
-    }
+    // is, and that now ramps across every level rather than stepping twice.
+    activePositions = level <= 3 ? &easyPositions
+                                 : (level <= 6 ? &mediumPositions : &hardPositions);
+
+    tolerancePan = rampTolerance (level, 0.35f, 0.07f);
 }
 
 juce::String PanGame::formatNormalisedValue (float normalised) const

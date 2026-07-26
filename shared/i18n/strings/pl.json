@@ -129,5 +129,12 @@
   "ui.startAgain": "Zacznij od nowa",
   "ui.achievements": "Osiągnięcia",
   "ui.achievementEarned": "Osiągnięcie odblokowane",
-  "ui.achievementsLocked": "Jeszcze nie zdobyte"
+  "ui.achievementsLocked": "Jeszcze nie zdobyte",
+  "ui.levelWord": "Poziom",
+  "ui.tileStats": "{{accuracy}}% trafień  ·  {{rounds}} rund",
+  "ui.soundsSource": "Skąd biorą się dźwięki",
+  "ui.soundsTrainOn": "Na czym ćwiczyć",
+  "ui.chooseFolder": "Wybierz folder…",
+  "ui.pinkNoise": "Szum różowy",
+  "ui.soundsEmpty": "Brak kategorii. Wskaż folder z własnym audio, jeden podfolder na kategorię — albo po prostu użyj wbudowanych dźwięków powyżej."
 }
