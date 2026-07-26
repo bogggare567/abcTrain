@@ -70,5 +70,6 @@
   "ui.hintCostLife": "Scopes (-1 life)",
   "ui.hintCostSeconds": "Scopes (-{{seconds}}s)",
   "ui.hintShown": "Scopes shown",
-  "ui.hintTooExpensive": "Can't afford that"
+  "ui.hintTooExpensive": "Can't afford that",
+  "ui.hintPlaceholder": "Scopes — one round, when you buy them"
 }

@@ -153,7 +153,18 @@ void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
     const auto& theme = AbcTrainTheme::current();
     const auto bounds = getLocalBounds().toFloat();
 
-    g.fillAll (theme.displayBackground);
+    // Rounded, and clipped to that rounding - a hard-edged rectangle was
+    // the thing that read as raw and unfinished next to everything else.
+    g.fillAll (theme.windowBackground);
+
+    juce::Path well;
+    well.addRoundedRectangle (bounds, AbcTrainTheme::Radius::well);
+    g.setColour (theme.displayBackground);
+    g.fillPath (well);
+
+    juce::Graphics::ScopedSaveState clipped (g);
+    g.reduceClipRegion (well);
+
     AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
 
     paintGrid (g, bounds);

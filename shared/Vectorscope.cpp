@@ -74,12 +74,57 @@ void Vectorscope::paint (juce::Graphics& g)
     g.drawLine (centre.x - diagonal, centre.y - diagonal, centre.x + diagonal, centre.y + diagonal, 1.0f);
     g.drawLine (centre.x - diagonal, centre.y + diagonal, centre.x + diagonal, centre.y - diagonal, 1.0f);
 
+    // Labels on all four references, not just the sides. Without saying
+    // what the axes mean, a goniometer is an abstract shape - which is
+    // exactly the complaint this addresses.
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.setColour (theme.textDim.withAlpha (0.4f));
-    g.drawText ("L", juce::Rectangle<float> (centre.x - radius - 14.0f, centre.y - 8.0f, 14.0f, 16.0f),
-                 juce::Justification::centred, false);
-    g.drawText ("R", juce::Rectangle<float> (centre.x + radius, centre.y - 8.0f, 14.0f, 16.0f),
-                 juce::Justification::centred, false);
+
+    const auto label = [&] (const juce::String& text, juce::Point<float> at, juce::Colour colour)
+    {
+        g.setColour (colour);
+        g.drawText (text, juce::Rectangle<float> (at.x - 16.0f, at.y - 8.0f, 32.0f, 16.0f),
+                     juce::Justification::centred, false);
+    };
+
+    // All labels sit *inside* the circle. This scope is only ~74px in the
+    // hint strip, so anything placed outside the radius is clipped by the
+    // component - which is exactly what happened to "M" and "+/-S" on the
+    // first attempt.
+    label ("L", { centre.x - radius * 0.72f, centre.y - radius * 0.72f }, theme.textDim.withAlpha (0.55f));
+    label ("R", { centre.x + radius * 0.72f, centre.y - radius * 0.72f }, theme.textDim.withAlpha (0.55f));
+
+    // The vertical axis is mono - the one an ear-training player most
+    // needs named, since "is this centred" is the question being asked.
+    label ("M", { centre.x, centre.y - radius * 0.78f }, theme.accent.withAlpha (0.7f));
+
+    // Running correlation, so "how mono is this" is a number as well as
+    // a shape. +1 is mono, 0 is wide, -1 is fully out of phase.
+    {
+        double sumLR = 0.0, sumLL = 0.0, sumRR = 0.0;
+
+        for (int i = 0; i < numPoints; ++i)
+        {
+            const auto x = pointsX[(size_t) i].load (std::memory_order_relaxed);
+            const auto y = pointsY[(size_t) i].load (std::memory_order_relaxed);
+
+            // Undo the 45-degree rotation to get the channels back.
+            const auto l = (y - x) * invSqrt2;
+            const auto r = (y + x) * invSqrt2;
+
+            sumLR += (double) l * r;
+            sumLL += (double) l * l;
+            sumRR += (double) r * r;
+        }
+
+        const auto denominator = std::sqrt (sumLL * sumRR);
+        const auto correlation = denominator > 1.0e-9 ? sumLR / denominator : 1.0;
+
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
+        g.setColour (theme.textDim.withAlpha (0.75f));
+        g.drawText (juce::String (correlation, 2),
+                     bounds.withTop (bounds.getBottom() - 14.0f).reduced (4.0f, 0.0f),
+                     juce::Justification::centredLeft, false);
+    }
 
     // ---- the trace ----
     // Drawn oldest-to-newest with rising alpha, so the trail reads as

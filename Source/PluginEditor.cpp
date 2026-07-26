@@ -8,6 +8,7 @@ namespace
     // The key the light/dark choice is stored under, in the same shared
     // "abcTrain" PropertiesFile the language preference already uses.
     constexpr const char* themeModeKey = "themeMode";
+    constexpr const char* uiScaleKey = "uiScale";
 
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
@@ -111,6 +112,22 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     themeButton.onClick = [this] { toggleTheme(); };
     addAndMakeVisible (themeButton);
+
+    sizeSelector.addItem ("S", 1);
+    sizeSelector.addItem ("M", 2);
+    sizeSelector.addItem ("L", 3);
+    sizeSelector.addItem ("XL", 4);
+    sizeSelector.onChange = [this]
+    {
+        switch (sizeSelector.getSelectedId())
+        {
+            case 1:  setUiScale (0.85f); break;
+            case 3:  setUiScale (1.15f); break;
+            case 4:  setUiScale (1.30f); break;
+            default: setUiScale (1.00f); break;
+        }
+    };
+    addAndMakeVisible (sizeSelector);
 
     for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
         languageSelector.addItem (LocalisationManager::getDisplayName (code),
@@ -360,7 +377,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the "everything breathes" feel, and that space has to come from
     // somewhere. Same "grew the window to fit new content" precedent as
     // the slider redesign (015) and the Learner guide labels (010).
-    setSize (680, baseWindowHeight);
+    // Restore the persisted UI scale; the logical layout never changes,
+    // only the transform applied to it.
+    setUiScale (localisationProperties.getDoubleValue (uiScaleKey, 1.0));
 
     applyTheme();
     session.startRun();
@@ -446,6 +465,25 @@ void EarTrainerEditor::paint (juce::Graphics& g)
         AbcTrainLookAndFeel::paintSectionPanel (g, exerciseSection.toFloat(), "Exercise");
         AbcTrainLookAndFeel::paintSectionPanel (g, answerSection.toFloat(), "Your answer");
         AbcTrainLookAndFeel::paintSectionPanel (g, progressSection.toFloat(), "Progress");
+
+        // The scope strip keeps its room whether or not it's been bought,
+        // so the window never resizes mid-round. Unbought, it draws as a
+        // quiet placeholder rather than an empty hole.
+        if (! hintRevealed && ! scopeStrip.isEmpty())
+        {
+            const auto& theme = AbcTrainTheme::current();
+            const auto strip = scopeStrip.toFloat();
+
+            g.setColour (theme.displayBackground.withAlpha (0.45f));
+            g.fillRoundedRectangle (strip, AbcTrainTheme::Radius::well);
+            g.setColour (theme.outline.withAlpha (0.35f));
+            g.drawRoundedRectangle (strip, AbcTrainTheme::Radius::well, 1.0f);
+
+            g.setColour (theme.textDim.withAlpha (0.5f));
+            g.setFont (AbcTrainLookAndFeel::captionFont());
+            g.drawText (localisation.getText ("ui.hintPlaceholder"), strip,
+                         juce::Justification::centred, false);
+        }
     }
 
     // The title, letter-spaced. Drawn here rather than through a Label
@@ -481,6 +519,8 @@ void EarTrainerEditor::resized()
     auto titleRow = area.removeFromTop (32);
     languageSelector.setBounds (titleRow.removeFromRight (86));
     titleRow.removeFromRight (Spacing::small);
+    sizeSelector.setBounds (titleRow.removeFromRight (56));
+    titleRow.removeFromRight (Spacing::small);
     themeButton.setBounds (titleRow.removeFromRight (62));
     titleRow.removeFromRight (Spacing::small);
     updateButton.setBounds (titleRow.removeFromRight (76));
@@ -512,7 +552,7 @@ void EarTrainerEditor::resized()
     // The scopes need their own room. Stealing it from the scale left it
     // 10px tall and unusable - found immediately on revealing a hint - so
     // the section (and the window) grow instead.
-    answerSection = area.removeFromTop (hintRevealed ? 274 + scopeRowHeight + Spacing::small : 274);
+    answerSection = area.removeFromTop (274 + scopeRowHeight + Spacing::small);
     {
         auto inner = answerSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);
@@ -524,16 +564,19 @@ void EarTrainerEditor::resized()
         // than a thin strip: 40px of it is the value readout and 18px the
         // caption, so anything under ~120 leaves the zones too shallow to
         // fit staggered labels. Found by building it at 92 and looking.
-        // Scopes first, in their own row above the scale - a hint you
-        // paid for shouldn't crowd the thing you answer with.
-        if (hintRevealed)
+        // The scope strip is always laid out, bought or not - its room is
+        // reserved so revealing a hint never resizes the window under the
+        // player. paint() draws the dimmed "not bought yet" state.
+        scopeStrip = inner.removeFromTop (scopeRowHeight).reduced (Spacing::small, 0);
         {
-            auto scopeRow = inner.removeFromTop (scopeRowHeight).reduced (Spacing::small, 0);
+            auto scopeRow = scopeStrip;
             vectorscope.setBounds (scopeRow.removeFromLeft (scopeRow.getHeight()));
             scopeRow.removeFromLeft (Spacing::small);
             hintSpectrum.setBounds (scopeRow);
-            inner.removeFromTop (Spacing::small);
         }
+        vectorscope.setVisible (hintRevealed && currentScreen == Screen::training);
+        hintSpectrum.setVisible (hintRevealed && currentScreen == Screen::training);
+        inner.removeFromTop (Spacing::small);
 
         choiceSlider.setBounds (inner.removeFromTop (150).reduced (Spacing::small, 0));
 
@@ -637,18 +680,38 @@ void EarTrainerEditor::startNewRun()
     if (! session.isRunActive())
         session.startRun();
 
-    if (hintRevealed)
-        setSize (getWidth(), baseWindowHeight);
+    clearHint();
 
+    processor.getGameManager().getActiveGame().newRound();
+    refreshRunStatus();
+}
+
+void EarTrainerEditor::setUiScale (float newScale)
+{
+    uiScale = juce::jlimit (0.8f, 1.4f, newScale);
+
+    // One layout, drawn through a transform - rather than four sets of
+    // hand-tuned sizes that would drift apart. Everything stays exactly
+    // the same design at every size.
+    setTransform (juce::AffineTransform::scale (uiScale));
+    setSize (logicalWidth, logicalHeight);
+
+    // Keep the picker in step with the actual scale, including on the
+    // restore path - without this it came up blank on launch.
+    const auto id = uiScale < 0.93f ? 1 : uiScale < 1.08f ? 2 : uiScale < 1.23f ? 3 : 4;
+    sizeSelector.setSelectedId (id, juce::dontSendNotification);
+
+    localisationProperties.setValue (uiScaleKey, (double) uiScale);
+}
+
+void EarTrainerEditor::clearHint()
+{
     hintRevealed = false;
     vectorscope.setVisible (false);
     hintSpectrum.setVisible (false);
     vectorscope.reset();
-
-    processor.getGameManager().getActiveGame().newRound();
-    refreshRunStatus();
     refreshHintButton();
-    resized();
+    repaint();
 }
 
 void EarTrainerEditor::refreshRunStatus()
@@ -902,15 +965,18 @@ void EarTrainerEditor::requestHint()
     }
 
     hintRevealed = true;
-    setSize (getWidth(), baseWindowHeight + scopeRowHeight + AbcTrainTheme::Spacing::small);
     vectorscope.reset();
+    hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+
+    // Set visibility here rather than leaving it to resized(): this path
+    // doesn't relayout (that's the whole point - the window must not move),
+    // so relying on resized() left the strip blank after paying for it.
     vectorscope.setVisible (true);
     hintSpectrum.setVisible (true);
-    hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
 
     refreshRunStatus();
     refreshHintButton();
-    resized();
+    repaint();
 }
 
 void EarTrainerEditor::refreshHintButton()
@@ -966,8 +1032,14 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
         if (safeThis == nullptr || safeThis->pendingAdvanceId != advanceId)
             return;
 
-        if (safeThis->session.isRunActive())
-            safeThis->processor.getGameManager().getActiveGame().newRound();
+        if (! safeThis->session.isRunActive())
+            return;
+
+        // A bought hint lasts one round. Without this it survived every
+        // auto-advance, so one purchase quietly bought the rest of the
+        // run - which is not what was paid for.
+        safeThis->clearHint();
+        safeThis->processor.getGameManager().getActiveGame().newRound();
     });
 }
 

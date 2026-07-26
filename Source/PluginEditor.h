@@ -179,6 +179,11 @@ private:
     // afforded. See SessionManager::spendHint for the price per mode.
     void requestHint();
     void refreshHintButton();
+
+    // Puts the hint back behind its price. Called from every path that
+    // starts a round, including the auto-advance - which is why it is its
+    // own method rather than a few lines inside startNewRun().
+    void clearHint();
     void languageSelected();
     void levelSelected();
 
@@ -222,10 +227,19 @@ private:
     SpectrumAnalyzerComponent hintSpectrum;
     bool hintRevealed = false;
 
-    // The window grows by exactly this much while the scopes are shown,
-    // rather than the scopes squeezing the answer scale.
+    // The scope strip is always in the layout - dimmed and captioned
+    // before it's bought, live after. Reserving the room permanently is
+    // what stops the window resizing under the player mid-round.
     static constexpr int scopeRowHeight = 82;
-    static constexpr int baseWindowHeight = 664;
+
+    // Logical layout size. The window is this multiplied by uiScale; the
+    // layout itself never changes, so every size is the same design.
+    static constexpr int logicalWidth = 680;
+    static constexpr int logicalHeight = 754;
+
+    void setUiScale (float newScale);
+    float uiScale = 1.0f;
+    juce::ComboBox sizeSelector;
 
     // Practice / Survival / Blitz. A run in the latter two ends on its
     // own terms (lives or clock) and posts a score against the exercise;
@@ -267,6 +281,7 @@ private:
     juce::Rectangle<int> exerciseSection;
     juce::Rectangle<int> answerSection;
     juce::Rectangle<int> progressSection;
+    juce::Rectangle<int> scopeStrip;
 
     // Overlay screen for picking which of the user's own reference-audio
     // folders (if any) the games should train on instead of pink noise -

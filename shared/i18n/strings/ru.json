@@ -70,5 +70,6 @@
   "ui.hintCostLife": "Скопы (−1 жизнь)",
   "ui.hintCostSeconds": "Скопы (−{{seconds}} сек)",
   "ui.hintShown": "Скопы показаны",
-  "ui.hintTooExpensive": "Не хватает"
+  "ui.hintTooExpensive": "Не хватает",
+  "ui.hintPlaceholder": "Скопы — на один раунд, если купишь"
 }
