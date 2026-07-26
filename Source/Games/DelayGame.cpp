@@ -98,9 +98,14 @@ void DelayGame::process (juce::AudioBuffer<float>& buffer)
 
         const auto dry = noise.nextSample() * envelope;
 
+        // The delay line is fed and read every block regardless, so its
+        // state stays warm and switching back to "with echo" doesn't drop
+        // the tail that was already in flight.
         delayLine.pushSample (0, dry);
         const auto wet = delayLine.popSample (0);
-        const auto value = dryWetFraction * wet + (1.0f - dryWetFraction) * dry;
+        const auto value = playProcessed.load()
+                               ? dryWetFraction * wet + (1.0f - dryWetFraction) * dry
+                               : dry;
 
         for (int ch = 0; ch < numChannels; ++ch)
             buffer.setSample (ch, sample, value);

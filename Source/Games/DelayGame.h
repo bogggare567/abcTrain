@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include <atomic>
 #include "../TestSignalGenerator.h"
 #include <array>
 
@@ -32,6 +33,14 @@ public:
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
+
+    // A/B - comparing the treated signal against the untreated one is
+    // how a change is actually heard; see Game::supportsBeforeAfter.
+    bool supportsBeforeAfter() const override { return true; }
+    void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
+    bool isPlayingProcessed() const override { return playProcessed.load(); }
+    juce::String getBeforeLabel() const override { return "Dry"; }
+    juce::String getAfterLabel() const override { return "With Echo"; }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -104,6 +113,9 @@ private:
     int chosenDelayIndex = -1;
     bool answered = false;
     bool lastAnswerCorrect = false;
+
+    // Read on the audio thread every block, written from the UI.
+    std::atomic<bool> playProcessed { true };
 
     int correctCount = 0;
     int totalCount = 0;

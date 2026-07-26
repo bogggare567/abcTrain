@@ -59,12 +59,23 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
         ++samplesSinceBurstStart;
     }
 
-    juce::dsp::AudioBlock<float> block (buffer);
-    juce::dsp::ProcessContextReplacing<float> context (block);
-    compressor.process (context);
-
     const auto& preset = (*activePresets)[(size_t) correctLevelIndex];
-    buffer.applyGain (juce::Decibels::decibelsToGain (preset.makeupGainDb) * 0.6f);
+
+    if (playProcessed.load())
+    {
+        juce::dsp::AudioBlock<float> block (buffer);
+        juce::dsp::ProcessContextReplacing<float> context (block);
+        compressor.process (context);
+
+        buffer.applyGain (juce::Decibels::decibelsToGain (preset.makeupGainDb) * 0.6f);
+    }
+    else
+    {
+        // Uncompressed, but at the *same* makeup gain, so A/B isolates the
+        // dynamics rather than turning into a loudness comparison - which
+        // would be a different (and much easier) exercise.
+        buffer.applyGain (juce::Decibels::decibelsToGain (preset.makeupGainDb) * 0.6f);
+    }
 }
 
 void CompressionGame::setDifficulty (int level)

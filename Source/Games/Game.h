@@ -90,6 +90,29 @@ public:
 
     virtual void submitNormalisedAnswer (float normalised) { juce::ignoreUnused (normalised); }
 
+    // ---- A/B: before vs after -----------------------------------------
+    //
+    // "Is this louder?" is a much harder question than "is B louder than
+    // A?". Every exercise here hides a *change*, and the only way to hear
+    // a change reliably is to switch between the two states - which is
+    // what an engineer does with a bypass button all day.
+    //
+    // `before` is the untreated signal, `after` is the one with the round's
+    // hidden change applied. A game that has no meaningful "before" (there
+    // is no unprocessed version of "which reverb type is this") leaves
+    // this off and the editor hides the switch.
+    virtual bool supportsBeforeAfter() const { return false; }
+
+    // Audio-thread visible: process() reads it every block, so it's an
+    // atomic on the implementing side rather than a plain bool.
+    virtual void setPlayProcessed (bool shouldPlayProcessed) { juce::ignoreUnused (shouldPlayProcessed); }
+    virtual bool isPlayingProcessed() const { return true; }
+
+    // Wording for the two states, since "EQ off / EQ on" and "before gain
+    // / after gain" say something the generic pair doesn't.
+    virtual juce::String getBeforeLabel() const { return "A"; }
+    virtual juce::String getAfterLabel() const { return "B"; }
+
     // A labelled tick on the scale. `emphasised` marks the primary series
     // (e.g. the octave centres) so the UI can draw the secondary series
     // (the boundaries between them) more quietly and on its own label row.

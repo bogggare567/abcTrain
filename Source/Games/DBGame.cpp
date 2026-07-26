@@ -13,7 +13,9 @@ void DBGame::process (juce::AudioBuffer<float>& buffer)
     const auto numSamples = buffer.getNumSamples();
 
     constexpr float baseGain = 0.4f;
-    const auto deltaGain = juce::Decibels::decibelsToGain (targetDb);
+    const auto deltaGain = playProcessed.load()
+                               ? juce::Decibels::decibelsToGain (targetDb)
+                               : 1.0f;
 
     for (int sample = 0; sample < numSamples; ++sample)
     {

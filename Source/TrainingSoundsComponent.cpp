@@ -43,7 +43,6 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
     rootFolderLabel.setJustificationType (juce::Justification::centred);
     rootFolderLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
-    rootFolderLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
     addAndMakeVisible (rootFolderLabel);
 
     pinkNoiseButton.onClick = [this]
@@ -54,7 +53,6 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     addAndMakeVisible (pinkNoiseButton);
 
     statusLabel.setJustificationType (juce::Justification::centred);
-    statusLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
     addAndMakeVisible (statusLabel);
 
     closeButton.onClick = [this]
@@ -68,6 +66,15 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
 void TrainingSoundsComponent::refresh()
 {
+    // Re-read the palette here, not in the constructor. Colours captured
+    // once at construction survive a theme switch unchanged - which is
+    // how dim text ended up invisible: a dark-theme grey left sitting on
+    // a near-white light-theme panel, and the reverse.
+    const auto& theme = AbcTrainTheme::current();
+    rootFolderLabel.setColour (juce::Label::textColourId, theme.textDim);
+    statusLabel.setColour (juce::Label::textColourId, theme.textDim);
+    titleLabel.setColour (juce::Label::textColourId, theme.textBright);
+
     categoryButtons.clear();
 
     auto& library = processor.getGameManager().getReferenceAudioLibrary();

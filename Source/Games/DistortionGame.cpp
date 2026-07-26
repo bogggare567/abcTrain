@@ -51,9 +51,12 @@ void DistortionGame::process (juce::AudioBuffer<float>& buffer)
     const auto type = (Type) correctTypeIndex;
     const auto makeup = types[(size_t) correctTypeIndex].makeupGain;
 
+    const auto processed = playProcessed.load();
+
     for (int sample = 0; sample < numSamples; ++sample)
     {
-        const auto driven = noise.nextSample() * driveAmount;
+        const auto raw = noise.nextSample();
+        const auto driven = raw * driveAmount;
         auto shaped = waveshape (type, driven);
 
         if (type == Type::tapeSaturation)
@@ -62,7 +65,9 @@ void DistortionGame::process (juce::AudioBuffer<float>& buffer)
             shaped = tapeLowpassState;
         }
 
-        const auto value = shaped * makeup * 0.35f;
+        // "Clean" keeps the same makeup gain, so switching A/B isolates
+        // the harmonic character rather than the level.
+        const auto value = (processed ? shaped : raw) * makeup * 0.35f;
 
         for (int ch = 0; ch < numChannels; ++ch)
             buffer.setSample (ch, sample, value);

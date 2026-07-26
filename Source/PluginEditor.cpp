@@ -183,6 +183,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     newRoundButton.onClick = [this] { startNewRun(); };
     addAndMakeVisible (newRoundButton);
 
+    beforeButton.onClick = [this] { setPlayProcessed (false); };
+    afterButton.onClick = [this] { setPlayProcessed (true); };
+    beforeButton.setClickingTogglesState (false);
+    afterButton.setClickingTogglesState (false);
+    addAndMakeVisible (beforeButton);
+    addAndMakeVisible (afterButton);
+
     hintButton.onClick = [this] { requestHint(); };
     addAndMakeVisible (hintButton);
 
@@ -422,10 +429,18 @@ void EarTrainerEditor::applyTheme()
                                                        ? "ui.themeDark" : "ui.themeLight"));
     hintCostLabel.setColour (juce::Label::textColourId, theme.textDim);
 
-    // These two are re-coloured per answer/progress state, so just let
-    // the normal refresh paths reapply them from the new palette.
+    currentGameLabel.setColour (juce::Label::textColourId, theme.textBright);
+    feedbackLabel.setColour (juce::Label::textColourId, theme.text);
+    runStatusLabel.setColour (juce::Label::textColourId, theme.text);
+
+    // These are re-coloured per answer/run/progress state, so let the
+    // normal refresh paths reapply them from the new palette - including
+    // refreshRunStatus, which was missing and left the lives/clock in the
+    // previous theme's colour.
     refreshFromGameState();
     refreshFromProgressState();
+    refreshRunStatus();
+    refreshBeforeAfter();
 
     repaint();
 }
@@ -574,7 +589,7 @@ void EarTrainerEditor::resized()
     // The scopes need their own room. Stealing it from the scale left it
     // 10px tall and unusable - found immediately on revealing a hint - so
     // the section (and the window) grow instead.
-    answerSection = area.removeFromTop (274 + scopeRowHeight + Spacing::small);
+    answerSection = area.removeFromTop (274 + scopeRowHeight + Spacing::small + 38);
     {
         auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
@@ -603,6 +618,16 @@ void EarTrainerEditor::resized()
         choiceSlider.setBounds (inner.removeFromTop (150).reduced (Spacing::small, 0));
 
         inner.removeFromTop (Spacing::medium);
+
+        // A/B on its own centred row under the scale.
+        auto abRow = inner.removeFromTop (30);
+        {
+            auto centred = abRow.withSizeKeepingCentre (240, 28);
+            beforeButton.setBounds (centred.removeFromLeft (118));
+            centred.removeFromLeft (Spacing::tight);
+            afterButton.setBounds (centred);
+        }
+        inner.removeFromTop (Spacing::small);
 
         auto bottomRow = inner.removeFromTop (34);
         newRoundButton.setBounds (bottomRow.removeFromLeft (120));
@@ -706,6 +731,11 @@ void EarTrainerEditor::startNewRun()
 
     clearHint();
 
+    // Start each round on "after": the change is the thing being tested,
+    // so that's the default, and A/B is a comparison you reach for.
+    processor.getGameManager().getActiveGame().setPlayProcessed (true);
+    refreshBeforeAfter();
+
     processor.getGameManager().getActiveGame().newRound();
     refreshRunStatus();
 }
@@ -742,13 +772,14 @@ void EarTrainerEditor::refreshRunStatus()
 {
     const auto mode = session.getMode();
 
+    const auto& theme = AbcTrainTheme::current();
+
     if (mode == SessionManager::Mode::practice)
     {
         runStatusLabel.setText ({}, juce::dontSendNotification);
+        runStatusLabel.setColour (juce::Label::textColourId, theme.text);
         return;
     }
-
-    const auto& theme = AbcTrainTheme::current();
 
     if (! session.isRunActive())
     {
@@ -809,6 +840,7 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &newRoundButton, (juce::Component*) &modeSelector,
                      (juce::Component*) &hintButton, (juce::Component*) &hintCostLabel,
+                     (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
                      (juce::Component*) &levelLabel, (juce::Component*) &levelSelector,
                      (juce::Component*) &levelProgressBar, (juce::Component*) &streakLabel,
@@ -970,6 +1002,38 @@ void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
     afterAnswer (game.wasLastAnswerCorrect());
 }
 
+void EarTrainerEditor::setPlayProcessed (bool shouldPlayProcessed)
+{
+    processor.getGameManager().getActiveGame().setPlayProcessed (shouldPlayProcessed);
+    refreshBeforeAfter();
+}
+
+void EarTrainerEditor::refreshBeforeAfter()
+{
+    auto& game = processor.getGameManager().getActiveGame();
+    const auto supported = game.supportsBeforeAfter();
+
+    beforeButton.setVisible (supported && currentScreen == Screen::training);
+    afterButton.setVisible (supported && currentScreen == Screen::training);
+
+    if (! supported)
+        return;
+
+    beforeButton.setButtonText (game.getBeforeLabel());
+    afterButton.setButtonText (game.getAfterLabel());
+
+    // The active side is coloured; the other is left plain. Two buttons
+    // where one is lit says "you are hearing this one" without asking the
+    // player to read.
+    const auto& theme = AbcTrainTheme::current();
+    const auto processed = game.isPlayingProcessed();
+
+    beforeButton.setColour (juce::TextButton::buttonColourId,
+                             processed ? theme.widgetBackground : theme.accent.withAlpha (0.55f));
+    afterButton.setColour (juce::TextButton::buttonColourId,
+                            processed ? theme.accent.withAlpha (0.55f) : theme.widgetBackground);
+}
+
 void EarTrainerEditor::requestHint()
 {
     if (hintRevealed)
@@ -1070,6 +1134,8 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
         // auto-advance, so one purchase quietly bought the rest of the
         // run - which is not what was paid for.
         safeThis->clearHint();
+        safeThis->processor.getGameManager().getActiveGame().setPlayProcessed (true);
+        safeThis->refreshBeforeAfter();
         safeThis->processor.getGameManager().getActiveGame().newRound();
     });
 }

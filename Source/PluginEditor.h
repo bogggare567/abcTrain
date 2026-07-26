@@ -222,6 +222,14 @@ private:
     // and whether it's in phase) over a spectrum (where the energy is).
     // Hidden until bought, and reset on every new round so the previous
     // round's picture can't linger into the next one.
+    // A/B: the untreated signal against the treated one. Two buttons
+    // rather than one toggle, so both states are always named and which
+    // one you're hearing is readable without interpreting a label that
+    // changes.
+    juce::TextButton beforeButton, afterButton;
+    void setPlayProcessed (bool);
+    void refreshBeforeAfter();
+
     IconButton hintButton { AppIcons::Icon::scope };
     juce::Label hintCostLabel;
     Vectorscope vectorscope;
@@ -236,7 +244,7 @@ private:
     // Logical layout size. The window is this multiplied by uiScale; the
     // layout itself never changes, so every size is the same design.
     static constexpr int logicalWidth = 680;
-    static constexpr int logicalHeight = 754;
+    static constexpr int logicalHeight = 792;
 
     void setUiScale (float newScale);
     float uiScale = 1.0f;

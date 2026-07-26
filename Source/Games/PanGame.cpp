@@ -28,7 +28,7 @@ void PanGame::process (juce::AudioBuffer<float>& buffer)
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    const auto pan = targetPan;
+    const auto pan = playProcessed.load() ? targetPan : 0.0f;
     // Equal-power pan law: theta sweeps 0..pi/2 as pan sweeps -1..+1, so
     // gainL^2 + gainR^2 stays constant (= total energy stays constant)
     // regardless of position - no separate loudness compensation needed.

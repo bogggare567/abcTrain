@@ -12,7 +12,6 @@ LessonController::LessonController (juce::AudioProcessorValueTreeState& stateToC
     addAndMakeVisible (titleLabel);
 
     progressLabel.setJustificationType (juce::Justification::centred);
-    progressLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
     addAndMakeVisible (progressLabel);
 
     stepTextLabel.setJustificationType (juce::Justification::centred);
@@ -56,6 +55,15 @@ void LessonController::closeLesson()
 
 void LessonController::applyCurrentStep()
 {
+    // Re-read the palette on every step rather than once at construction:
+    // a colour captured in the constructor outlives a theme switch, which
+    // is how dim text ended up unreadable (same bug as
+    // TrainingSoundsComponent's).
+    const auto& theme = AbcTrainTheme::current();
+    progressLabel.setColour (juce::Label::textColourId, theme.textDim);
+    titleLabel.setColour (juce::Label::textColourId, theme.textBright);
+    stepTextLabel.setColour (juce::Label::textColourId, theme.text);
+
     const auto& step = lesson.getCurrentStep();
 
     for (const auto& targetParam : step.targetParameters)

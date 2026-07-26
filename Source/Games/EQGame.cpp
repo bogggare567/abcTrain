@@ -91,9 +91,15 @@ void EQGame::process (juce::AudioBuffer<float>& buffer)
             buffer.setSample (ch, sample, value);
     }
 
-    juce::dsp::AudioBlock<float> block (buffer);
-    juce::dsp::ProcessContextReplacing<float> context (block);
-    peakFilter.process (context);
+    // "Before" is the same noise with the filter skipped, so switching
+    // A/B changes exactly one thing - which is what makes the comparison
+    // worth anything.
+    if (playProcessed.load())
+    {
+        juce::dsp::AudioBlock<float> block (buffer);
+        juce::dsp::ProcessContextReplacing<float> context (block);
+        peakFilter.process (context);
+    }
 
     buffer.applyGain (0.25f);
 }
