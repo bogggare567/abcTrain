@@ -877,6 +877,31 @@ rationale; summary here.
   sentence per preset shown in the guide card, and
   `GuideTooltip::setText`'s `autoDismissMs`. See
   [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
+- `shared/TrainingModule.{h,cpp}` + `shared/LessonAudioBed.{h,cpp}` +
+  `shared/ModuleProgress.{h,cpp}` — the Learner plugins' per-knob training
+  modules: a lesson that then *asks you something*. A module is one
+  parameter, with demo steps (reusing `MicroLesson`), a try-it prompt, and
+  a **check** — the plugin sets the knob to a value it does not show, plays
+  it, and grades how close you dial the same thing by ear.
+  **The unit of the accept band differs per knob and that is the point**:
+  attack is graded as a proportion (5 ms out at 3 ms and at 300 ms are
+  different mistakes), threshold in dB, frequency in octaves, damping as a
+  fraction of its range — the same reasoning and the same ramp helper as
+  the trainer's continuous exercises. Three tiers, not ten: one knob has
+  "roughly / confidently / precisely" and no more. `LessonAudioBed`
+  **generates** its drum loop / bass note / single hit / bright hit /
+  chord / pink noise rather than shipping samples — a fixed set of files is
+  a fixed set of answers, the same lesson `EQGame`'s eight octave centres
+  taught. Every bed is normalised to −6 dBFS, which is a *requirement*
+  rather than tidiness: "threshold at −18 dB" only means anything against a
+  known input level. `ModuleProgress` persists to the shared `abcTrain`
+  `PropertiesFile`, keyed by module **id string** rather than index —
+  deliberately unlike EarTrainer's index-keyed per-exercise stats, whose
+  append-only constraint nothing enforces.
+- `shared/DifficultyRamp.h` — the geometric and linear ramps, moved out of
+  `Game.h` (which now forwards to them) once modules needed the identical
+  curve. An accept band narrowing differently in the two halves of the
+  product would make "tier 3" and "level 10" incomparable.
 - `shared/PracticeAudioSource.h` + `shared/PracticeSourceSelector.{h,cpp}`
   — what the three Learner plugins listen to when no host is feeding
   them. `PracticeAudioSource` is a real-time-safe looping player over
@@ -1131,6 +1156,22 @@ pictures there can never drift from the code. See
   uncorrelated while one signal in both channels does not, a faded-out
   tail is dropped rather than offered as a clip, and every character maps
   to a distinct non-empty folder name (the folder *is* the persistence).
+- `tests/TrainingModuleTest.cpp` — the grading rules directly: the band
+  narrows with tier and clamps outside 1..3, a proportional band is the
+  same slack at 3 ms and at 300 ms and is symmetric in both directions, a
+  dB band is a fixed distance and copes with the negative targets a
+  threshold actually has, an octave band holds across eight octaves,
+  quality is 1 dead on and 0 at the edge and never negative, a choice check
+  ignores its tier, a zero target under a ratio unit misses rather than
+  producing an infinity, log-drawn targets reach both ends of their span
+  and quantise, and one seed draws one round.
+- `tests/LessonAudioBedTest.cpp` — what a test can honestly check about
+  synthesized audio: every bed makes sound at the promised length, arrives
+  at the same −6 dBFS peak (see above — this caught real clipping from
+  overlapping hits), starts and ends near zero so the loop has no seam, two
+  seeds are genuinely different audio while one seed is reproducible, the
+  two tail beds really do leave silence for a tail, and the chord bed has a
+  side signal to widen while the bass bed is mono.
 - `tests/PracticeAudioSourceTest.cpp` — that a Learner plugin cannot start
   making noise on its own: disabled it reports nothing played and leaves
   the host's buffer bit-for-bit, enabled with nothing selected it still

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../shared/DifficultyRamp.h"
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
 #include <vector>
@@ -49,16 +50,14 @@ public:
     // move.
     static float rampTolerance (int level, float atLevelOne, float atLevelTen) noexcept
     {
-        const auto t = (float) (juce::jlimit (1, 10, level) - 1) / 9.0f;
-        return atLevelOne * std::pow (atLevelTen / atLevelOne, t);
+        return DifficultyRamp::geometric (level, atLevelOne, atLevelTen);
     }
 
     // The same ramp for a value that is not a tolerance and can legitimately
     // pass through zero or change sign.
     static float rampLinear (int level, float atLevelOne, float atLevelTen) noexcept
     {
-        const auto t = (float) (juce::jlimit (1, 10, level) - 1) / 9.0f;
-        return atLevelOne + (atLevelTen - atLevelOne) * t;
+        return DifficultyRamp::linear (level, atLevelOne, atLevelTen);
     }
 
     // Adjusts how hard the next round(s) will be, on a 1-10 scale (see

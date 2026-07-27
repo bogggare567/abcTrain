@@ -244,6 +244,9 @@ juce_add_plugin(LearnerEQ
 
 target_sources(LearnerEQ
     PRIVATE
+        shared/TrainingModule.cpp
+        shared/LessonAudioBed.cpp
+        shared/ModuleProgress.cpp
         shared/PracticeSourceSelector.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
@@ -303,6 +306,9 @@ juce_add_plugin(LearnerComp
 
 target_sources(LearnerComp
     PRIVATE
+        shared/TrainingModule.cpp
+        shared/LessonAudioBed.cpp
+        shared/ModuleProgress.cpp
         shared/PracticeSourceSelector.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
@@ -361,6 +367,9 @@ juce_add_plugin(LearnerVerb
 
 target_sources(LearnerVerb
     PRIVATE
+        shared/TrainingModule.cpp
+        shared/LessonAudioBed.cpp
+        shared/ModuleProgress.cpp
         shared/PracticeSourceSelector.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
@@ -413,6 +422,9 @@ juce_add_console_app(EarTrainerTests
 
 target_sources(EarTrainerTests
     PRIVATE
+        shared/TrainingModule.cpp
+        shared/LessonAudioBed.cpp
+        shared/ModuleProgress.cpp
         tests/TestRunner.cpp
         tests/EQGameTest.cpp
         tests/CompressionGameTest.cpp
@@ -431,6 +443,8 @@ target_sources(EarTrainerTests
         tests/AchievementsTest.cpp
         tests/AudioSliceAnalyzerTest.cpp
         tests/PracticeAudioSourceTest.cpp
+        tests/TrainingModuleTest.cpp
+        tests/LessonAudioBedTest.cpp
         tests/ContinuousScaleTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
@@ -518,6 +532,9 @@ juce_generate_juce_header(EditorSnapshots)
 
 target_sources(EditorSnapshots
     PRIVATE
+        shared/TrainingModule.cpp
+        shared/LessonAudioBed.cpp
+        shared/ModuleProgress.cpp
         tools/EditorSnapshots.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
