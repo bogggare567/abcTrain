@@ -12,6 +12,7 @@ one free, open-source suite for macOS, Windows and Linux.
 [![Platforms](https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-blue)](#-download)
 [![Languages](https://img.shields.io/badge/languages-12-orange)](#-supported-languages)
 [![Tests](https://img.shields.io/badge/tests-187%20groups-brightgreen)](docs/testing-strategy.md)
+[![Donate](https://img.shields.io/badge/Donate-DonationAlerts-blue)](https://www.donationalerts.com/r/bogdankorablev)
 
 **[⬇ Download](https://github.com/bogggare567/abcTrain/releases/latest)** ·
 [Screenshots](#-what-it-looks-like) ·
