@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../TestSignalGenerator.h"
+#include "../../shared/TestSignalGenerator.h"
 #include <array>
 
 // "Name the range" exercise: plays pink noise through a peak filter

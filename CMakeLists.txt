@@ -113,7 +113,7 @@ juce_add_binary_data(I18nData SOURCES
 
 # Embeds a handful of short, originally-synthesized (not recorded/sampled
 # from any third-party source) WAV files so EarTrainer's opt-in "Built-in
-# Samples" training category (see Source/ReferenceAudioLibrary.cpp) works
+# Samples" training category (see shared/ReferenceAudioLibrary.cpp) works
 # out of the box, with no external folder required - same "can't rely on
 # a filesystem path relative to the plugin binary" reasoning as I18nData
 # above. See decisions/018 for why these are programmatically generated
@@ -176,8 +176,8 @@ target_sources(EarTrainer
         Source/ProgressManager.cpp
         Source/Achievements.cpp
         Source/SessionManager.cpp
-        Source/ReferenceAudioLibrary.cpp
-        Source/AudioSliceAnalyzer.cpp
+        shared/ReferenceAudioLibrary.cpp
+        shared/AudioSliceAnalyzer.cpp
         Source/TrainingSoundsComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -244,6 +244,9 @@ juce_add_plugin(LearnerEQ
 
 target_sources(LearnerEQ
     PRIVATE
+        shared/PracticeSourceSelector.cpp
+        shared/ReferenceAudioLibrary.cpp
+        shared/AudioSliceAnalyzer.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
@@ -273,6 +276,7 @@ target_link_libraries(LearnerEQ
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        SampleData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -299,6 +303,9 @@ juce_add_plugin(LearnerComp
 
 target_sources(LearnerComp
     PRIVATE
+        shared/PracticeSourceSelector.cpp
+        shared/ReferenceAudioLibrary.cpp
+        shared/AudioSliceAnalyzer.cpp
         LearnerComp/Source/PluginProcessor.cpp
         LearnerComp/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
@@ -327,6 +334,7 @@ target_link_libraries(LearnerComp
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        SampleData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -353,6 +361,9 @@ juce_add_plugin(LearnerVerb
 
 target_sources(LearnerVerb
     PRIVATE
+        shared/PracticeSourceSelector.cpp
+        shared/ReferenceAudioLibrary.cpp
+        shared/AudioSliceAnalyzer.cpp
         LearnerVerb/Source/PluginProcessor.cpp
         LearnerVerb/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
@@ -381,6 +392,7 @@ target_link_libraries(LearnerVerb
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        SampleData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -418,6 +430,7 @@ target_sources(EarTrainerTests
         tests/SessionManagerTest.cpp
         tests/AchievementsTest.cpp
         tests/AudioSliceAnalyzerTest.cpp
+        tests/PracticeAudioSourceTest.cpp
         tests/ContinuousScaleTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
@@ -429,8 +442,8 @@ target_sources(EarTrainerTests
         Source/ProgressManager.cpp
         Source/Achievements.cpp
         Source/SessionManager.cpp
-        Source/ReferenceAudioLibrary.cpp
-        Source/AudioSliceAnalyzer.cpp
+        shared/ReferenceAudioLibrary.cpp
+        shared/AudioSliceAnalyzer.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
@@ -446,6 +459,7 @@ target_sources(EarTrainerTests
         LearnerComp/Source/PluginProcessor.cpp
         LearnerComp/Source/PluginEditor.cpp
         LearnerVerb/Source/PluginProcessor.cpp
+        shared/PracticeSourceSelector.cpp
         LearnerVerb/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
         shared/GainReductionMeter.cpp
@@ -511,8 +525,8 @@ target_sources(EditorSnapshots
         Source/ProgressManager.cpp
         Source/Achievements.cpp
         Source/SessionManager.cpp
-        Source/ReferenceAudioLibrary.cpp
-        Source/AudioSliceAnalyzer.cpp
+        shared/ReferenceAudioLibrary.cpp
+        shared/AudioSliceAnalyzer.cpp
         Source/ChoiceSliderComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -546,6 +560,7 @@ target_sources(EditorSnapshots
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
+        shared/PracticeSourceSelector.cpp
         shared/CompactSelector.cpp
         shared/AppIcons.cpp
         shared/i18n/LocalisationManager.cpp

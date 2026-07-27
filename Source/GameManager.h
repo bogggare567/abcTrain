@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Games/Game.h"
-#include "ReferenceAudioLibrary.h"
+#include "../shared/ReferenceAudioLibrary.h"
 #include <juce_dsp/juce_dsp.h>
 
 // Owns every registered exercise and tracks which one is active. This is

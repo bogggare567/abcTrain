@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../PinkNoiseGenerator.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include <array>
 
 // "Guess the stereo width" exercise: two independent PinkNoiseGenerator

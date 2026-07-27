@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Game.h"
-#include "../TestSignalGenerator.h"
+#include "../../shared/TestSignalGenerator.h"
 #include <array>
 
 // "Guess the reverb type" exercise: a repeating percussive noise burst

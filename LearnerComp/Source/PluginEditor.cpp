@@ -52,6 +52,8 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     themeButton.onClick = [this] { toggleTheme(); };
     addAndMakeVisible (themeButton);
 
+    addAndMakeVisible (practiceSelector);
+
     pluginIcon.setIcon (AppIcons::Icon::learnerComp);
     addAndMakeVisible (pluginIcon);
 
@@ -365,6 +367,9 @@ void LearnerCompEditor::resized()
     updateButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
     titleRow.removeFromRight (Spacing::small);
     bypassButton.setBounds (titleRow.removeFromRight (96));
+    titleRow.removeFromRight (Spacing::small);
+    practiceSelector.setBounds (titleRow.removeFromRight (practiceSelector.getPreferredWidth())
+                                    .withSizeKeepingCentre (practiceSelector.getPreferredWidth(), 24));
     pluginIcon.setBounds (titleRow.removeFromLeft (28));
 
     area.removeFromTop (Spacing::section);

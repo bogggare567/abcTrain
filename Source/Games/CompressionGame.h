@@ -2,7 +2,7 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../TestSignalGenerator.h"
+#include "../../shared/TestSignalGenerator.h"
 #include <array>
 
 // "Guess the compression" exercise: plays a repeating percussive noise

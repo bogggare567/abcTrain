@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "../../shared/PracticeAudioSource.h"
 #include "ReverbEngine.h"
 #include <atomic>
 
@@ -59,7 +60,22 @@ public:
     static constexpr const char* widthParamId = "width";
     static constexpr const char* bypassParamId = "bypass";
 
+    // Practice audio: the shared reference library, played through this
+    // plugin so it is not silent outside a DAW. Off by default - see
+    // shared/PracticeAudioSource.h.
+    ReferenceAudioLibrary& getPracticeLibrary() noexcept { return practiceLibrary; }
+    PracticeAudioSource& getPracticeSource() noexcept { return practiceSource; }
+    juce::PropertiesFile& getSharedProperties() noexcept { return sharedProperties; }
+
 private:
+
+    // Product-wide preferences (the same "abcTrain" file the theme,
+    // language and reference library already share), not APVTS state:
+    // which clip you practise on is a property of the person, not of the
+    // host session, and it should not travel in a saved project.
+    juce::PropertiesFile sharedProperties { ReferenceAudioLibrary::makeDefaultOptions() };
+    ReferenceAudioLibrary practiceLibrary { sharedProperties };
+    PracticeAudioSource practiceSource { practiceLibrary };
     juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
     void updateEngineParameters();
 

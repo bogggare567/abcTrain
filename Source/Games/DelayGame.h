@@ -2,7 +2,7 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../TestSignalGenerator.h"
+#include "../../shared/TestSignalGenerator.h"
 #include <array>
 
 // "Guess the delay time" exercise: a percussive noise burst through a

@@ -245,11 +245,11 @@ full rationale.
   around inside the chosen range each round rather than landing on one
   of 8 fixed band centers, so the player has to learn the range's actual
   boundaries instead of memorizing fixed points.
-- `Source/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
+- `shared/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
   economy algorithm) used by `StereoWidthGame`'s two channels directly;
   each instance owns its own `juce::Random`, which is what lets that game
   use two decorrelated instances for a real side signal.
-- `Source/TestSignalGenerator.h` — drop-in replacement for
+- `shared/TestSignalGenerator.h` — drop-in replacement for
   `PinkNoiseGenerator` (identical `nextSample()` shape) used by the other
   8 games. Plays looped audio from `ReferenceAudioLibrary::getActiveBuffer()`
   when a player has selected a reference file (see below), otherwise falls
@@ -258,7 +258,7 @@ full rationale.
   instead, since a single recorded file can't provide the two
   independently-decorrelated sources its mid/side processing needs. See
   [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md).
-- `Source/ReferenceAudioLibrary.{h,cpp}` — scans a root folder (default:
+- `shared/ReferenceAudioLibrary.{h,cpp}` — scans a root folder (default:
   the user's own music folder + `/ABCTrain`) for one subfolder per
   category, each holding audio files the *user* supplies; loads a
   selection (resampled/downmixed, message-thread only) and publishes it
@@ -275,7 +275,7 @@ full rationale.
   ahead of anything found on disk — a real non-noise training option with
   zero setup, and the reason the file-chooser button below exists. See
   [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md).
-- `Source/AudioSliceAnalyzer.{h,cpp}` — cuts an imported file into
+- `shared/AudioSliceAnalyzer.{h,cpp}` — cuts an imported file into
   loop-length clips and sorts each by measurable character (percussive /
   bass / mid range / bright / full mix). Pure DSP over a buffer: no
   Component, no file I/O, no message loop, so `tests/AudioSliceAnalyzerTest`
@@ -877,6 +877,23 @@ rationale; summary here.
   sentence per preset shown in the guide card, and
   `GuideTooltip::setText`'s `autoDismissMs`. See
   [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
+- `shared/PracticeAudioSource.h` + `shared/PracticeSourceSelector.{h,cpp}`
+  — what the three Learner plugins listen to when no host is feeding
+  them. `PracticeAudioSource` is a real-time-safe looping player over
+  `ReferenceAudioLibrary`'s active clip, run at the very top of each
+  `processBlock` so every meter and curve downstream behaves exactly as
+  it would on a real track; `PracticeSourceSelector` is the title-row
+  `CompactSelector` that scans, persists (by category *name*, not index)
+  and applies the choice. **Off by default**, since a plugin that starts
+  injecting audio into a session on its own is a bug. One shared
+  component rather than three copies, unlike the deliberately-duplicated
+  Bypass/Updates wiring, because this carries real behaviour that would
+  drift. Enabling and disabling crossfade over ~30 ms — a hard switch
+  mid-waveform is a click. See
+  [decisions/026](docs/decisions/026-practice-audio-in-the-learner-plugins.md);
+  the same ADR is why `ReferenceAudioLibrary`, `AudioSliceAnalyzer`,
+  `TestSignalGenerator` and `PinkNoiseGenerator` moved out of `Source/`
+  (EarTrainer's) into `shared/`.
 - `shared/CompactSelector.h/.cpp` — a one-or-two-glyph value plus a
   hairline chevron, opening a `PopupMenu` on click; no well and no border
   until hovered. Replaces the language and window-size `ComboBox`es in
@@ -1114,6 +1131,13 @@ pictures there can never drift from the code. See
   uncorrelated while one signal in both channels does not, a faded-out
   tail is dropped rather than offered as a clip, and every character maps
   to a distinct non-empty folder name (the folder *is* the persistence).
+- `tests/PracticeAudioSourceTest.cpp` — that a Learner plugin cannot start
+  making noise on its own: disabled it reports nothing played and leaves
+  the host's buffer bit-for-bit, enabled with nothing selected it still
+  degrades to a passthrough rather than to silence, and after far longer
+  than the 30 ms fade the off state is *exactly* at rest rather than
+  nearly (a gain that never settles would scale the host's audio
+  forever). See [decisions/026](docs/decisions/026-practice-audio-in-the-learner-plugins.md).
 - `tests/AchievementsTest.cpp` — the achievement rules against
   hand-built `Snapshot`s: unique non-empty ids, unknown id returns null,
   a blank slate earns nothing, accuracy needs the rounds floor *and* the
@@ -1293,9 +1317,10 @@ too, only Windows needed the fix (see
   and [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md) —
   a folder-chooser button and two always-available built-in synthesized
   sample categories now exist): a way to audition a category's audio or
-  pick a specific file within it (still a random pick each time), and
-  LearnerEQ/LearnerComp/LearnerVerb don't have any reference-audio option
-  at all (EarTrainer only, so far).
+  pick a specific file within it (still a random pick each time). The
+  three Learner plugins *do* now play from the same library — see
+  [decisions/026](docs/decisions/026-practice-audio-in-the-learner-plugins.md)
+  — but only consume it; importing stays in EarTrainer.
 - One more teaching plugin: LearnerSat — same pattern as the other three
   (own `juce_add_plugin` target, APVTS params, a visualization +
   contextual guide text, its own `PluginEntry.cpp` split).

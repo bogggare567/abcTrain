@@ -2,7 +2,7 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../TestSignalGenerator.h"
+#include "../../shared/TestSignalGenerator.h"
 #include <array>
 
 // "Guess the pan position" exercise: continuous pink noise panned to one

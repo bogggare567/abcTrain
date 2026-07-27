@@ -2,7 +2,7 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../TestSignalGenerator.h"
+#include "../../shared/TestSignalGenerator.h"
 #include <array>
 
 // "Find the frequency" exercise: plays pink noise through a peak filter

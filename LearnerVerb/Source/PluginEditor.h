@@ -10,6 +10,7 @@
 #include "../../shared/AbcTrainTheme.h"
 #include "../../shared/GuideTooltip.h"
 #include "../../shared/AppIcons.h"
+#include "../../shared/PracticeSourceSelector.h"
 #include <array>
 #include <memory>
 
@@ -82,6 +83,13 @@ private:
 
     // Light/dark switch, persisted product-wide.
     IconButton themeButton { AppIcons::Icon::sun };
+
+    // What this plugin listens to when there is no host feeding it -
+    // see shared/PracticeSourceSelector.h.
+    PracticeSourceSelector practiceSelector { processor.getPracticeLibrary(),
+                                              processor.getPracticeSource(),
+                                              processor.getSharedProperties(),
+                                              [this] { return processor.getSampleRate(); } };
     juce::PropertiesFile themeProperties;
 
     // This plugin's family colour (see AbcTrainTheme::accentFor). Held as

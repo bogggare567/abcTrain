@@ -1,5 +1,5 @@
 #include <juce_core/juce_core.h>
-#include "../Source/AudioSliceAnalyzer.h"
+#include "../shared/AudioSliceAnalyzer.h"
 #include <cmath>
 
 // Drives the analyser with signals whose right answer is known by

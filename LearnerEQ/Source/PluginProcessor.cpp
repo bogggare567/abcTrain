@@ -56,6 +56,10 @@ bool LearnerEQProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 
 void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBlock)
 {
+    // The library only knows the real rate here, same as GameManager.
+    practiceLibrary.prepare (newSampleRate);
+    practiceSource.prepare (newSampleRate);
+
     sampleRate = newSampleRate;
 
     juce::dsp::ProcessSpec spec;
@@ -86,6 +90,13 @@ void LearnerEQProcessor::updateFilters()
 void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
+
+    // Practice audio replaces the host's input before anything else
+    // touches it, so every meter, curve and knob downstream behaves
+    // exactly as it would on a real track. Off unless someone asked for
+    // it; see shared/PracticeAudioSource.h.
+    practiceSource.fillBlock (buffer);
+
 
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
