@@ -43,6 +43,19 @@ public:
     void setEnabled (bool shouldBeEnabled) noexcept { enabled.store (shouldBeEnabled); }
     bool isEnabled() const noexcept { return enabled.load(); }
 
+    // Plays this buffer instead of the library's selection, for as long as
+    // it is set. A training module owns a bed it generated and wants heard
+    // regardless of what the player picked in the title row - so the
+    // override is a pointer rather than a copy, and the module clears it
+    // before the buffer dies.
+    //
+    // Message thread only for the caller; the audio thread only ever loads
+    // the atomic.
+    void setOverrideBuffer (const juce::AudioBuffer<float>* buffer) noexcept
+    {
+        override.store (buffer);
+    }
+
     // Replaces the block with the library's current clip, looped, and
     // returns true if it actually played anything.
     //
@@ -54,8 +67,12 @@ public:
     // rather than a fade from silence.
     bool fillBlock (juce::AudioBuffer<float>& buffer) noexcept
     {
-        const auto* clip = library.getActiveBuffer();
-        const auto wantsAudio = enabled.load() && clip != nullptr && clip->getNumSamples() > 0;
+        const auto* clip = override.load();
+
+        if (clip == nullptr)
+            clip = library.getActiveBuffer();
+        const auto wantsAudio = (enabled.load() || override.load() != nullptr)
+                                && clip != nullptr && clip->getNumSamples() > 0;
 
         if (! wantsAudio && currentGain <= 0.0001f)
         {
@@ -72,9 +89,11 @@ public:
         // A clip that has gone away mid-fade leaves nothing to fade *from*,
         // so fade the host's audio back in against silence instead of
         // reading a null buffer.
-        const auto* source = clip != nullptr && clip->getNumSamples() > 0
-                                 ? clip->getReadPointer (0) : nullptr;
-        const auto clipLength = source != nullptr ? clip->getNumSamples() : 0;
+        const auto usable = clip != nullptr && clip->getNumSamples() > 0;
+        const auto* sourceLeft = usable ? clip->getReadPointer (0) : nullptr;
+        const auto* sourceRight = usable ? clip->getReadPointer (clip->getNumChannels() > 1 ? 1 : 0)
+                                          : nullptr;
+        const auto clipLength = usable ? clip->getNumSamples() : 0;
 
         auto gain = currentGain;
         auto position = readPosition;
@@ -83,12 +102,14 @@ public:
         {
             gain += juce::jlimit (-step, step, target - gain);
 
-            auto value = 0.0f;
+            auto left = 0.0f;
+            auto right = 0.0f;
 
-            if (source != nullptr)
+            if (sourceLeft != nullptr)
             {
-                const auto index = (int) position;
-                value = source[index % clipLength];
+                const auto index = (int) position % clipLength;
+                left = sourceLeft[index];
+                right = sourceRight[index];
                 position += 1.0;
 
                 if (position >= (double) clipLength)
@@ -98,6 +119,7 @@ public:
             for (int channel = 0; channel < numChannels; ++channel)
             {
                 auto* data = buffer.getWritePointer (channel);
+                const auto value = channel == 0 ? left : right;
                 data[sample] = value * gain + data[sample] * (1.0f - gain);
             }
         }
@@ -116,6 +138,7 @@ private:
     float currentGain = 0.0f;
 
     std::atomic<bool> enabled { false };
+    std::atomic<const juce::AudioBuffer<float>*> override { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PracticeAudioSource)
 };

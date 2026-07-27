@@ -5,6 +5,8 @@
 #include "../../shared/WaveformDisplay.h"
 #include "../../shared/SpectrumAnalyzer.h"
 #include "../../shared/LessonController.h"
+#include "../../shared/ModuleScreenComponent.h"
+#include "../../shared/ModuleProgress.h"
 #include "../../shared/UpdateChecker.h"
 #include "../../shared/AbcTrainLookAndFeel.h"
 #include "../../shared/AbcTrainTheme.h"
@@ -27,6 +29,10 @@ public:
     // child components - paint() runs underneath them.
     void paintOverChildren (juce::Graphics&) override;
     void resized() override;
+
+    // Snapshot seams for tools/EditorSnapshots.
+    void openModuleShelfForSnapshot() { moduleScreen.openShelf(); moduleScreen.completeAnimation(); }
+    void openModuleCheckForSnapshot() { moduleScreen.openCheckForSnapshot (2); }
 
 private:
     void timerCallback() override;
@@ -72,7 +78,13 @@ private:
     // Two lessons (see decisions/017) means a small picker instead of one
     // "Lesson" button - each LessonController owns its own MicroLesson, and
     // only one is ever visible/started at a time (see lessonSelector.onChange).
-    juce::ComboBox lessonSelector;
+    // Replaced the "Lessons" combo box. A module is one knob, taught then
+    // checked; the two walkthroughs above are listed inside the same shelf,
+    // so there is one door marked "teach me something" instead of two.
+    IconButton modulesButton { AppIcons::Icon::modules };
+    ModuleProgress moduleProgress { processor.getSharedProperties() };
+    ModuleScreenComponent moduleScreen { processor.apvts, moduleProgress,
+                                          processor.getPracticeSource() };
     LessonController lessonController;
     LessonController tailLessonController;
 

@@ -306,6 +306,7 @@ juce_add_plugin(LearnerComp
 
 target_sources(LearnerComp
     PRIVATE
+        shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -367,6 +368,7 @@ juce_add_plugin(LearnerVerb
 
 target_sources(LearnerVerb
     PRIVATE
+        shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -422,6 +424,7 @@ juce_add_console_app(EarTrainerTests
 
 target_sources(EarTrainerTests
     PRIVATE
+        shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -532,6 +535,7 @@ juce_generate_juce_header(EditorSnapshots)
 
 target_sources(EditorSnapshots
     PRIVATE
+        shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp

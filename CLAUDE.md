@@ -898,6 +898,24 @@ rationale; summary here.
   `PropertiesFile`, keyed by module **id string** rather than index —
   deliberately unlike EarTrainer's index-keyed per-exercise stats, whose
   append-only constraint nothing enforces.
+- `shared/ModuleScreenComponent.{h,cpp}` — the module panel inside Learner
+  Comp and Learner Verb, opened by a checklist `IconButton` that replaced
+  the "Lessons" `ComboBox`. **It deliberately does not cover the whole
+  editor**: during the demonstration and the try-it step it sits over the
+  analysis section only and `hitTest` returns false outside the painted
+  panel, so the knobs stay live underneath — a lesson about a knob you
+  cannot touch is a slideshow. During the **check** it takes the whole
+  area, because with the spectrum and the knobs on screen the answer is
+  readable off the display. The two audition buttons (Reference / Mine)
+  are load-bearing, not decoration: matching a hidden value without being
+  able to switch back to it is a guess, not a listening task. Every
+  parameter is saved on entry and restored on exit. The two existing
+  multi-knob lessons per plugin are listed under the modules in the same
+  shelf, under a divider, rather than behind a second dropdown. Content
+  lives per-plugin in `LearnerComp/Source/CompressorModules.h` (7) and
+  `LearnerVerb/Source/ReverbModules.h` (7), English-only, same call as the
+  parameter tooltips. **Learner EQ deliberately has none** — see
+  [decisions/027](docs/decisions/027-training-modules.md).
 - `shared/DifficultyRamp.h` — the geometric and linear ramps, moved out of
   `Game.h` (which now forwards to them) once modules needed the identical
   curve. An accept band narrowing differently in the two halves of the

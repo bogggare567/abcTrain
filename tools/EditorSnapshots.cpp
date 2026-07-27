@@ -74,7 +74,8 @@ namespace
         return false;
     }
 
-    enum class Extra { none, training, sounds, settings, results, achievements };
+    enum class Extra { none, training, sounds, settings, results, achievements,
+                       moduleShelf, moduleCheck };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -130,6 +131,16 @@ namespace
                     editor.openAchievementsForSnapshot();
             }
 
+            if constexpr (std::is_same_v<EditorType, LearnerCompEditor>
+                          || std::is_same_v<EditorType, LearnerVerbEditor>)
+            {
+                if (extra == Extra::moduleShelf)
+                    editor.openModuleShelfForSnapshot();
+
+                if (extra == Extra::moduleCheck)
+                    editor.openModuleCheckForSnapshot();
+            }
+
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
             const auto file = outputDir.getChildFile (name + suffix + ".png");
 
@@ -174,6 +185,10 @@ int main (int argc, char* argv[])
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ");
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
+    failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Modules",
+                                                                     -1, Extra::moduleShelf);
+    failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Check",
+                                                                     -1, Extra::moduleCheck);
 
     // EarTrainer's editor owns a ProgressManager writing to the real
     // per-user settings file, so rendering it *does* touch a player's

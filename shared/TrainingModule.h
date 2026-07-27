@@ -82,8 +82,15 @@ namespace TrainingModule
         float toleranceAtTierOne = 0.25f;
         float toleranceAtTopTier = 0.08f;
 
-        // Unit::choice only: i18n keys for the options offered.
-        std::vector<juce::String> choiceKeys;
+        // Unit::choice only: the options offered, in order.
+        std::vector<juce::String> choiceLabels;
+
+        // How the value reads to a person: "ms", "dB", ":1", "Hz", "%".
+        juce::String unitSuffix;
+
+        // Multiplies the stored parameter before display. 1 for most; a
+        // dry/wet stored 0..1 but shown as a percentage needs 100.
+        float displayScale = 1.0f;
     };
 
     struct Definition
@@ -92,9 +99,14 @@ namespace TrainingModule
         // so changing one forgets everybody's progress on that module.
         juce::String id;
 
-        juce::String nameKey;
-        juce::String whyKey;        // one line: what this knob is for
-        juce::String tryPromptKey;  // the do-it-yourself goal, in words
+        // Plain English, not i18n keys - the same call the existing lesson
+        // steps and parameter tooltips already made. Those are English-only
+        // today (see the i18n section of CLAUDE.md), and a module whose name
+        // were translated while its own explanation was not would read worse
+        // than one that is honestly all in one language.
+        juce::String name;
+        juce::String why;        // one line: what this knob is for
+        juce::String tryPrompt;  // the do-it-yourself goal, in words
 
         // The demonstration, reusing the lesson engine that already exists.
         std::vector<LessonStep> demoSteps;

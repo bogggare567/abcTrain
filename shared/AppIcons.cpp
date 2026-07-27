@@ -256,6 +256,29 @@ namespace AppIcons
             return p;
         }
 
+        juce::Path modulesPath()
+        {
+            // A checklist: three rows, each a mark and a line. Reads as a
+            // list of things to get through, which is what a module shelf
+            // is. A book or a graduation cap would say "reading", and none
+            // of this is reading.
+            juce::Path p;
+
+            for (int row = 0; row < 3; ++row)
+            {
+                const auto y = 6.5f + (float) row * 5.0f;
+
+                p.startNewSubPath (4.5f, y);
+                p.lineTo (6.5f, y + 2.0f);
+                p.lineTo (9.5f, y - 2.0f);
+
+                p.startNewSubPath (12.0f, y);
+                p.lineTo (19.5f, y);
+            }
+
+            return p;
+        }
+
         juce::Path settingsPath()
         {
             // A gear: a ring with six teeth. Drawn from an arc rather than
@@ -319,6 +342,7 @@ namespace AppIcons
             case Icon::scope:          return scopePath();
             case Icon::award:          return awardPath();
             case Icon::settings:       return settingsPath();
+            case Icon::modules:        return modulesPath();
         }
 
         return eqPath();

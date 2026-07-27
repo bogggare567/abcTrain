@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "ReverbModules.h"
 #include "ReverbGuide.h"
 #include "VocalSpaceLesson.h"
 #include "BrightVsDarkTailLesson.h"
@@ -138,23 +139,21 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     processor.setWaveformDisplay (&waveform);
     processor.setSpectrumAnalyzer (&spectrum);
 
-    lessonSelector.addItem ("Space for Vocals", 1);
-    lessonSelector.addItem ("Bright vs. Dark Tail", 2);
-    lessonSelector.onChange = [this]
+    modulesButton.setTooltip ("Training modules");
+    modulesButton.onClick = [this] { moduleScreen.openShelf(); };
+    addAndMakeVisible (modulesButton);
+
+    moduleScreen.setModules (ReverbModules::all());
+    moduleScreen.setWalkthroughs ({ "Space for Vocals", "Bright vs. Dark Tail" });
+    moduleScreen.onWalkthroughSelected = [this] (int which)
     {
-        // Two lessons, one picker (see decisions/017) - only the selected
-        // one is ever shown/started; the other stays hidden.
-        if (lessonSelector.getSelectedId() == 1)
+        if (which == 0)
             lessonController.showAndStart();
-        else if (lessonSelector.getSelectedId() == 2)
+        else if (which == 1)
             tailLessonController.showAndStart();
     };
-    // Nothing is selected until a lesson is picked, and an unlabelled
-    // empty dropdown in the title row was the result - caught by rendering
-    // the editor (tools/EditorSnapshots). Re-cleared on close below, so
-    // picking the same lesson twice in a row still starts it.
-    lessonSelector.setTextWhenNothingSelected ("Lessons");
-    addAndMakeVisible (lessonSelector);
+    moduleScreen.onClosed = [this] { repaint(); };
+    moduleScreen.prepare (processor.getSampleRate());
 
     updateButton.onClick = [this]
     {
@@ -239,7 +238,6 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     lessonController.onClosed = [this]
     {
         // Back to "Lessons" so the same one can be started again.
-        lessonSelector.setSelectedId (0, juce::dontSendNotification);
         resized();
     };
 
@@ -247,7 +245,6 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     tailLessonController.onClosed = [this]
     {
         // Back to "Lessons" so the same one can be started again.
-        lessonSelector.setSelectedId (0, juce::dontSendNotification);
         resized();
     };
 
@@ -255,6 +252,11 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     // Taller for the section panels' own padding/captions; the guide text
     // no longer needs a permanent strip (it floats on demand instead).
     // 20 + 32 + 28 + 428 + 12 + 222 + 20, derived from resized().
+    // Added after every other child, including both LessonControllers,
+    // so an open module panel paints over them rather than under -
+    // the z-order mistake ADR 015, 016 and 017 each had to fix once.
+    addChildComponent (moduleScreen);
+
     setSize (780, 762);
 
     applyTheme();
@@ -363,7 +365,7 @@ void LearnerVerbEditor::resized()
     auto area = getLocalBounds().reduced (Spacing::large);
 
     auto titleRow = area.removeFromTop (32);
-    lessonSelector.setBounds (titleRow.removeFromRight (156));
+    modulesButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
     titleRow.removeFromRight (Spacing::small);
     themeButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
     titleRow.removeFromRight (Spacing::tight);
@@ -427,6 +429,8 @@ void LearnerVerbEditor::resized()
 
     // The guide card floats over the lower part of the analysis section:
     // close to the controls being dragged, without covering them.
+    moduleScreen.setBounds (analysisSection.withBottom (getHeight()));
+
     guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
                                             .withHeight (66)
                                             .withY (analysisSection.getBottom() - 78));

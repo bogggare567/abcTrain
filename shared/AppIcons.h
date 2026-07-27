@@ -28,7 +28,12 @@ namespace AppIcons
 
         // A gear, for the settings screen. Distinct from `sun`, which the
         // theme toggle already owns.
-        settings
+        settings,
+
+        // A checklist, for the training modules. Reads as a list of things
+        // to get through, which is what a module shelf is - a book or a cap
+        // would say "reading", and none of this is reading.
+        modules
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().
