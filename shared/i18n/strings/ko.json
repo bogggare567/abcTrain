@@ -183,5 +183,11 @@
   "slice.bright": "고역",
   "slice.fullRange": "풀 믹스",
   "ui.importHint": "트랙은 8초 루프로 잘려 성격별로 분류됩니다. 원본 파일은 건드리지 않습니다.",
-  "ui.about": "정보"
+  "ui.about": "정보",
+  "ui.runResults": "라운드 종료",
+  "ui.playAgain": "한 번 더",
+  "ui.score.caption": "점수",
+  "ui.personalBest": "개인 최고",
+  "ui.newBest": "개인 최고 기록!",
+  "ui.whereYouStand": "현재 위치"
 }

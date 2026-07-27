@@ -182,6 +182,7 @@ target_sources(EarTrainer
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
         Source/SettingsScreenComponent.cpp
+        Source/RunResultsComponent.cpp
         shared/Vectorscope.cpp
         shared/SpectrumAnalyzer.cpp
         Source/Games/EQGame.cpp
@@ -515,6 +516,7 @@ target_sources(EditorSnapshots
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
         Source/SettingsScreenComponent.cpp
+        Source/RunResultsComponent.cpp
         Source/TrainingSoundsComponent.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp

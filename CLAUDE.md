@@ -387,6 +387,15 @@ full rationale.
   new ones through `onAchievementEarned`. `Source/AchievementToast.h` is
   the only thing that appears on the training screen unasked. See
   [decisions/024](docs/decisions/024-achievements-and-a-quiet-training-screen.md).
+- `Source/RunResultsComponent.{h,cpp}` — what a Survival/Blitz run
+  produced, shown when it ends: score, run accuracy, best streak *in that
+  run* (`SessionManager::getBestStreakThisRun`, not ProgressManager's
+  lifetime figure - reporting last week's record as if it just happened
+  was a real bug here), personal best, and where the four skill families
+  stand so "what next" is answerable without a trip home. **Only the
+  player's own numbers**: no percentiles, for the same reason they were
+  refused before - there is no server. `completeAnimation()` is the
+  snapshot seam, same shape as `SupportScreenComponent::completeReveal`.
 - `Source/SessionManager.{h,cpp}` — the shape of one training run:
   Practice (unlimited), Survival (3 lives, a wrong answer costs one, ends
   at zero), Blitz (90s clock, a wrong answer costs 5 seconds rather than

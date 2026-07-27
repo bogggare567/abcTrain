@@ -306,10 +306,20 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         auto& progress = processor.getProgressManager();
         const auto gameIndex = processor.getGameManager().getActiveGameIndex();
 
+        // The record is read *before* it is updated, so the results screen
+        // can say "personal best" rather than comparing a number against
+        // itself.
+        const auto previousBest = session.getMode() == SessionManager::Mode::survival
+                                      ? progress.getStatsForGame (gameIndex).bestSurvivalScore
+                                      : progress.getStatsForGame (gameIndex).bestBlitzScore;
+
         if (session.getMode() == SessionManager::Mode::survival)
             progress.recordSurvivalScore (gameIndex, finalScore);
         else if (session.getMode() == SessionManager::Mode::blitz)
             progress.recordBlitzScore (gameIndex, finalScore);
+
+        pendingPreviousBest = previousBest;
+        showRunResults (finalScore);
     };
 
     // 1 Hz is all the Blitz clock needs, and it's the only thing on this
@@ -498,6 +508,20 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     // Last of all, so it paints over the training screen and both
     // overlays. It never takes mouse events (see AchievementToast).
+    runResults.onPlayAgain = [this]
+    {
+        runResults.setVisible (false);
+        startNewRun();
+    };
+
+    runResults.onGoHome = [this]
+    {
+        runResults.setVisible (false);
+        showScreen (Screen::home);
+    };
+
+    addChildComponent (runResults);
+
     addChildComponent (achievementToast);
     trainingSounds.onClosed = [this] { resized(); };
 
@@ -825,11 +849,82 @@ void EarTrainerEditor::resized()
     settingsScreen.setBounds (getLocalBounds());
 
     // Centred under the title row, wide enough for an achievement name.
+    runResults.setBounds (getLocalBounds());
+
     achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
                                                  .withHeight (52)
                                                  .withSizeKeepingCentre (
                                                      juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
                                                  .withY (Spacing::large + 34));
+}
+
+void EarTrainerEditor::showRunResults (int finalScore)
+{
+    auto& progress = processor.getProgressManager();
+    auto& gameManager = processor.getGameManager();
+
+    const auto gameIndex = gameManager.getActiveGameIndex();
+    const auto englishName = gameManager.getGame (gameIndex).getName();
+    const auto stats = progress.getStatsForGame (gameIndex);
+
+    RunResultsComponent::Summary summary;
+    summary.exerciseName = translateGameName (englishName, localisation);
+    summary.modeName = localisation.getText (session.getMode() == SessionManager::Mode::survival
+                                                  ? "ui.modeSurvival" : "ui.modeBlitz");
+
+    summary.score = finalScore;
+    summary.rounds = stats.roundsPlayed;
+    summary.bestStreakThisRun = session.getBestStreakThisRun();
+    summary.previousBest = pendingPreviousBest;
+    summary.isNewBest = finalScore > pendingPreviousBest;
+
+    const auto roundsThisRun = juce::jmax (1, session.getRoundsThisRun());
+    summary.runAccuracy = (float) finalScore / (float) roundsThisRun;
+    summary.lifetimeAccuracy = stats.getAccuracy();
+
+    // One standing per family, taken from the exercise the player has the
+    // highest level in - "where am I strong" rather than "here are nine
+    // more numbers".
+    for (const char* categoryKey : { "home.category.frequency", "home.category.dynamics",
+                                      "home.category.space", "home.category.character" })
+    {
+        RunResultsComponent::SkillStanding standing;
+        standing.name = localisation.getText (categoryKey);
+
+        for (int i = 0; i < gameManager.getNumGames(); ++i)
+        {
+            const auto name = gameManager.getGame (i).getName();
+
+            if (juce::String (categoryForGame (name)) != categoryKey)
+                continue;
+
+            const auto level = progress.getLevelForGame (i);
+
+            if (level >= standing.level)
+            {
+                standing.level = level;
+                standing.levelProgress = progress.getLevelProgressForGame (i);
+                standing.icon = AppIcons::iconForGameName (name);
+            }
+
+            if (i == gameIndex)
+                standing.isCurrent = true;
+        }
+
+        summary.skills.push_back (std::move (standing));
+    }
+
+    runResults.setStrings (localisation.getText ("ui.runResults"),
+                            localisation.getText ("ui.playAgain"),
+                            localisation.getText ("ui.back"),
+                            localisation.getText ("ui.score.caption"),
+                            localisation.getText ("ui.accuracy"),
+                            localisation.getText ("ui.bestStreak"),
+                            localisation.getText ("ui.personalBest"),
+                            localisation.getText ("ui.newBest"),
+                            localisation.getText ("ui.whereYouStand"));
+
+    runResults.show (std::move (summary));
 }
 
 void EarTrainerEditor::showAchievementToast (const juce::String& achievementId)

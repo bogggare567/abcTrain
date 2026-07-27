@@ -11,6 +11,9 @@ void SessionManager::setMode (Mode newMode)
 
 void SessionManager::startRun()
 {
+    currentStreak = 0;
+    bestStreakThisRun = 0;
+
     runActive = true;
     runScore = 0;
     roundsThisRun = 0;
@@ -39,7 +42,14 @@ bool SessionManager::registerAnswer (bool wasCorrect)
     ++roundsThisRun;
 
     if (wasCorrect)
+    {
         ++runScore;
+        bestStreakThisRun = juce::jmax (bestStreakThisRun, ++currentStreak);
+    }
+    else
+    {
+        currentStreak = 0;
+    }
 
     switch (mode)
     {

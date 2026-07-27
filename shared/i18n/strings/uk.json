@@ -183,5 +183,11 @@
   "slice.bright": "Верх",
   "slice.fullRange": "Цілий мікс",
   "ui.importHint": "Треки ріжуться на 8-секундні петлі й розкладаються за характером. Твої файли не чіпаються.",
-  "ui.about": "Про програму"
+  "ui.about": "Про програму",
+  "ui.runResults": "Забіг завершено",
+  "ui.playAgain": "Ще раз",
+  "ui.score.caption": "Очки",
+  "ui.personalBest": "Особистий рекорд",
+  "ui.newBest": "Новий рекорд!",
+  "ui.whereYouStand": "Де ти зараз"
 }

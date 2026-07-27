@@ -60,6 +60,13 @@ public:
     int getRunScore() const noexcept { return runScore; }
     int getRoundsThisRun() const noexcept { return roundsThisRun; }
 
+    // The longest run of correct answers *in this run*, which is what a
+    // results screen means by "best streak". ProgressManager keeps a
+    // lifetime best per exercise; that is a different number and using it
+    // here would report a record from last week as if it had just
+    // happened.
+    int getBestStreakThisRun() const noexcept { return bestStreakThisRun; }
+
     // Seconds left in a Blitz run; 0 in other modes.
     int getSecondsRemaining() const noexcept { return secondsRemaining; }
 
@@ -102,5 +109,7 @@ private:
     int livesRemaining = survivalLives;
     int runScore = 0;
     int roundsThisRun = 0;
+    int currentStreak = 0;
+    int bestStreakThisRun = 0;
     int secondsRemaining = 0;
 };

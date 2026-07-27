@@ -183,5 +183,11 @@
   "slice.bright": "Aigus",
   "slice.fullRange": "Mix complet",
   "ui.importHint": "Les morceaux sont découpés en boucles de 8 secondes et triés par caractère. Vos fichiers ne sont pas modifiés.",
-  "ui.about": "À propos"
+  "ui.about": "À propos",
+  "ui.runResults": "Manche terminée",
+  "ui.playAgain": "Rejouer",
+  "ui.score.caption": "Score",
+  "ui.personalBest": "Record personnel",
+  "ui.newBest": "Nouveau record !",
+  "ui.whereYouStand": "Où tu en es"
 }

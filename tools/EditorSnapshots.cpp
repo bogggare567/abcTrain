@@ -74,7 +74,7 @@ namespace
         return false;
     }
 
-    enum class Extra { none, training, sounds, settings };
+    enum class Extra { none, training, sounds, settings, results };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -122,6 +122,9 @@ namespace
 
                 if (extra == Extra::settings)
                     editor.openSettingsForSnapshot();
+
+                if (extra == Extra::results)
+                    editor.showRunResultsForSnapshot();
             }
 
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
@@ -196,6 +199,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Training", 0);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
 
             if (hadSettings)
             {

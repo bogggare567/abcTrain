@@ -8,6 +8,7 @@
 #include "HomeScreenComponent.h"
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
+#include "RunResultsComponent.h"
 #include "SessionManager.h"
 #include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
@@ -42,6 +43,22 @@ public:
     // Opens the training-sounds window for the screenshot tool, for the
     // same reason as the training screen: it is a whole screen the gallery
     // could not otherwise show.
+    // For tools/EditorSnapshots: a run-results screen with plausible
+    // numbers in it, since there is no way to lose a Survival run from
+    // outside and this is a whole screen the gallery could not show.
+    void showRunResultsForSnapshot()
+    {
+        session.setMode (SessionManager::Mode::survival);
+        showScreen (Screen::training);
+
+        for (int i = 0; i < 14; ++i)
+            session.registerAnswer (i % 4 != 3);
+
+        pendingPreviousBest = 9;
+        showRunResults (11);
+        runResults.completeAnimation();
+    }
+
     void openSettingsForSnapshot()
     {
         settingsScreen.setVisible (true);
@@ -408,6 +425,17 @@ private:
     // Declared here, but addChildComponent()'d last in the constructor so
     // it paints over everything - the same z-order rule the lesson and
     // training-sounds overlays already had to learn (decisions/015, 017).
+    // Shown when a Survival or Blitz run ends. Added before the toast so
+    // an achievement earned on the final answer still lands on top of it.
+    RunResultsComponent runResults;
+
+    void showRunResults (int finalScore);
+
+    // Read before ProgressManager is told about the run, so the results
+    // screen can say "personal best" instead of comparing the new record
+    // against itself.
+    int pendingPreviousBest = 0;
+
     AchievementToast achievementToast;
 
     // Theme, window size, text size, wallpaper - the settings that are set

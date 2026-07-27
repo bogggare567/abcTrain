@@ -183,5 +183,11 @@
   "slice.bright": "高频",
   "slice.fullRange": "完整混音",
   "ui.importHint": "曲目会被切成 8 秒的循环并按特征分类。你的原始文件不会被改动。",
-  "ui.about": "关于"
+  "ui.about": "关于",
+  "ui.runResults": "本轮结束",
+  "ui.playAgain": "再来一次",
+  "ui.score.caption": "得分",
+  "ui.personalBest": "个人最佳",
+  "ui.newBest": "新纪录！",
+  "ui.whereYouStand": "你的位置"
 }

@@ -183,5 +183,11 @@
   "slice.bright": "Agudos",
   "slice.fullRange": "Mezcla completa",
   "ui.importHint": "Las pistas se cortan en bucles de 8 segundos y se ordenan por carácter. Tus archivos no se tocan.",
-  "ui.about": "Acerca de"
+  "ui.about": "Acerca de",
+  "ui.runResults": "Ronda terminada",
+  "ui.playAgain": "Otra vez",
+  "ui.score.caption": "Puntos",
+  "ui.personalBest": "Récord personal",
+  "ui.newBest": "¡Nuevo récord!",
+  "ui.whereYouStand": "Dónde estás"
 }

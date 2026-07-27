@@ -183,5 +183,11 @@
   "slice.bright": "Agudos",
   "slice.fullRange": "Mistura completa",
   "ui.importHint": "As faixas são cortadas em loops de 8 segundos e ordenadas por carácter. Os teus ficheiros não são tocados.",
-  "ui.about": "Acerca de"
+  "ui.about": "Acerca de",
+  "ui.runResults": "Ronda terminada",
+  "ui.playAgain": "Outra vez",
+  "ui.score.caption": "Pontos",
+  "ui.personalBest": "Recorde pessoal",
+  "ui.newBest": "Novo recorde!",
+  "ui.whereYouStand": "Onde estás"
 }

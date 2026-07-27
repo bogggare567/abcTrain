@@ -233,6 +233,39 @@ public:
 
             expect (! reported);
         }
+
+        beginTest ("best streak this run is the run's own, and resets with it");
+        {
+            SessionManager session;
+            session.setMode (SessionManager::Mode::practice);
+            session.startRun();
+
+            expectEquals (session.getBestStreakThisRun(), 0);
+
+            session.registerAnswer (true);
+            session.registerAnswer (true);
+            session.registerAnswer (true);
+            expectEquals (session.getBestStreakThisRun(), 3);
+
+            // A wrong answer breaks the streak but not the record of it.
+            session.registerAnswer (false);
+            expectEquals (session.getBestStreakThisRun(), 3);
+
+            session.registerAnswer (true);
+            session.registerAnswer (true);
+            expectEquals (session.getBestStreakThisRun(), 3,
+                           "a shorter later streak must not replace the best");
+
+            for (int i = 0; i < 4; ++i)
+                session.registerAnswer (true);
+
+            expectEquals (session.getBestStreakThisRun(), 6);
+
+            // The next run starts clean: this is *this run's* streak, and
+            // reporting last run's would make the results screen lie.
+            session.startRun();
+            expectEquals (session.getBestStreakThisRun(), 0);
+        }
     }
 };
 

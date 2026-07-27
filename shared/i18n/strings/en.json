@@ -183,5 +183,11 @@
   "slice.bright": "Bright",
   "slice.fullRange": "Full mix",
   "ui.importHint": "Tracks are cut into 8-second loops and sorted by character. Your files are not touched.",
-  "ui.about": "About"
+  "ui.about": "About",
+  "ui.runResults": "Run over",
+  "ui.playAgain": "Play again",
+  "ui.score.caption": "Score",
+  "ui.personalBest": "Personal best",
+  "ui.newBest": "New personal best!",
+  "ui.whereYouStand": "Where you stand"
 }

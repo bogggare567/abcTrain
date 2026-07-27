@@ -183,5 +183,11 @@
   "slice.bright": "Góra",
   "slice.fullRange": "Cały miks",
   "ui.importHint": "Utwory są cięte na 8-sekundowe pętle i sortowane wg charakteru. Twoje pliki pozostają nietknięte.",
-  "ui.about": "O programie"
+  "ui.about": "O programie",
+  "ui.runResults": "Runda skończona",
+  "ui.playAgain": "Jeszcze raz",
+  "ui.score.caption": "Punkty",
+  "ui.personalBest": "Rekord osobisty",
+  "ui.newBest": "Nowy rekord!",
+  "ui.whereYouStand": "Gdzie jesteś"
 }

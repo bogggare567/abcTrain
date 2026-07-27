@@ -183,5 +183,11 @@
   "slice.bright": "高域",
   "slice.fullRange": "フルミックス",
   "ui.importHint": "曲は8秒のループに切り分けられ、性格別に仕分けされます。元のファイルは変更されません。",
-  "ui.about": "このアプリについて"
+  "ui.about": "このアプリについて",
+  "ui.runResults": "ラウンド終了",
+  "ui.playAgain": "もう一度",
+  "ui.score.caption": "スコア",
+  "ui.personalBest": "自己ベスト",
+  "ui.newBest": "自己ベスト更新！",
+  "ui.whereYouStand": "現在地"
 }
