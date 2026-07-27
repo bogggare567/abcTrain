@@ -9,6 +9,7 @@
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
 #include "RunResultsComponent.h"
+#include "AchievementsScreenComponent.h"
 #include "SessionManager.h"
 #include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
@@ -58,6 +59,8 @@ public:
         showRunResults (11);
         runResults.completeAnimation();
     }
+
+    void openAchievementsForSnapshot() { showAchievementsScreen(); }
 
     void openSettingsForSnapshot()
     {
@@ -428,6 +431,10 @@ private:
     // Shown when a Survival or Blitz run ends. Added before the toast so
     // an achievement earned on the final answer still lands on top of it.
     RunResultsComponent runResults;
+
+    // The full shelf, opened from the home screen's badge strip.
+    AchievementsScreenComponent achievementsScreen;
+    void showAchievementsScreen();
 
     void showRunResults (int finalScore);
 

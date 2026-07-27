@@ -189,5 +189,10 @@
   "ui.score.caption": "Score",
   "ui.personalBest": "Personal best",
   "ui.newBest": "New personal best!",
-  "ui.whereYouStand": "Where you stand"
+  "ui.whereYouStand": "Where you stand",
+  "tier.bronze": "Bronze",
+  "tier.silver": "Silver",
+  "tier.gold": "Gold",
+  "tier.platinum": "Platinum",
+  "ui.achievementsSubtitle": "{{earned}} of {{total}} earned — the locked ones show what there is to get good at"
 }

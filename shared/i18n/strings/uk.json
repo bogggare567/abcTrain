@@ -189,5 +189,10 @@
   "ui.score.caption": "Очки",
   "ui.personalBest": "Особистий рекорд",
   "ui.newBest": "Новий рекорд!",
-  "ui.whereYouStand": "Де ти зараз"
+  "ui.whereYouStand": "Де ти зараз",
+  "tier.bronze": "Бронза",
+  "tier.silver": "Срібло",
+  "tier.gold": "Золото",
+  "tier.platinum": "Платина",
+  "ui.achievementsSubtitle": "Отримано {{earned}} з {{total}} — закриті показують, у чому ще можна стати добрим"
 }

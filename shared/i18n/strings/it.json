@@ -189,5 +189,10 @@
   "ui.score.caption": "Punti",
   "ui.personalBest": "Record personale",
   "ui.newBest": "Nuovo record!",
-  "ui.whereYouStand": "A che punto sei"
+  "ui.whereYouStand": "A che punto sei",
+  "tier.bronze": "Bronzo",
+  "tier.silver": "Argento",
+  "tier.gold": "Oro",
+  "tier.platinum": "Platino",
+  "ui.achievementsSubtitle": "{{earned}} su {{total}} — quelli bloccati mostrano in cosa si può ancora migliorare"
 }

@@ -42,6 +42,14 @@ each editor and photographs it. Nothing is a mockup.
 <td colspan="2" align="center"><b>Answering.</b> Drag along the scale; a band that narrows as you level up decides whether you were close enough. <b>A/B</b> switches between the untreated sound and the one with the change in it — the only reliable way to hear a difference.</td>
 </tr>
 <tr>
+<td><img src="docs/screenshots/EarTrainer-Results-dark.png" alt="The run summary: score, accuracy against your lifetime figure, best streak, and where the four skill families stand"></td>
+<td><img src="docs/screenshots/EarTrainer-Achievements-dark.png" alt="The achievements shelf: earned ones with their metal, locked ones with a progress arc and a percentage"></td>
+</tr>
+<tr>
+<td align="center"><b>When a run ends</b> it tells you what happened — against your own record, never against invented percentiles.</td>
+<td align="center"><b>The shelf shows the locked ones too.</b> The unearned list is a map of the subject: it says what there is to get good at.</td>
+</tr>
+<tr>
 <td><img src="docs/screenshots/LearnerEQ-dark.png" alt="Learner EQ: a live spectrum with the response curve drawn over it, and four bands of frequency, gain and Q"></td>
 <td><img src="docs/screenshots/LearnerComp-dark.png" alt="Learner Comp: live spectrum, scrolling waveform, a gain-reduction meter and seven knobs"></td>
 </tr>
@@ -58,6 +66,10 @@ each editor and photographs it. Nothing is a mockup.
 <td align="center"><b>A real light theme</b>, designed rather than inverted — warm paper, deeper accents, softer shadows.</td>
 </tr>
 </table>
+
+Why the app is shaped this way — why per-exercise levels instead of one
+bar, why the locked achievements are shown, why there are no leaderboards
+— is written down in **[docs/user-journey.md](docs/user-journey.md)**.
 
 ---
 

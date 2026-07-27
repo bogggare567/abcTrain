@@ -189,5 +189,10 @@
   "ui.score.caption": "점수",
   "ui.personalBest": "개인 최고",
   "ui.newBest": "개인 최고 기록!",
-  "ui.whereYouStand": "현재 위치"
+  "ui.whereYouStand": "현재 위치",
+  "tier.bronze": "브론즈",
+  "tier.silver": "실버",
+  "tier.gold": "골드",
+  "tier.platinum": "플래티넘",
+  "ui.achievementsSubtitle": "{{total}}개 중 {{earned}}개 —— 잠긴 것들이 아직 무엇을 잘하게 될 수 있는지 알려줍니다"
 }

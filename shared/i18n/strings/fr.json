@@ -189,5 +189,10 @@
   "ui.score.caption": "Score",
   "ui.personalBest": "Record personnel",
   "ui.newBest": "Nouveau record !",
-  "ui.whereYouStand": "Où tu en es"
+  "ui.whereYouStand": "Où tu en es",
+  "tier.bronze": "Bronze",
+  "tier.silver": "Argent",
+  "tier.gold": "Or",
+  "tier.platinum": "Platine",
+  "ui.achievementsSubtitle": "{{earned}} sur {{total}} — les verrouillés montrent ce qu’il reste à maîtriser"
 }

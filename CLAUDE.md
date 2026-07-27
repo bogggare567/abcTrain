@@ -43,7 +43,13 @@ that depend on them.
 
 ## Docs directory
 
-`docs/roadmap.md` (status of everything, done vs. planned),
+`docs/user-journey.md` (**the document product decisions answer to** — the
+honest problem, an honest comparison against the alternatives, the three
+advantages every feature should pay into, why anyone returns at four
+different timescales, what is deliberately absent, and three questions
+for judging any proposed feature; read it before adding anything that
+makes a number go up), `docs/roadmap.md` (status of everything, done vs.
+planned),
 `docs/library_catalog.md` (bibliography of the user's local audio-
 engineering book collection, title/author/topic only — no book text was
 ever extracted, see ADR 010), `docs/knowledge_base.md` (original
@@ -374,6 +380,21 @@ full rationale.
   [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md)),
   the same `juce_animation` module already used by `LevelProgressBar`'s
   fill transition below.
+- `Source/AchievementsScreenComponent.{h,cpp}` — the full shelf, opened by
+  clicking the home screen's badge strip (which was previously a caption
+  and a row of discs that did nothing when pressed). Locked entries are
+  **shown, not hidden**: each carries a progress arc and a percentage,
+  because the unearned list is a map of the subject — it names skills a
+  player did not know were separable. Entries sort earned-first, then by
+  how close they are. `Achievements::nameKeyForTier` supplies the metal's
+  i18n key; `colourForTier` darkens silver and platinum in the light
+  theme in proportion to their own brightness, since those two are
+  near-invisible as text on an off-white card (found in the light
+  snapshot — the recurring bug class this project keeps re-learning). The
+  list fades into the panel at whichever end still has content past it:
+  that fade *is* the scrollbar, appearing only when there is somewhere to
+  go. See [docs/user-journey.md](docs/user-journey.md) for why the screen
+  is shaped this way rather than as a grid of locked question marks.
 - `Source/Achievements.{h,cpp}` — the named things a player can earn, as
   pure data plus pure rules over a `Snapshot` of what `ProgressManager`
   already records. No `Component`, no `PropertiesFile`, no message loop,

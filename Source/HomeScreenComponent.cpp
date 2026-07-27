@@ -448,6 +448,14 @@ void HomeScreenComponent::mouseExit (const juce::MouseEvent&)
 
 void HomeScreenComponent::mouseUp (const juce::MouseEvent& event)
 {
+    if (badgeStrip.contains (event.getPosition()))
+    {
+        if (onBadgeStripClicked != nullptr)
+            onBadgeStripClicked();
+
+        return;
+    }
+
     const auto tile = tileIndexAt (event.getPosition());
 
     if (tile < 0 || tile >= (int) cards.size())

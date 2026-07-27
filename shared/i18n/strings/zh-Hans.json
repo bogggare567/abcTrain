@@ -189,5 +189,10 @@
   "ui.score.caption": "得分",
   "ui.personalBest": "个人最佳",
   "ui.newBest": "新纪录！",
-  "ui.whereYouStand": "你的位置"
+  "ui.whereYouStand": "你的位置",
+  "tier.bronze": "青铜",
+  "tier.silver": "白银",
+  "tier.gold": "黄金",
+  "tier.platinum": "铂金",
+  "ui.achievementsSubtitle": "已获得 {{earned}} / {{total}} —— 未解锁的那些告诉你还有什么值得练"
 }

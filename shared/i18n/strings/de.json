@@ -189,5 +189,10 @@
   "ui.score.caption": "Punkte",
   "ui.personalBest": "Persönliche Bestleistung",
   "ui.newBest": "Neue Bestleistung!",
-  "ui.whereYouStand": "Wo du stehst"
+  "ui.whereYouStand": "Wo du stehst",
+  "tier.bronze": "Bronze",
+  "tier.silver": "Silber",
+  "tier.gold": "Gold",
+  "tier.platinum": "Platin",
+  "ui.achievementsSubtitle": "{{earned}} von {{total}} — die gesperrten zeigen, worin man noch gut werden kann"
 }

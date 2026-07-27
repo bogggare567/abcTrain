@@ -92,6 +92,11 @@ public:
     std::function<void (int gameIndex)> onGameChosen;
     std::function<void (int gameIndex, bool shouldBeFavourite)> onFavouriteToggled;
 
+    // Clicking the badge strip opens the full shelf. It used to be a
+    // caption and a row of discs that did nothing when pressed - a dead
+    // end where the most interesting thing on the screen was.
+    std::function<void()> onBadgeStripClicked;
+
     void paint (juce::Graphics&) override;
     void resized() override;
     void mouseMove (const juce::MouseEvent&) override;

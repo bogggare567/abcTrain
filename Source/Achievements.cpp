@@ -205,15 +205,41 @@ namespace Achievements
 
     juce::Colour colourForTier (Tier tier) noexcept
     {
+        // Metals, picked to read on the dark page: pale silver and paler
+        // platinum are what make those tiers *look* like the higher ones.
+        auto colour = juce::Colour (0xffb9c0c9);
+
         switch (tier)
         {
-            case Tier::bronze:    return juce::Colour (0xffb8763f);
-            case Tier::silver:    return juce::Colour (0xffb2bac4);
-            case Tier::gold:      return juce::Colour (0xffd7ac4e);
-            case Tier::platinum:  return juce::Colour (0xffbfe0e6);
+            case Tier::bronze:    colour = juce::Colour (0xffb8763f); break;
+            case Tier::silver:    colour = juce::Colour (0xffb2bac4); break;
+            case Tier::gold:      colour = juce::Colour (0xffd7ac4e); break;
+            case Tier::platinum:  colour = juce::Colour (0xffbfe0e6); break;
         }
 
-        return juce::Colour (0xffb9c0c9);
+        // On the light page those same two are near-invisible as text on an
+        // off-white card - caught by looking at the light snapshot, which is
+        // the recurring bug class this project keeps re-learning. Darkening
+        // is proportional to how pale the metal is, so bronze and gold are
+        // barely touched and silver/platinum come down far enough to read
+        // while still ranking above bronze by brightness.
+        if (AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light)
+            colour = colour.darker (colour.getPerceivedBrightness() * 0.95f);
+
+        return colour;
+    }
+
+    const char* nameKeyForTier (Tier tier) noexcept
+    {
+        switch (tier)
+        {
+            case Tier::bronze:   return "tier.bronze";
+            case Tier::silver:   return "tier.silver";
+            case Tier::gold:     return "tier.gold";
+            case Tier::platinum: return "tier.platinum";
+        }
+
+        return "tier.bronze";
     }
 
     const std::vector<Definition>& all()

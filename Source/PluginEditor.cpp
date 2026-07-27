@@ -522,6 +522,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     addChildComponent (runResults);
 
+    achievementsScreen.onClosed = [this] { resized(); repaint(); };
+    addChildComponent (achievementsScreen);
+
+    homeScreen.onBadgeStripClicked = [this] { showAchievementsScreen(); };
+
     addChildComponent (achievementToast);
     trainingSounds.onClosed = [this] { resized(); };
 
@@ -850,12 +855,49 @@ void EarTrainerEditor::resized()
 
     // Centred under the title row, wide enough for an achievement name.
     runResults.setBounds (getLocalBounds());
+    achievementsScreen.setBounds (getLocalBounds());
 
     achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
                                                  .withHeight (52)
                                                  .withSizeKeepingCentre (
                                                      juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
                                                  .withY (Spacing::large + 34));
+}
+
+void EarTrainerEditor::showAchievementsScreen()
+{
+    auto& progress = processor.getProgressManager();
+    auto& gameManager = processor.getGameManager();
+
+    const auto snapshot = progress.makeAchievementSnapshot();
+    std::vector<AchievementsScreenComponent::Entry> entries;
+
+    for (const auto& definition : Achievements::all())
+    {
+        AchievementsScreenComponent::Entry entry;
+        entry.name = localisation.getText (definition.nameKey);
+        entry.description = localisation.getText (definition.descriptionKey);
+        entry.earned = progress.hasAchievement (definition.id);
+        entry.progress = Achievements::progressTowards (definition, snapshot);
+        entry.tint = Achievements::colourForTier (definition.tier);
+        entry.tierName = localisation.getText (Achievements::nameKeyForTier (definition.tier));
+        entry.icon = definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames()
+                         ? AppIcons::iconForGameName (gameManager.getGame (definition.gameIndex).getName())
+                         : AppIcons::Icon::award;
+
+        entries.push_back (std::move (entry));
+    }
+
+    achievementsScreen.setStrings (
+        localisation.getText ("ui.achievements"),
+        localisation.getText ("ui.achievementsSubtitle",
+                               { { "earned", juce::String (progress.getNumAchievementsEarned()) },
+                                 { "total", juce::String ((int) Achievements::all().size()) } }),
+        localisation.getText ("ui.close"));
+
+    achievementsScreen.setEntries (std::move (entries));
+    achievementsScreen.setVisible (true);
+    achievementsScreen.toFront (false);
 }
 
 void EarTrainerEditor::showRunResults (int finalScore)

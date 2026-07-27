@@ -189,5 +189,10 @@
   "ui.score.caption": "スコア",
   "ui.personalBest": "自己ベスト",
   "ui.newBest": "自己ベスト更新！",
-  "ui.whereYouStand": "現在地"
+  "ui.whereYouStand": "現在地",
+  "tier.bronze": "ブロンズ",
+  "tier.silver": "シルバー",
+  "tier.gold": "ゴールド",
+  "tier.platinum": "プラチナ",
+  "ui.achievementsSubtitle": "{{total}} 中 {{earned}} 獲得 —— 未取得のものが、まだ上達できる余地を示します"
 }

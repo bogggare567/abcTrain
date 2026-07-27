@@ -67,6 +67,9 @@ namespace Achievements
 
     juce::Colour colourForTier (Tier) noexcept;
 
+    // i18n key for the tier's name, resolved by the caller.
+    const char* nameKeyForTier (Tier) noexcept;
+
     struct Definition
     {
         // Stable across releases: it is the persistence key. Renaming one
