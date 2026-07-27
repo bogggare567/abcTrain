@@ -85,3 +85,17 @@ Buying an album licenses listening, not redistribution, and renaming a
 file changes nothing about that. The tool that makes *any* user's own
 audio work is the part that was worth building, and it is the part that
 shipped.
+
+
+## A colour note from the same pass
+
+Reviewing both themes side by side turned up one more thing worth
+recording. The per-exercise background tint had been raised to a strength
+that read well on dark and was matched on light — and 26% of amber mixed
+into a warm off-white turns the whole window tan. It reads as a stain, not
+as a room.
+
+A light page has far less headroom before a tint becomes the subject of
+the screen. Light is 10% now, dark stays at 32%. The general form of the
+mistake is worth remembering: **a value tuned on one theme is not a value,
+it is a coincidence.**

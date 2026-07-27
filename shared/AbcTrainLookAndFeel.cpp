@@ -517,12 +517,15 @@ void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectang
         return;
     }
 
-    // Each exercise's own room. This used to mix in 11% of the family
-    // colour, which was invisible in practice - it was reported as simply
-    // not implemented, which is a fair description of a change nobody can
-    // see. 32% dark / 26% light is a backdrop you notice on arriving and
-    // stop noticing while answering, which is the whole target.
-    const auto tintStrength = t.mode == Mode::light ? 0.26f : 0.32f;
+    // Each exercise's own room.
+    //
+    // The two modes need very different amounts, and matching them was a
+    // mistake worth recording: 26% of amber mixed into a warm off-white
+    // turns the whole window tan - it reads as a stain rather than as a
+    // room - while the same 26% of the same colour against a near-black is
+    // barely a tilt. A light page has far less headroom before a tint
+    // becomes the subject.
+    const auto tintStrength = t.mode == Mode::light ? 0.10f : 0.32f;
     const auto base = tint.isTransparent() ? t.windowBackground
                                            : t.windowBackground.interpolatedWith (tint.withAlpha (1.0f), tintStrength);
 

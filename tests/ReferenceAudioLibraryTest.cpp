@@ -1,6 +1,7 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "../Source/ReferenceAudioLibrary.h"
+#include "../Source/AudioSliceAnalyzer.h"
 #include "../shared/TestUtils.h"
 
 namespace
@@ -200,7 +201,120 @@ public:
         }
 
         tempRoot.deleteRecursively();
+
+        beginTest ("importAndSlice cuts a long file into sorted, playable clips");
+        {
+            const auto root = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                  .getChildFile ("abcTrainImportTest").getNonexistentSibling();
+            root.createDirectory();
+
+            // A 30-second source: 4 clicks a second, which is
+            // unambiguously percussive by construction.
+            const auto source = root.getChildFile ("source.wav");
+            writeClickTrain (source, 44100.0, 30.0, 4.0);
+
+            auto options = makeTempOptions ("import");
+            juce::PropertiesFile properties (options);
+            ReferenceAudioLibrary library (properties);
+            library.setRootFolder (root);
+
+            const auto written = library.importAndSlice (source);
+
+            expect (written > 0, "nothing was written from a perfectly usable file");
+
+            const auto percussive = root.getChildFile (
+                AudioSliceAnalyzer::folderNameFor (AudioSliceAnalyzer::Character::percussive));
+
+            expect (percussive.isDirectory(), "the character folder was not created");
+
+            const auto clips = percussive.findChildFiles (juce::File::findFiles, false, "*.wav");
+            expectEquals (clips.size(), written, "the count reported does not match the files on disk");
+
+            // Every clip must be readable audio of the expected length -
+            // a writer that silently produced a 44-byte header would still
+            // have "written" something.
+            juce::AudioFormatManager formats;
+            formats.registerBasicFormats();
+
+            for (const auto& clip : clips)
+            {
+                std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (clip));
+
+                expect (reader != nullptr, "a written clip is not readable: " + clip.getFileName());
+
+                if (reader != nullptr)
+                {
+                    const auto seconds = (double) reader->lengthInSamples / reader->sampleRate;
+                    expect (seconds > 7.0 && seconds < 9.0,
+                             "a clip is not the requested length: " + juce::String (seconds));
+                }
+            }
+
+            // The source is the player's own file and must come back
+            // untouched - not moved, not renamed, not consumed.
+            expect (source.existsAsFile(), "the source file was disturbed");
+
+            root.deleteRecursively();
+        }
+
+        beginTest ("importing something that is not audio is a no-op, not a crash");
+        {
+            const auto root = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                  .getChildFile ("abcTrainImportJunk").getNonexistentSibling();
+            root.createDirectory();
+
+            const auto junk = root.getChildFile ("notes.txt");
+            junk.replaceWithText ("this is not a wav file");
+
+            auto options = makeTempOptions ("importjunk");
+            juce::PropertiesFile properties (options);
+            ReferenceAudioLibrary library (properties);
+            library.setRootFolder (root);
+
+            expectEquals (library.importAndSlice (junk), 0);
+            expectEquals (library.importAndSlice (juce::File()), 0);
+            expectEquals (library.importAndSlice (root.getChildFile ("nothing here.wav")), 0);
+
+            root.deleteRecursively();
+        }
+    }
+
+private:
+    static void writeClickTrain (const juce::File& destination, double sampleRate,
+                                 double seconds, double clicksPerSecond)
+    {
+        const auto numSamples = (int) (sampleRate * seconds);
+        juce::AudioBuffer<float> buffer (2, numSamples);
+        buffer.clear();
+
+        const auto period = (int) (sampleRate / clicksPerSecond);
+        const auto decay = (int) (sampleRate * 0.03);
+        juce::Random random (99);
+
+        for (int start = 0; start + decay < numSamples; start += period)
+            for (int i = 0; i < decay; ++i)
+            {
+                const auto envelope = 1.0f - (float) i / (float) decay;
+                const auto value = (random.nextFloat() * 2.0f - 1.0f) * envelope * 0.7f;
+                buffer.setSample (0, start + i, value);
+                buffer.setSample (1, start + i, value);
+            }
+
+        destination.deleteFile();
+
+        if (auto stream = destination.createOutputStream())
+        {
+            juce::WavAudioFormat wav;
+
+            if (auto* writer = wav.createWriterFor (stream.get(), sampleRate, 2, 16, {}, 0))
+            {
+                stream.release();
+                writer->writeFromAudioSampleBuffer (buffer, 0, numSamples);
+                delete writer;
+            }
+        }
     }
 };
+
 
 static ReferenceAudioLibraryTest referenceAudioLibraryTest;
