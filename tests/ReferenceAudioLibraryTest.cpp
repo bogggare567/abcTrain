@@ -277,6 +277,60 @@ public:
 
             root.deleteRecursively();
         }
+
+        beginTest ("a category rotates through its clips instead of repeating one");
+        {
+            const auto root = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                  .getChildFile ("abcTrainRotate").getNonexistentSibling();
+
+            const auto category = root.getChildFile ("Loops");
+            category.createDirectory();
+
+            for (int i = 0; i < 5; ++i)
+                writeClickTrain (category.getChildFile ("loop" + juce::String (i) + ".wav"),
+                                  44100.0, 1.0, 4.0);
+
+            auto options = makeTempOptions ("rotate");
+            juce::PropertiesFile properties (options);
+            ReferenceAudioLibrary library (properties);
+            library.setRootFolder (root);
+
+            library.setActiveCategory ("Loops", 44100.0);
+            expect (library.getSelectedFile().existsAsFile(), "nothing was selected");
+
+            // The point of holding a category rather than a file: a fresh
+            // clip each round. Twenty advances over five files should touch
+            // more than one of them - and must never repeat immediately,
+            // which reads as the app being stuck.
+            juce::StringArray seen;
+            auto previous = library.getSelectedFile();
+
+            for (int i = 0; i < 20; ++i)
+            {
+                library.advanceToRandomClip (44100.0);
+                const auto current = library.getSelectedFile();
+
+                expect (current != previous, "the same clip was played twice running");
+                seen.addIfNotAlreadyThere (current.getFileName());
+                previous = current;
+            }
+
+            expect (seen.size() > 1, "the rotation never left the first clip");
+
+            // A category with one file has nowhere to rotate to, and must
+            // simply stay put rather than clearing the selection.
+            const auto single = root.getChildFile ("Single");
+            single.createDirectory();
+            writeClickTrain (single.getChildFile ("only.wav"), 44100.0, 1.0, 4.0);
+            library.rescan();
+
+            library.setActiveCategory ("Single", 44100.0);
+            const auto only = library.getSelectedFile();
+            library.advanceToRandomClip (44100.0);
+            expect (library.getSelectedFile() == only);
+
+            root.deleteRecursively();
+        }
     }
 
 private:

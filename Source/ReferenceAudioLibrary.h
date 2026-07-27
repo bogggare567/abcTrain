@@ -3,6 +3,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_data_structures/juce_data_structures.h>
 #include <atomic>
+#include <functional>
 
 // Lets a player practice EarTrainer's games on real reference audio they
 // supply themselves (e.g. a folder of tracks organised one subfolder per
@@ -61,6 +62,24 @@ public:
     // The caller is responsible for not doing this on the audio thread or
     // while the user expects the UI to respond.
     int importAndSlice (const juce::File& source);
+
+    // The same work, over several files, safe to call from a background
+    // thread. `onProgress` is called with 0..1 and the name of the file
+    // being worked on; `shouldStop` is polled between files and between
+    // clips so a long import can be abandoned when the window closes.
+    //
+    // Does **not** rescan - that touches state the message thread owns.
+    // The caller rescans when it comes back.
+    int importAndSliceMany (const juce::Array<juce::File>& sources,
+                            std::function<void (float, juce::String)> onProgress,
+                            std::function<bool()> shouldStop);
+
+    // Where imported clips go. The app's own storage, not somewhere the
+    // player has to find and pick: the folder-choosing step was a question
+    // nobody wanted to answer before they could try the feature. A folder
+    // *can* still be pointed at (setRootFolder), it just is not the way in
+    // any more.
+    static juce::File getManagedLibraryFolder();
     const juce::Array<Category>& getCategories() const noexcept { return categories; }
 
     // Loads `file` (message-thread only - blocking file I/O), downmixes
@@ -74,6 +93,21 @@ public:
 
     // Back to pink noise everywhere (see TestSignalGenerator).
     void clearSelection();
+
+    // Picks the category to train on, then a clip from it at random.
+    //
+    // Held as a *category* rather than a file because of what happens
+    // next: advanceToRandomClip swaps in a different clip each round, so
+    // twenty imported drum loops are twenty drum loops rather than the one
+    // the player happened to land on. Repeating a single eight-second loop
+    // for a whole session is the fastest way to stop hearing it.
+    void setActiveCategory (const juce::String& categoryName, double sampleRate);
+    juce::String getActiveCategory() const noexcept { return activeCategory; }
+
+    // A different clip from the active category, avoiding an immediate
+    // repeat where there is more than one to choose from. A no-op when
+    // nothing is selected or the category has a single file.
+    void advanceToRandomClip (double sampleRate);
 
     juce::File getSelectedFile() const noexcept { return selectedFile; }
 
@@ -108,6 +142,8 @@ private:
     juce::Array<Category> categories;
 
     juce::File selectedFile;
+    juce::String activeCategory;
+    juce::Random random;
     // Every loaded buffer is kept alive for the plugin instance's whole
     // lifetime instead of freed on the next selection - freeing one here
     // could race with the audio thread still mid-read of whatever

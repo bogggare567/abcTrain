@@ -99,3 +99,57 @@ A light page has far less headroom before a tint becomes the subject of
 the screen. Light is 10% now, dark stays at 32%. The general form of the
 mistake is worth remembering: **a value tuned on one theme is not a value,
 it is a coincidence.**
+
+
+## Getting it in front of someone
+
+Three changes, all the same idea: the feature is only worth having if
+trying it costs nothing.
+
+**Files, not a folder.** A multi-select file picker, the way every other
+"add your music" dialog on the machine works. Choosing a folder made the
+player answer a question about storage layout before they could find out
+whether the feature was any good.
+
+**The app owns the storage.** Clips land in the application data folder,
+not in someone's music library — they are *derived* files, hundreds of
+eight-second cuts the app made and manages, and littering a music library
+with them is rude. Pointing at an existing folder still works; it is just
+no longer the way in.
+
+**Slicing runs on its own thread, with a progress bar.** Decoding and
+analysing a handful of full-length tracks takes real seconds; a window
+that freezes for them reads as a crash. The worker touches only the
+library and two atomics, and everything that changes the UI comes back
+through `callAsync`. Its destructor waits rather than killing the thread —
+the worker may be midway through writing a WAV, and a half-written file
+in the library is worse than a moment's delay closing the window.
+
+The result is reported as a breakdown, not a total: "47 clips — 21
+percussive, 14 full mix, 12 mid range" tells you whether the material you
+imported was any use, which "47 clips" does not.
+
+## Clips rotate
+
+`ReferenceAudioLibrary` now holds the chosen **category**, not one file,
+and swaps in a different clip each round. Twenty imported loops were
+twenty loops in the library and one loop in practice — whichever came up
+first played for the whole session, and eight seconds repeated for an hour
+is the fastest way to stop hearing it.
+
+Immediate repeats are avoided explicitly: with a handful of clips a
+uniform draw repeats often enough to be noticed, and "it played the same
+thing again" reads as the app being stuck rather than as chance.
+
+A test drives twenty advances over five clips and asserts both properties
+— that it moves, and that it never repeats twice running — plus the
+single-file case, which has nowhere to rotate to and must stay put rather
+than clearing the selection.
+
+## One more regression the tests caught
+
+Per-round jitter on the stereo-width exercise could push the narrow
+setting's multiplier past zero, which collapses the side signal entirely:
+a stereo-width exercise playing mono. Caught by the test that checks left
+and right actually differ, which has been there since that game was
+written and finally earned its keep.

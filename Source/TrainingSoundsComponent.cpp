@@ -89,6 +89,8 @@ void TrainingSoundsComponent::setStrings (juce::String title, juce::String sourc
     repaint();
 }
 
+TrainingSoundsComponent::~TrainingSoundsComponent() = default;
+
 void TrainingSoundsComponent::refresh()
 {
     // Re-read the palette here, not in the constructor. Colours captured
@@ -135,12 +137,12 @@ void TrainingSoundsComponent::selectCategory (int categoryIndex)
     if (categoryIndex < 0 || categoryIndex >= categories.size())
         return;
 
-    const auto& files = categories.getReference (categoryIndex).files;
-    if (files.isEmpty())
-        return;
-
-    const auto& chosen = files.getReference (random.nextInt (files.size()));
-    library.selectFile (chosen, processor.getSampleRate());
+    // Sets the *category*, not one file. The library then swaps in a
+    // different clip each round - see advanceToRandomClip. Picking one
+    // file and looping it all session was the fastest way to stop hearing
+    // the material.
+    library.setActiveCategory (categories.getReference (categoryIndex).name,
+                                processor.getSampleRate());
     updateStatusLabel();
 }
 
@@ -198,8 +200,29 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
     // the two screens are visibly the same product.
     AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), sourceHeading);
 
-    inner.removeFromTop (36.0f + (float) AbcTrainTheme::Spacing::small + 18.0f
-                          + (float) AbcTrainTheme::Spacing::medium);
+    inner.removeFromTop (36.0f + (float) AbcTrainTheme::Spacing::small);
+
+    // While an import runs, the row that normally shows the library path
+    // shows how far along it is and which file is being worked on.
+    if (importRunning)
+    {
+        auto row = inner.removeFromTop (18.0f);
+
+        paintImportProgress (g, row.removeFromLeft (row.getWidth() * 0.55f)
+                                    .withSizeKeepingCentre ((int) (row.getWidth() * 0.55f), 8)
+                                    .toNearestInt());
+
+        g.setColour (theme.textDim);
+        g.setFont (juce::Font (juce::FontOptions (11.0f)));
+        g.drawText (importProgressFile, row.toNearestInt(),
+                     juce::Justification::centredRight, true);
+    }
+    else
+    {
+        inner.removeFromTop (18.0f);
+    }
+
+    inner.removeFromTop ((float) AbcTrainTheme::Spacing::medium);
     AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), trainOnHeading);
 
     if (categoryButtons.isEmpty())
@@ -245,7 +268,9 @@ void TrainingSoundsComponent::resized()
     }
 
     area.removeFromTop (Spacing::small);
+    // Hidden while importing - the progress bar takes this row (paint()).
     rootFolderLabel.setBounds (area.removeFromTop (18));
+    rootFolderLabel.setVisible (! importRunning);
 
     area.removeFromTop (Spacing::medium);
     area.removeFromTop (24);                     // "What to train on"
@@ -284,11 +309,72 @@ void TrainingSoundsComponent::resized()
 }
 
 
+// Runs the slicing off the message thread. Owns nothing the UI owns.
+class TrainingSoundsComponent::ImportJob : public juce::Thread
+{
+public:
+    ImportJob (TrainingSoundsComponent& ownerToUse, juce::Array<juce::File> filesToImport)
+        : juce::Thread ("abcTrain import"), owner (ownerToUse), files (std::move (filesToImport))
+    {
+    }
+
+    ~ImportJob() override
+    {
+        // Waits, rather than killing: the worker is midway through writing
+        // a WAV, and a half-written file in the library is worse than a
+        // moment's delay closing the window.
+        stopThread (4000);
+    }
+
+    void run() override
+    {
+        juce::Component::SafePointer<TrainingSoundsComponent> safeOwner (&owner);
+
+        const auto written = owner.processor.getGameManager().getReferenceAudioLibrary()
+                                 .importAndSliceMany (
+                                     files,
+                                     [safeOwner] (float progress, juce::String fileName)
+                                     {
+                                         if (safeOwner == nullptr)
+                                             return;
+
+                                         safeOwner->importProgress.store (progress);
+
+                                         juce::MessageManager::callAsync ([safeOwner, fileName]
+                                         {
+                                             if (safeOwner != nullptr)
+                                             {
+                                                 safeOwner->importProgressFile = fileName;
+                                                 safeOwner->repaint();
+                                             }
+                                         });
+                                     },
+                                     [this] { return threadShouldExit(); });
+
+        juce::MessageManager::callAsync ([safeOwner, written]
+        {
+            if (safeOwner != nullptr)
+                safeOwner->finishImport (written);
+        });
+    }
+
+private:
+    TrainingSoundsComponent& owner;
+    juce::Array<juce::File> files;
+};
+
 void TrainingSoundsComponent::importAndSort()
 {
+    if (importRunning)
+        return;
+
+    // Files, not a folder, and as many as you like - the way every other
+    // "add your music" dialog on the machine works. Choosing a folder made
+    // the player answer a question about storage layout before they could
+    // find out whether the feature was any good.
     fileChooser = std::make_unique<juce::FileChooser> (
         importButton.getButtonText(),
-        processor.getGameManager().getReferenceAudioLibrary().getRootFolder(),
+        juce::File::getSpecialLocation (juce::File::userMusicDirectory),
         "*.wav;*.aiff;*.aif;*.flac;*.mp3");
 
     juce::Component::SafePointer<TrainingSoundsComponent> safeThis (this);
@@ -296,37 +382,89 @@ void TrainingSoundsComponent::importAndSort()
     fileChooser->launchAsync (
         juce::FileBrowserComponent::openMode
             | juce::FileBrowserComponent::canSelectFiles
-            | juce::FileBrowserComponent::canSelectDirectories,
+            | juce::FileBrowserComponent::canSelectMultipleItems,
         [safeThis] (const juce::FileChooser& chooser)
         {
             if (safeThis == nullptr)
                 return;
 
-            const auto chosen = chooser.getResult();
+            const auto chosen = chooser.getResults();
 
-            if (chosen == juce::File())
+            if (chosen.isEmpty())
                 return;
 
-            // Say something before the wait, not after it. Decoding and
-            // analysing a folder of full-length tracks takes real seconds,
-            // and a window that simply freezes reads as a crash.
-            safeThis->statusLabel.setText (safeThis->importingText, juce::dontSendNotification);
-            safeThis->repaint();
-
-            juce::MessageManager::callAsync ([safeThis, chosen]
-            {
-                if (safeThis == nullptr)
-                    return;
-
-                const auto written = safeThis->processor.getGameManager()
-                                         .getReferenceAudioLibrary().importAndSlice (chosen);
-
-                safeThis->statusLabel.setText (
-                    written > 0 ? safeThis->importedClipsText.replace ("{{count}}", juce::String (written))
-                                : safeThis->importedNothingText,
-                    juce::dontSendNotification);
-
-                safeThis->refresh();
-            });
+            safeThis->startImport (chosen);
         });
+}
+
+void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files)
+{
+    importJob.reset();
+
+    importRunning = true;
+    importProgress.store (0.0f);
+    importProgressFile = {};
+
+    importButton.setEnabled (false);
+    chooseFolderButton.setEnabled (false);
+
+    importJob = std::make_unique<ImportJob> (*this, files);
+    importJob->startThread();
+
+    repaint();
+}
+
+void TrainingSoundsComponent::finishImport (int clipsWritten)
+{
+    importRunning = false;
+    importButton.setEnabled (true);
+    chooseFolderButton.setEnabled (true);
+
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    library.rescan();
+
+    if (clipsWritten <= 0)
+    {
+        statusLabel.setText (importedNothingText, juce::dontSendNotification);
+        refresh();
+        return;
+    }
+
+    // What was added, broken down - "47 clips" says less than the shape of
+    // the library it just built, and the shape is what tells you whether
+    // the material you imported was any use.
+    juce::StringArray parts;
+
+    for (const auto& category : library.getCategories())
+        if (! category.name.startsWith ("Built-in") && ! category.files.isEmpty())
+            parts.add (juce::String (category.files.size()) + " " + category.name.toLowerCase());
+
+    statusLabel.setText (importedClipsText.replace ("{{count}}", juce::String (clipsWritten))
+                             + (parts.isEmpty() ? juce::String()
+                                                : "  -  " + parts.joinIntoString (", ")),
+                          juce::dontSendNotification);
+
+    refresh();
+}
+
+void TrainingSoundsComponent::paintImportProgress (juce::Graphics& g, juce::Rectangle<int> area)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto bounds = area.toFloat();
+
+    g.setColour (theme.displayBackground);
+    g.fillRoundedRectangle (bounds, bounds.getHeight() * 0.5f);
+
+    const auto progress = juce::jlimit (0.0f, 1.0f, importProgress.load());
+
+    if (progress > 0.001f)
+    {
+        g.setColour (theme.accent);
+        g.fillRoundedRectangle (bounds.withWidth (juce::jmax (bounds.getHeight(),
+                                                              bounds.getWidth() * progress)),
+                                 bounds.getHeight() * 0.5f);
+    }
+
+    g.setColour (theme.outline.withAlpha (0.6f));
+    g.drawRoundedRectangle (bounds, bounds.getHeight() * 0.5f, 1.0f);
 }

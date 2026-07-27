@@ -1,5 +1,8 @@
 #pragma once
 
+#include <atomic>
+#include <memory>
+
 #include "PluginProcessor.h"
 #include <functional>
 
@@ -31,6 +34,11 @@ public:
     void refresh();
 
     void paint (juce::Graphics&) override;
+    // Out of line, so it sees a complete ImportJob - a unique_ptr to an
+    // incomplete type cannot be destroyed by a compiler-generated
+    // destructor.
+    ~TrainingSoundsComponent() override;
+
     void resized() override;
 
     // Localised strings, pushed in by the editor - this component keeps no
@@ -53,6 +61,22 @@ private:
 
     void importAndSort();
     juce::TextButton importButton;
+
+    // The import runs on its own thread: decoding and analysing a handful
+    // of full-length tracks takes real seconds, and a window that freezes
+    // for them reads as a crash. The thread only touches the library and
+    // two atomics; everything that changes the UI comes back through
+    // callAsync on the message thread.
+    class ImportJob;
+    std::unique_ptr<ImportJob> importJob;
+
+    std::atomic<float> importProgress { 0.0f };
+    juce::String importProgressFile;
+    bool importRunning = false;
+
+    void startImport (const juce::Array<juce::File>& files);
+    void finishImport (int clipsWritten);
+    void paintImportProgress (juce::Graphics&, juce::Rectangle<int>);
 
     void selectCategory (int categoryIndex);
     void updateStatusLabel();

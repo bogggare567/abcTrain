@@ -10,7 +10,14 @@ namespace
 
     juce::File defaultRootFolder()
     {
-        return juce::File::getSpecialLocation (juce::File::userMusicDirectory).getChildFile ("ABCTrain");
+        // The app's own storage, not the music folder.
+        //
+        // Imported clips are *derived* files - eight-second cuts the app
+        // made and manages - and putting them in someone's music library
+        // means littering it with hundreds of them. It also made "where do
+        // I point this" a question the player had to answer before they
+        // could find out whether the feature was worth anything.
+        return ReferenceAudioLibrary::getManagedLibraryFolder();
     }
 }
 
@@ -190,6 +197,9 @@ bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSam
 
 void ReferenceAudioLibrary::clearSelection()
 {
+    activeCategory = {};
+    properties.setValue ("referenceCategory", juce::String());
+
     activeBuffer.store (nullptr);
     selectedFile = juce::File();
     properties.removeValue (selectedFileKey);
@@ -287,8 +297,83 @@ int ReferenceAudioLibrary::importAndSlice (const juce::File& source)
         }
     }
 
-    if (written > 0)
-        rescan();
+    return written;
+}
+
+
+juce::File ReferenceAudioLibrary::getManagedLibraryFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+               .getChildFile ("abcTrain")
+               .getChildFile ("Training Sounds");
+}
+
+int ReferenceAudioLibrary::importAndSliceMany (const juce::Array<juce::File>& sources,
+                                                std::function<void (float, juce::String)> onProgress,
+                                                std::function<bool()> shouldStop)
+{
+    auto written = 0;
+
+    for (int i = 0; i < sources.size(); ++i)
+    {
+        if (shouldStop != nullptr && shouldStop())
+            break;
+
+        if (onProgress != nullptr)
+            onProgress ((float) i / (float) juce::jmax (1, sources.size()),
+                         sources[i].getFileName());
+
+        written += importAndSlice (sources[i]);
+    }
+
+    if (onProgress != nullptr)
+        onProgress (1.0f, {});
 
     return written;
+}
+
+void ReferenceAudioLibrary::setActiveCategory (const juce::String& categoryName, double sampleRate)
+{
+    activeCategory = categoryName;
+    properties.setValue ("referenceCategory", activeCategory);
+    properties.saveIfNeeded();
+
+    advanceToRandomClip (sampleRate);
+}
+
+void ReferenceAudioLibrary::advanceToRandomClip (double sampleRate)
+{
+    if (activeCategory.isEmpty())
+        return;
+
+    for (const auto& category : categories)
+    {
+        if (category.name != activeCategory)
+            continue;
+
+        if (category.files.isEmpty())
+            return;
+
+        if (category.files.size() == 1)
+        {
+            selectFile (category.files.getReference (0), sampleRate);
+            return;
+        }
+
+        // Avoid playing the same clip twice running. With only a handful
+        // of clips a uniform draw repeats often enough to be noticed, and
+        // "it played the same thing again" reads as the app being stuck.
+        for (int attempt = 0; attempt < 8; ++attempt)
+        {
+            const auto& candidate = category.files.getReference (random.nextInt (category.files.size()));
+
+            if (candidate != selectedFile)
+            {
+                selectFile (candidate, sampleRate);
+                return;
+            }
+        }
+
+        return;
+    }
 }

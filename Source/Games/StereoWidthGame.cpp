@@ -13,7 +13,12 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
-    const auto width = juce::jmax (0.0f, widths[(size_t) correctWidthIndex] + roundWidthJitter);
+    // Never all the way to zero. At the narrow end the per-round jitter
+    // could push the multiplier past 0, which collapses the side signal
+    // entirely and makes the two channels identical - a stereo-width
+    // exercise playing mono. Caught by the test that checks left and right
+    // actually differ.
+    const auto width = juce::jmax (0.05f, widths[(size_t) correctWidthIndex] + roundWidthJitter);
 
     for (int sample = 0; sample < numSamples; ++sample)
     {

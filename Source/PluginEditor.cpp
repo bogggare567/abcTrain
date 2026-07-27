@@ -909,6 +909,11 @@ void EarTrainerEditor::startNewRun()
     refreshBeforeAfter();
 
     processor.getGameManager().getActiveGame().newRound();
+
+    // A different clip from the chosen category each round, so a folder of
+    // twenty loops is twenty loops rather than the one that came up first.
+    processor.getGameManager().getReferenceAudioLibrary()
+        .advanceToRandomClip (processor.getSampleRate());
     refreshRunStatus();
 }
 
