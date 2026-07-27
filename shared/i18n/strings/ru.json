@@ -172,5 +172,14 @@
   "ui.clearImage": "Убрать",
   "ui.toNextLevel": "До уровня {{level}}: {{have}} / {{need}}",
   "ui.promotionTest": "Повышение: {{done}} из {{needed}} подряд",
-  "ui.levelMaxed": "Максимальный уровень"
+  "ui.levelMaxed": "Максимальный уровень",
+  "ui.importAndSort": "Импорт и разбор…",
+  "ui.importing": "Анализирую — это займёт немного времени…",
+  "ui.importedClips": "Добавлено {{count}} фрагментов, разложены по характеру",
+  "ui.importedNothing": "Ничего пригодного не нашлось",
+  "slice.percussive": "Ударные",
+  "slice.bass": "Бас",
+  "slice.midRange": "Середина",
+  "slice.bright": "Верх",
+  "slice.fullRange": "Целый микс"
 }

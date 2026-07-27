@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "学会有名字的频段 —— 从超低到空气 —— 这样你能在伸手拧旋钮之前先说清问题。",
   "ui.toNextLevel": "距 {{level}} 级：{{have}} / {{need}}",
   "ui.promotionTest": "升级：连续 {{done}} / {{needed}}",
-  "ui.levelMaxed": "已满级"
+  "ui.levelMaxed": "已满级",
+  "ui.importAndSort": "导入并分类…",
+  "ui.importing": "正在分析 —— 需要一点时间…",
+  "ui.importedClips": "已添加 {{count}} 个片段，按特征分类",
+  "ui.importedNothing": "没找到可用的内容",
+  "slice.percussive": "打击类",
+  "slice.bass": "低频",
+  "slice.midRange": "中频",
+  "slice.bright": "高频",
+  "slice.fullRange": "完整混音"
 }

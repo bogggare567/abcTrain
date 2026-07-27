@@ -1,4 +1,5 @@
 #include "ReferenceAudioLibrary.h"
+#include "AudioSliceAnalyzer.h"
 #include "SampleBinaryData.h"
 #include <array>
 
@@ -199,4 +200,95 @@ void ReferenceAudioLibrary::prepare (double sampleRate)
 {
     if (selectedFile.existsAsFile())
         selectFile (selectedFile, sampleRate);
+}
+
+
+int ReferenceAudioLibrary::importAndSlice (const juce::File& source)
+{
+    if (! source.exists())
+        return 0;
+
+    juce::Array<juce::File> sources;
+
+    if (source.isDirectory())
+        sources = source.findChildFiles (juce::File::findFiles, false, "*.wav;*.aiff;*.aif;*.flac;*.mp3");
+    else
+        sources.add (source);
+
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+
+    auto written = 0;
+
+    for (const auto& file : sources)
+    {
+        std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+
+        if (reader == nullptr || reader->lengthInSamples <= 0)
+            continue;   // not audio, or unreadable - skip it and carry on
+
+        // Guard against a file so long it would not fit in memory. Twenty
+        // minutes is more than any reasonable source and well inside what
+        // a float buffer can hold.
+        const auto maxSamples = (juce::int64) (reader->sampleRate * 20.0 * 60.0);
+        const auto length = (int) juce::jmin (reader->lengthInSamples, maxSamples);
+
+        juce::AudioBuffer<float> audio ((int) juce::jmax (1u, reader->numChannels), length);
+
+        if (! reader->read (&audio, 0, length, 0, true, true))
+            continue;
+
+        const auto slices = AudioSliceAnalyzer::analyse (audio, reader->sampleRate);
+
+        for (size_t i = 0; i < slices.size(); ++i)
+        {
+            const auto& slice = slices[i];
+
+            const auto folder = rootFolder.getChildFile (AudioSliceAnalyzer::folderNameFor (slice.character));
+
+            if (! folder.createDirectory())
+                continue;
+
+            const auto destination = folder.getChildFile (
+                file.getFileNameWithoutExtension() + " " + juce::String ((int) i + 1) + ".wav")
+                    .getNonexistentSibling();
+
+            std::unique_ptr<juce::FileOutputStream> stream (destination.createOutputStream());
+
+            if (stream == nullptr)
+                continue;
+
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::AudioFormatWriter> writer (
+                wav.createWriterFor (stream.get(), reader->sampleRate,
+                                      (unsigned int) audio.getNumChannels(), 24, {}, 0));
+
+            if (writer == nullptr)
+                continue;
+
+            stream.release();   // the writer owns it now
+
+            juce::AudioBuffer<float> clip (audio.getNumChannels(), slice.numSamples);
+
+            for (int channel = 0; channel < audio.getNumChannels(); ++channel)
+                clip.copyFrom (channel, 0, audio, channel, slice.startSample, slice.numSamples);
+
+            // A short fade at each end. Every clip here is going to be
+            // looped, and a loop that starts or ends mid-waveform clicks on
+            // every repeat - which the ear locks onto instead of the thing
+            // being trained.
+            const auto fadeSamples = juce::jmin (slice.numSamples / 8,
+                                                  (int) (reader->sampleRate * 0.01));
+            clip.applyGainRamp (0, fadeSamples, 0.0f, 1.0f);
+            clip.applyGainRamp (slice.numSamples - fadeSamples, fadeSamples, 1.0f, 0.0f);
+
+            if (writer->writeFromAudioSampleBuffer (clip, 0, clip.getNumSamples()))
+                ++written;
+        }
+    }
+
+    if (written > 0)
+        rescan();
+
+    return written;
 }

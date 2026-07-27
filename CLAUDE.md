@@ -269,6 +269,25 @@ full rationale.
   ahead of anything found on disk — a real non-noise training option with
   zero setup, and the reason the file-chooser button below exists. See
   [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md).
+- `Source/AudioSliceAnalyzer.{h,cpp}` — cuts an imported file into
+  loop-length clips and sorts each by measurable character (percussive /
+  bass / mid range / bright / full mix). Pure DSP over a buffer: no
+  Component, no file I/O, no message loop, so `tests/AudioSliceAnalyzerTest`
+  drives it with synthesized signals whose right answer is known by
+  construction. **It deliberately does not separate stems** — telling a
+  vocal from a mix is source separation, a trained-model problem, and a
+  heuristic pretending to do it would mislabel most real music
+  confidently. `ReferenceAudioLibrary::importAndSlice` is the file-writing
+  half: it decodes, slices, fades each clip's edges (a loop that starts
+  mid-waveform clicks on every repeat) and files them under the character's
+  folder in the library root, never touching the source. Two bugs were
+  found here by testing rather than by reading: a median-only onset
+  threshold collapsed to zero on a sustained tone and called a held note a
+  drum loop, and onset density alone called nearly every real commercial
+  mix "percussive" — fixed by also requiring gaps between the hits (a duty
+  cycle), which is what actually separates a drum loop from a mix that
+  contains drums. See
+  [decisions/025](docs/decisions/025-audio-slicing.md).
 - `Source/TrainingSoundsComponent.{h,cpp}` — the "Choose Training Sounds"
   overlay (same full-size show/hide shape as `shared/LessonController`):
   a "Choose Folder..." button (`juce::FileChooser::launchAsync`,
@@ -1046,6 +1065,15 @@ pictures there can never drift from the code. See
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
   rather than through the real `ChangeListener` wiring (see below).
+- `tests/AudioSliceAnalyzerTest.cpp` — the slicer and classifier against
+  synthesized signals: audio shorter than one slice yields nothing rather
+  than a runt, an empty/silent/zero-sample-rate input is a harmless miss,
+  a 30s file cuts into three whole 8s slices that never run past the end,
+  a click train is percussive and a sustained tone is not, a 60 Hz sine is
+  bass and a 9 kHz one is bright, two independent noise sources read as
+  uncorrelated while one signal in both channels does not, a faded-out
+  tail is dropped rather than offered as a clip, and every character maps
+  to a distinct non-empty folder name (the folder *is* the persistence).
 - `tests/AchievementsTest.cpp` — the achievement rules against
   hand-built `Snapshot`s: unique non-empty ids, unknown id returns null,
   a blank slate earns nothing, accuracy needs the rounds floor *and* the

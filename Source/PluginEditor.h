@@ -39,6 +39,16 @@ public:
     // only route is a mouse click on a home-screen tile - and a product
     // gallery that cannot show the screen people spend all their time on
     // is not much of a gallery.
+    // Opens the training-sounds window for the screenshot tool, for the
+    // same reason as the training screen: it is a whole screen the gallery
+    // could not otherwise show.
+    void openSoundsForSnapshot()
+    {
+        trainingSounds.setVisible (true);
+        trainingSounds.refresh();
+        trainingSounds.toFront (false);
+    }
+
     void openTrainingForSnapshot (int gameIndex)
     {
         processor.getGameManager().setActiveGameIndex (gameIndex);

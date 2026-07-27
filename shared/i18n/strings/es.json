@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "Aprende los rangos con nombre —de sub-bass a air— para describir un problema antes de tocar un mando.",
   "ui.toNextLevel": "Hasta el nivel {{level}}: {{have}} / {{need}}",
   "ui.promotionTest": "Ascenso: {{done}} de {{needed}} seguidas",
-  "ui.levelMaxed": "Nivel máximo"
+  "ui.levelMaxed": "Nivel máximo",
+  "ui.importAndSort": "Importar y ordenar…",
+  "ui.importing": "Analizando — tarda un momento…",
+  "ui.importedClips": "{{count}} fragmentos añadidos, ordenados por carácter",
+  "ui.importedNothing": "No se encontró nada aprovechable",
+  "slice.percussive": "Percusivo",
+  "slice.bass": "Graves",
+  "slice.midRange": "Medios",
+  "slice.bright": "Agudos",
+  "slice.fullRange": "Mezcla completa"
 }

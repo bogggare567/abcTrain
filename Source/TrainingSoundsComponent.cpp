@@ -40,6 +40,9 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     };
     addAndMakeVisible (chooseFolderButton);
 
+    importButton.onClick = [this] { importAndSort(); };
+    addAndMakeVisible (importButton);
+
     rootFolderLabel.setJustificationType (juce::Justification::centred);
     rootFolderLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
     addAndMakeVisible (rootFolderLabel);
@@ -66,8 +69,15 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 void TrainingSoundsComponent::setStrings (juce::String title, juce::String sourceSection,
                                            juce::String trainOnSection, juce::String chooseFolder,
                                            juce::String pinkNoise, juce::String close,
-                                           juce::String emptyText)
+                                           juce::String emptyText, juce::String importAndSortText,
+                                           juce::String importing, juce::String importedClips,
+                                           juce::String importedNothing)
 {
+    importButton.setButtonText (importAndSortText);
+    importingText = std::move (importing);
+    importedClipsText = std::move (importedClips);
+    importedNothingText = std::move (importedNothing);
+
     titleLabel.setText (title, juce::dontSendNotification);
     sourceHeading = std::move (sourceSection);
     trainOnHeading = std::move (trainOnSection);
@@ -227,7 +237,13 @@ void TrainingSoundsComponent::resized()
     area.removeFromTop (26 + Spacing::medium);   // title
     area.removeFromTop (24);                     // "Where the sounds come from"
 
-    chooseFolderButton.setBounds (area.removeFromTop (36));
+    {
+        auto row = area.removeFromTop (36);
+        importButton.setBounds (row.removeFromRight (row.getWidth() / 2 - 4));
+        row.removeFromRight (8);
+        chooseFolderButton.setBounds (row);
+    }
+
     area.removeFromTop (Spacing::small);
     rootFolderLabel.setBounds (area.removeFromTop (18));
 
@@ -265,4 +281,52 @@ void TrainingSoundsComponent::resized()
     bottomRow.removeFromRight (Spacing::small);
     pinkNoiseButton.setBounds (bottomRow.removeFromLeft (150));
     statusLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
+}
+
+
+void TrainingSoundsComponent::importAndSort()
+{
+    fileChooser = std::make_unique<juce::FileChooser> (
+        importButton.getButtonText(),
+        processor.getGameManager().getReferenceAudioLibrary().getRootFolder(),
+        "*.wav;*.aiff;*.aif;*.flac;*.mp3");
+
+    juce::Component::SafePointer<TrainingSoundsComponent> safeThis (this);
+
+    fileChooser->launchAsync (
+        juce::FileBrowserComponent::openMode
+            | juce::FileBrowserComponent::canSelectFiles
+            | juce::FileBrowserComponent::canSelectDirectories,
+        [safeThis] (const juce::FileChooser& chooser)
+        {
+            if (safeThis == nullptr)
+                return;
+
+            const auto chosen = chooser.getResult();
+
+            if (chosen == juce::File())
+                return;
+
+            // Say something before the wait, not after it. Decoding and
+            // analysing a folder of full-length tracks takes real seconds,
+            // and a window that simply freezes reads as a crash.
+            safeThis->statusLabel.setText (safeThis->importingText, juce::dontSendNotification);
+            safeThis->repaint();
+
+            juce::MessageManager::callAsync ([safeThis, chosen]
+            {
+                if (safeThis == nullptr)
+                    return;
+
+                const auto written = safeThis->processor.getGameManager()
+                                         .getReferenceAudioLibrary().importAndSlice (chosen);
+
+                safeThis->statusLabel.setText (
+                    written > 0 ? safeThis->importedClipsText.replace ("{{count}}", juce::String (written))
+                                : safeThis->importedNothingText,
+                    juce::dontSendNotification);
+
+                safeThis->refresh();
+            });
+        });
 }

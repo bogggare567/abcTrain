@@ -41,6 +41,26 @@ public:
     // wav/aiff/mp3/flac/ogg). Does real file I/O - message thread only,
     // never the audio thread.
     void rescan();
+
+    // Slices an imported file (or every audio file in a folder) into
+    // loop-length clips and files each one under the category its
+    // character puts it in - see AudioSliceAnalyzer.
+    //
+    // This is what makes "point it at your own music" actually work. Left
+    // to itself, a folder of four-minute tracks gives the trainer
+    // four-minute tracks: it will play the first eight seconds of a fade-in
+    // over and over, and the exercise is useless. Slicing turns the same
+    // folder into a sorted library of usable loops.
+    //
+    // Writes into rootFolder, never next to the original - the source
+    // files are the player's own and are not touched, moved or renamed.
+    // Returns how many clips were written; 0 means nothing usable was
+    // found, which is an answer rather than a failure.
+    //
+    // Message thread only, and slow: it decodes and analyses whole files.
+    // The caller is responsible for not doing this on the audio thread or
+    // while the user expects the UI to respond.
+    int importAndSlice (const juce::File& source);
     const juce::Array<Category>& getCategories() const noexcept { return categories; }
 
     // Loads `file` (message-thread only - blocking file I/O), downmixes

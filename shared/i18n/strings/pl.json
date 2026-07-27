@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "Poznaj nazwane zakresy — od sub-bassu po air — żeby opisać problem, zanim sięgniesz po gałkę.",
   "ui.toNextLevel": "Do poziomu {{level}}: {{have}} / {{need}}",
   "ui.promotionTest": "Awans: {{done}} z {{needed}} z rzędu",
-  "ui.levelMaxed": "Najwyższy poziom"
+  "ui.levelMaxed": "Najwyższy poziom",
+  "ui.importAndSort": "Importuj i posortuj…",
+  "ui.importing": "Analizuję — to chwilę potrwa…",
+  "ui.importedClips": "Dodano {{count}} fragmentów, posortowanych wg charakteru",
+  "ui.importedNothing": "Nie znaleziono nic użytecznego",
+  "slice.percussive": "Perkusyjne",
+  "slice.bass": "Bas",
+  "slice.midRange": "Środek",
+  "slice.bright": "Góra",
+  "slice.fullRange": "Cały miks"
 }

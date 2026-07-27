@@ -172,6 +172,7 @@ target_sources(EarTrainer
         Source/Achievements.cpp
         Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
+        Source/AudioSliceAnalyzer.cpp
         Source/TrainingSoundsComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -409,6 +410,7 @@ target_sources(EarTrainerTests
         tests/ProgressManagerTest.cpp
         tests/SessionManagerTest.cpp
         tests/AchievementsTest.cpp
+        tests/AudioSliceAnalyzerTest.cpp
         tests/ContinuousScaleTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
@@ -421,6 +423,7 @@ target_sources(EarTrainerTests
         Source/Achievements.cpp
         Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
+        Source/AudioSliceAnalyzer.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
@@ -502,6 +505,7 @@ target_sources(EditorSnapshots
         Source/Achievements.cpp
         Source/SessionManager.cpp
         Source/ReferenceAudioLibrary.cpp
+        Source/AudioSliceAnalyzer.cpp
         Source/ChoiceSliderComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp

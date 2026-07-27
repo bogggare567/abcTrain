@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "名前のついた帯域 —— サブベースからエアまで —— を覚え、つまみに手を伸ばす前に問題を言葉にする。",
   "ui.toNextLevel": "レベル{{level}}まで: {{have}} / {{need}}",
   "ui.promotionTest": "昇格: 連続 {{done}} / {{needed}}",
-  "ui.levelMaxed": "最高レベル"
+  "ui.levelMaxed": "最高レベル",
+  "ui.importAndSort": "取り込んで仕分け…",
+  "ui.importing": "解析中 —— 少し時間がかかります…",
+  "ui.importedClips": "{{count}} 個のクリップを性格別に仕分けました",
+  "ui.importedNothing": "使えるものが見つかりませんでした",
+  "slice.percussive": "パーカッシブ",
+  "slice.bass": "低域",
+  "slice.midRange": "中域",
+  "slice.bright": "高域",
+  "slice.fullRange": "フルミックス"
 }

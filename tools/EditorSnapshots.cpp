@@ -74,8 +74,11 @@ namespace
         return false;
     }
 
+    enum class Extra { none, training, sounds };
+
     template <typename ProcessorType, typename EditorType>
-    int renderOne (const juce::File& outputDir, const juce::String& name, int openTraining = -1)
+    int renderOne (const juce::File& outputDir, const juce::String& name,
+                   int openTraining = -1, Extra extra = Extra::none)
     {
         int failures = 0;
 
@@ -113,6 +116,9 @@ namespace
 
                 if (openTraining >= 0)
                     editor.openTrainingForSnapshot (openTraining);
+
+                if (extra == Extra::sounds)
+                    editor.openSoundsForSnapshot();
             }
 
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
@@ -185,6 +191,7 @@ int main (int argc, char* argv[])
             // the EQ exercise - a continuous scale, so the shot shows the
             // answer slider rather than a row of named choices.
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Training", 0);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
 
             if (hadSettings)
             {

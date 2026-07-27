@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "이름 있는 대역 —— 서브베이스부터 에어까지 —— 을 익혀, 노브에 손대기 전에 문제를 말할 수 있게.",
   "ui.toNextLevel": "레벨 {{level}}까지: {{have}} / {{need}}",
   "ui.promotionTest": "승급: 연속 {{done}} / {{needed}}",
-  "ui.levelMaxed": "최고 레벨"
+  "ui.levelMaxed": "최고 레벨",
+  "ui.importAndSort": "가져와 분류…",
+  "ui.importing": "분석 중 — 잠시 걸립니다…",
+  "ui.importedClips": "{{count}}개 클립을 성격별로 분류했습니다",
+  "ui.importedNothing": "쓸 만한 것을 찾지 못했습니다",
+  "slice.percussive": "타악",
+  "slice.bass": "저역",
+  "slice.midRange": "중역",
+  "slice.bright": "고역",
+  "slice.fullRange": "풀 믹스"
 }

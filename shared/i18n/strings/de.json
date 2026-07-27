@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "Lerne die benannten Bereiche - von Sub-Bass bis Air - damit du ein Problem beschreiben kannst, bevor du zum Regler greifst.",
   "ui.toNextLevel": "Bis Level {{level}}: {{have}} / {{need}}",
   "ui.promotionTest": "Aufstieg: {{done}} von {{needed}} in Folge",
-  "ui.levelMaxed": "Höchstes Level"
+  "ui.levelMaxed": "Höchstes Level",
+  "ui.importAndSort": "Importieren & sortieren…",
+  "ui.importing": "Analysiere — das dauert kurz…",
+  "ui.importedClips": "{{count}} Clips hinzugefügt, nach Charakter sortiert",
+  "ui.importedNothing": "Nichts Brauchbares gefunden",
+  "slice.percussive": "Perkussiv",
+  "slice.bass": "Bass",
+  "slice.midRange": "Mitten",
+  "slice.bright": "Höhen",
+  "slice.fullRange": "Ganzer Mix"
 }

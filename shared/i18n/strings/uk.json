@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "Вивчи іменовані діапазони — від сабу до повітря — щоб описати проблему, перш ніж тягнутися до ручки.",
   "ui.toNextLevel": "До рівня {{level}}: {{have}} / {{need}}",
   "ui.promotionTest": "Підвищення: {{done}} з {{needed}} поспіль",
-  "ui.levelMaxed": "Максимальний рівень"
+  "ui.levelMaxed": "Максимальний рівень",
+  "ui.importAndSort": "Імпорт і розбір…",
+  "ui.importing": "Аналізую — це трохи забере часу…",
+  "ui.importedClips": "Додано {{count}} фрагментів, розкладені за характером",
+  "ui.importedNothing": "Нічого придатного не знайшлося",
+  "slice.percussive": "Ударні",
+  "slice.bass": "Бас",
+  "slice.midRange": "Середина",
+  "slice.bright": "Верх",
+  "slice.fullRange": "Цілий мікс"
 }

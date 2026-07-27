@@ -55,6 +55,7 @@ Written to be readable by someone who wasn't there.
 | [022](decisions/022-motion-audit-and-indicators.md) | The motion audit; compact indicators; a tint per exercise |
 | [023](decisions/023-learner-plugin-visual-pass.md) | A colour per plugin, and a tool for actually looking at them |
 | [024](decisions/024-achievements-and-a-quiet-training-screen.md) | Achievements instead of a bar; a training screen that holds one thing |
+| [025](decisions/025-audio-slicing.md) | Slicing imported audio, and what a heuristic may honestly claim |
 
 ## Repo-level files
 

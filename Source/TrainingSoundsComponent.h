@@ -37,7 +37,8 @@ public:
     // LocalisationManager of its own, like every other view here.
     void setStrings (juce::String title, juce::String sourceSection, juce::String trainOnSection,
                      juce::String chooseFolder, juce::String pinkNoise, juce::String close,
-                     juce::String emptyText);
+                     juce::String emptyText, juce::String importAndSort, juce::String importing,
+                     juce::String importedClips, juce::String importedNothing);
 
 private:
     juce::Rectangle<int> cardBounds() const;
@@ -48,6 +49,10 @@ private:
     juce::String sourceHeading { "Where the sounds come from" };
     juce::String trainOnHeading { "What to train on" };
     juce::String emptyMessage;
+    juce::String importingText, importedClipsText, importedNothingText;
+
+    void importAndSort();
+    juce::TextButton importButton;
 
     void selectCategory (int categoryIndex);
     void updateStatusLabel();

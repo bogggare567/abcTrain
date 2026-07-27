@@ -172,5 +172,14 @@
   "ui.clearImage": "Remove",
   "ui.toNextLevel": "Level {{level}}: {{have}} / {{need}}",
   "ui.promotionTest": "Level up: {{done}} of {{needed}} in a row",
-  "ui.levelMaxed": "Top level"
+  "ui.levelMaxed": "Top level",
+  "ui.importAndSort": "Import & sort…",
+  "ui.importing": "Analysing — this can take a moment…",
+  "ui.importedClips": "Added {{count}} clips, sorted by character",
+  "ui.importedNothing": "Nothing usable found in that",
+  "slice.percussive": "Percussive",
+  "slice.bass": "Bass",
+  "slice.midRange": "Mid range",
+  "slice.bright": "Bright",
+  "slice.fullRange": "Full mix"
 }

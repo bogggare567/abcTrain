@@ -172,5 +172,14 @@
   "game.frequencyrange.benefit": "Apprends les plages nommées - du sub-bass à l’air - pour décrire un problème avant de toucher un bouton.",
   "ui.toNextLevel": "Vers le niveau {{level}} : {{have}} / {{need}}",
   "ui.promotionTest": "Passage : {{done}} sur {{needed}} d’affilée",
-  "ui.levelMaxed": "Niveau maximum"
+  "ui.levelMaxed": "Niveau maximum",
+  "ui.importAndSort": "Importer & trier…",
+  "ui.importing": "Analyse — ça prend un instant…",
+  "ui.importedClips": "{{count}} extraits ajoutés, triés par caractère",
+  "ui.importedNothing": "Rien d’utilisable là-dedans",
+  "slice.percussive": "Percussif",
+  "slice.bass": "Basses",
+  "slice.midRange": "Médiums",
+  "slice.bright": "Aigus",
+  "slice.fullRange": "Mix complet"
 }
