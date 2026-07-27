@@ -53,6 +53,18 @@ namespace AppIcons
     // how lit it is: a locked achievement draws the same badge dim.
     void drawBadged (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds,
                      juce::Colour colour, float strength = 1.0f);
+
+    // How far this glyph turns when the pointer arrives on it, in degrees.
+    //
+    // Not decoration and not applied uniformly. A gear turns because a
+    // gear turns - the motion says what the object is, and a thing that
+    // moves the way you expect it to move is the whole of what "tactile"
+    // means on a screen. A star turns 72 degrees, exactly one point, so it
+    // lands back on itself. Glyphs that mean something directional - the
+    // download arrow, the sun and moon - stay put, because rotating them
+    // would say something false about them. 0 for most icons is correct,
+    // not unfinished.
+    float hoverSpinDegrees (Icon) noexcept;
 }
 
 // A square button that is just an icon. Replaces the row of wide text

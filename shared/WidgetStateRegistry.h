@@ -41,6 +41,21 @@ public:
     // like it has mass rather than being a light switch.
     float pressAmount (juce::Component& component, bool isPressedNow);
 
+    // A general eased scalar per component, for anything that is not
+    // hover or press. `slot` lets one widget carry more than one (a knob
+    // uses slot 0 for its displayed position).
+    //
+    // `snapNow` sets it immediately instead of easing - which is what a
+    // knob does while it is being dragged. Lag under the pointer is not
+    // weight, it is input latency, and on a control someone is trying to
+    // land on a value it feels broken. The weight is for values that
+    // arrive on their own: a lesson step, a preset, a check revealing the
+    // answer. Those should *travel*, so you see where they went.
+    float trackValue (juce::Component& component, int slot, float target,
+                      double durationMs, bool snapNow = false);
+
+    static constexpr int numValueSlots = 2;
+
 private:
     struct Entry
     {
@@ -49,6 +64,10 @@ private:
         float hoverTarget = 0.0f;
         float press = 0.0f;
         float pressTarget = 0.0f;
+        float values[numValueSlots] = {};
+        float valueTargets[numValueSlots] = {};
+        double valueDurations[numValueSlots] = {};
+        bool valueStarted[numValueSlots] = {};
     };
 
     Entry& entryFor (juce::Component&);

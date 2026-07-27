@@ -304,7 +304,15 @@ void AbcTrainLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
     const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (4.0f);
     const auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
     const auto centre = bounds.getCentre();
-    const auto angle = rotaryStartAngle + sliderPosProportional * (rotaryEndAngle - rotaryStartAngle);
+    // The drawn position lags the real one, so a value that arrives on its
+    // own - a lesson step, a preset, a check revealing its answer - is a
+    // knob you watch *travel* rather than a number that teleported. While
+    // the pointer is on it the position snaps: lag under your own hand is
+    // not weight, it is latency.
+    const auto drawnPosition = stateRegistry.trackValue (slider, 0, sliderPosProportional,
+                                                          Duration::transition,
+                                                          slider.isMouseButtonDown());
+    const auto angle = rotaryStartAngle + drawnPosition * (rotaryEndAngle - rotaryStartAngle);
 
     const auto touch = Ease::out (stateRegistry.hoverAmount (slider, slider.isMouseOverOrDragging()));
 

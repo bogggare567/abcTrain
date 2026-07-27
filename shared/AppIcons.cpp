@@ -440,6 +440,22 @@ void IconButton::timerCallback()
     repaint();
 }
 
+namespace AppIcons
+{
+    float hoverSpinDegrees (Icon icon) noexcept
+    {
+        switch (icon)
+        {
+            case Icon::settings:  return 32.0f;  // a gear turns
+            case Icon::award:     return 72.0f;  // one point of a five-pointed star
+            case Icon::reverb:
+            case Icon::learnerVerb: return 18.0f;
+            case Icon::pan:       return 12.0f;
+            default:              return 0.0f;
+        }
+    }
+}
+
 void IconButton::paintButton (juce::Graphics& g, bool shouldDrawButtonAsHighlighted,
                                bool shouldDrawButtonAsDown)
 {
@@ -469,7 +485,24 @@ void IconButton::paintButton (juce::Graphics& g, bool shouldDrawButtonAsHighligh
         g.drawRoundedRectangle (bounds, AbcTrainTheme::Radius::button, 1.0f);
     }
 
-    const auto iconArea = bounds.reduced (bounds.getWidth() * 0.26f);
+    auto iconArea = bounds.reduced (bounds.getWidth() * 0.26f);
+
+    // Press squashes the glyph and the release springs it back past its
+    // own size before settling - backOut, not out. A control that returns
+    // to rest along the same curve it left by has no mass; the overshoot
+    // is the entire difference between "it moved" and "I pushed it".
+    const auto squash = 1.0f - 0.10f * press + 0.03f * AbcTrainTheme::Ease::backOut (1.0f - press) * press;
+    iconArea = iconArea.withSizeKeepingCentre (iconArea.getWidth() * squash,
+                                                iconArea.getHeight() * squash);
+
+    const auto spin = AppIcons::hoverSpinDegrees (icon) * hover;
+
+    juce::Graphics::ScopedSaveState rotated (g);
+
+    if (std::abs (spin) > 0.01f)
+        g.addTransform (juce::AffineTransform::rotation (juce::degreesToRadians (spin),
+                                                          iconArea.getCentreX(),
+                                                          iconArea.getCentreY()));
     const auto tint = theme.text.interpolatedWith (theme.textBright, hover)
                           .withMultipliedAlpha (isEnabled() ? 1.0f : 0.4f);
 

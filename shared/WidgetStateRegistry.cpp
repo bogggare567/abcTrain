@@ -66,6 +66,29 @@ float WidgetStateRegistry::pressAmount (juce::Component& component, bool isPress
     return e.press;
 }
 
+float WidgetStateRegistry::trackValue (juce::Component& component, int slot, float target,
+                                        double durationMs, bool snapNow)
+{
+    if (slot < 0 || slot >= numValueSlots)
+        return target;
+
+    auto& entry = entryFor (component);
+
+    entry.valueTargets[slot] = target;
+    entry.valueDurations[slot] = durationMs;
+
+    // First sight of a widget is not a transition. Without this every knob
+    // would sweep up from zero the moment its editor opened, which reads as
+    // the plugin loading rather than as the value changing.
+    if (snapNow || ! entry.valueStarted[slot])
+    {
+        entry.valueStarted[slot] = true;
+        entry.values[slot] = target;
+    }
+
+    return entry.values[slot];
+}
+
 void WidgetStateRegistry::timerCallback()
 {
     for (size_t i = 0; i < entries.size();)
@@ -90,8 +113,26 @@ void WidgetStateRegistry::timerCallback()
                             e.pressTarget > e.press ? AbcTrainTheme::Duration::press
                                                     : AbcTrainTheme::Duration::release);
 
+        auto valueMoved = false;
+
+        for (int slot = 0; slot < numValueSlots; ++slot)
+        {
+            if (! e.valueStarted[slot] || e.valueDurations[slot] <= 0.0)
+                continue;
+
+            const auto previous = e.values[slot];
+            e.values[slot] = approach (e.values[slot], e.valueTargets[slot], e.valueDurations[slot]);
+
+            // Tracked values are not all 0..1 - a knob position is, but a
+            // frequency in Hz is not - so the settle test is relative to
+            // how far the value still has to go.
+            const auto span = std::abs (e.valueTargets[slot]) + 1.0f;
+            valueMoved = valueMoved || std::abs (e.values[slot] - previous) > settleEpsilon * span;
+        }
+
         if (std::abs (e.hover - previousHover) > settleEpsilon
-            || std::abs (e.press - previousPress) > settleEpsilon)
+            || std::abs (e.press - previousPress) > settleEpsilon
+            || valueMoved)
         {
             e.component->repaint();
         }
