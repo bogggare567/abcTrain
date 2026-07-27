@@ -206,7 +206,7 @@ by a native speaker on this project. See
 [docs/diagrams/i18n-architecture.md](docs/diagrams/i18n-architecture.md)
 for how it fits together.
 
-## 🎨 What it looks like
+## 🎨 How it was designed
 
 Dark and light themes, both *designed* rather than one inverted into the
 other — a warm off-white page with surfaces stepping up toward white, not
@@ -223,20 +223,10 @@ reads as mass. The spectrum is a smoothed gradient-filled curve over a
 soft grid; the gain-reduction meter fills *downward*, because reduction
 is the one meter where more is lower.
 
-> **Screenshots:** not in the repo yet. Earlier development ran without a
-> display; capturing them now needs a screen-recording permission that
-> hasn't been granted. [assets/screenshots/README.md](assets/screenshots/README.md)
-> lists exactly which shots are wanted if you'd like to contribute them.
-
 ## Download
 
 Pre-release, **unsigned** builds only — see [LICENSE](LICENSE) before
-distributing anything built from this repo. Unsigned means macOS
-Gatekeeper will show an "unidentified developer" block (right-click the
-installer → Open, or allow it in System Settings → Privacy & Security)
-and Windows SmartScreen will show a "Windows protected your PC" warning
-(click "More info" → "Run anyway") — code signing/notarization is real,
-separate future work, not done yet.
+distributing anything built from this repo.
 
 - **Tagged releases (recommended):** pushing a `vX.Y.Z` tag publishes a
   [GitHub Release](https://github.com/bogggare567/abcTrain/releases) with
@@ -276,6 +266,37 @@ separate future work, not done yet.
   checks GitHub for a newer tagged release and offers to open the release
   page — manual only, no background network calls. See
   [docs/decisions/007-update-checker.md](docs/decisions/007-update-checker.md).
+
+
+### Your system will warn you the first time. Here's why, and what to do
+
+These builds are **not code-signed**. Signing means buying a certificate
+issued against a verified legal identity — around $99/year from Apple and
+$200-500/year from a Windows CA (see [docs/signing.md](docs/signing.md)
+for the full breakdown and how to wire it into CI once it exists). That
+hasn't been bought, so every OS treats the download as coming from
+someone it can't name.
+
+The warning is accurate. It says the publisher is unverified — not that
+anything was found wrong with the file. Everything here is built by
+[GitHub Actions](.github/workflows/build_and_test.yml) from the commit
+the release tag points at, so you can read exactly what went in.
+
+- **macOS** — "cannot be opened because it is from an unidentified
+  developer", or "Apple could not verify...". Right-click (or
+  Control-click) the `.pkg` → **Open** → **Open** again. If macOS refuses
+  outright, go to **System Settings → Privacy & Security**, scroll to
+  Security, and press **Open Anyway** next to the blocked item. On
+  Sequoia and later that button is the only route for some downloads.
+- **Windows** — a blue "Windows protected your PC" SmartScreen panel.
+  Click **More info**, then **Run anyway**. If your browser blocked the
+  download itself, use *Keep* → *Keep anyway* in the downloads list.
+- **Linux** — no gatekeeper, but the extracted files may not be
+  executable. `chmod +x install.sh` and run it.
+
+If you'd rather not click through a warning at all, **build from source**
+— it's three commands, and the [Building](#building) section below has
+them. That is the same binary, made on your own machine.
 
 ## 🛠 Built to be worked on
 
