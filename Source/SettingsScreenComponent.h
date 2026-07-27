@@ -40,6 +40,9 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
 
     // Reads the persisted wallpaper (if any) and hands it to
     // AbcTrainLookAndFeel. Called at startup, before the first paint, so a
@@ -54,6 +57,24 @@ private:
     juce::Rectangle<int> cardBounds() const;
     void chooseBackground();
     void clearBackground();
+
+    // The side rail: About / Appearance / Background, and room for the
+    // pages that are coming (see docs/roadmap.md). A settings screen that
+    // is a single flat card stops working the moment it has more than one
+    // subject in it, and this one already has three.
+    enum class Page { about, appearance, background };
+
+    void selectPage (Page);
+    void paintSideMenu (juce::Graphics&, juce::Rectangle<int>);
+    juce::Rectangle<int> sideMenuBounds() const;
+    juce::Rectangle<int> pageBounds() const;
+
+    Page currentPage = Page::about;
+    int hoveredMenuRow = -1;
+
+    // The licence, shown in full rather than linked: a licence you have to
+    // leave the app to read is a licence nobody reads.
+    juce::TextEditor licenceView;
 
     LocalisationManager& localisation;
     juce::PropertiesFile& properties;

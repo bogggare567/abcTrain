@@ -6,3 +6,17 @@ cmake-build-*/
 *.xcworkspace
 .vs/
 out/
+
+# Local test audio. Never committed - see decisions/025.
+#
+# The project is tested against real music, because the slicer's
+# classifier was technically correct and practically useless until it was
+# run over actual records (a full mix has several onsets a second, so
+# onset density alone called everything percussive). That material is the
+# developer's own and stays on the developer's machine: it is test input,
+# not a project asset, and shipping it would be redistribution whatever
+# the excerpt length.
+/audio/
+/test-audio/
+*.wav
+!assets/samples/**/*.wav

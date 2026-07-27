@@ -95,3 +95,49 @@ Anything in the 2.0 row above is a substantial separate effort (model
 training pipeline, hosting, a completely different kind of infra) and
 shouldn't be started opportunistically alongside plugin/game work — it
 needs its own planning pass when the earlier phases are further along.
+
+## Recorded, not started
+
+Three ideas raised during development, written down here so they are not
+lost and not half-built. None of them has been started; each is listed
+with what it would actually cost, because that is the part that decides
+whether it happens.
+
+### The settings side menu grows
+
+`SettingsScreenComponent` is a side rail with three pages (About,
+Appearance, Background) precisely so more can be added without another
+redesign. Adding a page is a value in the `Page` enum, a label, and a
+`resized()` branch.
+
+### Ratings — by mix, by country
+
+The idea: see how your accuracy compares to other players, sliced by
+region.
+
+What it needs, honestly: **a backend**. Accounts or stable anonymous ids,
+a submission endpoint, storage, an aggregation job, moderation for the
+inevitable garbage, and a privacy position on collecting per-country data
+from people who did not ask to be measured. None of that is a plugin
+feature; all of it is an ongoing service with an ongoing bill.
+
+The reason this is worth flagging rather than shipping: percentiles were
+proposed once already and refused, because there is no server and a
+fabricated "better than 80% of users" is a lie. That reasoning has not
+changed. A real leaderboard is buildable, it is just a different project
+from this one.
+
+### A mixing marketplace
+
+The idea: export all your stems with one button and put a track up to be
+mixed.
+
+This is not an ear-training feature and should not live inside one. It is
+a two-sided marketplace — listings, payments, escrow, disputes, file
+transfer of multi-gigabyte stem folders, and a legal position on hosting
+other people's unreleased music. The *only* part that belongs in a plugin
+is "export all tracks with one button", and even that is a DAW function
+the host already has.
+
+If it happens, it is a separate product with a separate name, and the
+plugins link to it rather than contain it.

@@ -181,5 +181,7 @@
   "slice.bass": "Bassi",
   "slice.midRange": "Medi",
   "slice.bright": "Alti",
-  "slice.fullRange": "Mix completo"
+  "slice.fullRange": "Mix completo",
+  "ui.importHint": "I brani vengono tagliati in loop da 8 secondi e ordinati per carattere. I tuoi file non vengono toccati.",
+  "ui.about": "Informazioni"
 }

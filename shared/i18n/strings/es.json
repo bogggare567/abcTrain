@@ -181,5 +181,7 @@
   "slice.bass": "Graves",
   "slice.midRange": "Medios",
   "slice.bright": "Agudos",
-  "slice.fullRange": "Mezcla completa"
+  "slice.fullRange": "Mezcla completa",
+  "ui.importHint": "Las pistas se cortan en bucles de 8 segundos y se ordenan por carácter. Tus archivos no se tocan.",
+  "ui.about": "Acerca de"
 }

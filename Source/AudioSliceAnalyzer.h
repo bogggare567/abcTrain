@@ -87,6 +87,17 @@ namespace AudioSliceAnalyzer
         // as a fraction of sliceSeconds. Cutting mid-note gives a loop
         // that clicks on every repeat.
         double snapWindow = 0.15;
+
+        // At most this many clips from one file, spread evenly across it.
+        //
+        // Without a cap, importing an album produced 751 clips and 1.5 GB
+        // - measured, not guessed. Twenty-three near-identical eight-second
+        // cuts of the same track add nothing a handful would not: what
+        // makes a library good is *variety*, and variety comes from more
+        // sources, not from more of the same source. Spread evenly rather
+        // than taking the first few, so a clip's character reflects the
+        // whole track and not just its intro.
+        int maxSlicesPerFile = 6;
     };
 
     // Every usable slice, in order. An empty result means the audio was

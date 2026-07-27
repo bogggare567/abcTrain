@@ -1,6 +1,8 @@
 #include "SettingsScreenComponent.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AbcTrainTheme.h"
+#include "../shared/Version.h"
+#include <BrandBinaryData.h>
 
 SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisationToUse,
                                                    juce::PropertiesFile& propertiesToUse)
@@ -66,6 +68,16 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         addAndMakeVisible (label);
     }
 
+    licenceView.setMultiLine (true);
+    licenceView.setReadOnly (true);
+    licenceView.setScrollbarsShown (true);
+    licenceView.setCaretVisible (false);
+    licenceView.setFont (juce::Font (juce::FontOptions (11.0f)));
+    licenceView.setText (juce::String::fromUTF8 (BrandBinaryData::LICENSE,
+                                                  BrandBinaryData::LICENSESize));
+    addAndMakeVisible (licenceView);
+
+    selectPage (Page::about);
     refresh();
 }
 
@@ -169,9 +181,130 @@ void SettingsScreenComponent::clearBackground()
 
 juce::Rectangle<int> SettingsScreenComponent::cardBounds() const
 {
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 48, 460),
-                                  juce::jmin (getHeight() - 48, 300))
+    return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 560),
+                                  juce::jmin (getHeight() - 40, 380))
                .withCentre (getLocalBounds().getCentre());
+}
+
+juce::Rectangle<int> SettingsScreenComponent::sideMenuBounds() const
+{
+    return cardBounds().removeFromLeft (150);
+}
+
+juce::Rectangle<int> SettingsScreenComponent::pageBounds() const
+{
+    return cardBounds().withTrimmedLeft (150).reduced (AbcTrainTheme::Spacing::large);
+}
+
+void SettingsScreenComponent::selectPage (Page page)
+{
+    currentPage = page;
+
+    const auto appearance = page == Page::appearance;
+    const auto background = page == Page::background;
+
+    textScaleLabel.setVisible (appearance);
+    textScaleSlider.setVisible (appearance);
+
+    for (auto* c : { (juce::Component*) &backgroundLabel, (juce::Component*) &scrimLabel,
+                     (juce::Component*) &chooseBackgroundButton,
+                     (juce::Component*) &clearBackgroundButton, (juce::Component*) &scrimSlider })
+    {
+        c->setVisible (background);
+    }
+
+    licenceView.setVisible (page == Page::about);
+
+    resized();
+    repaint();
+}
+
+void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<int> area)
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    g.setColour (theme.windowBackground.withAlpha (0.5f));
+    g.fillRect (area);
+
+    g.setColour (theme.divider);
+    g.drawVerticalLine (area.getRight() - 1, (float) area.getY(), (float) area.getBottom());
+
+    auto row = area.reduced (AbcTrainTheme::Spacing::small,
+                              AbcTrainTheme::Spacing::large);
+
+    const juce::String labels[] { localisation.getText ("ui.about"),
+                                   localisation.getText ("ui.settingsAppearance"),
+                                   localisation.getText ("ui.settingsBackground") };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        const auto bounds = row.removeFromTop (34);
+        row.removeFromTop (2);
+
+        const auto selected = (int) currentPage == i;
+
+        if (selected || hoveredMenuRow == i)
+        {
+            g.setColour (selected ? theme.accent.withAlpha (0.18f)
+                                  : theme.widgetBackground.withAlpha (0.6f));
+            g.fillRoundedRectangle (bounds.toFloat().reduced (2.0f, 0.0f),
+                                     (float) AbcTrainTheme::Radius::small);
+        }
+
+        if (selected)
+        {
+            g.setColour (theme.accent);
+            g.fillRoundedRectangle (bounds.toFloat().withWidth (3.0f).reduced (0.0f, 6.0f), 1.5f);
+        }
+
+        g.setColour (selected ? theme.textBright : theme.text);
+        g.setFont (juce::Font (juce::FontOptions (13.0f)));
+        g.drawText (labels[i], bounds.withTrimmedLeft (14), juce::Justification::centredLeft, true);
+    }
+}
+
+void SettingsScreenComponent::mouseMove (const juce::MouseEvent& event)
+{
+    auto row = sideMenuBounds().reduced (AbcTrainTheme::Spacing::small,
+                                          AbcTrainTheme::Spacing::large);
+    auto found = -1;
+
+    for (int i = 0; i < 3; ++i)
+    {
+        if (row.removeFromTop (34).contains (event.getPosition()))
+            found = i;
+
+        row.removeFromTop (2);
+    }
+
+    if (found != hoveredMenuRow)
+    {
+        hoveredMenuRow = found;
+        repaint();
+    }
+}
+
+void SettingsScreenComponent::mouseExit (const juce::MouseEvent&)
+{
+    hoveredMenuRow = -1;
+    repaint();
+}
+
+void SettingsScreenComponent::mouseUp (const juce::MouseEvent& event)
+{
+    auto row = sideMenuBounds().reduced (AbcTrainTheme::Spacing::small,
+                                          AbcTrainTheme::Spacing::large);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        if (row.removeFromTop (34).contains (event.getPosition()))
+        {
+            selectPage ((Page) i);
+            return;
+        }
+
+        row.removeFromTop (2);
+    }
 }
 
 void SettingsScreenComponent::paint (juce::Graphics& g)
@@ -190,57 +323,74 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
     g.setColour (theme.panelBackground);
     g.fillPath (shape);
+
+    // The side rail is clipped to the card's rounded corner, so it does
+    // not paint square edges over it.
+    {
+        juce::Graphics::ScopedSaveState clip (g);
+        g.reduceClipRegion (shape);
+        paintSideMenu (g, sideMenuBounds());
+    }
+
     g.setColour (theme.outline);
     g.strokePath (shape, juce::PathStrokeType (1.0f));
 
-    auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large);
+    auto page = pageBounds();
 
-    AbcTrainLookAndFeel::drawTrackedText (g, localisation.getText ("ui.settings"),
-                                           inner.removeFromTop (26.0f),
-                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+    const juce::String heading = currentPage == Page::about        ? localisation.getText ("ui.about")
+                               : currentPage == Page::appearance   ? localisation.getText ("ui.settingsAppearance")
+                                                                   : localisation.getText ("ui.settingsBackground");
+
+    AbcTrainLookAndFeel::drawTrackedText (g, heading,
+                                           page.removeFromTop (26).toFloat(),
+                                           juce::Font (juce::FontOptions (16.0f).withStyle ("Bold")),
                                            theme.textBright, 1.2f);
 
-    inner.removeFromTop ((float) AbcTrainTheme::Spacing::medium);
-    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), headingAppearance);
+    page.removeFromTop (AbcTrainTheme::Spacing::small);
 
-    inner.removeFromTop (32.0f + (float) AbcTrainTheme::Spacing::medium);
-    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), headingBackground);
+    if (currentPage == Page::about)
+    {
+        g.setColour (theme.textDim);
+        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.drawText ("abcTrain " + juce::String (CurrentVersion::string),
+                     page.removeFromTop (18), juce::Justification::centredLeft, false);
+
+        page.removeFromTop (AbcTrainTheme::Spacing::small);
+    }
 }
 
 void SettingsScreenComponent::resized()
 {
     using namespace AbcTrainTheme;
 
-    auto area = cardBounds().reduced (Spacing::large);
+    auto page = pageBounds();
+    page.removeFromTop (26 + Spacing::small);
 
-    area.removeFromTop (26 + Spacing::medium);
-    area.removeFromTop (24);                       // "Appearance"
-
+    if (currentPage == Page::about)
     {
-        auto row = area.removeFromTop (32);
-        textScaleLabel.setBounds (row.removeFromLeft (130));
+        page.removeFromTop (18 + Spacing::small);
+        licenceView.setBounds (page.withTrimmedBottom (40));
+    }
+    else if (currentPage == Page::appearance)
+    {
+        auto row = page.removeFromTop (32);
+        textScaleLabel.setBounds (row.removeFromLeft (120));
         textScaleSlider.setBounds (row);
     }
-
-    area.removeFromTop (Spacing::medium);
-    area.removeFromTop (24);                       // "Background"
-
+    else
     {
-        auto row = area.removeFromTop (32);
-        backgroundLabel.setBounds (row.removeFromLeft (130));
-        clearBackgroundButton.setBounds (row.removeFromRight (110));
+        auto row = page.removeFromTop (32);
+        backgroundLabel.setBounds (row.removeFromLeft (120));
+        clearBackgroundButton.setBounds (row.removeFromRight (100));
         row.removeFromRight (Spacing::small);
         chooseBackgroundButton.setBounds (row);
+
+        page.removeFromTop (Spacing::small);
+
+        auto scrimRow = page.removeFromTop (32);
+        scrimLabel.setBounds (scrimRow.removeFromLeft (120));
+        scrimSlider.setBounds (scrimRow);
     }
 
-    area.removeFromTop (Spacing::small);
-
-    {
-        auto row = area.removeFromTop (32);
-        scrimLabel.setBounds (row.removeFromLeft (130));
-        scrimSlider.setBounds (row);
-    }
-
-    closeButton.setBounds (cardBounds().reduced (Spacing::large)
-                               .removeFromBottom (34).removeFromRight (110));
+    closeButton.setBounds (pageBounds().removeFromBottom (32).removeFromRight (100));
 }

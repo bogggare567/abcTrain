@@ -181,5 +181,7 @@
   "slice.bass": "低域",
   "slice.midRange": "中域",
   "slice.bright": "高域",
-  "slice.fullRange": "フルミックス"
+  "slice.fullRange": "フルミックス",
+  "ui.importHint": "曲は8秒のループに切り分けられ、性格別に仕分けされます。元のファイルは変更されません。",
+  "ui.about": "このアプリについて"
 }

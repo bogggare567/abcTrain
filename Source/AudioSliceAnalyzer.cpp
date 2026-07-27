@@ -360,6 +360,21 @@ namespace AudioSliceAnalyzer
             slices.push_back (slice);
         }
 
+        // Thin down to the cap, evenly. Taking the first N would give six
+        // clips of the intro; this walks the whole track.
+        if (options.maxSlicesPerFile > 0 && (int) slices.size() > options.maxSlicesPerFile)
+        {
+            std::vector<Slice> kept;
+            kept.reserve ((size_t) options.maxSlicesPerFile);
+
+            const auto step = (double) slices.size() / (double) options.maxSlicesPerFile;
+
+            for (int i = 0; i < options.maxSlicesPerFile; ++i)
+                kept.push_back (slices[(size_t) (i * step)]);
+
+            return kept;
+        }
+
         return slices;
     }
 

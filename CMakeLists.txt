@@ -142,6 +142,11 @@ juce_add_binary_data(BrandData
     HEADER_NAME BrandBinaryData.h
     SOURCES
         assets/icons/eartrainer.png
+        # The licence, embedded so the About page can show it in full. A
+        # licence you have to leave the app to read is a licence nobody
+        # reads - and it is the one document a user is entitled to see
+        # without going looking.
+        LICENSE
 )
 
 juce_add_plugin(EarTrainer

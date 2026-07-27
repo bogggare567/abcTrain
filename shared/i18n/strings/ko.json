@@ -181,5 +181,7 @@
   "slice.bass": "저역",
   "slice.midRange": "중역",
   "slice.bright": "고역",
-  "slice.fullRange": "풀 믹스"
+  "slice.fullRange": "풀 믹스",
+  "ui.importHint": "트랙은 8초 루프로 잘려 성격별로 분류됩니다. 원본 파일은 건드리지 않습니다.",
+  "ui.about": "정보"
 }

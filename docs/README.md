@@ -6,6 +6,7 @@
 |---|---|
 | [orientation.md](orientation.md) | **The map.** Read before changing anything: the four load-bearing ideas, where to put a change, how to add an exercise, how to build and test. |
 | [roadmap.md](roadmap.md) | What is actually built vs. planned. Honest about scope that was trimmed and why. |
+| [signing.md](signing.md) | What code signing and notarization need, per OS, and what it costs. The builds are unsigned today. |
 | [testing-strategy.md](testing-strategy.md) | What's covered, what isn't, and the deliberate gaps. |
 
 ## Reference

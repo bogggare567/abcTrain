@@ -1159,7 +1159,8 @@ void EarTrainerEditor::refreshLocalisedText()
                                 localisation.getText ("ui.importAndSort"),
                                 localisation.getText ("ui.importing"),
                                 localisation.getText ("ui.importedClips"),
-                                localisation.getText ("ui.importedNothing"));
+                                localisation.getText ("ui.importedNothing"),
+                                localisation.getText ("ui.importHint"));
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));

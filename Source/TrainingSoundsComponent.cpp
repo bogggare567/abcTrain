@@ -71,9 +71,15 @@ void TrainingSoundsComponent::setStrings (juce::String title, juce::String sourc
                                            juce::String pinkNoise, juce::String close,
                                            juce::String emptyText, juce::String importAndSortText,
                                            juce::String importing, juce::String importedClips,
-                                           juce::String importedNothing)
+                                           juce::String importedNothing, juce::String importHint)
 {
     importButton.setButtonText (importAndSortText);
+    // Until an import has run, this line explains the button rather than
+    // sitting empty.
+    if (hintText.isEmpty() || hintText == previousHint)
+        hintText = importHint;
+
+    previousHint = importHint;
     importingText = std::move (importing);
     importedClipsText = std::move (importedClips);
     importedNothingText = std::move (importedNothing);
@@ -161,16 +167,6 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    // A dimmed backdrop with a real card on top, instead of the whole
-    // window filled edge to edge and outlined in a 2px accent rectangle.
-    // The old version read as an error dialog: a hard coloured border
-    // around a column of identical full-width buttons, with the folder
-    // path in 11px underneath.
-    // Opaque. The first version dimmed the screen to 82% and left the home
-    // screen legible underneath, so the card floated on a blurry mess of
-    // tiles - reported as "нет фона никакого". setOpaque(true) is already
-    // set on this component, and a translucent fill under an opaque
-    // component is a contradiction JUCE will happily draw.
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
 
     const auto card = cardBounds().toFloat();
@@ -189,64 +185,99 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
     auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large);
 
     AbcTrainLookAndFeel::drawTrackedText (g, titleLabel.getText(),
-                                           inner.removeFromTop (26.0f),
+                                           inner.removeFromTop (30.0f),
                                            juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
-                                           theme.textBright, 1.2f,
-                                           juce::Justification::centredLeft);
+                                           theme.textBright, 1.2f);
 
-    inner.removeFromTop ((float) AbcTrainTheme::Spacing::medium);
+    inner.removeFromTop ((float) AbcTrainTheme::Spacing::large);
+    inner.removeFromTop (44.0f);                     // the add-music row
+    inner.removeFromTop ((float) AbcTrainTheme::Spacing::small);
 
-    // Section headings, the same treatment the training screen uses, so
-    // the two screens are visibly the same product.
-    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), sourceHeading);
-
-    inner.removeFromTop (36.0f + (float) AbcTrainTheme::Spacing::small);
-
-    // While an import runs, the row that normally shows the library path
-    // shows how far along it is and which file is being worked on.
-    if (importRunning)
+    // One line under the button: either what is happening, or what this
+    // does. The old layout spent a whole section heading plus a full file
+    // path on saying where things are stored, which is not a thing anybody
+    // needed to know before pressing the button.
     {
-        auto row = inner.removeFromTop (18.0f);
+        auto row = inner.removeFromTop (16.0f);
 
-        paintImportProgress (g, row.removeFromLeft (row.getWidth() * 0.55f)
-                                    .withSizeKeepingCentre ((int) (row.getWidth() * 0.55f), 8)
-                                    .toNearestInt());
+        if (importRunning)
+        {
+            paintImportProgress (g, row.removeFromLeft (row.getWidth() * 0.5f)
+                                        .withSizeKeepingCentre ((int) (row.getWidth() * 0.5f), 6)
+                                        .toNearestInt());
 
-        g.setColour (theme.textDim);
-        g.setFont (juce::Font (juce::FontOptions (11.0f)));
-        g.drawText (importProgressFile, row.toNearestInt(),
-                     juce::Justification::centredRight, true);
+            g.setColour (theme.textDim);
+            g.setFont (juce::Font (juce::FontOptions (11.0f)));
+            g.drawText (importProgressFile, row.toNearestInt(),
+                         juce::Justification::centredRight, true);
+        }
+        else
+        {
+            g.setColour (theme.textDim);
+            g.setFont (juce::Font (juce::FontOptions (11.0f)));
+            g.drawText (hintText, row.toNearestInt(), juce::Justification::centredLeft, true);
+        }
     }
-    else
+
+    inner.removeFromTop ((float) AbcTrainTheme::Spacing::large);
+    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (20.0f), trainOnHeading);
+
+    // Each row's clip count and its selected tick. The buttons draw their
+    // own labels; this is what a plain button cannot say.
     {
-        inner.removeFromTop (18.0f);
-    }
+        auto& library = processor.getGameManager().getReferenceAudioLibrary();
+        const auto& categories = library.getCategories();
+        const auto active = library.getActiveCategory();
 
-    inner.removeFromTop ((float) AbcTrainTheme::Spacing::medium);
-    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (24.0f), trainOnHeading);
+        for (int i = 0; i < categoryButtons.size() && i < categories.size(); ++i)
+        {
+            const auto bounds = categoryButtons[i]->getBounds().toFloat();
+            const auto& category = categories.getReference (i);
+
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
+            g.drawText (juce::String (category.files.size()),
+                         bounds.withTrimmedRight (12.0f).toNearestInt(),
+                         juce::Justification::centredRight, false);
+
+            if (category.name == active)
+            {
+                juce::Path tick;
+                tick.startNewSubPath (bounds.getX() + 10.0f, bounds.getCentreY());
+                tick.lineTo (bounds.getX() + 15.0f, bounds.getCentreY() + 5.0f);
+                tick.lineTo (bounds.getX() + 23.0f, bounds.getCentreY() - 5.0f);
+
+                g.setColour (theme.positive);
+                g.strokePath (tick, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
+                                                           juce::PathStrokeType::rounded));
+            }
+        }
+    }
 
     if (categoryButtons.isEmpty())
     {
-        auto empty = cardBounds().reduced (AbcTrainTheme::Spacing::large)
-                         .withTrimmedTop (150);
-
         g.setColour (theme.textDim);
         g.setFont (juce::Font (juce::FontOptions (12.0f)));
-        g.drawFittedText (emptyMessage, empty, juce::Justification::centredTop, 4);
+        g.drawFittedText (emptyMessage, inner.toNearestInt(), juce::Justification::centredTop, 4);
     }
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
 {
-    // Grows with the number of categories, up to what the window can hold.
-    const auto rows = (categoryButtons.size() + categoryColumns - 1) / categoryColumns;
-    const auto wanted = AbcTrainTheme::Spacing::large * 2 + 26 + AbcTrainTheme::Spacing::medium
-                            + 24 + 36 + AbcTrainTheme::Spacing::small + 18
-                            + AbcTrainTheme::Spacing::medium + 24
-                            + juce::jmax (1, rows) * (categoryTileHeight + AbcTrainTheme::Spacing::small)
-                            + AbcTrainTheme::Spacing::medium + 34;
+    // One row per option, not a grid of buttons: the list has a count and
+    // a tick beside each entry, which a grid of equal-width buttons cannot
+    // carry. Grows with the number of categories, capped by the window.
+    const auto rows = juce::jmax (1, categoryButtons.size());
+    const auto wanted = AbcTrainTheme::Spacing::large * 2
+                            + 30                                       // title
+                            + AbcTrainTheme::Spacing::large
+                            + 44                                       // add-music row
+                            + AbcTrainTheme::Spacing::small + 16       // hint line
+                            + AbcTrainTheme::Spacing::large + 20       // "train on"
+                            + rows * (rowHeight + 2)
+                            + AbcTrainTheme::Spacing::large + 34;      // footer
 
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 48, 520),
+    return juce::Rectangle<int> (juce::jmin (getWidth() - 48, 480),
                                   juce::jmin (getHeight() - 48, wanted))
                .withCentre (getLocalBounds().getCentre());
 }
@@ -257,57 +288,35 @@ void TrainingSoundsComponent::resized()
 
     auto area = cardBounds().reduced (Spacing::large);
 
-    area.removeFromTop (26 + Spacing::medium);   // title
-    area.removeFromTop (24);                     // "Where the sounds come from"
+    area.removeFromTop (30 + Spacing::large);
 
+    // One wide primary action. "Choose folder" is still here, but as a
+    // quiet secondary - almost nobody wants to answer a question about
+    // storage layout, and the two used to sit side by side as equals.
     {
-        auto row = area.removeFromTop (36);
-        importButton.setBounds (row.removeFromRight (row.getWidth() / 2 - 4));
-        row.removeFromRight (8);
-        chooseFolderButton.setBounds (row);
+        auto row = area.removeFromTop (44);
+        chooseFolderButton.setBounds (row.removeFromRight (120).reduced (0, 6));
+        row.removeFromRight (Spacing::small);
+        importButton.setBounds (row);
     }
 
-    area.removeFromTop (Spacing::small);
-    // Hidden while importing - the progress bar takes this row (paint()).
-    rootFolderLabel.setBounds (area.removeFromTop (18));
-    rootFolderLabel.setVisible (! importRunning);
+    area.removeFromTop (Spacing::small + 16);       // the hint / progress line
+    area.removeFromTop (Spacing::large + 20);       // "what to train on"
 
-    area.removeFromTop (Spacing::medium);
-    area.removeFromTop (24);                     // "What to train on"
-
-    // A grid, not a column. Nine full-width buttons stacked vertically is
-    // a list of commands; a grid of tiles is a set of things to choose
-    // between, which is what this actually is.
+    for (auto* button : categoryButtons)
     {
-        auto grid = area.removeFromTop (
-            juce::jmax (1, (categoryButtons.size() + categoryColumns - 1) / categoryColumns)
-                * (categoryTileHeight + Spacing::small));
-
-        auto index = 0;
-
-        while (index < categoryButtons.size())
-        {
-            auto row = grid.removeFromTop (categoryTileHeight);
-            grid.removeFromTop (Spacing::small);
-
-            const auto columnWidth = (row.getWidth() - Spacing::small * (categoryColumns - 1))
-                                         / categoryColumns;
-
-            for (auto column = 0; column < categoryColumns && index < categoryButtons.size(); ++column)
-            {
-                categoryButtons[index++]->setBounds (row.removeFromLeft (columnWidth));
-                row.removeFromLeft (Spacing::small);
-            }
-        }
+        button->setBounds (area.removeFromTop (rowHeight));
+        area.removeFromTop (2);
     }
 
-    auto bottomRow = cardBounds().reduced (Spacing::large).removeFromBottom (34);
-    closeButton.setBounds (bottomRow.removeFromRight (110));
-    bottomRow.removeFromRight (Spacing::small);
-    pinkNoiseButton.setBounds (bottomRow.removeFromLeft (150));
-    statusLabel.setBounds (bottomRow.reduced (Spacing::small, 0));
+    rootFolderLabel.setVisible (false);
+    statusLabel.setVisible (false);
+
+    auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (34);
+    closeButton.setBounds (footer.removeFromRight (110));
+    footer.removeFromRight (Spacing::small);
+    pinkNoiseButton.setBounds (footer.removeFromLeft (150));
 }
-
 
 // Runs the slicing off the message thread. Owns nothing the UI owns.
 class TrainingSoundsComponent::ImportJob : public juce::Thread
@@ -425,7 +434,7 @@ void TrainingSoundsComponent::finishImport (int clipsWritten)
 
     if (clipsWritten <= 0)
     {
-        statusLabel.setText (importedNothingText, juce::dontSendNotification);
+        hintText = importedNothingText;
         refresh();
         return;
     }
@@ -439,10 +448,8 @@ void TrainingSoundsComponent::finishImport (int clipsWritten)
         if (! category.name.startsWith ("Built-in") && ! category.files.isEmpty())
             parts.add (juce::String (category.files.size()) + " " + category.name.toLowerCase());
 
-    statusLabel.setText (importedClipsText.replace ("{{count}}", juce::String (clipsWritten))
-                             + (parts.isEmpty() ? juce::String()
-                                                : "  -  " + parts.joinIntoString (", ")),
-                          juce::dontSendNotification);
+    hintText = importedClipsText.replace ("{{count}}", juce::String (clipsWritten))
+                   + (parts.isEmpty() ? juce::String() : "  -  " + parts.joinIntoString (", "));
 
     refresh();
 }

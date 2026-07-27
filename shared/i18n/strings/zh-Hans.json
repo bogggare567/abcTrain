@@ -181,5 +181,7 @@
   "slice.bass": "低频",
   "slice.midRange": "中频",
   "slice.bright": "高频",
-  "slice.fullRange": "完整混音"
+  "slice.fullRange": "完整混音",
+  "ui.importHint": "曲目会被切成 8 秒的循环并按特征分类。你的原始文件不会被改动。",
+  "ui.about": "关于"
 }

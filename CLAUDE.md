@@ -288,6 +288,16 @@ full rationale.
   cycle), which is what actually separates a drum loop from a mix that
   contains drums. See
   [decisions/025](docs/decisions/025-audio-slicing.md).
+- `Source/SettingsScreenComponent.{h,cpp}` — a side rail (About /
+  Appearance / Background) rather than one flat card, so the screen keeps
+  working as it grows; `docs/roadmap.md` records the pages that were
+  discussed and deliberately not started. The About page shows the
+  `LICENSE` in full, embedded through the `BrandData` binary target - a
+  licence you have to leave the app to read is a licence nobody reads.
+  Text size is deliberately separate from the window-size picker: that one
+  scales the whole layout through an `AffineTransform` (right for "this
+  window is small on a 4K display"), this one scales only fonts against a
+  fixed layout (right for "I can read everything except the small print").
 - `Source/TrainingSoundsComponent.{h,cpp}` — the "Choose Training Sounds"
   overlay (same full-size show/hide shape as `shared/LessonController`):
   a "Choose Folder..." button (`juce::FileChooser::launchAsync`,

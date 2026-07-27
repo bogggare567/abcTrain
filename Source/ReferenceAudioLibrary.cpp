@@ -38,6 +38,29 @@ ReferenceAudioLibrary::ReferenceAudioLibrary (juce::PropertiesFile& propertiesFi
 
     const auto savedRoot = properties.getValue (rootFolderKey);
     rootFolder = savedRoot.isNotEmpty() ? juce::File (savedRoot) : defaultRootFolder();
+
+    // Migrate off the old default.
+    //
+    // Until v1.1 the default root was <Music>/ABCTrain. That was never a
+    // folder anybody *chose* - it is where the app happened to look - and
+    // leaving an updating player pointed at it means an empty library with
+    // no explanation, immediately after the feature that fills it was
+    // added. Only the untouched default moves: a folder the player
+    // actually picked, or one with anything in it, is left exactly where
+    // it is.
+    {
+        const auto legacyDefault = juce::File::getSpecialLocation (juce::File::userMusicDirectory)
+                                       .getChildFile ("ABCTrain");
+
+        if (rootFolder == legacyDefault
+            && legacyDefault.findChildFiles (juce::File::findDirectories, false).isEmpty())
+        {
+            rootFolder = defaultRootFolder();
+            properties.setValue (rootFolderKey, rootFolder.getFullPathName());
+            properties.saveIfNeeded();
+        }
+    }
+
     rescan();
 
     const auto savedSelection = properties.getValue (selectedFileKey);
@@ -270,8 +293,12 @@ int ReferenceAudioLibrary::importAndSlice (const juce::File& source)
 
             juce::WavAudioFormat wav;
             std::unique_ptr<juce::AudioFormatWriter> writer (
+                // 16-bit, not 24: these are training loops, not masters.
+                // The exercises hide changes of a decibel or more in them,
+                // and 24-bit buys nothing against that while costing half
+                // as much disk again.
                 wav.createWriterFor (stream.get(), reader->sampleRate,
-                                      (unsigned int) audio.getNumChannels(), 24, {}, 0));
+                                      (unsigned int) audio.getNumChannels(), 16, {}, 0));
 
             if (writer == nullptr)
                 continue;

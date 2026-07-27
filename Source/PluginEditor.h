@@ -42,6 +42,13 @@ public:
     // Opens the training-sounds window for the screenshot tool, for the
     // same reason as the training screen: it is a whole screen the gallery
     // could not otherwise show.
+    void openSettingsForSnapshot()
+    {
+        settingsScreen.setVisible (true);
+        settingsScreen.refresh();
+        settingsScreen.toFront (false);
+    }
+
     void openSoundsForSnapshot()
     {
         trainingSounds.setVisible (true);

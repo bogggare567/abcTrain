@@ -181,5 +181,7 @@
   "slice.bass": "Basses",
   "slice.midRange": "Médiums",
   "slice.bright": "Aigus",
-  "slice.fullRange": "Mix complet"
+  "slice.fullRange": "Mix complet",
+  "ui.importHint": "Les morceaux sont découpés en boucles de 8 secondes et triés par caractère. Vos fichiers ne sont pas modifiés.",
+  "ui.about": "À propos"
 }

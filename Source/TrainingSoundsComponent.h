@@ -46,18 +46,21 @@ public:
     void setStrings (juce::String title, juce::String sourceSection, juce::String trainOnSection,
                      juce::String chooseFolder, juce::String pinkNoise, juce::String close,
                      juce::String emptyText, juce::String importAndSort, juce::String importing,
-                     juce::String importedClips, juce::String importedNothing);
+                     juce::String importedClips, juce::String importedNothing,
+                     juce::String importHint);
 
 private:
     juce::Rectangle<int> cardBounds() const;
 
-    static constexpr int categoryColumns = 2;
-    static constexpr int categoryTileHeight = 34;
+    // One row per option. A grid of equal-width buttons cannot carry a
+    // count and a tick, which are the two things that tell you what you
+    // are choosing between.
+    static constexpr int rowHeight = 32;
 
     juce::String sourceHeading { "Where the sounds come from" };
     juce::String trainOnHeading { "What to train on" };
     juce::String emptyMessage;
-    juce::String importingText, importedClipsText, importedNothingText;
+    juce::String importingText, importedClipsText, importedNothingText, hintText, previousHint;
 
     void importAndSort();
     juce::TextButton importButton;

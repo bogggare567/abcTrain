@@ -58,6 +58,36 @@ public:
             }
         }
 
+        beginTest ("clips per file are capped, and spread across the whole file");
+        {
+            // Without a cap, importing an album produced 751 clips and
+            // 1.5 GB - variety comes from more sources, not from
+            // twenty-three near-identical cuts of one track.
+            auto buffer = makeSine (sampleRate, 200.0, 1000.0f);
+
+            AudioSliceAnalyzer::Options options;
+            options.sliceSeconds = 8.0;
+            options.maxSlicesPerFile = 6;
+
+            const auto slices = AudioSliceAnalyzer::analyse (buffer, sampleRate, options);
+
+            expectEquals ((int) slices.size(), 6);
+
+            // Spread, not the first six: the last kept slice must come
+            // from late in the file, or a clip's character would only ever
+            // reflect the intro.
+            expect (slices.back().startSample > (int) (sampleRate * 100.0),
+                     "the kept slices are all from the start of the file");
+
+            for (size_t i = 1; i < slices.size(); ++i)
+                expect (slices[i].startSample > slices[i - 1].startSample,
+                         "slices came back out of order");
+
+            // Zero or negative means "no cap", not "no slices".
+            options.maxSlicesPerFile = 0;
+            expect (AudioSliceAnalyzer::analyse (buffer, sampleRate, options).size() > 6);
+        }
+
         beginTest ("a click train is percussive");
         {
             auto buffer = makeClickTrain (sampleRate, 20.0, 4.0);
