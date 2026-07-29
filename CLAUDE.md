@@ -118,6 +118,13 @@ the app), `docs/diagrams/i18n-architecture.md`
 under `docs/` - repo-presentation files GitHub itself looks for/surfaces
 specially, same reasoning as `LICENSE` and the `.github/ISSUE_TEMPLATE/`
 pair.
+`docs/website-brief.md` (everything needed to build a product page on
+soundkorb.ru: a copy-paste prompt, verified facts, ready RU/EN copy, the
+exact screenshot and icon paths, the palette and font stack taken from
+`AbcTrainTheme`, direct release-asset URLs, and a "what you must not
+claim" section listing the things that would collapse on first inspection
+— unsigned builds, no stem separation, stereo width still on pink noise).
+Re-check its version numbers and asset URLs whenever a release is tagged.
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
