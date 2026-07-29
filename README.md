@@ -11,7 +11,7 @@ one free, open-source suite for macOS, Windows and Linux.
 [![Latest release](https://img.shields.io/github/v/release/bogggare567/abcTrain?label=download)](https://github.com/bogggare567/abcTrain/releases/latest)
 [![Platforms](https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-blue)](#-download)
 [![Languages](https://img.shields.io/badge/languages-12-orange)](#-supported-languages)
-[![Tests](https://img.shields.io/badge/tests-187%20groups-brightgreen)](docs/testing-strategy.md)
+[![Tests](https://img.shields.io/badge/tests-220%20groups-brightgreen)](docs/testing-strategy.md)
 
 **[⬇ Download](https://github.com/bogggare567/abcTrain/releases/latest)** ·
 [Screenshots](#-what-it-looks-like) ·
@@ -323,7 +323,7 @@ Three things that make changes safe here:
   test.
 - **Every capability is an opt-in hook with an inert default.** Nothing
   you don't override can break.
-- **172 test groups** run on every push across macOS, Windows and Linux.
+- **220 test groups** run on every push across macOS, Windows and Linux.
   Pure logic is tested directly; the deliberate gaps are documented
   rather than pretended away.
 
@@ -369,7 +369,7 @@ cmake --build build --target EarTrainerTests --config Release
 A console app, not a plugin — no host, no GUI. Exits non-zero on any
 failure, and runs on every push/PR across all three OSes.
 
-**172 test groups** covering: every game's scoring and state machine; the
+**220 test groups** covering: every game's scoring and state machine; the
 shared contract for all four continuous-scale games (on-target passes, a
 whole axis away fails, tolerance narrows with difficulty, the axis is
 linear in the unit it claims); training-run rules including every hint

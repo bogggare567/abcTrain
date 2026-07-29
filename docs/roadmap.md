@@ -74,6 +74,10 @@ vs. not.
 | Richer in-plugin tooltips (LearnerEQ/LearnerComp/LearnerVerb), each 2-4 original sentences with practical values plus a "Learn more" pointer into `docs/library_catalog.md` (title/author only), backed by `docs/knowledge_base.md`; all 9 EarTrainer games' `getInstructions()` also gained a practical tip (ADR 017) | ✓ |
 | Per-control lesson-step highlighting (beyond the moving-knob cue) | ⏳ trimmed from the initial MicroLesson build, see [decisions/005](decisions/005-microlesson-architecture.md) |
 | More lessons per plugin (each Learner plugin has exactly two today, see [decisions/017](decisions/017-knowledge-base-content-pass-and-app-icons.md)) | ⏳ still room for more |
+| Per-knob **training modules** — demonstrate, try, then a graded check by ear whose accept band narrows by tier — over synthesized beds generated per module | ✓ 7 in Learner Comp, 7 in Learner Verb, see [decisions/027](decisions/027-training-modules.md) |
+| A **frequency map** for Learner EQ — fundamentals, harmonics and named problem zones per source, drawn on the spectrum it already has | ⏳ deliberately chosen over per-knob modules for that plugin (ADR 027); not built |
+| Practice audio in the three Learner plugins, from the same library Ear Trainer imports into | ✓ off by default, see [decisions/026](decisions/026-practice-audio-in-the-learner-plugins.md) |
+| Achievements shelf, showing locked entries with their progress rather than hiding them | ✓ opened from the home screen's badge strip |
 | Glossary with audio examples | ⏳ |
 | Golden-file audio regression tests for critical DSP chains | ⏳ |
 | Code signing, notarization (macOS)/authenticode (Windows) | ⏳ — per-OS installers now exist (see the Beta row above) but are unsigned: macOS shows an "unidentified developer" Gatekeeper block, Windows shows a SmartScreen warning, until this is done |
