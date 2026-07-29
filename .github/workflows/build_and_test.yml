@@ -4,6 +4,17 @@ on:
   push:
   pull_request:
 
+# Action versions are pinned to the *lowest* major that runs on Node 24,
+# not the newest available. Node 20 is deprecated and every run was
+# printing a warning about it; that is the thing being fixed. Jumping to
+# the newest major would also pick up unrelated behaviour changes -
+# download-artifact v5 changed how single-artifact paths resolve, v8
+# moved to ESM - in a pipeline whose release job has already been broken
+# once by a change nobody could test locally.
+#
+#   checkout v5, cache v5, upload-artifact v5  -> node24
+#   download-artifact v6                       -> node24
+#   softprops/action-gh-release v3             -> node24
 jobs:
   build-and-test:
     strategy:
@@ -15,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # JUCE's GUI modules need X11/GL headers to compile on Linux even
       # though nothing here actually opens a window in CI - alsa/freetype
@@ -39,7 +50,7 @@ jobs:
             libcurl4-openssl-dev
 
       - name: Cache JUCE (FetchContent)
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: build/_deps
           key: ${{ runner.os }}-juce-${{ hashFiles('CMakeLists.txt') }}
@@ -62,7 +73,7 @@ jobs:
       # manual zip step needed. Per-OS name so VST3/AU/Standalone stay
       # separate downloads instead of one mixed-platform blob.
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: plugins-${{ matrix.os }}
           path: |
@@ -96,7 +107,7 @@ jobs:
 
       - name: Upload macOS installer
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: installer-macos
           path: abcTrain-macOS-*.dmg
@@ -119,7 +130,7 @@ jobs:
 
       - name: Upload Windows installer
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: installer-windows
           path: abcTrain-Windows-*-setup.exe
@@ -133,7 +144,7 @@ jobs:
 
       - name: Upload Linux installer
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: installer-linux
           path: abcTrain-Linux-*.tar.gz
@@ -152,7 +163,7 @@ jobs:
       contents: write
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           path: artifacts
 
@@ -169,7 +180,7 @@ jobs:
           done
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             artifacts/plugins-*.zip

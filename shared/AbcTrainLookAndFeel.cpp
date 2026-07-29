@@ -133,6 +133,49 @@ void AbcTrainLookAndFeel::setTextScale (float newScale) noexcept
     sharedTextScale = juce::jlimit (0.8f, 1.4f, newScale);
 }
 
+
+// The interface typeface.
+//
+// Everything here used to ask JUCE for its default sans, which on macOS is
+// a 1990s system face and on Linux is whatever happened to be installed.
+// It is the single loudest "this was not designed" signal a UI can send,
+// and it is free to fix: every platform ships a good interface font, they
+// are simply not the *default* one.
+//
+// A licensed typeface of our own is still the right long-term answer (see
+// docs/decisions/009), but shipping one means paying for it and embedding
+// it. Asking for the best face the machine already has costs nothing and
+// gets most of the way there.
+static juce::String interfaceTypefaceName()
+{
+    // findAllTypefaceNames() enumerates the whole system font book, which
+    // is slow enough to matter in a paint callback - so it happens once.
+    static const juce::String chosen = []
+    {
+        const juce::StringArray preferred
+        {
+           #if JUCE_MAC
+            "SF Pro Text", "SF Pro Display", ".AppleSystemUIFont", "Helvetica Neue", "Avenir Next",
+           #elif JUCE_WINDOWS
+            "Segoe UI Variable Text", "Segoe UI",
+           #else
+            "Inter", "Ubuntu", "Noto Sans", "Cantarell", "DejaVu Sans",
+           #endif
+        };
+
+        const auto available = juce::Font::findAllTypefaceNames();
+
+        for (const auto& name : preferred)
+            if (available.contains (name))
+                return name;
+
+        return juce::Font::getDefaultSansSerifFontName();
+    }();
+
+    return chosen;
+}
+
+
 float AbcTrainLookAndFeel::getTextScale() noexcept
 {
     return sharedTextScale;
@@ -140,7 +183,8 @@ float AbcTrainLookAndFeel::getTextScale() noexcept
 
 juce::Font AbcTrainLookAndFeel::titleFont()
 {
-    return juce::Font (juce::FontOptions (titleFontHeight * sharedTextScale, juce::Font::bold));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       titleFontHeight * sharedTextScale, juce::Font::bold));
 }
 
 juce::Font AbcTrainLookAndFeel::monoFont()
@@ -155,27 +199,32 @@ juce::Font AbcTrainLookAndFeel::monoFont()
 
 juce::Font AbcTrainLookAndFeel::captionFont()
 {
-    return juce::Font (juce::FontOptions (captionFontHeight * sharedTextScale, juce::Font::plain));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       captionFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::getLabelFont (juce::Label&)
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::getTextButtonFont (juce::TextButton&, int)
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::getComboBoxFont (juce::ComboBox&)
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::getPopupMenuFont()
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
@@ -185,7 +234,8 @@ juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
 
 juce::Font AbcTrainLookAndFeel::getAlertWindowMessageFont()
 {
-    return juce::Font (juce::FontOptions (bodyFontHeight * sharedTextScale));
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
 }
 
 // -------------------------------------------------------------- buttons

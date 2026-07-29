@@ -6,39 +6,62 @@ namespace AppIcons
 {
     namespace
     {
-        juce::Path eqPath()
+        // Three faders. On hover their caps slide to new positions - which
+        // is what a person does to an EQ, and the only motion that says
+        // "this is a thing you set" rather than "this is a picture".
+        juce::Path eqPath (float a)
         {
             juce::Path p;
-            p.startNewSubPath (5.0f, 3.0f); p.lineTo (5.0f, 21.0f);
-            p.addEllipse (3.0f, 7.0f, 4.0f, 4.0f);
-            p.startNewSubPath (12.0f, 3.0f); p.lineTo (12.0f, 21.0f);
-            p.addEllipse (10.0f, 13.0f, 4.0f, 4.0f);
-            p.startNewSubPath (19.0f, 3.0f); p.lineTo (19.0f, 21.0f);
-            p.addEllipse (17.0f, 4.0f, 4.0f, 4.0f);
+            const float rest[] = { 7.0f, 13.0f, 4.0f };
+            const float moved[] = { 12.0f, 6.0f, 9.0f };
+            const float xs[] = { 5.0f, 12.0f, 19.0f };
+
+            for (int i = 0; i < 3; ++i)
+            {
+                p.startNewSubPath (xs[i], 3.0f); p.lineTo (xs[i], 21.0f);
+                p.addEllipse (xs[i] - 2.0f, rest[i] + (moved[i] - rest[i]) * a, 4.0f, 4.0f);
+            }
+
             return p;
         }
 
-        juce::Path compressionPath()
+        // Two chevrons above and below a line. On hover they close toward
+        // it: the glyph does the thing it names.
+        juce::Path compressionPath (float a)
         {
             juce::Path p;
-            p.startNewSubPath (6.0f, 3.0f); p.lineTo (12.0f, 9.0f); p.lineTo (18.0f, 3.0f);
-            p.startNewSubPath (6.0f, 21.0f); p.lineTo (12.0f, 15.0f); p.lineTo (18.0f, 21.0f);
+            const auto squeeze = 3.4f * a;
+
+            p.startNewSubPath (6.0f, 3.0f + squeeze);
+            p.lineTo (12.0f, 9.0f + squeeze);
+            p.lineTo (18.0f, 3.0f + squeeze);
+
+            p.startNewSubPath (6.0f, 21.0f - squeeze);
+            p.lineTo (12.0f, 15.0f - squeeze);
+            p.lineTo (18.0f, 21.0f - squeeze);
+
             p.startNewSubPath (4.0f, 12.0f); p.lineTo (20.0f, 12.0f);
             return p;
         }
 
-        juce::Path reverbPath()
+        juce::Path reverbPath (float a)
         {
             juce::Path p;
             const juce::Point<float> origin (3.0f, 21.0f);
+
+            // The reflections travel outward, the way a tail does.
             for (float radius : { 6.0f, 11.0f, 16.0f })
-                p.addCentredArc (origin.x, origin.y, radius, radius,
+            {
+                const auto r = radius + 1.6f * a;
+                p.addCentredArc (origin.x, origin.y, r, r,
                                   0.0f, juce::MathConstants<float>::pi * 1.5f, juce::MathConstants<float>::twoPi, true);
+            }
+
             p.addEllipse (origin.x - 1.2f, origin.y - 1.2f, 2.4f, 2.4f);
             return p;
         }
 
-        juce::Path panPath()
+        juce::Path panPath (float a)
         {
             // A pan knob, turned. The old double-headed arrow said "wide"
             // rather than "which side" - it was indistinguishable from the
@@ -49,9 +72,11 @@ namespace AppIcons
                               juce::MathConstants<float>::pi * 0.75f, true);
 
             // The pointer, off-centre to the right: a centred one would
-            // read as "no panning at all".
+            // read as "no panning at all". On hover it sweeps across, which
+            // is the whole exercise in one gesture.
+            const auto angle = juce::MathConstants<float>::pi * (-0.25f - 1.0f * a);
             p.startNewSubPath (12.0f, 13.0f);
-            p.lineTo (17.3f, 7.7f);
+            p.lineTo (12.0f + 7.5f * std::cos (angle), 13.0f + 7.5f * std::sin (angle));
 
             // Ticks at the two extremes, so the arc reads as a range.
             p.startNewSubPath (3.0f, 19.0f);  p.lineTo (5.0f, 19.0f);
@@ -59,16 +84,18 @@ namespace AppIcons
             return p;
         }
 
-        juce::Path delayPath()
+        // Three repeats, each quieter than the last. On hover they spread
+        // out - a longer delay time, which is the thing being guessed.
+        juce::Path delayPath (float a)
         {
             juce::Path p;
             p.addEllipse (0.0f, 8.0f, 8.0f, 8.0f);
-            p.addEllipse (10.0f, 9.0f, 6.0f, 6.0f);
-            p.addEllipse (18.0f, 10.0f, 4.0f, 4.0f);
+            p.addEllipse (10.0f + 1.2f * a, 9.0f, 6.0f, 6.0f);
+            p.addEllipse (18.0f + 2.4f * a, 10.0f, 4.0f, 4.0f);
             return p;
         }
 
-        juce::Path distortionPath()
+        juce::Path distortionPath (float a)
         {
             // A wave whose peaks have been squared off against two
             // ceilings. The old zig-zag was just a jagged line - it read
@@ -80,38 +107,51 @@ namespace AppIcons
             p.startNewSubPath (2.0f, 7.0f);  p.lineTo (22.0f, 7.0f);
             p.startNewSubPath (2.0f, 17.0f); p.lineTo (22.0f, 17.0f);
 
+            // On hover the flats widen: more drive, more of the wave
+            // pinned against the ceiling.
+            const auto spread = 1.8f * a;
+
             p.startNewSubPath (2.0f, 12.0f);
-            p.lineTo (5.0f, 7.0f);
-            p.lineTo (9.0f, 7.0f);            // flat top
+            p.lineTo (5.0f - spread, 7.0f);
+            p.lineTo (9.0f + spread, 7.0f);   // flat top
             p.lineTo (12.0f, 12.0f);
-            p.lineTo (15.0f, 17.0f);
-            p.lineTo (19.0f, 17.0f);          // flat bottom
+            p.lineTo (15.0f - spread, 17.0f);
+            p.lineTo (19.0f + spread, 17.0f); // flat bottom
             p.lineTo (22.0f, 12.0f);
             return p;
         }
 
-        juce::Path stereoWidthPath()
+        juce::Path stereoWidthPath (float a)
         {
             // A centre point with two speakers pushed apart, and arrows
             // showing the push. Two overlapping circles read as a Venn
             // diagram, which says "overlap" - the opposite of width.
             juce::Path p;
+
+            // On hover the arrows reach further out: the image widening.
+            const auto reach = 2.0f * a;
+
             p.addRectangle (2.0f, 8.0f, 4.0f, 8.0f);    // left speaker
             p.addRectangle (18.0f, 8.0f, 4.0f, 8.0f);   // right speaker
 
-            p.startNewSubPath (12.0f, 12.0f);
-            p.lineTo (8.5f, 12.0f);
-            p.startNewSubPath (8.5f, 12.0f); p.lineTo (10.5f, 10.0f);
-            p.startNewSubPath (8.5f, 12.0f); p.lineTo (10.5f, 14.0f);
+            const auto left = 8.5f - reach;
+            const auto right = 15.5f + reach;
 
             p.startNewSubPath (12.0f, 12.0f);
-            p.lineTo (15.5f, 12.0f);
-            p.startNewSubPath (15.5f, 12.0f); p.lineTo (13.5f, 10.0f);
-            p.startNewSubPath (15.5f, 12.0f); p.lineTo (13.5f, 14.0f);
+            p.lineTo (left, 12.0f);
+            p.startNewSubPath (left, 12.0f); p.lineTo (left + 2.0f, 10.0f);
+            p.startNewSubPath (left, 12.0f); p.lineTo (left + 2.0f, 14.0f);
+
+            p.startNewSubPath (12.0f, 12.0f);
+            p.lineTo (right, 12.0f);
+            p.startNewSubPath (right, 12.0f); p.lineTo (right - 2.0f, 10.0f);
+            p.startNewSubPath (right, 12.0f); p.lineTo (right - 2.0f, 14.0f);
             return p;
         }
 
-        juce::Path gainPath()
+        // A two-headed arrow with a level mark on it. On hover the mark
+        // rides up the shaft - the level changing, which is the exercise.
+        juce::Path gainPath (float a)
         {
             juce::Path p;
             p.startNewSubPath (12.0f, 2.0f); p.lineTo (12.0f, 22.0f);
@@ -119,11 +159,13 @@ namespace AppIcons
             p.startNewSubPath (12.0f, 2.0f); p.lineTo (15.0f, 6.0f);
             p.startNewSubPath (12.0f, 22.0f); p.lineTo (9.0f, 18.0f);
             p.startNewSubPath (12.0f, 22.0f); p.lineTo (15.0f, 18.0f);
-            p.startNewSubPath (8.0f, 12.0f); p.lineTo (16.0f, 12.0f);
+
+            const auto markY = 12.0f - 4.0f * a;
+            p.startNewSubPath (8.0f, markY); p.lineTo (16.0f, markY);
             return p;
         }
 
-        juce::Path frequencyRangePath()
+        juce::Path frequencyRangePath (float a)
         {
             // Bars, with a bracket picking out one span of them - naming a
             // *range* is the exercise. The old version bracketed the
@@ -136,10 +178,12 @@ namespace AppIcons
             for (int i = 0; i < 5; ++i)
                 p.addRectangle (xs[i] - 1.4f, 17.0f - heights[i], 2.8f, heights[i]);
 
-            // The bracket hugs the bars it selects.
-            p.startNewSubPath (6.0f, 20.5f); p.lineTo (6.0f, 22.5f);
-            p.lineTo (15.0f, 22.5f);
-            p.lineTo (15.0f, 20.5f);
+            // The bracket hugs the bars it selects, and on hover it slides
+            // to a different span - naming *which* range is the exercise.
+            const auto shift = 5.5f * a;
+            p.startNewSubPath (6.0f + shift, 20.5f); p.lineTo (6.0f + shift, 22.5f);
+            p.lineTo (15.0f + shift, 22.5f);
+            p.lineTo (15.0f + shift, 20.5f);
             return p;
         }
 
@@ -315,22 +359,22 @@ namespace AppIcons
             p.lineTo (15.0f, 7.5f);
             return p;
         }
-    juce::Path getPath (Icon icon)
+    juce::Path getPath (Icon icon, float a)
     {
         switch (icon)
         {
-            case Icon::eq:             return eqPath();
-            case Icon::compression:    return compressionPath();
+            case Icon::eq:             return eqPath (a);
+            case Icon::compression:    return compressionPath (a);
             // Concentric rings, the same mark LearnerVerb uses. The old
             // corner ripple read as a wifi symbol, not as a space - which
             // is what it was supposed to say.
             case Icon::reverb:         return learnerVerbPath();
-            case Icon::pan:            return panPath();
-            case Icon::delay:          return delayPath();
-            case Icon::distortion:     return distortionPath();
-            case Icon::stereoWidth:    return stereoWidthPath();
-            case Icon::gain:           return gainPath();
-            case Icon::frequencyRange: return frequencyRangePath();
+            case Icon::pan:            return panPath (a);
+            case Icon::delay:          return delayPath (a);
+            case Icon::distortion:     return distortionPath (a);
+            case Icon::stereoWidth:    return stereoWidthPath (a);
+            case Icon::gain:           return gainPath (a);
+            case Icon::frequencyRange: return frequencyRangePath (a);
             case Icon::learnerEQ:      return learnerEQPath();
             case Icon::learnerComp:    return learnerCompPath();
             case Icon::learnerVerb:    return learnerVerbPath();
@@ -345,7 +389,7 @@ namespace AppIcons
             case Icon::modules:        return modulesPath();
         }
 
-        return eqPath();
+        return eqPath (a);
     }
 
     Icon iconForGameName (const juce::String& englishName)
@@ -363,9 +407,10 @@ namespace AppIcons
         return Icon::eq; // an as-yet-unmapped game (see translateGameName's identical fallback shape)
     }
 
-    void draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce::Colour colour)
+    void draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce::Colour colour,
+               float animation)
     {
-        auto path = getPath (icon);
+        auto path = getPath (icon, juce::jlimit (0.0f, 1.0f, animation));
         path.scaleToFit (bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), true);
 
         g.setColour (colour);
@@ -373,7 +418,7 @@ namespace AppIcons
     }
 
     void drawBadged (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds,
-                     juce::Colour colour, float strength)
+                     juce::Colour colour, float strength, float animation)
     {
         // The same glyph on a quiet plate.
         //
@@ -411,7 +456,7 @@ namespace AppIcons
         g.setColour (theme.outline.withAlpha (0.4f + 0.4f * strength));
         g.drawRoundedRectangle (plate, radius, 1.0f);
 
-        auto path = getPath (icon);
+        auto path = getPath (icon, juce::jlimit (0.0f, 1.0f, animation));
         const auto inner = plate.reduced (plate.getWidth() * 0.22f);
         path.scaleToFit (inner.getX(), inner.getY(), inner.getWidth(), inner.getHeight(), true);
 
@@ -540,13 +585,13 @@ void IconButton::paintButton (juce::Graphics& g, bool shouldDrawButtonAsHighligh
         juce::Graphics::ScopedSaveState saved (g);
         g.setOpacity (1.0f - eased);
         AppIcons::draw (g, previousIcon, iconArea.reduced (iconArea.getWidth() * 0.12f * eased),
-                        tint.withMultipliedAlpha (1.0f - eased));
+                        tint.withMultipliedAlpha (1.0f - eased), hover);
     }
 
     {
         juce::Graphics::ScopedSaveState saved (g);
         g.setOpacity (eased);
         AppIcons::draw (g, icon, iconArea.reduced (iconArea.getWidth() * 0.12f * (1.0f - eased)),
-                        tint.withMultipliedAlpha (eased));
+                        tint.withMultipliedAlpha (eased), hover);
     }
 }

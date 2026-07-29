@@ -171,7 +171,10 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
     // Monochrome. The family colour is still carried by the thin progress
     // line at the bottom of the tile, where it is a hint; nine saturated
     // squares made the catalogue louder than anything on it.
-    AppIcons::drawBadged (g, card.icon, badge, theme.text, 0.75f + 0.25f * eased);
+    // The tile's own eased hover drives the glyph, so pointing at "Guess the
+    // Compression" makes its chevrons close on the line. A caption tells you
+    // what an exercise is called; this tells you what it is.
+    AppIcons::drawBadged (g, card.icon, badge, theme.text, 0.75f + 0.25f * eased, eased);
 
     // The level, with the word "Level" over it.
     //

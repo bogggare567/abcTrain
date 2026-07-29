@@ -37,7 +37,7 @@ namespace AppIcons
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().
-    juce::Path getPath (Icon icon);
+    juce::Path getPath (Icon icon, float animation = 0.0f);
 
     // Maps a Game::getName() English string (see the gameI18nKeys table in
     // Source/PluginEditor.cpp) to its icon; returns Icon::eq for anything
@@ -50,14 +50,22 @@ namespace AppIcons
     // `bounds`, stroked in `colour`. A free function rather than a
     // Component, so it can be used directly inside an existing
     // Component::paint() (e.g. a title row) without adding a child.
-    void draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce::Colour colour);
+    // `animation` 0..1 makes the glyph do the thing it depicts: the
+    // compression chevrons close on the line, the reverb arcs travel
+    // outward, the pan needle sweeps, the range bracket slides to another
+    // span. Not decoration - a mark that moves the way its subject moves
+    // is the cheapest explanation of the subject there is, and these are
+    // exercises whose names ("stereo width", "the range") mean nothing yet
+    // to the person reading them.
+    void draw (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds, juce::Colour colour,
+               float animation = 0.0f);
 
     // The same glyph on a rounded coloured plate, for the places where an
     // icon has to be *recognised* rather than merely read - the home
     // screen's nine tiles and the achievement badges. `strength` 0..1 is
     // how lit it is: a locked achievement draws the same badge dim.
     void drawBadged (juce::Graphics& g, Icon icon, juce::Rectangle<float> bounds,
-                     juce::Colour colour, float strength = 1.0f);
+                     juce::Colour colour, float strength = 1.0f, float animation = 0.0f);
 
     // How far this glyph turns when the pointer arrives on it, in degrees.
     //
