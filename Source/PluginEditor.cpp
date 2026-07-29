@@ -263,6 +263,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addAndMakeVisible (beforeButton);
     addAndMakeVisible (afterButton);
 
+    // ...which is only reachable if the editor can hold focus.
+    setWantsKeyboardFocus (true);
+
     hintButton.onClick = [this] { requestHint(); };
     addAndMakeVisible (hintButton);
 
@@ -674,6 +677,18 @@ void EarTrainerEditor::paint (juce::Graphics& g)
                                      (float) getWidth() * 0.6f, 32.0f),
             AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
             juce::Justification::centredLeft);
+}
+
+bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
+{
+    if (key == juce::KeyPress::spaceKey && beforeButton.isVisible())
+    {
+        auto& game = processor.getGameManager().getActiveGame();
+        setPlayProcessed (! game.isPlayingProcessed());
+        return true;
+    }
+
+    return false;
 }
 
 void EarTrainerEditor::resized()

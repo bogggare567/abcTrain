@@ -7,18 +7,26 @@
 Nine ear-training exercises and three real, host-automatable effects —
 one free, open-source suite for macOS, Windows and Linux.
 
-[![Build and Test](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
-[![Latest release](https://img.shields.io/github/v/release/bogggare567/abcTrain?label=download)](https://github.com/bogggare567/abcTrain/releases/latest)
-[![Platforms](https://img.shields.io/badge/macOS%20%7C%20Windows%20%7C%20Linux-VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-blue)](#-download)
-[![Languages](https://img.shields.io/badge/languages-12-orange)](#-supported-languages)
-[![Tests](https://img.shields.io/badge/tests-220%20groups-brightgreen)](docs/testing-strategy.md)
-[![Donate](https://img.shields.io/badge/Donate-DonationAlerts-blue)](https://www.donationalerts.com/r/bogdankorablev)
+[![Build and Test](https://img.shields.io/github/actions/workflow/status/bogggare567/abcTrain/build_and_test.yml?style=flat-square&labelColor=1E1E2E&color=5FB98C&label=build)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
+[![Latest release](https://img.shields.io/github/v/release/bogggare567/abcTrain?style=flat-square&labelColor=1E1E2E&color=5B9BD5&label=release)](https://github.com/bogggare567/abcTrain/releases/latest)
+[![Formats](https://img.shields.io/badge/VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-4A4A5A?style=flat-square&labelColor=1E1E2E)](#-download)
+[![Languages](https://img.shields.io/badge/languages-12-4A4A5A?style=flat-square&labelColor=1E1E2E)](#-supported-languages)
+[![Tests](https://img.shields.io/badge/tests-220%20groups-4A4A5A?style=flat-square&labelColor=1E1E2E)](docs/testing-strategy.md)
+[![Licence](https://img.shields.io/badge/licence-all%20rights%20reserved-4A4A5A?style=flat-square&labelColor=1E1E2E)](LICENSE)
 
-**[⬇ Download](https://github.com/bogggare567/abcTrain/releases/latest)** ·
-[Screenshots](#-what-it-looks-like) ·
-[How it works](#-how-it-works) ·
-[Contribute](docs/orientation.md) ·
-[Roadmap](docs/roadmap.md)
+<br>
+
+[![Download for macOS, Windows and Linux](https://img.shields.io/badge/%E2%AC%87%20DOWNLOAD-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-5B9BD5?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
+&nbsp;
+[![Support the project on DonationAlerts](https://img.shields.io/badge/%E2%99%A5%20SUPPORT-DonationAlerts-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://www.donationalerts.com/r/bogdankorablev)
+
+<br>
+
+[![Screenshots](https://img.shields.io/badge/Screenshots-2A2A3A?style=flat-square)](#-what-it-looks-like)
+[![How it works](https://img.shields.io/badge/How%20it%20works-2A2A3A?style=flat-square)](#-how-it-works)
+[![The nine exercises](https://img.shields.io/badge/9%20exercises-2A2A3A?style=flat-square)](#-9-games)
+[![Roadmap](https://img.shields.io/badge/Roadmap-2A2A3A?style=flat-square)](docs/roadmap.md)
+[![Contribute](https://img.shields.io/badge/Contribute-2A2A3A?style=flat-square)](docs/orientation.md)
 
 <br>
 
@@ -224,7 +232,7 @@ reads as mass. The spectrum is a smoothed gradient-filled curve over a
 soft grid; the gain-reduction meter fills *downward*, because reduction
 is the one meter where more is lower.
 
-## Download
+## ⬇ Download
 
 Pre-release, **unsigned** builds only — see [LICENSE](LICENSE) before
 distributing anything built from this repo.
@@ -481,8 +489,16 @@ Free, open source, and staying that way — no paid tier, no subscription,
 nothing locked behind anything.
 
 If it's useful to you, a **[star](https://github.com/bogggare567/abcTrain)**
-helps other people find it, and a donation via
-[soundkorb.ru](https://soundkorb.ru) keeps it moving. Both are optional
-and neither unlocks anything: gating software behind a star is against
-[GitHub's rules on incentivised engagement](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies),
+helps other people find it, and a donation keeps it moving. Both are
+optional and neither unlocks anything: gating software behind a star is
+against [GitHub's rules on incentivised engagement](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies),
 and would be trivially bypassable anyway.
+
+<div align="center">
+
+[![Support the project on DonationAlerts](https://img.shields.io/badge/%E2%99%A5%20SUPPORT%20THIS%20PROJECT-DonationAlerts-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://www.donationalerts.com/r/bogdankorablev)
+
+</div>
+
+There is also [soundkorb.ru](https://soundkorb.ru), which is where the
+rest of this work lives.

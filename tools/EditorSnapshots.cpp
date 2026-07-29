@@ -134,6 +134,12 @@ namespace
             if constexpr (std::is_same_v<EditorType, LearnerCompEditor>
                           || std::is_same_v<EditorType, LearnerVerbEditor>)
             {
+                // A plain shot of these two shows a preset engaged rather
+                // than every knob at its default - a picture of a plugin
+                // nobody has touched is a picture of nothing.
+                if (extra == Extra::none)
+                    editor.applyPresetForSnapshot (1);
+
                 if (extra == Extra::moduleShelf)
                     editor.openModuleShelfForSnapshot();
 

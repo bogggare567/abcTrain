@@ -106,5 +106,8 @@ void GainReductionMeter::paint (juce::Graphics& g)
 
     g.setColour (theme.textDim.withAlpha (0.7f));
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawText ("GR", arcArea.withHeight (14.0f), juce::Justification::centredTop, false);
+    // The arrow is not decoration: this is the one meter where more is
+    // lower, and a newcomer reads an unlabelled falling arc backwards.
+    g.drawText (juce::String::fromUTF8 ("GR \xe2\x86\x93"), arcArea.withHeight (14.0f),
+                 juce::Justification::centredTop, false);
 }

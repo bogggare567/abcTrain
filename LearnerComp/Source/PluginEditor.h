@@ -81,6 +81,27 @@ private:
 
     juce::OwnedArray<juce::TextButton> presetButtons;
 
+    // Which preset the knobs currently *are*, or -1. A row of identical
+    // buttons says "here are four things you may press"; one filled chip
+    // among three outlines says "you are here, and here is what else there
+    // is" - which is the question a preset row actually answers. Cleared
+    // the moment a knob moves, because after that the answer is no longer
+    // true.
+    int activePreset = -1;
+    void refreshPresetChips();
+
+public:
+    // Snapshot seam: a screenshot of every knob at its default is a
+    // screenshot of a plugin nobody has used yet.
+    void applyPresetForSnapshot (int index)
+    {
+        processor.applyPreset (index);
+        activePreset = index;
+        refreshPresetChips();
+    }
+
+private:
+
     // Two lessons (see decisions/017) means a small picker instead of one
     // "Lesson" button - each LessonController owns its own MicroLesson, and
     // only one is ever visible/started at a time (see lessonSelector.onChange).

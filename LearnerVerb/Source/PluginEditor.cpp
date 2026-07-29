@@ -40,6 +40,7 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
                                 ? AbcTrainTheme::Mode::light
                                 : AbcTrainTheme::Mode::dark);
     accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::space);
+    refreshPresetChips();
     lookAndFeel.refreshFromTheme (accent);
 
     setLookAndFeel (&lookAndFeel);
@@ -124,6 +125,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         button->onClick = [this, i]
         {
             processor.applyPreset (i);
+            activePreset = i;
+            refreshPresetChips();
 
             // The knobs moving is the "what changed"; this is the "why".
             guideTooltip.setText (juce::String (ReverbGuide::presets[(size_t) i].name) + " - "
@@ -131,6 +134,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         };
         addAndMakeVisible (button);
     }
+
+    refreshPresetChips();
 
     bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
         processor.apvts, LearnerVerbProcessor::bypassParamId, bypassButton);
@@ -296,6 +301,7 @@ void LearnerVerbEditor::toggleTheme()
     // accentFor() returns a different value per mode, so it has to be
     // asked again rather than reused from construction.
     accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::space);
+    refreshPresetChips();
     lookAndFeel.refreshFromTheme (accent);
     applyTheme();
 
@@ -353,6 +359,22 @@ void LearnerVerbEditor::paintOverChildren (juce::Graphics& g)
                                            AbcTrainLookAndFeel::captionFont(),
                                            theme.textDim.withAlpha (eased), 3.0f,
                                            juce::Justification::centred);
+}
+
+void LearnerVerbEditor::refreshPresetChips()
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    for (int i = 0; i < presetButtons.size(); ++i)
+    {
+        // A near-transparent fill still gets the LookAndFeel's 1px border,
+        // so an unselected chip reads as an outline rather than as a
+        // disabled button.
+        presetButtons[i]->setColour (juce::TextButton::buttonColourId,
+                                      i == activePreset ? accent.withAlpha (0.85f)
+                                                        : theme.widgetBackground.withAlpha (0.25f));
+        presetButtons[i]->repaint();
+    }
 }
 
 void LearnerVerbEditor::resized()

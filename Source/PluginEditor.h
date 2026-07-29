@@ -86,6 +86,11 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    // Space flips A/B. It is the control a player touches most - once or
+    // twice every round, every round - and reaching for the mouse to do it
+    // breaks the one thing the screen is for, which is listening.
+    bool keyPressed (const juce::KeyPress&) override;
+
 private:
     // Plain filled-rectangle progress bar, its fill now eased via JUCE's
     // own juce_animation module (Animator/ValueAnimatorBuilder) instead
