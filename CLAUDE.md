@@ -770,6 +770,17 @@ for the full rationale; summary here.
   general-purpose regex class) — pure, CMake-independent, so
   `tests/VersionChannelTest.cpp` exercises it with hand-written example
   strings, no real tagged build needed.
+- `shared/UpdatePrompt.{h,cpp}` — what happens *after* "a newer version
+  exists". It used to be a dialogue whose only button opened a web page,
+  which is a notification with homework: find the right file among six
+  assets, download it, find it again in Finder. It now offers to fetch
+  this platform's installer (`.dmg`/`-setup.exe`/`.tar.gz`, picked out of
+  the release's `assets` array by `UpdateChecker::parseReleaseJson`),
+  reports progress, and reveals the finished file. It deliberately stops
+  there: installing a plugin writes into a shared system folder, needs
+  admin rights, and would be doing it while the host has that very plugin
+  loaded. A separate file from `UpdateChecker` so ADR 007's rule holds —
+  `UpdateChecker.h` stays free of any GUI dependency.
 - Each editor wires its own "Updates" `TextButton` directly (duplicated
   across all four editors rather than pulled into a shared UI helper, so
   `shared/UpdateChecker.h` itself stays free of any GUI dependency — same

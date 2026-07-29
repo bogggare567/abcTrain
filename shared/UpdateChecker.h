@@ -20,7 +20,21 @@ namespace UpdateChecker
     {
         juce::String tagName; // e.g. "v0.2.0" - empty if nothing usable was found
         juce::String htmlUrl; // the release's GitHub page, for "open in browser"
+
+        // The installer for the machine this is running on, picked out of
+        // the release's assets. Empty if the release has no asset matching
+        // this platform - a source-only tag, or a build still in flight.
+        //
+        // Telling somebody "a new version exists, go and find it" is not an
+        // update mechanism, it is a notification with homework.
+        juce::String assetUrl;
+        juce::String assetName;
+        juce::int64  assetBytes = 0;
     };
+
+    // Which filename ending identifies this platform's installer in a
+    // release's asset list: ".dmg", "-setup.exe", ".tar.gz".
+    juce::String installerSuffixForThisPlatform();
 
     // stable checks GitHub's "latest release" endpoint, which already
     // excludes pre-releases; beta checks the full releases list and takes
@@ -58,6 +72,19 @@ namespace UpdateChecker
     // before beta-channel support existed.
     void checkForUpdatesAsync (const juce::String& currentVersion, Channel channel,
                                 std::function<void (bool foundNewer, ReleaseInfo release)> callback);
+
+    // Downloads `release`'s installer into the user's Downloads folder,
+    // reporting 0..1 and then the finished file (or an invalid File on
+    // failure) - both on the message thread.
+    //
+    // It stops at "the installer is now on your disk, here it is". It does
+    // not run it: installing a plugin means writing into a shared system
+    // folder, with admin rights, while the host has that very plugin
+    // loaded. An updater that did it silently would be a plugin that can
+    // pull the floor out from under a session in progress.
+    void downloadReleaseAsync (const ReleaseInfo& release,
+                                std::function<void (float progress)> onProgress,
+                                std::function<void (juce::File)> onFinished);
 
     inline void checkForUpdatesAsync (const juce::String& currentVersion,
                                        std::function<void (bool foundNewer, ReleaseInfo release)> callback)

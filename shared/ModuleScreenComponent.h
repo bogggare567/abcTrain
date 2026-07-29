@@ -123,7 +123,19 @@ private:
     void restoreParameters();
 
     double bedSampleRate = 44100.0;
-    juce::AudioBuffer<float> bed;
+
+    // Every rendered bed is kept alive for this panel's whole lifetime
+    // rather than freed when the next one is made.
+    //
+    // This was a real use-after-free on the audio thread: `bed` was a
+    // single buffer, playBed() reassigned it, and AudioBuffer's assignment
+    // frees the old allocation - the one whose address the processor was
+    // still reading through setOverrideBuffer, in the middle of a block.
+    // Freeing it under the audio thread is exactly the shape of crash that
+    // shows up as "the plugin dies while I am using it" and never in a
+    // test. Same fix, and the same accepted memory tradeoff, as
+    // ReferenceAudioLibrary::loadedBuffers.
+    juce::OwnedArray<juce::AudioBuffer<float>> renderedBeds;
 
     // 0 = panel over the analysis area, 1 = panel over everything.
     float expansion = 0.0f;

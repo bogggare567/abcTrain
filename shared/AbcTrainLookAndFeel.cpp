@@ -146,8 +146,36 @@ void AbcTrainLookAndFeel::setTextScale (float newScale) noexcept
 // docs/decisions/009), but shipping one means paying for it and embedding
 // it. Asking for the best face the machine already has costs nothing and
 // gets most of the way there.
+static juce::String chosenTypefaceOverride;
+
+void AbcTrainLookAndFeel::setTypefaceName (const juce::String& name)
+{
+    chosenTypefaceOverride = name;
+}
+
+juce::String AbcTrainLookAndFeel::getTypefaceName()
+{
+    return chosenTypefaceOverride;
+}
+
+juce::StringArray AbcTrainLookAndFeel::availableTypefaceNames()
+{
+    static const juce::StringArray all = []
+    {
+        juce::StringArray names { "System" };
+        names.addArray (juce::Font::findAllTypefaceNames());
+        names.removeDuplicates (true);
+        return names;
+    }();
+
+    return all;
+}
+
 static juce::String interfaceTypefaceName()
 {
+    if (chosenTypefaceOverride.isNotEmpty() && chosenTypefaceOverride != "System")
+        return chosenTypefaceOverride;
+
     // findAllTypefaceNames() enumerates the whole system font book, which
     // is slow enough to matter in a paint callback - so it happens once.
     static const juce::String chosen = []

@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "../shared/UpdatePrompt.h"
 #include "Achievements.h"
 #include "../shared/Version.h"
 #include <array>
@@ -163,6 +164,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     AbcTrainLookAndFeel::setTextScale ((float) localisationProperties.getDoubleValue (
                                             SettingsScreenComponent::textScaleKey, 1.0));
     SettingsScreenComponent::applyStoredBackground (localisationProperties);
+    SettingsScreenComponent::applyStoredTypeface (localisationProperties);
 
     setLookAndFeel (&lookAndFeel);
 
@@ -417,21 +419,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
             safeThis->updateButton.setTooltip (updatesText);
 
-            const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
-                juce::MessageBoxIconType::InfoIcon,
-                updateAvailableText,
-                "Version " + release.tagName + " is available - you're on " + juce::String (CurrentVersion::string) + ".",
-                openReleasePageText, laterText,
-                safeThis.getComponent());
-
-            juce::AlertWindow::showAsync (options, [release] (int result)
-            {
-                // makeOptionsOkCancel adds two buttons; per AlertWindow's
-                // documented N-button result mapping, button[0] ("Open
-                // Release Page") returns 1, button[1] ("Later") returns 0.
-                if (result == 1)
-                    juce::URL (release.htmlUrl).launchInDefaultBrowser();
-            });
+            UpdatePrompt::offer (release, safeThis.getComponent(),
+                                  [safeThis] (juce::String text)
+                                  {
+                                      if (safeThis != nullptr)
+                                          safeThis->showUpdateOutcome (text);
+                                  });
         });
 
         // checkForUpdatesAsync's callback never fires at all on failure
@@ -677,6 +670,11 @@ void EarTrainerEditor::paint (juce::Graphics& g)
                                      (float) getWidth() * 0.6f, 32.0f),
             AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
             juce::Justification::centredLeft);
+}
+
+void EarTrainerEditor::showUpdateOutcome (const juce::String& text)
+{
+    updateButton.setTooltip (text);
 }
 
 bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)

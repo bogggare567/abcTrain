@@ -30,6 +30,45 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     };
     addAndMakeVisible (textScaleSlider);
 
+    // A font list, not a font *picker*: no previews, no weights, no sizes.
+    // The one real question is "does this one read better to you", and the
+    // answer is visible the instant it is chosen, because the screen behind
+    // the menu redraws in it.
+    {
+        const auto names = AbcTrainLookAndFeel::availableTypefaceNames();
+        const auto saved = properties.getValue (AbcTrainLookAndFeel::typefaceKey, "System");
+
+        for (int i = 0; i < names.size(); ++i)
+            typefaceSelector.addItem (names[i], i + 1,
+                                       names[i] == "System" ? juce::String ("Aa")
+                                                            : names[i].substring (0, 2));
+
+        typefaceSelector.setSelectedId (juce::jmax (1, names.indexOf (saved) + 1),
+                                         juce::dontSendNotification);
+
+        typefaceSelector.onChange = [this]
+        {
+            const auto chosen = AbcTrainLookAndFeel::availableTypefaceNames()
+                                    [typefaceSelector.getSelectedId() - 1];
+
+            properties.setValue (AbcTrainLookAndFeel::typefaceKey, chosen);
+            properties.saveIfNeeded();
+
+            AbcTrainLookAndFeel::setTypefaceName (chosen);
+
+            if (onSettingsChanged != nullptr)
+                onSettingsChanged();
+
+            if (auto* top = getTopLevelComponent())
+                top->repaint();
+        };
+
+        addAndMakeVisible (typefaceSelector);
+    }
+
+    typefaceLabel.setText ("Typeface", juce::dontSendNotification);
+    addAndMakeVisible (typefaceLabel);
+
     scrimSlider.setRange (0.0, 0.9, 0.05);
     scrimSlider.setValue (properties.getDoubleValue (backgroundScrimKey, 0.55),
                            juce::dontSendNotification);
@@ -82,6 +121,12 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
 }
 
 SettingsScreenComponent::~SettingsScreenComponent() = default;
+
+void SettingsScreenComponent::applyStoredTypeface (juce::PropertiesFile& properties)
+{
+    AbcTrainLookAndFeel::setTypefaceName (
+        properties.getValue (AbcTrainLookAndFeel::typefaceKey, "System"));
+}
 
 void SettingsScreenComponent::applyStoredBackground (juce::PropertiesFile& properties)
 {
@@ -205,6 +250,8 @@ void SettingsScreenComponent::selectPage (Page page)
 
     textScaleLabel.setVisible (appearance);
     textScaleSlider.setVisible (appearance);
+    typefaceLabel.setVisible (appearance);
+    typefaceSelector.setVisible (appearance);
 
     for (auto* c : { (juce::Component*) &backgroundLabel, (juce::Component*) &scrimLabel,
                      (juce::Component*) &chooseBackgroundButton,
@@ -376,6 +423,14 @@ void SettingsScreenComponent::resized()
         auto row = page.removeFromTop (32);
         textScaleLabel.setBounds (row.removeFromLeft (120));
         textScaleSlider.setBounds (row);
+
+        page.removeFromTop (AbcTrainTheme::Spacing::small);
+
+        auto fontRow = page.removeFromTop (32);
+        typefaceLabel.setBounds (fontRow.removeFromLeft (120));
+        typefaceSelector.setBounds (fontRow.removeFromLeft (
+            juce::jmax (90, typefaceSelector.getPreferredWidth()))
+                .withSizeKeepingCentre (juce::jmax (90, typefaceSelector.getPreferredWidth()), 24));
     }
     else
     {

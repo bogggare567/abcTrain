@@ -52,6 +52,20 @@ public:
     static void setTextScale (float) noexcept;
     static float getTextScale() noexcept;
 
+    // Which interface typeface to use. Empty means "the best one this
+    // machine has", which is the default and the right answer for almost
+    // everybody; a name overrides it. Not everyone likes the same face,
+    // and on a screen someone stares at for an hour that is not a small
+    // preference.
+    static void setTypefaceName (const juce::String&);
+    static juce::String getTypefaceName();
+
+    // Every face this machine can offer, with "System" first. Enumerating
+    // the font book is slow, so this caches.
+    static juce::StringArray availableTypefaceNames();
+
+    static constexpr const char* typefaceKey = "interfaceTypeface";
+
     static juce::Font titleFont();
     static juce::Font monoFont();
     static juce::Font captionFont();

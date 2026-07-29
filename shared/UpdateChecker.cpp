@@ -67,6 +67,46 @@ namespace UpdateChecker
         return false; // equal versions - not "newer"
     }
 
+    juce::String installerSuffixForThisPlatform()
+    {
+       #if JUCE_MAC
+        return ".dmg";
+       #elif JUCE_WINDOWS
+        return "-setup.exe";
+       #else
+        return ".tar.gz";
+       #endif
+    }
+
+    // Picks this platform's installer out of a release's asset array. A
+    // release that has none - a source-only tag, or a build still in
+    // flight when the check happened - simply leaves the fields empty, and
+    // the caller falls back to opening the page.
+    static void fillAssetFor (juce::DynamicObject& releaseObject, ReleaseInfo& info)
+    {
+        const auto suffix = installerSuffixForThisPlatform();
+        const auto assets = releaseObject.getProperty ("assets");
+
+        if (auto* array = assets.getArray())
+        {
+            for (auto& entry : *array)
+            {
+                if (auto* asset = entry.getDynamicObject())
+                {
+                    const auto name = asset->getProperty ("name").toString();
+
+                    if (name.endsWithIgnoreCase (suffix))
+                    {
+                        info.assetName = name;
+                        info.assetUrl = asset->getProperty ("browser_download_url").toString();
+                        info.assetBytes = (juce::int64) asset->getProperty ("size");
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     ReleaseInfo parseReleaseJson (const juce::String& json)
     {
         // `parsed` must outlive `obj`: var::getDynamicObject() returns a
@@ -81,6 +121,7 @@ namespace UpdateChecker
             ReleaseInfo info;
             info.tagName = obj->getProperty ("tag_name").toString();
             info.htmlUrl = obj->getProperty ("html_url").toString();
+            fillAssetFor (*obj, info);
             return info;
         }
 
@@ -103,6 +144,7 @@ namespace UpdateChecker
                         ReleaseInfo info;
                         info.tagName = obj->getProperty ("tag_name").toString();
                         info.htmlUrl = obj->getProperty ("html_url").toString();
+                    fillAssetFor (*obj, info);
                         return info;
                     }
                 }
@@ -141,4 +183,71 @@ namespace UpdateChecker
             });
         });
     }
+}
+
+void UpdateChecker::downloadReleaseAsync (const ReleaseInfo& release,
+                                           std::function<void (float)> onProgress,
+                                           std::function<void (juce::File)> onFinished)
+{
+    if (release.assetUrl.isEmpty())
+    {
+        if (onFinished != nullptr)
+            onFinished ({});
+
+        return;
+    }
+
+    const auto destination = juce::File::getSpecialLocation (juce::File::userHomeDirectory)
+                                 .getChildFile ("Downloads")
+                                 .getChildFile (release.assetName);
+
+    destination.getParentDirectory().createDirectory();
+    destination.deleteFile();
+
+    // JUCE calls the listener back on a background thread; everything the
+    // caller sees is bounced onto the message thread, because the caller is
+    // a Component.
+    struct Listener : juce::URL::DownloadTaskListener
+    {
+        std::function<void (float)> onProgress;
+        std::function<void (juce::File)> onFinished;
+
+        void progress (juce::URL::DownloadTask*, juce::int64 done,
+                       juce::int64 total) override
+        {
+            if (onProgress == nullptr || total <= 0)
+                return;
+
+            const auto fraction = (float) ((double) done / (double) total);
+            juce::MessageManager::callAsync ([callback = onProgress, fraction] { callback (fraction); });
+        }
+
+        void finished (juce::URL::DownloadTask* task, bool success) override
+        {
+            if (onFinished == nullptr)
+                return;
+
+            const auto file = success && task != nullptr ? task->getTargetLocation() : juce::File();
+            juce::MessageManager::callAsync ([callback = onFinished, file] { callback (file); });
+        }
+    };
+
+    // One download at a time, and the pair outlives the call deliberately:
+    // the task reads its listener from a background thread. Starting a
+    // second download replaces the first, which cancels it - which is what
+    // pressing the button twice should do.
+    static std::unique_ptr<Listener> listener;
+    static std::unique_ptr<juce::URL::DownloadTask> task;
+
+    task.reset();
+    listener = std::make_unique<Listener>();
+    listener->onProgress = std::move (onProgress);
+    listener->onFinished = onFinished;
+
+    task = juce::URL (release.assetUrl)
+               .downloadToFile (destination, juce::URL::DownloadTaskOptions()
+                                                 .withListener (listener.get()));
+
+    if (task == nullptr && onFinished != nullptr)
+        onFinished ({});
 }

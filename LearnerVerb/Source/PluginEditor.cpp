@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "../../shared/UpdatePrompt.h"
 #include "ReverbModules.h"
 #include "ReverbGuide.h"
 #include "VocalSpaceLesson.h"
@@ -197,21 +198,12 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
             safeThis->guideTooltip.setText ({});
 
-            const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
-                juce::MessageBoxIconType::InfoIcon,
-                "Update Available",
-                "Version " + release.tagName + " is available - you're on " + juce::String (CurrentVersion::string) + ".",
-                "Open Release Page", "Later",
-                safeThis.getComponent());
-
-            juce::AlertWindow::showAsync (options, [release] (int result)
-            {
-                // makeOptionsOkCancel adds two buttons; per AlertWindow's
-                // documented N-button result mapping, button[0] ("Open
-                // Release Page") returns 1, button[1] ("Later") returns 0.
-                if (result == 1)
-                    juce::URL (release.htmlUrl).launchInDefaultBrowser();
-            });
+            UpdatePrompt::offer (release, safeThis.getComponent(),
+                                  [safeThis] (juce::String text)
+                                  {
+                                      if (safeThis != nullptr)
+                                          safeThis->guideTooltip.setText (text, 6000);
+                                  });
         });
 
         juce::Timer::callAfterDelay (6000, [safeThis, handled]

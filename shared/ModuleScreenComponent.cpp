@@ -328,8 +328,12 @@ float ModuleScreenComponent::getParameter (const juce::String& id) const
 
 void ModuleScreenComponent::playBed (TrainingModule::Bed which, int seed)
 {
-    bed = LessonAudioBed::render (which, bedSampleRate, seed);
-    practiceSource.setOverrideBuffer (&bed);
+    // Publish only once the new buffer is complete, and never free the old
+    // one - see the note on renderedBeds.
+    auto* fresh = renderedBeds.add (new juce::AudioBuffer<float> (
+        LessonAudioBed::render (which, bedSampleRate, seed)));
+
+    practiceSource.setOverrideBuffer (fresh);
 }
 
 void ModuleScreenComponent::stopBed()

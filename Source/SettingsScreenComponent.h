@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../shared/i18n/LocalisationManager.h"
+#include "../shared/CompactSelector.h"
 #include <functional>
 #include <memory>
 
@@ -50,6 +51,13 @@ public:
     static void applyStoredBackground (juce::PropertiesFile&);
 
     static constexpr const char* textScaleKey = "textScale";
+
+    // Reads the saved typeface and hands it to AbcTrainLookAndFeel.
+    // Called at startup alongside applyStoredBackground, before the
+    // first paint - a font applied only after a visit to Settings is
+    // a font nobody sees on launch.
+    static void applyStoredTypeface (juce::PropertiesFile&);
+
     static constexpr const char* backgroundPathKey = "backgroundImage";
     static constexpr const char* backgroundScrimKey = "backgroundScrim";
 
@@ -79,7 +87,8 @@ private:
     LocalisationManager& localisation;
     juce::PropertiesFile& properties;
 
-    juce::Label textScaleLabel, backgroundLabel, scrimLabel;
+    juce::Label textScaleLabel, typefaceLabel, backgroundLabel, scrimLabel;
+    CompactSelector typefaceSelector;
     juce::Slider textScaleSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::Slider scrimSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::TextButton chooseBackgroundButton, clearBackgroundButton, closeButton;

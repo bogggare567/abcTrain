@@ -91,6 +91,12 @@ public:
     // breaks the one thing the screen is for, which is listening.
     bool keyPressed (const juce::KeyPress&) override;
 
+    // Where update progress and outcomes go on this editor. The Learner
+    // plugins have a guide card to put a line of text in; this one has the
+    // Updates button's own tooltip, which is small but is at least where
+    // the pointer already is.
+    void showUpdateOutcome (const juce::String& text);
+
 private:
     // Plain filled-rectangle progress bar, its fill now eased via JUCE's
     // own juce_animation module (Animator/ValueAnimatorBuilder) instead
