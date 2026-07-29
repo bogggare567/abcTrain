@@ -304,15 +304,20 @@ full rationale.
   scales the whole layout through an `AffineTransform` (right for "this
   window is small on a 4K display"), this one scales only fonts against a
   fixed layout (right for "I can read everything except the small print").
-- `Source/TrainingSoundsComponent.{h,cpp}` — the "Choose Training Sounds"
-  overlay (same full-size show/hide shape as `shared/LessonController`):
-  a "Choose Folder..." button (`juce::FileChooser::launchAsync`,
-  directory-select mode, `Component::SafePointer`-guarded) calling
-  `ReferenceAudioLibrary::setRootFolder()`, a Pink Noise button, and one
-  button per detected category (built-in categories always first, then
-  whatever the chosen folder's subfolders contain), locked/unlocked by
-  `ProgressManager::getMaxLevelReached()`. Reachable via a "Training
-  Sounds" button in `PluginEditor`'s title row.
+- `Source/TrainingSoundsComponent.{h,cpp}` — the training-sounds screen,
+  **two panes**: a left rail of what to train on (pink noise, then every
+  category) and a right pane of the *actual files* in the selected one.
+  Clicking a file **pins** training to it
+  (`ReferenceAudioLibrary::pinFile`, which makes `advanceToRandomClip`
+  refuse to rotate); clicking the category goes back to shuffling, and the
+  footer says which of the two states you are in. The library folder's
+  path is on screen with a button that opens it — "where did my import
+  go" used to be unanswerable from here. Categories **no longer unlock
+  with the player's level**: files you imported yourself should never be
+  locked behind anything. Rows are custom-painted, since a `TextButton`
+  cannot carry a count, a tick and a filename. Import still runs on its
+  own `ImportJob` thread with a progress bar. See
+  [decisions/028](docs/decisions/028-choosing-a-training-sound.md).
 - `Source/GameManager.{h,cpp}` — owns all registered `Game`s, tracks the
   active one, prepares *all* games up front in `prepare()` so switching
   games never needs an audio-thread re-prepare (also (re)loads whatever

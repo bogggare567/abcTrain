@@ -63,6 +63,8 @@ ReferenceAudioLibrary::ReferenceAudioLibrary (juce::PropertiesFile& propertiesFi
 
     rescan();
 
+    pinned = properties.getBoolValue ("referencePinned", false);
+
     const auto savedSelection = properties.getValue (selectedFileKey);
     if (savedSelection.isNotEmpty())
         selectedFile = juce::File (savedSelection);
@@ -359,8 +361,29 @@ int ReferenceAudioLibrary::importAndSliceMany (const juce::Array<juce::File>& so
     return written;
 }
 
+void ReferenceAudioLibrary::pinFile (const juce::File& file, double sampleRate)
+{
+    if (! selectFile (file, sampleRate))
+        return;
+
+    pinned = true;
+    properties.setValue ("referencePinned", true);
+    properties.saveIfNeeded();
+}
+
+void ReferenceAudioLibrary::unpinFile()
+{
+    pinned = false;
+    properties.setValue ("referencePinned", false);
+    properties.saveIfNeeded();
+}
+
 void ReferenceAudioLibrary::setActiveCategory (const juce::String& categoryName, double sampleRate)
 {
+    // Choosing a category is choosing rotation again.
+    pinned = false;
+    properties.setValue ("referencePinned", false);
+
     activeCategory = categoryName;
     properties.setValue ("referenceCategory", activeCategory);
     properties.saveIfNeeded();
@@ -370,7 +393,9 @@ void ReferenceAudioLibrary::setActiveCategory (const juce::String& categoryName,
 
 void ReferenceAudioLibrary::advanceToRandomClip (double sampleRate)
 {
-    if (activeCategory.isEmpty())
+    // A pinned clip is a clip the player asked for by name. Rotating away
+    // from it on the next round would be the app overruling them.
+    if (pinned || activeCategory.isEmpty())
         return;
 
     for (const auto& category : categories)

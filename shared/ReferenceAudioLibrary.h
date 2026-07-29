@@ -109,6 +109,15 @@ public:
     // nothing is selected or the category has a single file.
     void advanceToRandomClip (double sampleRate);
 
+    // Locks training to one specific clip, instead of rotating through the
+    // category. Rotation is the right default - twenty imported drum loops
+    // should be twenty drum loops - but "let me hear *that* one, over and
+    // over" is a real request, and until now the only way to answer it was
+    // to put a single file in a folder of its own.
+    void pinFile (const juce::File&, double sampleRate);
+    void unpinFile();
+    bool isPinned() const noexcept { return pinned; }
+
     juce::File getSelectedFile() const noexcept { return selectedFile; }
 
     // Called once by GameManager::prepare(), which is the first point the
@@ -143,6 +152,7 @@ private:
 
     juce::File selectedFile;
     juce::String activeCategory;
+    bool pinned = false;
     juce::Random random;
     // Every loaded buffer is kept alive for the plugin instance's whole
     // lifetime instead of freed on the next selection - freeing one here

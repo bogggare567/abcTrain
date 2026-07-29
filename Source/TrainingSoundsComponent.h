@@ -15,12 +15,20 @@
 // a full-size child of EarTrainerEditor and toggled visible via a
 // "Training Sounds" button, same show/hide shape as shared/LessonController.
 //
-// Category tiles unlock progressively with ProgressManager's
-// maxLevelReached (tile at index i unlocks once maxLevelReached > i) -
-// the same "progress you can see and control" idea as the level selector
-// (decisions/014), but a simple first-pass rule rather than a hand-
-// curated unlock plan, since these categories are whatever the user's
-// own folder happens to contain, not fixed shipped content.
+// Two panes. The left rail is what to train on - pink noise, then every
+// category the library knows about; the right pane is the actual files in
+// whichever one is selected, and clicking one pins training to it.
+//
+// The previous version listed categories only, picked a clip at random
+// inside them, and never showed a filename or a path. It was possible to
+// import an album and have no way to find out what had happened to it.
+// Rotation is still the default and still the better one - twenty drum
+// loops should be twenty drum loops - but "let me hear *that* one" is a
+// real request and now has an answer.
+//
+// Categories used to unlock with the player's level. That made sense for
+// shipped content and none at all for a folder of the player's own music:
+// files you imported yourself should never be locked behind anything.
 class TrainingSoundsComponent : public juce::Component
 {
 public:
@@ -60,6 +68,9 @@ private:
     juce::String sourceHeading { "Where the sounds come from" };
     juce::String trainOnHeading { "What to train on" };
     juce::String emptyMessage;
+    juce::String pinkNoiseText { "Pink noise" };
+    juce::String pickCategoryText { "Pick a category on the left to see its clips, "
+                                     "then click one to train on that clip alone." };
     juce::String importingText, importedClipsText, importedNothingText, hintText, previousHint;
 
     void importAndSort();
@@ -97,10 +108,35 @@ private:
     juce::Label rootFolderLabel;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
-    juce::TextButton pinkNoiseButton { "Pink Noise (default)" };
-    juce::OwnedArray<juce::TextButton> categoryButtons;
     juce::Label statusLabel;
     juce::TextButton closeButton { "Close" };
+    juce::TextButton revealButton { "Open folder" };
+
+    // -1 is pink noise; 0.. index into the library's categories.
+    int selectedCategory = -1;
+    int hoveredCategoryRow = -2;
+    int hoveredFileRow = -1;
+    float fileScroll = 0.0f;
+    float maxFileScroll = 0.0f;
+
+    juce::Rectangle<int> railBounds() const;
+    juce::Rectangle<int> filePaneBounds() const;
+    juce::Rectangle<int> categoryRowBounds (int index) const;   // -1 = pink noise
+    juce::Rectangle<int> fileRowBounds (int index) const;
+
+    const juce::Array<juce::File>* filesForSelection() const;
+    void selectPinkNoise();
+    void pinFile (int fileIndex);
+    void paintRail (juce::Graphics&);
+    void paintFilePane (juce::Graphics&);
+
+public:
+    void mouseMove (const juce::MouseEvent&) override;
+    void mouseExit (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+
+private:
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrainingSoundsComponent)
 };

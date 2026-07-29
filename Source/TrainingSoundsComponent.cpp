@@ -47,12 +47,15 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     rootFolderLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
     addAndMakeVisible (rootFolderLabel);
 
-    pinkNoiseButton.onClick = [this]
+    // Reveals the library folder in Finder/Explorer. "Where did my import
+    // go" was unanswerable from this screen, and the answer is a place, so
+    // the honest control is one that takes you there.
+    revealButton.onClick = [this]
     {
-        processor.getGameManager().getReferenceAudioLibrary().clearSelection();
-        updateStatusLabel();
+        processor.getGameManager().getReferenceAudioLibrary().getRootFolder()
+            .revealToUser();
     };
-    addAndMakeVisible (pinkNoiseButton);
+    addAndMakeVisible (revealButton);
 
     statusLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (statusLabel);
@@ -88,7 +91,7 @@ void TrainingSoundsComponent::setStrings (juce::String title, juce::String sourc
     sourceHeading = std::move (sourceSection);
     trainOnHeading = std::move (trainOnSection);
     chooseFolderButton.setButtonText (chooseFolder);
-    pinkNoiseButton.setButtonText (pinkNoise);
+    pinkNoiseText = pinkNoise;
     closeButton.setButtonText (close);
     emptyMessage = std::move (emptyText);
     resized();
@@ -108,31 +111,65 @@ void TrainingSoundsComponent::refresh()
     statusLabel.setColour (juce::Label::textColourId, theme.textDim);
     titleLabel.setColour (juce::Label::textColourId, theme.textBright);
 
-    categoryButtons.clear();
-
     auto& library = processor.getGameManager().getReferenceAudioLibrary();
     library.rescan();
 
-    rootFolderLabel.setText ("Folder: " + library.getRootFolder().getFullPathName(), juce::dontSendNotification);
+    rootFolderLabel.setText (library.getRootFolder().getFullPathName(), juce::dontSendNotification);
 
-    const auto maxLevelReached = processor.getProgressManager().getMaxLevelReached();
+    // Whatever the library currently says is active decides which rail row
+    // is lit, so opening this screen shows the truth rather than a default.
+    selectedCategory = -1;
     const auto& categories = library.getCategories();
 
     for (int i = 0; i < categories.size(); ++i)
-    {
-        const auto& category = categories.getReference (i);
-        const bool unlocked = maxLevelReached > i;
+        if (categories.getReference (i).name == library.getActiveCategory())
+            selectedCategory = i;
 
-        auto* button = categoryButtons.add (new juce::TextButton (
-            unlocked ? category.name
-                     : category.name + " (reach level " + juce::String (i + 1) + ")"));
-        button->setEnabled (unlocked);
-        button->onClick = [this, i] { selectCategory (i); };
-        addAndMakeVisible (button);
-    }
+    // A pinned file, or a selection saved by an older build, can leave a
+    // file active with no category name to match it. Find the category it
+    // lives in rather than showing nothing selected at all.
+    if (selectedCategory < 0 && library.getSelectedFile().existsAsFile())
+        for (int i = 0; i < categories.size() && selectedCategory < 0; ++i)
+            if (categories.getReference (i).files.contains (library.getSelectedFile()))
+                selectedCategory = i;
 
+    fileScroll = 0.0f;
     updateStatusLabel();
     resized();
+    repaint();
+}
+
+const juce::Array<juce::File>* TrainingSoundsComponent::filesForSelection() const
+{
+    const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
+
+    if (selectedCategory < 0 || selectedCategory >= categories.size())
+        return nullptr;
+
+    return &categories.getReference (selectedCategory).files;
+}
+
+void TrainingSoundsComponent::selectPinkNoise()
+{
+    processor.getGameManager().getReferenceAudioLibrary().clearSelection();
+    selectedCategory = -1;
+    fileScroll = 0.0f;
+    updateStatusLabel();
+    repaint();
+}
+
+void TrainingSoundsComponent::pinFile (int fileIndex)
+{
+    const auto* files = filesForSelection();
+
+    if (files == nullptr || fileIndex < 0 || fileIndex >= files->size())
+        return;
+
+    processor.getGameManager().getReferenceAudioLibrary()
+        .pinFile ((*files)[fileIndex], processor.getSampleRate());
+
+    updateStatusLabel();
+    repaint();
 }
 
 void TrainingSoundsComponent::selectCategory (int categoryIndex)
@@ -143,13 +180,16 @@ void TrainingSoundsComponent::selectCategory (int categoryIndex)
     if (categoryIndex < 0 || categoryIndex >= categories.size())
         return;
 
-    // Sets the *category*, not one file. The library then swaps in a
-    // different clip each round - see advanceToRandomClip. Picking one
-    // file and looping it all session was the fastest way to stop hearing
-    // the material.
+    // Selecting the category is selecting *rotation* - the library swaps in
+    // a different clip each round. Clicking a file in the right-hand pane
+    // pins one instead; clicking the category again goes back to shuffling.
     library.setActiveCategory (categories.getReference (categoryIndex).name,
                                 processor.getSampleRate());
+
+    selectedCategory = categoryIndex;
+    fileScroll = 0.0f;
     updateStatusLabel();
+    repaint();
 }
 
 void TrainingSoundsComponent::updateStatusLabel()
@@ -157,10 +197,185 @@ void TrainingSoundsComponent::updateStatusLabel()
     auto& library = processor.getGameManager().getReferenceAudioLibrary();
     const auto selected = library.getSelectedFile();
 
-    statusLabel.setText (selected.existsAsFile()
-                              ? "Training on: " + selected.getFileNameWithoutExtension()
-                              : "Training on: Pink Noise (default)",
+    if (! selected.existsAsFile())
+    {
+        statusLabel.setText ("Training on pink noise", juce::dontSendNotification);
+        return;
+    }
+
+    // Pinned and shuffling are different states and the screen has to say
+    // which one it is in - otherwise a filename on screen looks like a
+    // promise that this is the clip you will hear next round.
+    const auto category = library.getActiveCategory();
+
+    statusLabel.setText (library.isPinned() || category.isEmpty()
+                              ? "Training on " + selected.getFileNameWithoutExtension()
+                              : "Shuffling " + category + " - now: "
+                                    + selected.getFileNameWithoutExtension(),
                           juce::dontSendNotification);
+}
+
+namespace
+{
+    constexpr int railWidth = 196;
+    constexpr int headerHeight = 30;
+    constexpr int actionRowHeight = 44;
+    constexpr int hintHeight = 16;
+    constexpr int footerHeight = 34;
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::railBounds() const
+{
+    using namespace AbcTrainTheme;
+
+    auto area = cardBounds().reduced (Spacing::large);
+    area.removeFromTop (headerHeight + Spacing::large + actionRowHeight
+                        + Spacing::small + hintHeight + Spacing::large);
+    area.removeFromBottom (footerHeight + Spacing::small);
+
+    return area.removeFromLeft (railWidth);
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::filePaneBounds() const
+{
+    using namespace AbcTrainTheme;
+
+    auto area = cardBounds().reduced (Spacing::large);
+    area.removeFromTop (headerHeight + Spacing::large + actionRowHeight
+                        + Spacing::small + hintHeight + Spacing::large);
+    area.removeFromBottom (footerHeight + Spacing::small);
+    area.removeFromLeft (railWidth + Spacing::medium);
+
+    return area;
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::categoryRowBounds (int index) const
+{
+    auto rail = railBounds();
+    rail.removeFromTop (18);   // the rail's own heading
+
+    return { rail.getX(), rail.getY() + (index + 1) * rowHeight, rail.getWidth(), rowHeight - 2 };
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::fileRowBounds (int index) const
+{
+    auto pane = filePaneBounds();
+    pane.removeFromTop (18);
+
+    return { pane.getX(), pane.getY() + (int) ((float) index * rowHeight - fileScroll),
+             pane.getWidth(), rowHeight - 2 };
+}
+
+void TrainingSoundsComponent::paintRail (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    const auto& categories = library.getCategories();
+
+    AbcTrainLookAndFeel::paintSectionHeading (g, railBounds().removeFromTop (18).toFloat(),
+                                               trainOnHeading);
+
+    const auto drawRow = [&] (int index, const juce::String& name, const juce::String& detail,
+                              bool selected)
+    {
+        const auto row = categoryRowBounds (index);
+
+        if (index == hoveredCategoryRow || selected)
+        {
+            g.setColour (selected ? theme.accent.withAlpha (0.22f)
+                                   : theme.widgetBackground.withAlpha (0.5f));
+            g.fillRoundedRectangle (row.toFloat(), AbcTrainTheme::Radius::button);
+        }
+
+        auto text = row.reduced (10, 0);
+
+        g.setColour (selected ? theme.textBright : theme.text);
+        g.setFont (juce::Font (juce::FontOptions (12.5f)));
+        g.drawText (name, text.removeFromLeft (text.getWidth() - 34),
+                     juce::Justification::centredLeft, true);
+
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
+        g.drawText (detail, text, juce::Justification::centredRight, false);
+    };
+
+    drawRow (-1, pinkNoiseText, {}, ! library.getSelectedFile().existsAsFile());
+
+    for (int i = 0; i < categories.size(); ++i)
+        drawRow (i, categories.getReference (i).name,
+                  juce::String (categories.getReference (i).files.size()),
+                  i == selectedCategory && library.getSelectedFile().existsAsFile());
+}
+
+void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    const auto* files = filesForSelection();
+    const auto pane = filePaneBounds();
+
+    AbcTrainLookAndFeel::paintSectionHeading (g, pane.toFloat().withHeight (18.0f),
+                                               files == nullptr ? "" : "Clips");
+
+    if (files == nullptr)
+    {
+        // Two different empty states. "There is nothing here" and "you have
+        // not picked anything yet" are not the same problem, and telling
+        // someone to import music when they already have four categories on
+        // the left is how a screen loses their trust.
+        const auto anything = ! library.getCategories().isEmpty();
+
+        g.setColour (theme.textDim);
+        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.drawFittedText (anything ? pickCategoryText : emptyMessage,
+                           pane.withTrimmedTop (18), juce::Justification::centredTop, 4);
+        return;
+    }
+
+    juce::Graphics::ScopedSaveState clip (g);
+    g.reduceClipRegion (pane.withTrimmedTop (18));
+
+    const auto pinnedFile = library.isPinned() ? library.getSelectedFile() : juce::File();
+
+    for (int i = 0; i < files->size(); ++i)
+    {
+        const auto row = fileRowBounds (i);
+
+        if (! row.intersects (pane))
+            continue;
+
+        const auto isPinned = pinnedFile == (*files)[i];
+
+        if (i == hoveredFileRow || isPinned)
+        {
+            g.setColour (isPinned ? theme.accent.withAlpha (0.22f)
+                                   : theme.widgetBackground.withAlpha (0.5f));
+            g.fillRoundedRectangle (row.toFloat(), AbcTrainTheme::Radius::button);
+        }
+
+        auto text = row.reduced (10, 0);
+
+        if (isPinned)
+        {
+            juce::Path tick;
+            const auto box = text.removeFromLeft (18).toFloat();
+            tick.startNewSubPath (box.getX(), box.getCentreY());
+            tick.lineTo (box.getX() + 4.0f, box.getCentreY() + 4.0f);
+            tick.lineTo (box.getX() + 11.0f, box.getCentreY() - 5.0f);
+            g.setColour (theme.positive);
+            g.strokePath (tick, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
+        }
+        else
+        {
+            text.removeFromLeft (18);
+        }
+
+        g.setColour (isPinned ? theme.textBright : theme.text);
+        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.drawText ((*files)[i].getFileNameWithoutExtension(), text,
+                     juce::Justification::centredLeft, true);
+    }
 }
 
 void TrainingSoundsComponent::paint (juce::Graphics& g)
@@ -185,20 +400,16 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
     auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large);
 
     AbcTrainLookAndFeel::drawTrackedText (g, titleLabel.getText(),
-                                           inner.removeFromTop (30.0f),
+                                           inner.removeFromTop ((float) headerHeight),
                                            juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
                                            theme.textBright, 1.2f);
 
     inner.removeFromTop ((float) AbcTrainTheme::Spacing::large);
-    inner.removeFromTop (44.0f);                     // the add-music row
+    inner.removeFromTop ((float) actionRowHeight);
     inner.removeFromTop ((float) AbcTrainTheme::Spacing::small);
 
-    // One line under the button: either what is happening, or what this
-    // does. The old layout spent a whole section heading plus a full file
-    // path on saying where things are stored, which is not a thing anybody
-    // needed to know before pressing the button.
     {
-        auto row = inner.removeFromTop (16.0f);
+        auto row = inner.removeFromTop ((float) hintHeight);
 
         if (importRunning)
         {
@@ -213,73 +424,124 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
         }
         else
         {
+            // Where the files actually are. Not a section heading and not a
+            // question - just the answer, because "where did my import go"
+            // was unanswerable from this screen.
             g.setColour (theme.textDim);
             g.setFont (juce::Font (juce::FontOptions (11.0f)));
-            g.drawText (hintText, row.toNearestInt(), juce::Justification::centredLeft, true);
+            g.drawText (rootFolderLabel.getText(), row.toNearestInt(),
+                         juce::Justification::centredLeft, true);
         }
     }
 
-    inner.removeFromTop ((float) AbcTrainTheme::Spacing::large);
-    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (20.0f), trainOnHeading);
+    paintRail (g);
+    paintFilePane (g);
 
-    // Each row's clip count and its selected tick. The buttons draw their
-    // own labels; this is what a plain button cannot say.
+    // A hairline between the two panes, so the eye reads them as one screen
+    // with two jobs rather than two lists that happen to be adjacent.
     {
-        auto& library = processor.getGameManager().getReferenceAudioLibrary();
-        const auto& categories = library.getCategories();
-        const auto active = library.getActiveCategory();
-
-        for (int i = 0; i < categoryButtons.size() && i < categories.size(); ++i)
-        {
-            const auto bounds = categoryButtons[i]->getBounds().toFloat();
-            const auto& category = categories.getReference (i);
-
-            g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
-            g.drawText (juce::String (category.files.size()),
-                         bounds.withTrimmedRight (12.0f).toNearestInt(),
-                         juce::Justification::centredRight, false);
-
-            if (category.name == active)
-            {
-                juce::Path tick;
-                tick.startNewSubPath (bounds.getX() + 10.0f, bounds.getCentreY());
-                tick.lineTo (bounds.getX() + 15.0f, bounds.getCentreY() + 5.0f);
-                tick.lineTo (bounds.getX() + 23.0f, bounds.getCentreY() - 5.0f);
-
-                g.setColour (theme.positive);
-                g.strokePath (tick, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
-                                                           juce::PathStrokeType::rounded));
-            }
-        }
+        const auto rail = railBounds();
+        g.setColour (theme.divider.withAlpha (0.6f));
+        g.drawVerticalLine (rail.getRight() + AbcTrainTheme::Spacing::medium / 2,
+                             (float) rail.getY(), (float) rail.getBottom());
     }
 
-    if (categoryButtons.isEmpty())
+    // The footer says what is playing, which is the one fact this whole
+    // screen exists to change.
     {
-        g.setColour (theme.textDim);
+        auto footer = cardBounds().reduced (AbcTrainTheme::Spacing::large)
+                          .removeFromBottom (footerHeight);
+        footer.removeFromRight (110 + AbcTrainTheme::Spacing::small + 110);
+
+        g.setColour (theme.text);
         g.setFont (juce::Font (juce::FontOptions (12.0f)));
-        g.drawFittedText (emptyMessage, inner.toNearestInt(), juce::Justification::centredTop, 4);
+        g.drawText (statusLabel.getText(), footer, juce::Justification::centredLeft, true);
     }
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
 {
-    // One row per option, not a grid of buttons: the list has a count and
-    // a tick beside each entry, which a grid of equal-width buttons cannot
-    // carry. Grows with the number of categories, capped by the window.
-    const auto rows = juce::jmax (1, categoryButtons.size());
-    const auto wanted = AbcTrainTheme::Spacing::large * 2
-                            + 30                                       // title
-                            + AbcTrainTheme::Spacing::large
-                            + 44                                       // add-music row
-                            + AbcTrainTheme::Spacing::small + 16       // hint line
-                            + AbcTrainTheme::Spacing::large + 20       // "train on"
-                            + rows * (rowHeight + 2)
-                            + AbcTrainTheme::Spacing::large + 34;      // footer
-
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 48, 480),
-                                  juce::jmin (getHeight() - 48, wanted))
+    // Two panes need width; the old single column was 480 and could not
+    // have held a filename beside a category name.
+    return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 640),
+                                  juce::jmin (getHeight() - 40, 470))
                .withCentre (getLocalBounds().getCentre());
+}
+
+void TrainingSoundsComponent::mouseMove (const juce::MouseEvent& event)
+{
+    auto category = -2;
+    auto file = -1;
+
+    const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
+
+    for (int i = -1; i < categories.size(); ++i)
+        if (categoryRowBounds (i).contains (event.getPosition()))
+            category = i;
+
+    if (const auto* files = filesForSelection())
+        for (int i = 0; i < files->size(); ++i)
+            if (fileRowBounds (i).contains (event.getPosition())
+                && filePaneBounds().contains (event.getPosition()))
+                file = i;
+
+    if (category != hoveredCategoryRow || file != hoveredFileRow)
+    {
+        hoveredCategoryRow = category;
+        hoveredFileRow = file;
+        repaint();
+    }
+}
+
+void TrainingSoundsComponent::mouseExit (const juce::MouseEvent&)
+{
+    if (hoveredCategoryRow != -2 || hoveredFileRow != -1)
+    {
+        hoveredCategoryRow = -2;
+        hoveredFileRow = -1;
+        repaint();
+    }
+}
+
+void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
+{
+    const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
+
+    for (int i = -1; i < categories.size(); ++i)
+    {
+        if (! categoryRowBounds (i).contains (event.getPosition()))
+            continue;
+
+        if (i < 0)
+            selectPinkNoise();
+        else
+            selectCategory (i);
+
+        return;
+    }
+
+    if (const auto* files = filesForSelection())
+        for (int i = 0; i < files->size(); ++i)
+            if (fileRowBounds (i).contains (event.getPosition())
+                && filePaneBounds().contains (event.getPosition()))
+            {
+                pinFile (i);
+                return;
+            }
+}
+
+void TrainingSoundsComponent::mouseWheelMove (const juce::MouseEvent& event,
+                                               const juce::MouseWheelDetails& wheel)
+{
+    if (! filePaneBounds().contains (event.getPosition()))
+        return;
+
+    const auto* files = filesForSelection();
+    const auto contentHeight = files != nullptr ? (float) (files->size() * rowHeight) : 0.0f;
+
+    maxFileScroll = juce::jmax (0.0f, contentHeight - (float) (filePaneBounds().getHeight() - 18));
+    fileScroll = juce::jlimit (0.0f, maxFileScroll, fileScroll - wheel.deltaY * 220.0f);
+    repaint();
 }
 
 void TrainingSoundsComponent::resized()
@@ -287,35 +549,22 @@ void TrainingSoundsComponent::resized()
     using namespace AbcTrainTheme;
 
     auto area = cardBounds().reduced (Spacing::large);
+    area.removeFromTop (headerHeight + Spacing::large);
 
-    area.removeFromTop (30 + Spacing::large);
-
-    // One wide primary action. "Choose folder" is still here, but as a
-    // quiet secondary - almost nobody wants to answer a question about
-    // storage layout, and the two used to sit side by side as equals.
     {
-        auto row = area.removeFromTop (44);
+        auto row = area.removeFromTop (actionRowHeight);
         chooseFolderButton.setBounds (row.removeFromRight (120).reduced (0, 6));
         row.removeFromRight (Spacing::small);
+        revealButton.setBounds (row.removeFromRight (110).reduced (0, 6));
+        row.removeFromRight (Spacing::small);
         importButton.setBounds (row);
-    }
-
-    area.removeFromTop (Spacing::small + 16);       // the hint / progress line
-    area.removeFromTop (Spacing::large + 20);       // "what to train on"
-
-    for (auto* button : categoryButtons)
-    {
-        button->setBounds (area.removeFromTop (rowHeight));
-        area.removeFromTop (2);
     }
 
     rootFolderLabel.setVisible (false);
     statusLabel.setVisible (false);
 
-    auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (34);
+    auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (footerHeight);
     closeButton.setBounds (footer.removeFromRight (110));
-    footer.removeFromRight (Spacing::small);
-    pinkNoiseButton.setBounds (footer.removeFromLeft (150));
 }
 
 // Runs the slicing off the message thread. Owns nothing the UI owns.
