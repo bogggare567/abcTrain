@@ -395,11 +395,16 @@ void LearnerEQEditor::resized()
     // and a preset chip does not get more readable for being taller.
     const auto controlsHeight = 212 + Spacing::medium + 18 + Spacing::small;
 
-    // A share of what is available, not a pixel count. The knob row below
-    // needs a fixed height - a rotary that grows is a rotary that stops
-    // matching its neighbours - so the analysis takes everything left over,
-    // with a floor so it cannot be squeezed to nothing.
-    analysisSection = area.removeFromTop (juce::jmax (311, area.getHeight() - controlsHeight));
+    // Everything left over, but never less than what the rows inside it
+    // actually ask for.
+    //
+    // The floor is not a guess: removeFromTop *clamps* to the height
+    // available instead of overflowing, so a floor one pixel short does not
+    // produce a scrollbar or a warning - it silently shrinks whatever is
+    // last inside, which here is the gain-reduction meter. That is the same
+    // fault ADR 023 recorded, and this reintroduced it by setting the floor
+    // below the content height.
+    analysisSection = area.removeFromTop (juce::jmax (432, area.getHeight() - controlsHeight));
     {
         auto inner = analysisSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);

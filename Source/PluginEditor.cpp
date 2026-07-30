@@ -1115,6 +1115,12 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 
 void EarTrainerEditor::timerCallback()
 {
+    if (screenFade < 1.0f)
+    {
+        screenFade = juce::jmin (1.0f, screenFade + 0.16f);
+        repaint();
+    }
+
     if (session.getMode() != SessionManager::Mode::blitz || ! session.isRunActive())
         return;
 
@@ -1257,8 +1263,32 @@ void EarTrainerEditor::refreshRunStatus()
                                seconds <= 10 ? theme.negative : theme.text);
 }
 
+void EarTrainerEditor::paintOverChildren (juce::Graphics& g)
+{
+    if (screenFade >= 1.0f)
+        return;
+
+    // Over the children, not under them: a fade painted underneath is a
+    // fade nobody sees.
+    g.setColour (AbcTrainTheme::current().windowBackground
+                     .withAlpha (1.0f - AbcTrainTheme::Ease::out (screenFade)));
+    g.fillAll();
+}
+
+void EarTrainerEditor::beginScreenFade()
+{
+    screenFade = 0.0f;
+
+    // Driven by the editor's existing 30Hz refresh timer rather than a
+    // second one - there is already a tick, and two timers for one
+    // animation is how they drift apart.
+}
+
 void EarTrainerEditor::showScreen (Screen screen)
 {
+    if (screen != currentScreen)
+        beginScreenFade();
+
     currentScreen = screen;
 
     // Any auto-advance in flight belongs to a round the player is

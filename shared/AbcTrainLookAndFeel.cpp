@@ -755,9 +755,19 @@ void AbcTrainLookAndFeel::paintRecessedWell (juce::Graphics& g, juce::Rectangle<
     // Dark at the top, lighter at the bottom - the exact inverse of the
     // card above, which is what makes one read as cut in and the other as
     // sitting on top.
-    juce::ColourGradient inside (t.displayBackground.darker (0.18f),
+    //
+    // How *much* darker has to differ by mode. On the dark page an 18%
+    // step is a subtle shading; on the light page the same step is a grey
+    // slab, and the whole analysis area read as a wash. On paper the depth
+    // comes almost entirely from the inner shadow along the lip, which is
+    // how it works on real paper too.
+    const auto light = t.mode == AbcTrainTheme::Mode::light;
+    const auto topStep = light ? 0.05f : 0.18f;
+    const auto bottomStep = light ? 0.02f : 0.04f;
+
+    juce::ColourGradient inside (t.displayBackground.darker (topStep),
                                   bounds.getCentreX(), bounds.getY(),
-                                  t.displayBackground.brighter (0.04f),
+                                  t.displayBackground.brighter (bottomStep),
                                   bounds.getCentreX(), bounds.getBottom(), false);
     g.setGradientFill (inside);
     g.fillRoundedRectangle (bounds, radius);
@@ -773,7 +783,8 @@ void AbcTrainLookAndFeel::paintRecessedWell (juce::Graphics& g, juce::Rectangle<
 
         for (int i = 0; i < 3; ++i)
         {
-            g.setColour (t.shadow.withAlpha (0.10f * t.shadowStrength * (float) (3 - i) / 3.0f));
+            g.setColour (t.shadow.withAlpha ((light ? 0.16f : 0.10f)
+                                              * t.shadowStrength * (float) (3 - i) / 3.0f));
             g.drawLine (bounds.getX(), bounds.getY() + 0.5f + (float) i,
                          bounds.getRight(), bounds.getY() + 0.5f + (float) i, 1.0f);
         }

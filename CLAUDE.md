@@ -1002,6 +1002,34 @@ rationale; summary here.
   *parent*, not itself — `createComponentSnapshot` includes children, so
   snapshotting itself would recurse into its own `paint()`.
 
+- **The type ladder** lives in `AbcTrainLookAndFeel` as six role-named
+  statics — `displayFont` (the wordmark only), `titleFont`, `headingFont`,
+  `bodyFont`, `labelFont`, `microFont`, plus `monoFont` for numbers. Every
+  string in four plugins picks one. Before this there were **54 separate
+  `FontOptions` literals** scattered across the codebase, which is not a
+  hierarchy but 54 independent decisions that happen to sit near each
+  other — the reason the UI read as uneven. Steps are ~1.15, and all of
+  them resolve through the chosen typeface and the shared text scale, so
+  the accessibility slider and the font picker reach everything.
+- **Depth is two shapes with opposite lighting**, both in
+  `AbcTrainLookAndFeel`: `paintRaisedCard` (lit from above, shadow *under*
+  it not around it — a shadow on four sides reads as a glow, and a glow
+  says "selected" — plus a 1px top-edge highlight, the cheapest convincing
+  depth cue and the one most often omitted) and `paintRecessedWell` (the
+  exact inverse: dark top lip, light bottom, inner shadow clipped to the
+  corner radius so it follows the curve). `paintSectionPanel` and the
+  spectrum/waveform displays both go through them. **How much darker a
+  well is differs by mode** — an 18% step is subtle on the dark page and a
+  grey slab on the light one, where the depth has to come from the inner
+  shadow instead.
+- The three Learner editors are **resizable**: the analysis section takes
+  whatever is left over, floored at its own content height, while
+  everything below keeps a fixed height (a rotary that grows stops
+  matching its neighbours). That floor is load-bearing —
+  `removeFromTop` clamps rather than overflowing, so a floor one pixel
+  short silently shrinks whatever is last inside, which is how the
+  gain-reduction meter lost half its height twice (ADR 023, and again in
+  this pass).
 - `shared/AbcTrainLookAndFeel.h/.cpp` — extends `juce::LookAndFeel_V4`.
   `refreshFromTheme()` reads `AbcTrainTheme::current()` into one
   `juce::LookAndFeel_V4::ColourScheme` (call it after

@@ -113,6 +113,7 @@ public:
     // breaks the one thing the screen is for, which is listening.
     bool keyPressed (const juce::KeyPress&) override;
     void mouseMove (const juce::MouseEvent&) override;
+    void paintOverChildren (juce::Graphics&) override;
 
     // Where update progress and outcomes go on this editor. The Learner
     // plugins have a guide card to put a line of text in; this one has the
@@ -477,6 +478,13 @@ private:
     // The DVD screensaver. Last child of all, and the only thing allowed
     // to cover the tour.
     IdleScreensaver screensaver;
+
+    // A screen change fades rather than cuts. 180ms of eased alpha on the
+    // arriving screen: long enough that the eye registers a transition and
+    // does not have to re-find everything from scratch, short enough that
+    // nobody waiting to answer a round notices it happened.
+    float screenFade = 1.0f;
+    void beginScreenFade();
     void showAchievementsScreen();
 
     void showRunResults (int finalScore);
