@@ -11,7 +11,7 @@
 // pre-release and any number here would be invented.
 
 export const RELEASE = {
-  version: '1.3.1',
+  version: '1.4.0',
   repo: 'https://github.com/bogggare567/abcTrain',
   releases: 'https://github.com/bogggare567/abcTrain/releases',
   site: 'https://soundkorb.ru',
