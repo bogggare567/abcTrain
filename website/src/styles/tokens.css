@@ -1,0 +1,197 @@
+/* ---------------------------------------------------------------------
+   abcTrain — design tokens
+   ---------------------------------------------------------------------
+   Every value here is inherited from the product's own design system
+   (shared/AbcTrainTheme.cpp), not invented for the web. If a colour is
+   changed there, change it here too — a site whose blue is not the
+   plugin's blue reads as two different companies.
+
+   The one deliberate divergence: the page ground is one step deeper than
+   the plugin's window background. A plugin lives inside a DAW and has to
+   sit politely among other windows; a page owns the whole screen and can
+   be as dark as the instrument's own display well.
+   --------------------------------------------------------------------- */
+
+:root {
+  /* --- surfaces ------------------------------------------------------ */
+  --ink:      #0f0f14;   /* page ground; AbcTrainTheme displayBackground, deepened */
+  --panel:    #191922;   /* a rack module */
+  --raise:    #22222e;   /* something lifted off a module */
+  --well:     #0b0b0f;   /* recessed: scales, code, readouts */
+  --line:     #2e2e3b;   /* hairline */
+  --line-soft:#22222c;
+
+  /* --- text ---------------------------------------------------------- */
+  --text:     #e6e6ee;
+  --bright:   #f7f7fb;
+  --dim:      #9797a8;
+  --faint:    #63637a;
+
+  /* --- the four skill families --------------------------------------- *
+     Straight from AbcTrainTheme::accentFor(Family). These are the spine
+     of the whole product: nine exercises grouped by what they train. */
+  --freq:     #4fa3c7;
+  --dyn:      #c77f4f;
+  --space:    #5fb98c;
+  --char:     #a878c9;
+
+  /* --- semantic ------------------------------------------------------ *
+     Separate from the family hues on purpose: "correct" must not be
+     confused with "this is a space exercise". */
+  --accent:   #5b9bd5;
+  --warm:     #d98c5f;
+  --good:     #6fbf8b;
+  --bad:      #d9615f;
+
+  /* --- type ---------------------------------------------------------- *
+     Source Code Pro (SIL OFL 1.1) carries display and data. An instrument
+     labels itself in mono — that is the silkscreen on every piece of
+     audio hardware — and it keeps the site in the same voice as the
+     plugin's own numeric readouts. Body text is the platform's UI face,
+     which is also what AbcTrainLookAndFeel::interfaceTypefaceName picks. */
+  --mono: "Source Code Pro", ui-monospace, "SF Mono", Menlo, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  /* A 1.25 scale, clamped so the page holds together from 360px to 4K.
+     The display step is deliberately smaller than it would be for a
+     proportional face: a monospaced glyph is ~0.6em wide *including* the
+     narrow ones, so mono at a given size eats far more line than a sans
+     does. Sized for ~26 characters per line at the page's full width. */
+  --t-display: clamp(2.1rem, 1rem + 3.9vw, 4.5rem);
+  --t-title:   clamp(1.9rem, 1.1rem + 2.6vw, 3.1rem);
+  --t-head:    clamp(1.25rem, 1rem + 0.9vw, 1.6rem);
+  --t-body:    1.0625rem;
+  --t-small:   0.9375rem;
+  --t-label:   0.75rem;
+
+  --track-display: 0.015em;   /* mono at size still wants air */
+  --track-label:   0.16em;    /* uppercase labels need much more */
+
+  /* --- space --------------------------------------------------------- *
+     Mirrors AbcTrainTheme::Spacing so the site's rhythm is the app's. */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 14px;
+  --s-4: 22px;
+  --s-5: 36px;
+  --s-6: 58px;
+  --s-7: 94px;
+
+  --radius:      14px;
+  --radius-well: 10px;
+  --radius-pill: 999px;
+
+  --measure: 62ch;             /* running text never wider than this */
+  --page:    1180px;
+
+  /* --- motion -------------------------------------------------------- *
+     AbcTrainTheme::Duration, in seconds. */
+  --d-hover: 140ms;
+  --d-press: 90ms;
+  --d-move:  320ms;
+  --ease:    cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  --shadow: 0 18px 40px -24px rgb(0 0 0 / 0.9);
+  --glow:   0 0 0 1px rgb(91 155 213 / 0.25), 0 0 34px -12px rgb(91 155 213 / 0.5);
+
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------------
+   Light theme.
+
+   Not an inversion. These are AbcTrainTheme's *designed* light values —
+   warm off-white paper, surfaces stepping toward white, accents darkened
+   and slightly desaturated because a hue that reads as clearly blue on
+   near-black washes out to a pastel on paper. See ADR 019.
+   --------------------------------------------------------------------- */
+@media (prefers-color-scheme: light) {
+  :root {
+    --ink:      #e8e6e1;
+    --panel:    #f1efeb;
+    --raise:    #f8f7f4;
+    --well:     #dedad2;
+    --line:     #c9c5bd;
+    --line-soft:#d8d4cc;
+
+    --text:     #33322f;
+    --bright:   #1b1a18;
+    --dim:      #6d6a64;
+    --faint:    #8d8a83;
+
+    --freq:     #35708a;
+    --dyn:      #8a5636;
+    --space:    #3f8060;
+    --char:     #74528b;
+
+    --accent:   #2f6fa8;
+    --warm:     #b26134;
+    --good:     #3d8a5f;
+    --bad:      #b03c3a;
+
+    --shadow: 0 18px 40px -26px rgb(90 95 110 / 0.45);
+    --glow:   0 0 0 1px rgb(47 111 168 / 0.28), 0 0 30px -14px rgb(47 111 168 / 0.4);
+
+    color-scheme: light;
+  }
+}
+
+/* The viewer's own toggle stamps data-theme on the root and must win over
+   the media query in both directions — hence the full redefinition. */
+:root[data-theme="light"] {
+  --ink:      #e8e6e1;
+  --panel:    #f1efeb;
+  --raise:    #f8f7f4;
+  --well:     #dedad2;
+  --line:     #c9c5bd;
+  --line-soft:#d8d4cc;
+
+  --text:     #33322f;
+  --bright:   #1b1a18;
+  --dim:      #6d6a64;
+  --faint:    #8d8a83;
+
+  --freq:     #35708a;
+  --dyn:      #8a5636;
+  --space:    #3f8060;
+  --char:     #74528b;
+
+  --accent:   #2f6fa8;
+  --warm:     #b26134;
+  --good:     #3d8a5f;
+  --bad:      #b03c3a;
+
+  --shadow: 0 18px 40px -26px rgb(90 95 110 / 0.45);
+  --glow:   0 0 0 1px rgb(47 111 168 / 0.28), 0 0 30px -14px rgb(47 111 168 / 0.4);
+
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --ink:      #0f0f14;
+  --panel:    #191922;
+  --raise:    #22222e;
+  --well:     #0b0b0f;
+  --line:     #2e2e3b;
+  --line-soft:#22222c;
+
+  --text:     #e6e6ee;
+  --bright:   #f7f7fb;
+  --dim:      #9797a8;
+  --faint:    #63637a;
+
+  --freq:     #4fa3c7;
+  --dyn:      #c77f4f;
+  --space:    #5fb98c;
+  --char:     #a878c9;
+
+  --accent:   #5b9bd5;
+  --warm:     #d98c5f;
+  --good:     #6fbf8b;
+  --bad:      #d9615f;
+
+  --shadow: 0 18px 40px -24px rgb(0 0 0 / 0.9);
+  --glow:   0 0 0 1px rgb(91 155 213 / 0.25), 0 0 34px -12px rgb(91 155 213 / 0.5);
+
+  color-scheme: dark;
+}
