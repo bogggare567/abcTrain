@@ -11,6 +11,7 @@
 #include "RunResultsComponent.h"
 #include "AchievementsScreenComponent.h"
 #include "../shared/TourOverlay.h"
+#include "../shared/IdleScreensaver.h"
 #include "SessionManager.h"
 #include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
@@ -71,6 +72,12 @@ public:
         showScreen (Screen::support);
     }
 
+    void openScreensaverForSnapshot()
+    {
+        screensaver.setVisible (true);
+        screensaver.toFront (false);
+    }
+
     void openTourForSnapshot()
     {
         startTour();
@@ -105,6 +112,7 @@ public:
     // twice every round, every round - and reaching for the mouse to do it
     // breaks the one thing the screen is for, which is listening.
     bool keyPressed (const juce::KeyPress&) override;
+    void mouseMove (const juce::MouseEvent&) override;
 
     // Where update progress and outcomes go on this editor. The Learner
     // plugins have a guide card to put a line of text in; this one has the
@@ -465,6 +473,10 @@ private:
     // training screen, so it can only run once one is open.
     TourOverlay tour;
     void startTour();
+
+    // The DVD screensaver. Last child of all, and the only thing allowed
+    // to cover the tour.
+    IdleScreensaver screensaver;
     void showAchievementsScreen();
 
     void showRunResults (int finalScore);

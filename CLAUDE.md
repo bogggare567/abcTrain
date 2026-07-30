@@ -301,6 +301,22 @@ full rationale.
   cycle), which is what actually separates a drum loop from a mix that
   contains drums. See
   [decisions/025](docs/decisions/025-audio-slicing.md).
+- `shared/TourOverlay.{h,cpp}` + `shared/IdleScreensaver.{h,cpp}` — the
+  first-run walkthrough and the DVD screensaver. The tour dims the window
+  and punches a hole (one `Path` with `setUsingNonZeroWinding(false)`, not
+  a ring drawn on top — a ring leaves the control as dark as its
+  surroundings) around one real widget, with one sentence beside it; the
+  hole *travels* between steps, which is what says the next thing is
+  elsewhere. Targets are `SafePointer`s and a step whose widget is hidden
+  is skipped, because which controls exist depends on the exercise.
+  Offered once, with a decline the same size as the accept. The
+  screensaver bounces `soundkorb.ru` in the four family colours, advancing
+  the colour on every bounce, and repositions to the wall on contact
+  rather than overshooting — letting it bounce next frame instead is what
+  makes cheap versions jitter along the edge. Its idle clock only runs
+  when `isBusy` says nothing is playing and no overlay is open. The
+  welcome screen now opens **every** launch; the old `seenSupportScreen`
+  flag became `tourOffered`, which is a different question.
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail (About /
   Appearance / Background) rather than one flat card, so the screen keeps
   working as it grows; `docs/roadmap.md` records the pages that were

@@ -53,6 +53,7 @@ public:
     // nothing to listen for. Defaults to on, and the editor restores it
     // on teardown, so a plugin with no UI open still makes sound.
     void setSignalEnabled (bool shouldBeEnabled) noexcept { signalEnabled.store (shouldBeEnabled); }
+    bool isSignalEnabled() const noexcept { return signalEnabled.load(); }
 
 
     void setVectorscope (Vectorscope* scope) noexcept { vectorscope.store (scope); }

@@ -75,7 +75,7 @@ namespace
     }
 
     enum class Extra { none, training, sounds, settings, results, achievements,
-                       moduleShelf, moduleCheck, tourOffer, tour };
+                       moduleShelf, moduleCheck, tourOffer, tour, screensaver };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -135,6 +135,9 @@ namespace
 
                 if (extra == Extra::tour)
                     editor.openTourForSnapshot();
+
+                if (extra == Extra::screensaver)
+                    editor.openScreensaverForSnapshot();
             }
 
             if constexpr (std::is_same_v<EditorType, LearnerCompEditor>
@@ -233,6 +236,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Tour", -1, Extra::tour);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Screensaver", -1, Extra::screensaver);
 
             if (hadSettings)
             {

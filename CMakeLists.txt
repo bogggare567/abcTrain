@@ -169,6 +169,7 @@ juce_add_plugin(EarTrainer
 
 target_sources(EarTrainer
     PRIVATE
+        shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         Source/PluginProcessor.cpp
@@ -432,6 +433,7 @@ juce_add_console_app(EarTrainerTests
 
 target_sources(EarTrainerTests
     PRIVATE
+        shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/ModuleScreenComponent.cpp
@@ -545,6 +547,7 @@ juce_generate_juce_header(EditorSnapshots)
 
 target_sources(EditorSnapshots
     PRIVATE
+        shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/ModuleScreenComponent.cpp

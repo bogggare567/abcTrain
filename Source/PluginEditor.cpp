@@ -563,6 +563,22 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     tour.onFinished = [this] { repaint(); };
     addChildComponent (tour);
 
+    // Idle only counts while nothing is playing and no overlay is open -
+    // otherwise it would appear over a round somebody is in the middle of.
+    screensaver.isBusy = [this]
+    {
+        return processor.isSignalEnabled()
+               || tour.isRunning()
+               || trainingSounds.isVisible()
+               || settingsScreen.isVisible();
+    };
+
+    screensaver.onDismissed = [this] { repaint(); };
+    screensaver.setIdleSeconds (localisationProperties.getIntValue (
+        IdleScreensaver::idleSecondsKey, 90));
+
+    addChildComponent (screensaver);
+
     homeScreen.onBadgeStripClicked = [this] { showAchievementsScreen(); };
 
     addChildComponent (achievementToast);
@@ -725,8 +741,18 @@ void EarTrainerEditor::showUpdateOutcome (const juce::String& text)
     updateButton.setTooltip (text);
 }
 
+void EarTrainerEditor::mouseMove (const juce::MouseEvent&)
+{
+    // The editor sees moves over its own background; child components eat
+    // their own, which is why the screensaver also watches for a click and
+    // a keypress. Between the three, anything a person does counts.
+    screensaver.noteActivity();
+}
+
 bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
 {
+    screensaver.noteActivity();
+
     if (key == juce::KeyPress::spaceKey && beforeButton.isVisible())
     {
         auto& game = processor.getGameManager().getActiveGame();
@@ -918,6 +944,7 @@ void EarTrainerEditor::resized()
     runResults.setBounds (getLocalBounds());
     achievementsScreen.setBounds (getLocalBounds());
     tour.setBounds (getLocalBounds());
+    screensaver.setBounds (getLocalBounds());
 
     achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
                                                  .withHeight (52)
