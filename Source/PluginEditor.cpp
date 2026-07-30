@@ -734,8 +734,13 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     // are instead.
     if (currentScreen != Screen::support)
         AbcTrainLookAndFeel::drawTrackedText (
-            g, currentScreen == Screen::training ? titleLabel.getText()
-                                                 : localisation.getText ("app.eartrainer.name"),
+            // "ABC" is the product name and does not translate; what
+            // follows it does. The host shows "ABC Ear Trainer" whatever
+            // the interface language is, and a window titled only
+            // "Тренажёр слуха" makes the two look like different programs.
+            g, "ABC " + (currentScreen == Screen::training
+                             ? titleLabel.getText()
+                             : localisation.getText ("app.eartrainer.name")),
             juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
                                      (float) AbcTrainTheme::Spacing::medium,
                                      (float) getWidth() * 0.6f, 32.0f),
@@ -773,6 +778,12 @@ bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
 void EarTrainerEditor::resized()
 {
     using namespace AbcTrainTheme;
+
+    // Anything that changes the height while the hint is closed is a drag,
+    // a scale change, or the initial size - all of them the height to come
+    // back to when the hint closes again.
+    if (! hintRevealed)
+        heightWithoutHint = juce::jmax (logicalBaseHeight, getHeight());
 
     // The home screen owns everything under the title row; the training
     // screen's own layout below only runs when it's the visible one.
@@ -1229,7 +1240,7 @@ void EarTrainerEditor::setUiScale (float newScale)
     // separate axis from sizing, and resetting the width here would undo a
     // deliberate drag every time somebody changed the text size.
     setSize (juce::jmax (logicalWidth, getWidth()),
-              juce::jmax (getLogicalHeight(), getHeight()));
+              heightWithoutHint + (hintRevealed ? hintPanelHeight : 0));
 
     // Keep the picker in step with the actual scale, including on the
     // restore path - without this it came up blank on launch.
@@ -1241,12 +1252,10 @@ void EarTrainerEditor::setUiScale (float newScale)
 
 void EarTrainerEditor::applyWindowSize()
 {
-    // setSize() only calls resized() when the size actually changed, and
-    // showing the hint panel is exactly such a case - but it must only ever
-    // *grow* the window, never snap it back to the design size and throw
-    // away a resize the player made on purpose.
+    // Grow by exactly the panel, shrink by exactly the panel, and leave
+    // whatever height was chosen underneath alone.
     setSize (juce::jmax (logicalWidth, getWidth()),
-              juce::jmax (getLogicalHeight(), getHeight()));
+              heightWithoutHint + (hintRevealed ? hintPanelHeight : 0));
     resized();
     repaint();
 }
@@ -1536,6 +1545,11 @@ void EarTrainerEditor::refreshLocalisedText()
     rebuildHomeSections();
     refreshFromGameState();
     refreshFromProgressState();
+
+    // The screen title is *drawn*, not a Label, so nothing above repaints
+    // it. Without this the language changed everywhere except the one
+    // word at the top left, which is the first thing anybody looks at.
+    repaint();
 }
 
 void EarTrainerEditor::rebuildChoiceSlider()

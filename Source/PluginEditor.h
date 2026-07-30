@@ -406,6 +406,17 @@ private:
 
     void applyWindowSize();
 
+    // The height the window has *without* the hint panel - either the
+    // design height or whatever it was dragged to.
+    //
+    // Needed because two requirements collide: a manual resize must
+    // survive, and the window must shrink again when the hint closes. The
+    // first version satisfied only the first, with jmax(needed, current) -
+    // which grows for the panel and then can never come back down, because
+    // the current height *is* the grown one. Remembering the height
+    // separately is what lets both be true.
+    int heightWithoutHint = logicalBaseHeight;
+
     void setUiScale (float newScale);
     float uiScale = 1.0f;
     CompactSelector sizeSelector;

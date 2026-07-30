@@ -183,15 +183,28 @@ void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<f
         const auto colour = i < 3 ? AbcTrainTheme::accentFor (familyForWord (i))
                                   : theme.textBright;
 
-        // a, b and c hop; "Train" stays put. A phase third apart each, and
-        // only the upper half of the sine is used - a letter that dips
-        // *below* its baseline reads as sinking, not bouncing.
+        // a, b and c hop in turn; "Train" stays put.
+        //
+        // Each hop occupies a third of the cycle and they are staggered by a
+        // third, so exactly one letter is in the air at a time and all three
+        // are down at phase zero. The first version used half-sines a third
+        // apart, which meant *some* letter was always mid-hop - including on
+        // the very first frame, where a raised "c" reads as a typo rather
+        // than as motion.
         auto lift = 0.0f;
 
         if (i < 3)
         {
-            const auto phase = bouncePhase - (double) i * (juce::MathConstants<double>::twoPi / 3.0);
-            lift = -6.0f * (float) juce::jmax (0.0, std::sin (phase));
+            constexpr auto slice = juce::MathConstants<double>::twoPi / 3.0;
+
+            auto local = std::fmod (bouncePhase - (double) i * slice,
+                                     juce::MathConstants<double>::twoPi);
+
+            if (local < 0.0)
+                local += juce::MathConstants<double>::twoPi;
+
+            if (local < slice)
+                lift = -7.0f * (float) std::sin (local * 1.5);
         }
 
         AbcTrainLookAndFeel::drawTrackedText (g, letter,
