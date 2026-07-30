@@ -206,5 +206,16 @@
   "update.opening": "Opening the installer…",
   "update.failed": "Download failed — the release page is still there.",
   "update.installed": "Installed. Restart your DAW to load the new version.",
-  "update.devBuild": "a development build"
+  "update.devBuild": "a development build",
+  "tour.offer": "First time here? A thirty-second look around.",
+  "tour.accept": "Show me",
+  "tour.decline": "I'll explore",
+  "tour.next": "Next",
+  "tour.skip": "Skip",
+  "tour.done": "Got it",
+  "tour.step.instruction": "This is what you have to hear. Read it once - it says what is being changed.",
+  "tour.step.ab": "A is untreated, B has the change in it. Switch between them as often as you like. Space does it too.",
+  "tour.step.answer": "Answer here. Landing close counts for something; landing on it counts for more.",
+  "tour.step.level": "Your level for this exercise. It rises from accurate answers, not from playing a lot.",
+  "tour.step.home": "Back to the list of exercises whenever you want. Nothing is lost."
 }

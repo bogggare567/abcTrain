@@ -169,6 +169,7 @@ juce_add_plugin(EarTrainer
 
 target_sources(EarTrainer
     PRIVATE
+        shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
@@ -245,6 +246,7 @@ juce_add_plugin(LearnerEQ
 
 target_sources(LearnerEQ
     PRIVATE
+        shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
@@ -308,6 +310,7 @@ juce_add_plugin(LearnerComp
 
 target_sources(LearnerComp
     PRIVATE
+        shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
@@ -371,6 +374,7 @@ juce_add_plugin(LearnerVerb
 
 target_sources(LearnerVerb
     PRIVATE
+        shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
@@ -428,6 +432,7 @@ juce_add_console_app(EarTrainerTests
 
 target_sources(EarTrainerTests
     PRIVATE
+        shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
@@ -540,6 +545,7 @@ juce_generate_juce_header(EditorSnapshots)
 
 target_sources(EditorSnapshots
     PRIVATE
+        shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp

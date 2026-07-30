@@ -38,6 +38,12 @@ public:
 
     std::function<void()> onDismissed;
 
+    // Offered only on a first run, and only offered. The decline is the
+    // same size as the accept: a walkthrough somebody feels cornered into
+    // is one that teaches them to dismiss things unread.
+    std::function<void()> onTourRequested;
+    void setTourOffer (juce::String question, juce::String accept, juce::String decline);
+
     // Re-reads every string and restarts the reveal. Called on a language
     // change, and whenever the screen becomes visible.
     void refresh();
@@ -83,6 +89,9 @@ private:
     double elapsedMs = 0.0;
 
     juce::TextButton donateButton, starButton, continueButton;
+    juce::TextButton tourButton, noTourButton;
+    juce::String tourQuestion;
+    juce::Rectangle<int> tourQuestionBounds;
     juce::HyperlinkButton repoLink { "github.com/bogggare567/abcTrain",
                                       juce::URL ("https://github.com/bogggare567/abcTrain") };
 

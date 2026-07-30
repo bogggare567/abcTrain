@@ -206,5 +206,16 @@
   "update.opening": "설치 프로그램을 여는 중…",
   "update.failed": "내려받기에 실패했습니다 — 릴리스 페이지는 그대로 있습니다.",
   "update.installed": "설치했습니다. 새 버전을 불러오려면 DAW를 다시 시작하세요.",
-  "update.devBuild": "개발 빌드"
+  "update.devBuild": "개발 빌드",
+  "tour.offer": "처음이신가요? 삼십 초만 둘러보죠.",
+  "tour.accept": "보여주세요",
+  "tour.decline": "직접 볼게요",
+  "tour.next": "다음",
+  "tour.skip": "건너뛰기",
+  "tour.done": "알겠어요",
+  "tour.step.instruction": "이것이 들어야 하는 것입니다. 한 번 읽어보세요 — 무엇이 바뀌는지 적혀 있습니다.",
+  "tour.step.ab": "A는 처리 전, B에는 변화가 들어 있습니다. 원하는 만큼 전환하세요. 스페이스바도 됩니다.",
+  "tour.step.answer": "여기서 답합니다. 가깝게 맞히면 조금, 정확히 맞히면 더 많이.",
+  "tour.step.level": "이 연습에서의 레벨입니다. 많이 해서가 아니라 정확해서 올라갑니다.",
+  "tour.step.home": "언제든 연습 목록으로 돌아갈 수 있습니다. 잃는 것은 없습니다."
 }

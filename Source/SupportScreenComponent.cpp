@@ -76,6 +76,22 @@ SupportScreenComponent::SupportScreenComponent (LocalisationManager& localisatio
     };
     addAndMakeVisible (continueButton);
 
+    // Both hidden unless setTourOffer says otherwise, so a returning player
+    // never sees them.
+    tourButton.onClick = [this]
+    {
+        if (onTourRequested != nullptr)
+            onTourRequested();
+    };
+    addChildComponent (tourButton);
+
+    noTourButton.onClick = [this]
+    {
+        if (onDismissed != nullptr)
+            onDismissed();
+    };
+    addChildComponent (noTourButton);
+
     addAndMakeVisible (repoLink);
 
     refresh();
@@ -247,6 +263,13 @@ void SupportScreenComponent::paint (juce::Graphics& g)
     g.setFont (juce::Font (juce::FontOptions (13.0f)));
     g.drawFittedText (localisation.getText ("ui.supportBody"),
                        area.removeFromTop (bodyHeight), juce::Justification::centredTop, 5);
+
+    if (tourQuestion.isNotEmpty())
+    {
+        g.setColour (AbcTrainTheme::current().textDim);
+        g.setFont (juce::Font (juce::FontOptions (12.5f)));
+        g.drawText (tourQuestion, tourQuestionBounds, juce::Justification::centred, true);
+    }
 }
 
 juce::Rectangle<int> SupportScreenComponent::contentArea (juce::Rectangle<int> bounds) const
@@ -263,6 +286,22 @@ juce::Rectangle<int> SupportScreenComponent::contentArea (juce::Rectangle<int> b
                  .withY (bounds.getY() + juce::jmax (0, (bounds.getHeight() - total) / 2));
 }
 
+void SupportScreenComponent::setTourOffer (juce::String question, juce::String accept,
+                                            juce::String decline)
+{
+    tourQuestion = std::move (question);
+    tourButton.setButtonText (accept);
+    noTourButton.setButtonText (decline);
+
+    const auto offering = tourQuestion.isNotEmpty();
+    tourButton.setVisible (offering);
+    noTourButton.setVisible (offering);
+    continueButton.setVisible (! offering);
+
+    resized();
+    repaint();
+}
+
 void SupportScreenComponent::resized()
 {
     using namespace AbcTrainTheme;
@@ -277,7 +316,27 @@ void SupportScreenComponent::resized()
     // "Continue" is the primary action and sits alone, above the two asks
     // rather than below them: the screen is an offer, not a toll gate, and
     // the way onward should be the easiest thing to find.
-    continueButton.setBounds (area.removeFromTop (continueHeight).withSizeKeepingCentre (180, 36));
+    {
+        auto primary = area.removeFromTop (continueHeight);
+
+        if (tourQuestion.isNotEmpty())
+        {
+            // Two buttons of the same size, side by side. Making the accept
+            // bigger would be the screen having an opinion about what you
+            // should want.
+            tourQuestionBounds = primary.withHeight (18).translated (0, -22);
+
+            auto pair = primary.withSizeKeepingCentre (356, 36);
+            tourButton.setBounds (pair.removeFromLeft (172));
+            pair.removeFromLeft (12);
+            noTourButton.setBounds (pair);
+        }
+        else
+        {
+            continueButton.setBounds (primary.withSizeKeepingCentre (180, 36));
+        }
+    }
+
     area.removeFromTop (AbcTrainTheme::Spacing::medium);
 
     auto row = area.removeFromTop (asksHeight).withSizeKeepingCentre (

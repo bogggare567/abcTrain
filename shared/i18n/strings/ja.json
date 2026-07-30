@@ -206,5 +206,16 @@
   "update.opening": "インストーラーを開いています…",
   "update.failed": "ダウンロードに失敗しました — リリースページはそのまま開けます。",
   "update.installed": "インストールしました。新しいバージョンを読み込むには DAW を再起動してください。",
-  "update.devBuild": "開発ビルド"
+  "update.devBuild": "開発ビルド",
+  "tour.offer": "初めてですか？三十秒で一周しましょう。",
+  "tour.accept": "見せて",
+  "tour.decline": "自分で見る",
+  "tour.next": "次へ",
+  "tour.skip": "スキップ",
+  "tour.done": "わかった",
+  "tour.step.instruction": "これが聞き取るべきものです。一度読んでください — 何が変えられているかが書いてあります。",
+  "tour.step.ab": "A は未処理、B に変化が入っています。何度でも切り替えてください。スペースキーでも同じです。",
+  "tour.step.answer": "ここで答えます。近ければ点になり、ぴったりならもっと点になります。",
+  "tour.step.level": "この練習でのあなたのレベル。回数ではなく、正確さで上がります。",
+  "tour.step.home": "いつでも練習の一覧に戻れます。何も失われません。"
 }

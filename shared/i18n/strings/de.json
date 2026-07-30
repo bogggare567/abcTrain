@@ -206,5 +206,16 @@
   "update.opening": "Installationsprogramm wird geöffnet…",
   "update.failed": "Download fehlgeschlagen — die Release-Seite ist noch da.",
   "update.installed": "Installiert. Starten Sie Ihre DAW neu, um die neue Version zu laden.",
-  "update.devBuild": "ein Entwicklungs-Build"
+  "update.devBuild": "ein Entwicklungs-Build",
+  "tour.offer": "Zum ersten Mal hier? Ein Rundgang in dreißig Sekunden.",
+  "tour.accept": "Zeig mir",
+  "tour.decline": "Ich schaue selbst",
+  "tour.next": "Weiter",
+  "tour.skip": "Überspringen",
+  "tour.done": "Verstanden",
+  "tour.step.instruction": "Das musst du hören. Einmal lesen - hier steht, was verändert wird.",
+  "tour.step.ab": "A ist unbearbeitet, B enthält die Änderung. Wechsle so oft du willst. Leertaste geht auch.",
+  "tour.step.answer": "Hier antwortest du. Nah dran zählt etwas, genau zählt mehr.",
+  "tour.step.level": "Dein Level in dieser Übung. Es steigt durch genaue Antworten, nicht durch viele.",
+  "tour.step.home": "Zurück zur Übungsliste, wann du willst. Nichts geht verloren."
 }

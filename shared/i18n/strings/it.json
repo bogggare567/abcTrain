@@ -206,5 +206,16 @@
   "update.opening": "Apro l’installer…",
   "update.failed": "Download non riuscito — la pagina è ancora lì.",
   "update.installed": "Installato. Riavvia la DAW per caricare la nuova versione.",
-  "update.devBuild": "una build di sviluppo"
+  "update.devBuild": "una build di sviluppo",
+  "tour.offer": "È la prima volta? Un giro in trenta secondi.",
+  "tour.accept": "Mostrami",
+  "tour.decline": "Guardo da solo",
+  "tour.next": "Avanti",
+  "tour.skip": "Salta",
+  "tour.done": "Chiaro",
+  "tour.step.instruction": "Questo è ciò che devi sentire. Leggilo una volta: dice cosa viene cambiato.",
+  "tour.step.ab": "A è non trattato, B contiene la modifica. Alterna quanto vuoi. Anche la barra spaziatrice.",
+  "tour.step.answer": "Rispondi qui. Andarci vicino conta qualcosa; centrarlo conta di più.",
+  "tour.step.level": "Il tuo livello in questo esercizio. Sale con risposte precise, non giocando molto.",
+  "tour.step.home": "Torna all’elenco degli esercizi quando vuoi. Non si perde niente."
 }

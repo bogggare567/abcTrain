@@ -10,6 +10,7 @@
 #include "SettingsScreenComponent.h"
 #include "RunResultsComponent.h"
 #include "AchievementsScreenComponent.h"
+#include "../shared/TourOverlay.h"
 #include "SessionManager.h"
 #include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
@@ -61,6 +62,20 @@ public:
     }
 
     void openAchievementsForSnapshot() { showAchievementsScreen(); }
+
+    void offerTourForSnapshot()
+    {
+        supportScreen.setTourOffer (localisation.getText ("tour.offer"),
+                                     localisation.getText ("tour.accept"),
+                                     localisation.getText ("tour.decline"));
+        showScreen (Screen::support);
+    }
+
+    void openTourForSnapshot()
+    {
+        startTour();
+        tour.completeAnimation();
+    }
 
     void openSettingsForSnapshot()
     {
@@ -445,6 +460,11 @@ private:
 
     // The full shelf, opened from the home screen's badge strip.
     AchievementsScreenComponent achievementsScreen;
+
+    // The first-run walkthrough. Points at the real controls on the
+    // training screen, so it can only run once one is open.
+    TourOverlay tour;
+    void startTour();
     void showAchievementsScreen();
 
     void showRunResults (int finalScore);

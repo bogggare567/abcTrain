@@ -206,5 +206,16 @@
   "update.opening": "Ouverture de l’installeur…",
   "update.failed": "Échec du téléchargement — la page est toujours là.",
   "update.installed": "Installé. Redémarrez votre DAW pour charger la nouvelle version.",
-  "update.devBuild": "une version de développement"
+  "update.devBuild": "une version de développement",
+  "tour.offer": "Première fois ici ? Un tour en trente secondes.",
+  "tour.accept": "Montre-moi",
+  "tour.decline": "Je regarde seul",
+  "tour.next": "Suivant",
+  "tour.skip": "Passer",
+  "tour.done": "Compris",
+  "tour.step.instruction": "Voilà ce qu’il faut entendre. Lisez-le une fois : il dit ce qui change.",
+  "tour.step.ab": "A est sans traitement, B contient le changement. Alternez autant que vous voulez. Espace aussi.",
+  "tour.step.answer": "Répondez ici. Tomber près compte un peu ; tomber juste compte plus.",
+  "tour.step.level": "Votre niveau dans cet exercice. Il monte avec la précision, pas avec le nombre de tours.",
+  "tour.step.home": "Retour à la liste des exercices quand vous voulez. Rien n’est perdu."
 }

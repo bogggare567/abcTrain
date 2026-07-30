@@ -206,5 +206,16 @@
   "update.opening": "正在打开安装程序…",
   "update.failed": "下载失败 —— 发布页面仍然可用。",
   "update.installed": "已安装。重启你的 DAW 以加载新版本。",
-  "update.devBuild": "开发版本"
+  "update.devBuild": "开发版本",
+  "tour.offer": "第一次来？花三十秒看一圈。",
+  "tour.accept": "带我看看",
+  "tour.decline": "我自己看",
+  "tour.next": "下一步",
+  "tour.skip": "跳过",
+  "tour.done": "明白了",
+  "tour.step.instruction": "这就是你要听出来的东西。读一遍——它说明了改动了什么。",
+  "tour.step.ab": "A 是未处理的，B 带着改动。想切换多少次都可以，空格键也行。",
+  "tour.step.answer": "在这里作答。接近就有分，正中更多。",
+  "tour.step.level": "你在这个练习里的等级。它靠答准提升，不靠练得多。",
+  "tour.step.home": "随时回到练习列表。什么都不会丢。"
 }

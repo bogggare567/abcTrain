@@ -206,5 +206,16 @@
   "update.opening": "Abrindo o instalador…",
   "update.failed": "Falha no download — a página continua lá.",
   "update.installed": "Instalado. Reinicie sua DAW para carregar a nova versão.",
-  "update.devBuild": "uma compilação de desenvolvimento"
+  "update.devBuild": "uma compilação de desenvolvimento",
+  "tour.offer": "Primeira vez? Uma volta de trinta segundos.",
+  "tour.accept": "Mostre-me",
+  "tour.decline": "Eu me acho",
+  "tour.next": "Próximo",
+  "tour.skip": "Pular",
+  "tour.done": "Entendi",
+  "tour.step.instruction": "É isto que você precisa ouvir. Leia uma vez: diz o que está sendo mudado.",
+  "tour.step.ab": "A é sem processamento, B tem a mudança. Alterne quantas vezes quiser. Espaço também.",
+  "tour.step.answer": "Responda aqui. Chegar perto vale algo; acertar vale mais.",
+  "tour.step.level": "Seu nível neste exercício. Sobe com respostas precisas, não por jogar muito.",
+  "tour.step.home": "Volte à lista de exercícios quando quiser. Nada se perde."
 }

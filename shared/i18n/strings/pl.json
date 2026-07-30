@@ -206,5 +206,16 @@
   "update.opening": "Otwieram instalator…",
   "update.failed": "Pobieranie nie udało się — strona wydania nadal działa.",
   "update.installed": "Zainstalowano. Uruchom DAW ponownie, aby wczytać nową wersję.",
-  "update.devBuild": "wersja rozwojowa"
+  "update.devBuild": "wersja rozwojowa",
+  "tour.offer": "Pierwszy raz? Rozejrzyjmy się w trzydzieści sekund.",
+  "tour.accept": "Pokaż",
+  "tour.decline": "Sam się rozejrzę",
+  "tour.next": "Dalej",
+  "tour.skip": "Pomiń",
+  "tour.done": "Jasne",
+  "tour.step.instruction": "To trzeba usłyszeć. Przeczytaj raz - jest tu napisane, co się zmienia.",
+  "tour.step.ab": "A jest bez obróbki, B ma zmianę. Przełączaj ile chcesz. Spacja robi to samo.",
+  "tour.step.answer": "Tu odpowiadasz. Blisko już się liczy; dokładnie liczy się bardziej.",
+  "tour.step.level": "Twój poziom w tym ćwiczeniu. Rośnie od trafnych odpowiedzi, nie od liczby prób.",
+  "tour.step.home": "Powrót do listy ćwiczeń, kiedy chcesz. Nic nie przepada."
 }

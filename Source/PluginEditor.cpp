@@ -36,7 +36,10 @@ namespace
     // "abcTrain" PropertiesFile the language preference already uses.
     constexpr const char* themeModeKey = "themeMode";
     constexpr const char* uiScaleKey = "uiScale";
-    constexpr const char* seenSupportKey = "seenSupportScreen";
+    // Not "have you seen the welcome screen" any more - that shows every
+    // launch now, by request. This only remembers whether the walkthrough
+    // has been offered, which is a question worth asking exactly once.
+    constexpr const char* tourOfferedKey = "tourOffered";
 
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
@@ -265,8 +268,16 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     supportScreen.onDismissed = [this]
     {
-        localisationProperties.setValue (seenSupportKey, true);
+        localisationProperties.setValue (tourOfferedKey, true);
+        localisationProperties.saveIfNeeded();
         showScreen (Screen::home);
+    };
+
+    supportScreen.onTourRequested = [this]
+    {
+        localisationProperties.setValue (tourOfferedKey, true);
+        localisationProperties.saveIfNeeded();
+        startTour();
     };
     addChildComponent (supportScreen);
 
@@ -547,6 +558,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     achievementsScreen.onClosed = [this] { resized(); repaint(); };
     addChildComponent (achievementsScreen);
 
+    // Added after every other child: it dims the window and cuts a hole,
+    // which only works if it is on top of what it is dimming.
+    tour.onFinished = [this] { repaint(); };
+    addChildComponent (tour);
+
     homeScreen.onBadgeStripClicked = [this] { showAchievementsScreen(); };
 
     addChildComponent (achievementToast);
@@ -571,8 +587,14 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     // First launch gets the support screen once; after that, straight to
     // Home. Never mid-exercise.
-    showScreen (localisationProperties.getBoolValue (seenSupportKey, false)
-                    ? Screen::home : Screen::support);
+    // The welcome screen every time, not once: it is the front door, it
+    // says what the four words mean, and it costs one click to pass.
+    if (! localisationProperties.getBoolValue (tourOfferedKey, false))
+        supportScreen.setTourOffer (localisation.getText ("tour.offer"),
+                                     localisation.getText ("tour.accept"),
+                                     localisation.getText ("tour.decline"));
+
+    showScreen (Screen::support);
 }
 
 void EarTrainerEditor::applyTheme()
@@ -895,12 +917,34 @@ void EarTrainerEditor::resized()
     // Centred under the title row, wide enough for an achievement name.
     runResults.setBounds (getLocalBounds());
     achievementsScreen.setBounds (getLocalBounds());
+    tour.setBounds (getLocalBounds());
 
     achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
                                                  .withHeight (52)
                                                  .withSizeKeepingCentre (
                                                      juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
                                                  .withY (Spacing::large + 34));
+}
+
+void EarTrainerEditor::startTour()
+{
+    // It points at real widgets, so the screen holding them has to be up
+    // first. Exercise 0 in Practice: no lives, no clock, nothing that could
+    // end while somebody is reading.
+    openTrainingForSnapshot (0);
+
+    tour.clearSteps();
+    tour.setStrings (localisation.getText ("tour.next"),
+                      localisation.getText ("tour.skip"),
+                      localisation.getText ("tour.done"));
+
+    tour.addStep (&instructionLabel, localisation.getText ("tour.step.instruction"));
+    tour.addStep (&afterButton,      localisation.getText ("tour.step.ab"));
+    tour.addStep (&choiceSlider,     localisation.getText ("tour.step.answer"));
+    tour.addStep (&levelProgressLabel, localisation.getText ("tour.step.level"));
+    tour.addStep (&backButton,       localisation.getText ("tour.step.home"));
+
+    tour.start();
 }
 
 void EarTrainerEditor::showAchievementsScreen()
