@@ -194,5 +194,17 @@
   "tier.silver": "Argent",
   "tier.gold": "Or",
   "tier.platinum": "Platine",
-  "ui.achievementsSubtitle": "{{earned}} sur {{total}} — les verrouillés montrent ce qu’il reste à maîtriser"
+  "ui.achievementsSubtitle": "{{earned}} sur {{total}} — les verrouillés montrent ce qu’il reste à maîtriser",
+  "update.title": "Mise à jour disponible",
+  "update.body": "La version {{latest}} est sortie — vous avez {{current}}.",
+  "update.offerInstall": "Télécharger et installer {{file}} ({{size}} Mo) ? Vos niveaux, réussites et réglages sont conservés.",
+  "update.noAsset": "Cette version n’a pas encore d’installeur pour votre système.",
+  "update.now": "Mettre à jour",
+  "update.later": "Plus tard",
+  "update.openPage": "Ouvrir la page de la version",
+  "update.downloading": "Téléchargement {{percent}}%",
+  "update.opening": "Ouverture de l’installeur…",
+  "update.failed": "Échec du téléchargement — la page est toujours là.",
+  "update.installed": "Installé. Redémarrez votre DAW pour charger la nouvelle version.",
+  "update.devBuild": "une version de développement"
 }

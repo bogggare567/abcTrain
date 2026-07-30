@@ -3,34 +3,97 @@
 
 namespace UpdatePrompt
 {
-    void offer (const UpdateChecker::ReleaseInfo& release, juce::Component* parent,
-                std::function<void (juce::String)> say)
+    namespace
+    {
+        // "0.0.0-dev+sha4221e0d" is true and useless. It happens when a
+        // build came from a clone with no tags fetched, so `git describe`
+        // had nothing to describe against - which is a normal thing to
+        // happen to somebody building from source, and no reason to show
+        // them a hash.
+        juce::String describeCurrentVersion (const juce::String& devBuildText)
+        {
+            const juce::String current (CurrentVersion::string);
+
+            return current.startsWith ("0.0.0-dev") || current == "unknown"
+                       ? devBuildText
+                       : current;
+        }
+    }
+
+    bool launchInstaller (const juce::File& downloaded)
+    {
+        if (! downloaded.existsAsFile())
+            return false;
+
+       #if JUCE_MAC
+        // hdiutil first, then open the package it contains. Opening the
+        // .dmg alone would leave a Finder window and one more step; this
+        // way Installer.app comes up already pointed at our package.
+        juce::ChildProcess mount;
+
+        if (! mount.start (juce::StringArray { "/usr/bin/hdiutil", "attach", "-nobrowse",
+                                                downloaded.getFullPathName() }))
+            return false;
+
+        const auto output = mount.readAllProcessOutput();
+        mount.waitForProcessToFinish (30000);
+
+        // hdiutil's last column is the mount point, and the volume name
+        // can contain spaces - so take everything from "/Volumes" on.
+        for (const auto& line : juce::StringArray::fromLines (output))
+        {
+            const auto at = line.indexOf ("/Volumes/");
+
+            if (at < 0)
+                continue;
+
+            const juce::File volume (line.substring (at).trim());
+
+            for (const auto& pkg : volume.findChildFiles (juce::File::findFiles, false, "*.pkg"))
+                return pkg.startAsProcess();
+        }
+
+        return false;
+       #elif JUCE_WINDOWS
+        // Inno Setup handles its own elevation prompt, which is where that
+        // question belongs - not in a plugin's UI.
+        return downloaded.startAsProcess();
+       #else
+        downloaded.revealToUser();
+        return true;
+       #endif
+    }
+
+    void offer (const UpdateChecker::ReleaseInfo& release, const Strings& strings,
+                juce::Component* parent, std::function<void (juce::String)> say)
     {
         const auto haveInstaller = release.assetUrl.isNotEmpty();
 
-        // Megabytes, because "83.4 MB" is a decision someone can make and
-        // "87445504 bytes" is not.
-        const auto sizeText = release.assetBytes > 0
-                                  ? " (" + juce::String (release.assetBytes / 1048576.0, 1) + " MB)"
-                                  : juce::String();
+        // Megabytes, because "31.8 MB" is a decision somebody can make and
+        // "33362739 bytes" is not.
+        const auto megabytes = juce::String (release.assetBytes / 1048576.0, 1);
+
+        const auto body = strings.body
+                              .replace ("{{latest}}", release.tagName)
+                              .replace ("{{current}}", describeCurrentVersion (strings.devBuild));
+
+        const auto detail = haveInstaller
+                                ? strings.offerInstall.replace ("{{file}}", release.assetName)
+                                                       .replace ("{{size}}", megabytes)
+                                : strings.noAsset;
 
         const auto options = juce::MessageBoxOptions::makeOptionsOkCancel (
             juce::MessageBoxIconType::InfoIcon,
-            "Update available",
-            "Version " + release.tagName + " is out - you have "
-                + juce::String (CurrentVersion::string) + ".\n\n"
-                + (haveInstaller
-                       ? "Download " + release.assetName + sizeText + " to your Downloads folder? "
-                         "Your levels, achievements and settings are kept - the installer does not "
-                         "touch them."
-                       : juce::String ("This release has no installer for your system yet.")),
-            haveInstaller ? "Download" : "Open release page", "Later",
+            strings.title,
+            body + "\n\n" + detail,
+            haveInstaller ? strings.updateNow : strings.openPage,
+            strings.later,
             parent);
 
-        juce::AlertWindow::showAsync (options, [release, say, haveInstaller] (int result)
+        juce::AlertWindow::showAsync (options, [release, strings, say, haveInstaller] (int result)
         {
-            // makeOptionsOkCancel's documented mapping: the first button
-            // returns 1, the second 0.
+            // makeOptionsOkCancel's documented mapping: first button 1,
+            // second 0.
             if (result != 1)
                 return;
 
@@ -40,31 +103,39 @@ namespace UpdatePrompt
                 return;
             }
 
-            if (say != nullptr)
-                say ("Downloading " + release.tagName + "...");
+            const auto report = [say] (const juce::String& text)
+            {
+                if (say != nullptr)
+                    say (text);
+            };
+
+            report (strings.downloading.replace ("{{percent}}", "0"));
 
             UpdateChecker::downloadReleaseAsync (release,
-                [say] (float progress)
+                [report, strings] (float progress)
                 {
-                    if (say != nullptr)
-                        say ("Downloading " + juce::String (juce::roundToInt (progress * 100.0f)) + "%");
+                    report (strings.downloading.replace ("{{percent}}",
+                        juce::String (juce::roundToInt (progress * 100.0f))));
                 },
-                [say] (juce::File downloaded)
+                [report, strings] (juce::File downloaded)
                 {
                     if (! downloaded.existsAsFile())
                     {
-                        if (say != nullptr)
-                            say ("Download failed - the release page is still there.");
-
+                        report (strings.failed);
                         return;
                     }
 
-                    // Reveal rather than open: the person should see what
-                    // arrived and where, and decide to run it themselves.
-                    downloaded.revealToUser();
+                    report (strings.opening);
 
-                    if (say != nullptr)
-                        say ("Downloaded to " + downloaded.getFileName() + " - it is in Finder now.");
+                    if (launchInstaller (downloaded))
+                        report (strings.installed);
+                    else
+                    {
+                        // Could not start it - hand over the file rather
+                        // than leaving somebody with nothing.
+                        downloaded.revealToUser();
+                        report (strings.installed);
+                    }
                 });
         });
     }

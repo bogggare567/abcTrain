@@ -194,5 +194,17 @@
   "tier.silver": "Silver",
   "tier.gold": "Gold",
   "tier.platinum": "Platinum",
-  "ui.achievementsSubtitle": "{{earned}} of {{total}} earned — the locked ones show what there is to get good at"
+  "ui.achievementsSubtitle": "{{earned}} of {{total}} earned — the locked ones show what there is to get good at",
+  "update.title": "Update available",
+  "update.body": "Version {{latest}} is out — you have {{current}}.",
+  "update.offerInstall": "Download and install {{file}} ({{size}} MB)? Your levels, achievements and settings are kept.",
+  "update.noAsset": "This release has no installer for your system yet.",
+  "update.now": "Update now",
+  "update.later": "Later",
+  "update.openPage": "Open release page",
+  "update.downloading": "Downloading {{percent}}%",
+  "update.opening": "Opening the installer…",
+  "update.failed": "Download failed — the release page is still there.",
+  "update.installed": "Installed. Restart your DAW to load the new version.",
+  "update.devBuild": "a development build"
 }

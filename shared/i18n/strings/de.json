@@ -194,5 +194,17 @@
   "tier.silver": "Silber",
   "tier.gold": "Gold",
   "tier.platinum": "Platin",
-  "ui.achievementsSubtitle": "{{earned}} von {{total}} — die gesperrten zeigen, worin man noch gut werden kann"
+  "ui.achievementsSubtitle": "{{earned}} von {{total}} — die gesperrten zeigen, worin man noch gut werden kann",
+  "update.title": "Update verfügbar",
+  "update.body": "Version {{latest}} ist da — Sie haben {{current}}.",
+  "update.offerInstall": "{{file}} ({{size}} MB) herunterladen und installieren? Level, Erfolge und Einstellungen bleiben erhalten.",
+  "update.noAsset": "Für Ihr System gibt es in diesem Release noch kein Installationsprogramm.",
+  "update.now": "Jetzt aktualisieren",
+  "update.later": "Später",
+  "update.openPage": "Release-Seite öffnen",
+  "update.downloading": "Lädt {{percent}}%",
+  "update.opening": "Installationsprogramm wird geöffnet…",
+  "update.failed": "Download fehlgeschlagen — die Release-Seite ist noch da.",
+  "update.installed": "Installiert. Starten Sie Ihre DAW neu, um die neue Version zu laden.",
+  "update.devBuild": "ein Entwicklungs-Build"
 }

@@ -194,5 +194,17 @@
   "tier.silver": "실버",
   "tier.gold": "골드",
   "tier.platinum": "플래티넘",
-  "ui.achievementsSubtitle": "{{total}}개 중 {{earned}}개 —— 잠긴 것들이 아직 무엇을 잘하게 될 수 있는지 알려줍니다"
+  "ui.achievementsSubtitle": "{{total}}개 중 {{earned}}개 —— 잠긴 것들이 아직 무엇을 잘하게 될 수 있는지 알려줍니다",
+  "update.title": "업데이트가 있습니다",
+  "update.body": "버전 {{latest}}이 나왔습니다 — 현재 버전은 {{current}}입니다.",
+  "update.offerInstall": "{{file}}({{size}} MB)을 내려받아 설치할까요? 레벨, 업적, 설정은 그대로 유지됩니다.",
+  "update.noAsset": "이 릴리스에는 아직 사용 중인 시스템용 설치 파일이 없습니다.",
+  "update.now": "지금 업데이트",
+  "update.later": "나중에",
+  "update.openPage": "릴리스 페이지 열기",
+  "update.downloading": "내려받는 중 {{percent}}%",
+  "update.opening": "설치 프로그램을 여는 중…",
+  "update.failed": "내려받기에 실패했습니다 — 릴리스 페이지는 그대로 있습니다.",
+  "update.installed": "설치했습니다. 새 버전을 불러오려면 DAW를 다시 시작하세요.",
+  "update.devBuild": "개발 빌드"
 }

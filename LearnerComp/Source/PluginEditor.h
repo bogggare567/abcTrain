@@ -12,6 +12,7 @@
 #include "../../shared/AbcTrainTheme.h"
 #include "../../shared/AppIcons.h"
 #include "../../shared/PracticeSourceSelector.h"
+#include "../../shared/i18n/LocalisationManager.h"
 #include "../../shared/GuideTooltip.h"
 #include "../../shared/GainReductionMeter.h"
 #include <array>
@@ -55,7 +56,17 @@ private:
     // AbcTrainLookAndFeel.
     AbcTrainLookAndFeel lookAndFeel;
 
+
     LearnerCompProcessor& processor;
+
+    // The three Learner plugins were English-only while the trainer had
+    // twelve languages - a seam the update dialogue made obvious. Reads
+    // the same product-wide preference the trainer writes.
+    //
+    // Declared *after* `processor` deliberately: members initialise in
+    // declaration order, and the first attempt put this above it, so
+    // getSharedProperties() ran on a reference that did not exist yet.
+    LocalisationManager localisation { processor.getSharedProperties() };
 
     juce::Label titleLabel;
     AppIconComponent pluginIcon;

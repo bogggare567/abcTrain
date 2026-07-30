@@ -194,5 +194,17 @@
   "tier.silver": "白银",
   "tier.gold": "黄金",
   "tier.platinum": "铂金",
-  "ui.achievementsSubtitle": "已获得 {{earned}} / {{total}} —— 未解锁的那些告诉你还有什么值得练"
+  "ui.achievementsSubtitle": "已获得 {{earned}} / {{total}} —— 未解锁的那些告诉你还有什么值得练",
+  "update.title": "有可用更新",
+  "update.body": "{{latest}} 已发布 —— 你当前是 {{current}}。",
+  "update.offerInstall": "下载并安装 {{file}}（{{size}} MB）？等级、成就和设置都会保留。",
+  "update.noAsset": "这个版本还没有适合你系统的安装包。",
+  "update.now": "立即更新",
+  "update.later": "稍后",
+  "update.openPage": "打开发布页面",
+  "update.downloading": "下载中 {{percent}}%",
+  "update.opening": "正在打开安装程序…",
+  "update.failed": "下载失败 —— 发布页面仍然可用。",
+  "update.installed": "已安装。重启你的 DAW 以加载新版本。",
+  "update.devBuild": "开发版本"
 }

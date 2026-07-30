@@ -194,5 +194,17 @@
   "tier.silver": "Argento",
   "tier.gold": "Oro",
   "tier.platinum": "Platino",
-  "ui.achievementsSubtitle": "{{earned}} su {{total}} — quelli bloccati mostrano in cosa si può ancora migliorare"
+  "ui.achievementsSubtitle": "{{earned}} su {{total}} — quelli bloccati mostrano in cosa si può ancora migliorare",
+  "update.title": "Aggiornamento disponibile",
+  "update.body": "È uscita la versione {{latest}} — hai {{current}}.",
+  "update.offerInstall": "Scaricare e installare {{file}} ({{size}} MB)? Livelli, obiettivi e impostazioni vengono conservati.",
+  "update.noAsset": "Questa versione non ha ancora un installer per il tuo sistema.",
+  "update.now": "Aggiorna",
+  "update.later": "Più tardi",
+  "update.openPage": "Apri la pagina della versione",
+  "update.downloading": "Download {{percent}}%",
+  "update.opening": "Apro l’installer…",
+  "update.failed": "Download non riuscito — la pagina è ancora lì.",
+  "update.installed": "Installato. Riavvia la DAW per caricare la nuova versione.",
+  "update.devBuild": "una build di sviluppo"
 }

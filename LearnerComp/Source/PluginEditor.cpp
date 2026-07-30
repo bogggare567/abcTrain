@@ -11,6 +11,31 @@
 
 namespace
 {
+    // Every string the update prompt needs, pulled from this editor's own
+    // LocalisationManager. The dialogue used to be hardcoded English on a
+    // Russian interface, which is exactly the kind of seam that says
+    // "this part was bolted on".
+    UpdatePrompt::Strings updateStrings (const LocalisationManager& loc)
+    {
+        UpdatePrompt::Strings s;
+        s.title        = loc.getText ("update.title");
+        s.body         = loc.getText ("update.body");
+        s.offerInstall = loc.getText ("update.offerInstall");
+        s.noAsset      = loc.getText ("update.noAsset");
+        s.updateNow    = loc.getText ("update.now");
+        s.later        = loc.getText ("update.later");
+        s.openPage     = loc.getText ("update.openPage");
+        s.downloading  = loc.getText ("update.downloading");
+        s.opening      = loc.getText ("update.opening");
+        s.failed       = loc.getText ("update.failed");
+        s.installed    = loc.getText ("update.installed");
+        s.devBuild     = loc.getText ("update.devBuild");
+        return s;
+    }
+}
+
+namespace
+{
     struct KnobSpec
     {
         const char* paramId;
@@ -190,11 +215,12 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
 
             safeThis->guideTooltip.setText ({});
 
-            UpdatePrompt::offer (release, safeThis.getComponent(),
+            UpdatePrompt::offer (release, updateStrings (safeThis->localisation),
+                                  safeThis.getComponent(),
                                   [safeThis] (juce::String text)
                                   {
                                       if (safeThis != nullptr)
-                                          safeThis->guideTooltip.setText (text, 6000);
+                                          safeThis->guideTooltip.setText (text, 8000);
                                   });
         });
 

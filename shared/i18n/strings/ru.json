@@ -194,5 +194,17 @@
   "tier.silver": "Серебро",
   "tier.gold": "Золото",
   "tier.platinum": "Платина",
-  "ui.achievementsSubtitle": "Получено {{earned}} из {{total}} — закрытые показывают, в чём ещё можно стать хорошим"
+  "ui.achievementsSubtitle": "Получено {{earned}} из {{total}} — закрытые показывают, в чём ещё можно стать хорошим",
+  "update.title": "Доступно обновление",
+  "update.body": "Вышла версия {{latest}} — у вас {{current}}.",
+  "update.offerInstall": "Скачать и установить {{file}} ({{size}} МБ)? Уровни, достижения и настройки сохранятся.",
+  "update.noAsset": "Для вашей системы в этом релизе пока нет установщика.",
+  "update.now": "Обновить",
+  "update.later": "Позже",
+  "update.openPage": "Открыть страницу релиза",
+  "update.downloading": "Загрузка {{percent}}%",
+  "update.opening": "Открываю установщик…",
+  "update.failed": "Загрузка не удалась — страница релиза на месте.",
+  "update.installed": "Установлено. Перезапустите DAW, чтобы загрузилась новая версия.",
+  "update.devBuild": "сборка для разработки"
 }

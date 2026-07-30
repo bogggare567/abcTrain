@@ -194,5 +194,17 @@
   "tier.silver": "シルバー",
   "tier.gold": "ゴールド",
   "tier.platinum": "プラチナ",
-  "ui.achievementsSubtitle": "{{total}} 中 {{earned}} 獲得 —— 未取得のものが、まだ上達できる余地を示します"
+  "ui.achievementsSubtitle": "{{total}} 中 {{earned}} 獲得 —— 未取得のものが、まだ上達できる余地を示します",
+  "update.title": "アップデートがあります",
+  "update.body": "バージョン {{latest}} が公開されました — お使いのバージョンは {{current}} です。",
+  "update.offerInstall": "{{file}}（{{size}} MB）をダウンロードしてインストールしますか？レベル・実績・設定はそのまま残ります。",
+  "update.noAsset": "このリリースには、お使いのシステム向けのインストーラーがまだありません。",
+  "update.now": "今すぐ更新",
+  "update.later": "あとで",
+  "update.openPage": "リリースページを開く",
+  "update.downloading": "ダウンロード中 {{percent}}%",
+  "update.opening": "インストーラーを開いています…",
+  "update.failed": "ダウンロードに失敗しました — リリースページはそのまま開けます。",
+  "update.installed": "インストールしました。新しいバージョンを読み込むには DAW を再起動してください。",
+  "update.devBuild": "開発ビルド"
 }
