@@ -1,0 +1,42 @@
+title: "[Question] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Вопрос по использованию — сюда. Если что-то **сломалось** (падает,
+        не грузится, не устанавливается) — это не вопрос, а
+        [баг-репорт](https://github.com/bogggare567/abcTrain/issues/new/choose).
+
+        A usage question belongs here. If something is **broken** - a crash,
+        a plugin the host will not load, an installer that fails - open an
+        [issue](https://github.com/bogggare567/abcTrain/issues/new/choose)
+        instead.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Вопрос / Question
+      description: Что вы пытаетесь сделать и что мешает?
+    validations:
+      required: true
+
+  - type: input
+    id: setup
+    attributes:
+      label: ОС, DAW, формат / OS, host, format
+      placeholder: "macOS 15.2, Ableton Live 12, VST3"
+      description: >
+        Почти каждый ответ зависит от этих трёх вещей, так что без них
+        первый ответ всё равно будет "а у вас что?".
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия / Version
+      placeholder: "v1.2.2"
+      description: Настройки → About показывает её точно.
+    validations:
+      required: false

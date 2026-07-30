@@ -1,0 +1,19 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Покажите, что вышло: скриншот прогресса, трек, который вы свели
+        после того как разобрались со слухом, свою подборку тренировочных
+        сэмплов, перевод на ваш язык.
+
+        Show what came of it: a progress screenshot, a mix you made after
+        the training clicked, your own set of practice clips, a translation.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: Что это / What is it
+    validations:
+      required: true

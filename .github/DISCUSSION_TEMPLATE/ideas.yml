@@ -1,0 +1,36 @@
+title: "[Idea] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Идеи очень нужны. Одна просьба: начните с **задачи**, а не с
+        решения — «я не слышу разницу между hall и plate» полезнее, чем
+        «добавьте кнопку X», потому что задачу можно решить несколькими
+        способами, и один из них может оказаться лучше предложенного.
+
+        Please start with the **problem**, not the solution. "I cannot tell
+        a hall from a plate" is more useful than "add button X" - a problem
+        has several possible answers and one of them may be better than the
+        one you had in mind.
+
+        Стоит заглянуть в [roadmap](https://github.com/bogggare567/abcTrain/blob/main/docs/roadmap.md)
+        и в [user-journey](https://github.com/bogggare567/abcTrain/blob/main/docs/user-journey.md):
+        второй документ объясняет, по каким критериям идеи принимаются и
+        отклоняются, и почему некоторых вещей здесь не будет намеренно.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Задача / The problem
+      description: Что не получается или получается медленно?
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Как это можно решить / A possible answer
+      description: Необязательно. Если есть мысль — напишите.
+    validations:
+      required: false
