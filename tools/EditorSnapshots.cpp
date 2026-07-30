@@ -75,7 +75,7 @@ namespace
     }
 
     enum class Extra { none, training, sounds, settings, results, achievements,
-                       moduleShelf, moduleCheck, tourOffer, tour, screensaver };
+                       moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -114,6 +114,7 @@ namespace
             if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
             {
                 editor.completeWelcomeReveal();
+                editor.completeScreenFade();
 
                 if (openTraining >= 0)
                     editor.openTrainingForSnapshot (openTraining);
@@ -155,6 +156,15 @@ namespace
                 if (extra == Extra::moduleCheck)
                     editor.openModuleCheckForSnapshot();
             }
+
+            // "Adaptive" is a claim, and the only way to check a claim about
+            // layout is to render it at a size it was not designed at.
+            if (extra == Extra::stretched)
+                editor.setSize ((int) (editor.getWidth() * 1.35),
+                                 (int) (editor.getHeight() * 1.3));
+
+            if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
+                editor.completeScreenFade();   // after every screen change above
 
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
             const auto file = outputDir.getChildFile (name + suffix + ".png");
@@ -200,6 +210,8 @@ int main (int argc, char* argv[])
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ");
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
+    failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Stretched",
+                                                                     -1, Extra::stretched);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Modules",
                                                                      -1, Extra::moduleShelf);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Check",
@@ -237,6 +249,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Tour", -1, Extra::tour);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Screensaver", -1, Extra::screensaver);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Stretched", 0, Extra::stretched);
 
             if (hadSettings)
             {

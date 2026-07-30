@@ -591,6 +591,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the slider redesign (015) and the Learner guide labels (010).
     // Restore the persisted UI scale; the logical layout never changes,
     // only the transform applied to it.
+    // Draggable, within limits that keep the layout honest: the floor is
+    // the height the sections actually need, and the ceiling stops a 5K
+    // display leaving nine tiles the size of postage stamps.
+    setResizable (true, true);
+    setResizeLimits (logicalWidth, logicalBaseHeight,
+                      (int) (logicalWidth * 2.0), (int) (logicalBaseHeight * 2.0));
+
     setUiScale (localisationProperties.getDoubleValue (uiScaleKey, 1.0));
 
     applyTheme();
@@ -874,13 +881,39 @@ void EarTrainerEditor::resized()
 
     // --- answer section: feedback, the slider itself, score/new round ---
     // 20 heading + 24 feedback + 4 + 186 scale + 12 + 30 A/B + 8 + 34 row.
-    answerSection = area.removeFromTop (318);
+    // Everything left over goes here, floored at the height its own rows
+    // need. This is the section that *should* grow: a taller answer scale is
+    // a more precise answer scale, while a taller exercise heading is just a
+    // heading with air above it.
+    //
+    // Floored rather than divided, because removeFromTop clamps instead of
+    // overflowing - a floor below the content height does not warn, it
+    // silently shrinks whatever is last inside (three times in this
+    // codebase now).
+    // Everything left over *except* the tool bar's strip along the bottom.
+    // That bar is positioned from getLocalBounds() rather than from `area`,
+    // so taking the full remaining height here put the mode pills straight
+    // on top of it - visible the moment the window was rendered at any size
+    // other than the one it was designed at, and invisible before that.
+    constexpr int toolBarReserve = 30 + Spacing::small;
+
+    answerSection = area.removeFromTop (
+        juce::jmax (318, area.getHeight() - toolBarReserve));
     {
         auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
 
         feedbackLabel.setBounds (inner.removeFromTop (24));
         inner.removeFromTop (Spacing::tight);
+
+        // The rows under the scale are taken off the *bottom* first, so the
+        // scale can then have everything between. Laying them out top-down
+        // with fixed heights is what left a tall window with a strip of
+        // controls and a field of nothing under it.
+        auto bottomRow = inner.removeFromBottom (34);
+        inner.removeFromBottom (Spacing::small);
+        auto abRow = inner.removeFromBottom (30);
+        inner.removeFromBottom (Spacing::medium);
 
         // The scale needs real height to read as a panel of zones rather
         // than a thin strip: 40px of it is the value readout and 18px the
@@ -889,12 +922,15 @@ void EarTrainerEditor::resized()
         // Taller than the 150 it started at: the zoned panel is the thing
         // you actually work with on this screen, and the space came from
         // padding that was doing nothing.
-        choiceSlider.setBounds (inner.removeFromTop (186).reduced (Spacing::small, 0));
-
-        inner.removeFromTop (Spacing::medium);
+        // Everything that is left, floored at the height the zones need to
+        // stay legible. This is the control the screen exists for, so it is
+        // the one that should get the room - a taller scale is a more
+        // precise scale, and there is nothing else here that improves by
+        // being taller.
+        choiceSlider.setBounds (inner.withHeight (juce::jmax (186, inner.getHeight()))
+                                     .reduced (Spacing::small, 0));
 
         // A/B on its own centred row under the scale.
-        auto abRow = inner.removeFromTop (30);
         {
             auto centred = abRow.withSizeKeepingCentre (240, 28);
             restartButton.setBounds (centred.withSizeKeepingCentre (160, 28));
@@ -903,10 +939,6 @@ void EarTrainerEditor::resized()
             centred.removeFromLeft (Spacing::tight);
             afterButton.setBounds (centred);
         }
-        inner.removeFromTop (Spacing::small);
-
-        auto bottomRow = inner.removeFromTop (34);
-
         // The hint used to be a 30px glyph with a separate caption beside
         // it, and the glyph read as a "no entry" sign - so the one control
         // you reach for when stuck looked disabled and unlabelled. It is
@@ -1178,7 +1210,12 @@ void EarTrainerEditor::setUiScale (float newScale)
     // hand-tuned sizes that would drift apart. Everything stays exactly
     // the same design at every size.
     setTransform (juce::AffineTransform::scale (uiScale));
-    setSize (logicalWidth, getLogicalHeight());
+
+    // Keep whatever size the window has been dragged to - scaling is a
+    // separate axis from sizing, and resetting the width here would undo a
+    // deliberate drag every time somebody changed the text size.
+    setSize (juce::jmax (logicalWidth, getWidth()),
+              juce::jmax (getLogicalHeight(), getHeight()));
 
     // Keep the picker in step with the actual scale, including on the
     // restore path - without this it came up blank on launch.
@@ -1191,8 +1228,11 @@ void EarTrainerEditor::setUiScale (float newScale)
 void EarTrainerEditor::applyWindowSize()
 {
     // setSize() only calls resized() when the size actually changed, and
-    // showing or hiding the hint panel is exactly the case where it does.
-    setSize (logicalWidth, getLogicalHeight());
+    // showing the hint panel is exactly such a case - but it must only ever
+    // *grow* the window, never snap it back to the design size and throw
+    // away a resize the player made on purpose.
+    setSize (juce::jmax (logicalWidth, getWidth()),
+              juce::jmax (getLogicalHeight(), getHeight()));
     resized();
     repaint();
 }
@@ -1286,9 +1326,10 @@ void EarTrainerEditor::beginScreenFade()
 
 void EarTrainerEditor::showScreen (Screen screen)
 {
-    if (screen != currentScreen)
+    if (screen != currentScreen && hasShownAScreen)
         beginScreenFade();
 
+    hasShownAScreen = true;
     currentScreen = screen;
 
     // Any auto-advance in flight belongs to a round the player is

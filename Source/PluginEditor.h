@@ -381,8 +381,14 @@ private:
     static constexpr int hintRowHeight = 82;
     static constexpr int hintPanelHeight = hintRowHeight + AbcTrainTheme::Spacing::large * 2;
 
-    // Logical layout size. The window is this multiplied by uiScale; the
-    // layout itself never changes, so every size is the same design.
+    // The *starting* logical size, and the floor the layout is designed
+    // against - not a fixed size any more. The window is resizable, and
+    // resized() spends whatever it is given rather than assuming this.
+    //
+    // uiScale still multiplies on top through a transform, because that is
+    // a different question: "this window is small on a 4K display" is
+    // answered by scaling the whole design, "I want to see more at once" by
+    // dragging the corner.
     static constexpr int logicalWidth = 680;
     // Derived from resized(), not guessed: 20 margin + 32 title row + 28
     // section gap + 124 exercise + 20 + 312 answer + 26 + 18 footer + 20.
@@ -485,6 +491,21 @@ private:
     // nobody waiting to answer a round notices it happened.
     float screenFade = 1.0f;
     void beginScreenFade();
+
+    // The first screen is not a transition, it is an arrival. Without this
+    // the editor opened behind a full-strength wash and waited for a timer
+    // tick to reveal itself - which is invisible in the running app and
+    // fatal to tools/EditorSnapshots, where no timer ever fires.
+    bool hasShownAScreen = false;
+
+public:
+    // Jumps the transition wash to done. The snapshot tool deliberately
+    // never pumps a message loop, so an eased value that starts at "hide
+    // everything" stays there - it rendered every EarTrainer screenshot as
+    // a flat rectangle of background, and I shipped that before looking.
+    void completeScreenFade() { screenFade = 1.0f; }
+
+private:
     void showAchievementsScreen();
 
     void showRunResults (int finalScore);
