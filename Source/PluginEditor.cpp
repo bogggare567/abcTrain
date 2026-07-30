@@ -906,54 +906,74 @@ void EarTrainerEditor::resized()
         feedbackLabel.setBounds (inner.removeFromTop (24));
         inner.removeFromTop (Spacing::tight);
 
-        // The rows under the scale are taken off the *bottom* first, so the
-        // scale can then have everything between. Laying them out top-down
-        // with fixed heights is what left a tall window with a strip of
-        // controls and a field of nothing under it.
-        auto bottomRow = inner.removeFromBottom (34);
-        inner.removeFromBottom (Spacing::small);
-        auto abRow = inner.removeFromBottom (30);
+        // *One* row under the scale, not two.
+        //
+        // A/B sat on its own row and the mode pills on another, which made
+        // five levels of importance on a screen that should have four - and
+        // the two are the same kind of thing anyway: how this round is being
+        // played. Narrower pills and a narrower hint button pay for it.
+        //
+        // Taken off the bottom first so the scale can then have everything
+        // between. Laying these out top-down with fixed heights is what left
+        // a tall window with a strip of controls and a field of nothing
+        // under it.
+        auto controlRow = inner.removeFromBottom (34);
         inner.removeFromBottom (Spacing::medium);
 
-        // The scale needs real height to read as a panel of zones rather
-        // than a thin strip: 40px of it is the value readout and 18px the
-        // caption, so anything under ~120 leaves the zones too shallow to
-        // fit staggered labels. Found by building it at 92 and looking.
-        // Taller than the 150 it started at: the zoned panel is the thing
-        // you actually work with on this screen, and the space came from
-        // padding that was doing nothing.
         // Everything that is left, floored at the height the zones need to
-        // stay legible. This is the control the screen exists for, so it is
-        // the one that should get the room - a taller scale is a more
-        // precise scale, and there is nothing else here that improves by
-        // being taller.
+        // stay legible: 40px of the scale is its value readout and 18 the
+        // caption, so under ~120 the zones are too shallow for staggered
+        // labels. This is the control the screen exists for, so it is the
+        // one that should get the room - a taller scale is a more precise
+        // scale, and nothing else here improves by being taller.
         choiceSlider.setBounds (inner.withHeight (juce::jmax (186, inner.getHeight()))
                                      .reduced (Spacing::small, 0));
 
-        // A/B on its own centred row under the scale.
         {
-            auto centred = abRow.withSizeKeepingCentre (240, 28);
-            restartButton.setBounds (centred.withSizeKeepingCentre (160, 28));
+            // Modes left, narrow and quiet: chosen once a session. The hint
+            // right, where a choice you spend something on belongs. A/B in
+            // the middle, directly under the scale it compares - it is the
+            // control touched most often, so it gets the centre.
+            const auto pillWidth = 62;
 
-            beforeButton.setBounds (centred.removeFromLeft (118));
+            for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+                pill->setBounds (controlRow.removeFromLeft (pillWidth)
+                                     .withSizeKeepingCentre (pillWidth, 28));
+
+            // Score and the lives/clock readout ride along with the modes:
+            // they say how *this* run is going, which is the same subject
+            // the pills set.
+            controlRow.removeFromLeft (Spacing::medium);
+            scoreLabel.setBounds (controlRow.removeFromLeft (92));
+
+            // Only reserve width for the lives/clock readout when there is
+            // one. In Practice there is nothing to report, and holding 86px
+            // for an empty label is what pushed A/B into the hint button -
+            // five groups do not fit in this row at the design width unless
+            // the empty one gives its space back.
+            runStatusLabel.setBounds (runStatusLabel.getText().isNotEmpty()
+                                          ? controlRow.removeFromLeft (78)
+                                          : juce::Rectangle<int>());
+
+            // The hint used to be a 30px glyph with a caption beside it, and
+            // the glyph read as a "no entry" sign - so the one control you
+            // reach for when stuck looked disabled and unlabelled. It is one
+            // button now, with its price written on it.
+            hintButton.setBounds (controlRow.removeFromRight (146)
+                                      .withSizeKeepingCentre (146, 30));
+
+            // No floor: a minimum wider than the space left is a minimum
+            // that overlaps its neighbours instead of shrinking.
+            auto centred = controlRow.withSizeKeepingCentre (
+                juce::jmin (200, controlRow.getWidth() - Spacing::medium * 2), 30);
+
+            restartButton.setBounds (centred.withSizeKeepingCentre (160, 30));
+
+            const auto half = (centred.getWidth() - Spacing::tight) / 2;
+            beforeButton.setBounds (centred.removeFromLeft (half));
             centred.removeFromLeft (Spacing::tight);
             afterButton.setBounds (centred);
         }
-        // The hint used to be a 30px glyph with a separate caption beside
-        // it, and the glyph read as a "no entry" sign - so the one control
-        // you reach for when stuck looked disabled and unlabelled. It is
-        // one button now, with its own price written on it.
-        hintButton.setBounds (bottomRow.removeFromRight (168).withSizeKeepingCentre (168, 30));
-        bottomRow.removeFromRight (Spacing::medium);
-
-        const auto pillWidth = 84;
-        practiceButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
-        survivalButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
-        blitzButton.setBounds (bottomRow.removeFromLeft (pillWidth).withSizeKeepingCentre (pillWidth, 30));
-
-        bottomRow.removeFromLeft (Spacing::medium);
-        runStatusLabel.setBounds (bottomRow.removeFromRight (96));
-        scoreLabel.setBounds (bottomRow);
     }
 
     area.removeFromTop (Spacing::large);
@@ -1254,6 +1274,11 @@ void EarTrainerEditor::clearHint()
 
 void EarTrainerEditor::refreshRunStatus()
 {
+    // Whether this label has text decides whether the control row reserves
+    // width for it, so a mode change has to re-lay the row out. Without
+    // this, switching to Survival wrote "3 lives" into a zero-width box.
+    const auto hadText = runStatusLabel.getText().isNotEmpty();
+
     const auto mode = session.getMode();
 
     const auto& theme = AbcTrainTheme::current();
@@ -1262,6 +1287,10 @@ void EarTrainerEditor::refreshRunStatus()
     {
         runStatusLabel.setText ({}, juce::dontSendNotification);
         runStatusLabel.setColour (juce::Label::textColourId, theme.text);
+
+        if (hadText)
+            resized();
+
         return;
     }
 
@@ -1301,6 +1330,8 @@ void EarTrainerEditor::refreshRunStatus()
                              juce::dontSendNotification);
     runStatusLabel.setColour (juce::Label::textColourId,
                                seconds <= 10 ? theme.negative : theme.text);
+    if (! hadText)
+        resized();
 }
 
 void EarTrainerEditor::paintOverChildren (juce::Graphics& g)
