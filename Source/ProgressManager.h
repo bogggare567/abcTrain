@@ -67,6 +67,13 @@ public:
 
     int getStreakDays() const noexcept { return streakDays; }
 
+    // How many correct in a row on this exercise right now. Already
+    // tracked (it is what completes the daily challenge); exposing it is
+    // what lets the challenge be shown as progress toward something
+    // rather than as a binary that flips at the end. Out-of-range
+    // returns 0, the same graceful-miss rule as getStatsForGame.
+    int getConsecutiveCorrectForGame (int gameIndex) const noexcept;
+
     // Deliberately *not* a formatted sentence. It used to return English
     // prose built right here - "Daily challenge: get 5 correct in a row on
     // \"Guess the Distortion\"" - which then appeared verbatim inside a

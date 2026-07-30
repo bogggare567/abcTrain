@@ -76,7 +76,7 @@ namespace
 
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
-                       answered, survivalRun };
+                       answered, survivalRun, home };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -119,6 +119,9 @@ namespace
 
                 if (openTraining >= 0)
                     editor.openTrainingForSnapshot (openTraining);
+
+                if (extra == Extra::home)
+                    editor.openHomeForSnapshot();
 
                 if (extra == Extra::answered)
                     editor.answerForSnapshot();
@@ -248,6 +251,7 @@ int main (int argc, char* argv[])
             // The screen people actually spend their time on. Index 0 is
             // the EQ exercise - a continuous scale, so the shot shows the
             // answer slider rather than a row of named choices.
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Home", -1, Extra::home);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Training", 0);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Answered", 0, Extra::answered);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);

@@ -147,10 +147,43 @@ entered, only configured.
   callback is also moved-from before invocation, since play-again
   restarts the very countdown whose callback is running.
 
-## Stage 4 (planned)
+## Stage 4 — the reasons to come back
 
-- **Anchors**: the daily streak and daily challenge surfaced as
-  first-class cards on Home, achievement pulse, session goal.
+The whole return loop rested on two facts that were rendered as **one
+line of 12px text** above the grid: `"Today: 5 in a row on X"` and
+`"7-day streak"`. A footnote reporting the only two things that bring
+anyone back tomorrow.
 
-Each stage lands as its own commit with snapshots re-rendered before and
+- **`DailyBanner`** replaces both labels with one raised card. The streak
+  is a **row of days** — the point of a streak is the visible cost of
+  breaking it, which a sentence stating a number does not convey. The
+  challenge is **progress toward a reward**: one pip per required
+  consecutive answer, filled as you go, with the bonus written next to
+  what earns it rather than revealed after the fact.
+- **`ProgressManager::getConsecutiveCorrectForGame`** is the one piece of
+  data this needed. It was already tracked (it is what completes the
+  challenge) and simply not exposed, which is why the challenge could
+  only ever be shown as a binary that flipped at the end.
+- The filled-pip count is **capped at the target**: the run that
+  completes a challenge keeps going, and a sixth filled pip on a five-pip
+  row would be a bug on screen rather than a bonus.
+- Streak days are **derived from the streak count, never invented** —
+  `ProgressManager` stores a count and a last-session date, not a
+  history, so a streak of 3 fills exactly the last three of seven.
+
+**A gap found while doing this:** `tools/EditorSnapshots` had a shot of
+every screen in the product *except Home* — the screen a player lands on
+after the welcome, and the one that decides whether a session starts at
+all. The one screen nobody was looking at was the one everybody sees.
+Added as its own extra.
+
+**Something deliberately not changed:** the nine cards are one flat grid
+with no category headings. That reads like a missing feature next to the
+four skill families being the product's spine — but it is a recorded
+decision in `HomeScreenComponent.h` (a heading costs a whole row to say
+what the icon already says), and the star sorts a tile to the front
+instead of duplicating it into a second section. Checked before
+"fixing" it.
+
+Each stage landed as its own commit with snapshots re-rendered before and
 after.

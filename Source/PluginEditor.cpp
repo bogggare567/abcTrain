@@ -394,10 +394,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     streakLabel.setJustificationType (juce::Justification::centredRight);
     streakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    addAndMakeVisible (streakLabel);
+    // Not added to the editor: it is now the source of the banner's
+    // localised streak string, not a widget of its own.
+    addChildComponent (dailyBanner);
 
     dailyChallengeLabel.setJustificationType (juce::Justification::centredLeft);
-    addAndMakeVisible (dailyChallengeLabel);
+
 
 
     // Earning one is the only thing that puts it on screen, and only for
@@ -827,8 +829,7 @@ void EarTrainerEditor::resized()
                              .withTop (Spacing::large + 32 + Spacing::small)
                              .withHeight (homeStatusHeight);
 
-        streakLabel.setBounds (statusRow.removeFromRight (110));
-        dailyChallengeLabel.setBounds (statusRow);
+        dailyBanner.setBounds (statusRow);
     }
 
     homeScreen.setBounds (getLocalBounds()
@@ -1607,11 +1608,7 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Level, streak and the daily challenge belong to the screen you plan
     // from, not the one you answer on.
-    for (auto* c : { (juce::Component*) &streakLabel,
-                     (juce::Component*) &dailyChallengeLabel })
-    {
-        c->setVisible (onHome);
-    }
+    dailyBanner.setVisible (onHome);
 
     resized();
     repaint();
@@ -2066,24 +2063,30 @@ void EarTrainerEditor::refreshFromProgressState()
 {
     auto& progress = processor.getProgressManager();
 
-    streakLabel.setText (localisation.getText ("ui.streak", { { "days", juce::String (progress.getStreakDays()) } }),
-                          juce::dontSendNotification);
-
-
     // Built here rather than in ProgressManager, so both the sentence and
     // the exercise name inside it are in the player's own language.
-    {
-        const auto challengeGame = translateGameName (
-            processor.getGameManager().getGame (progress.getDailyChallengeGameIndex()).getName(),
-            localisation);
+    const auto challengeIndex = progress.getDailyChallengeGameIndex();
+    const auto challengeEnglishName = processor.getGameManager().getGame (challengeIndex).getName();
 
-        dailyChallengeLabel.setText (
-            localisation.getText (progress.isDailyChallengeComplete() ? "ui.dailyDone" : "ui.daily",
-                                   { { "count", juce::String (progress.getDailyChallengeTargetStreak()) },
-                                     { "game", challengeGame },
-                                     { "bonus", juce::String (progress.getDailyChallengeBonusPoints()) } }),
-            juce::dontSendNotification);
-    }
-    dailyChallengeLabel.setColour (juce::Label::textColourId,
-                                    progress.isDailyChallengeComplete() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().textDim);
+    DailyBanner::State banner;
+    banner.streakDays = progress.getStreakDays();
+    banner.streakCaption = localisation.getText ("ui.streak",
+                                                  { { "days", juce::String (progress.getStreakDays()) } });
+    banner.challengeLine = localisation.getText (
+        progress.isDailyChallengeComplete() ? "ui.dailyDone" : "ui.daily",
+        { { "count", juce::String (progress.getDailyChallengeTargetStreak()) },
+          { "game", translateGameName (challengeEnglishName, localisation) },
+          { "bonus", juce::String (progress.getDailyChallengeBonusPoints()) } });
+
+    banner.challengeTarget = progress.getDailyChallengeTargetStreak();
+    // Capped at the target: the run that completes the challenge keeps
+    // going, and a sixth filled pip on a five-pip row would be a bug on
+    // screen rather than a bonus.
+    banner.challengeDone = juce::jmin (banner.challengeTarget,
+                                        progress.getConsecutiveCorrectForGame (challengeIndex));
+    banner.bonusPoints = progress.getDailyChallengeBonusPoints();
+    banner.challengeComplete = progress.isDailyChallengeComplete();
+    banner.challengeAccent = tintForGame (challengeEnglishName);
+
+    dailyBanner.setState (std::move (banner));
 }

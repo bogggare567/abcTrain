@@ -64,6 +64,15 @@ public:
 
     void openAchievementsForSnapshot() { showAchievementsScreen(); }
 
+    // The screen a player lands on after the welcome, and - until this
+    // was added - the only screen in the product with no snapshot at all.
+    // Everything else had one, so the one screen that decides whether
+    // anybody starts a session was the one nobody was looking at.
+    void openHomeForSnapshot()
+    {
+        showScreen (Screen::home);
+    }
+
     void offerTourForSnapshot()
     {
         supportScreen.setTourOffer (localisation.getText ("tour.offer"),
@@ -569,6 +578,137 @@ private:
         juce::VBlankAnimatorUpdater updater { this };
     };
 
+    // The two reasons to come back tomorrow, on the screen you plan from.
+    //
+    // Both existed before this and both were a line of 12px text above the
+    // grid: "Today: 5 in a row on X" and "7-day streak". That is a
+    // footnote reporting the two things the whole return loop rests on.
+    // Here the streak is a row of days you can see accumulating - the
+    // point of a streak is the visible cost of breaking it - and the
+    // challenge is progress toward a reward rather than a fact that flips
+    // at the end.
+    //
+    // Deliberately not a "goal for today" or a nag: nothing here asks for
+    // anything, it only shows where you already are.
+    class DailyBanner : public juce::Component
+    {
+    public:
+        struct State
+        {
+            int streakDays = 0;
+            juce::String streakCaption;      // "7-day streak"
+            juce::String challengeLine;      // "5 in a row on Guess the Reverb"
+            int challengeDone = 0;
+            int challengeTarget = 0;
+            int bonusPoints = 0;
+            bool challengeComplete = false;
+            juce::Colour challengeAccent;
+        };
+
+        void setState (State s)
+        {
+            state = std::move (s);
+            repaint();
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            const auto& theme = AbcTrainTheme::current();
+            auto area = getLocalBounds().toFloat();
+
+            AbcTrainLookAndFeel::paintRaisedCard (g, area);
+
+            area = area.reduced (AbcTrainTheme::Spacing::medium,
+                                 AbcTrainTheme::Spacing::small);
+
+            // --- right: the streak, as days rather than as a sentence ---
+            auto streakArea = area.removeFromRight (juce::jmin (200.0f, area.getWidth() * 0.42f));
+            {
+                auto dots = streakArea.removeFromBottom (14.0f);
+                auto caption = streakArea;
+
+                g.setColour (state.streakDays > 0 ? theme.accentWarm : theme.textDim);
+                g.setFont (AbcTrainLookAndFeel::monoFont());
+                g.drawText (state.streakCaption, caption, juce::Justification::centredRight, false);
+
+                // Seven days, the most recent on the right. Derived from
+                // the streak count, never invented: a streak of 3 fills
+                // exactly the last three.
+                constexpr int shown = 7;
+                const auto r = 3.5f;
+                const auto gap = 7.0f;
+                auto x = dots.getRight() - r;
+
+                for (int i = 0; i < shown; ++i)
+                {
+                    const auto filled = i < juce::jmin (shown, state.streakDays);
+
+                    if (filled)
+                    {
+                        g.setColour (theme.accentWarm);
+                        g.fillEllipse (x - r, dots.getCentreY() - r, r * 2.0f, r * 2.0f);
+                    }
+                    else
+                    {
+                        g.setColour (theme.outline);
+                        g.drawEllipse (x - r, dots.getCentreY() - r, r * 2.0f, r * 2.0f, 1.0f);
+                    }
+
+                    x -= r * 2.0f + gap;
+                }
+            }
+
+            area.removeFromRight (AbcTrainTheme::Spacing::medium);
+
+            // --- left: today's challenge, with how far in you are -------
+            {
+                auto pips = area.removeFromBottom (14.0f);
+                auto line = area;
+
+                g.setColour (state.challengeComplete ? theme.positive : theme.text);
+                g.setFont (AbcTrainLookAndFeel::bodyFont());
+                g.drawText (state.challengeLine, line, juce::Justification::centredLeft, true);
+
+                const auto r = 3.5f;
+                const auto gap = 7.0f;
+                auto x = pips.getX() + r;
+
+                for (int i = 0; i < state.challengeTarget; ++i)
+                {
+                    const auto done = state.challengeComplete || i < state.challengeDone;
+                    const auto hue = state.challengeComplete ? theme.positive : state.challengeAccent;
+
+                    if (done)
+                    {
+                        g.setColour (hue);
+                        g.fillEllipse (x - r, pips.getCentreY() - r, r * 2.0f, r * 2.0f);
+                    }
+                    else
+                    {
+                        g.setColour (theme.outline);
+                        g.drawEllipse (x - r, pips.getCentreY() - r, r * 2.0f, r * 2.0f, 1.0f);
+                    }
+
+                    x += r * 2.0f + gap;
+                }
+
+                // The reward, next to what earns it - a bonus you only
+                // find out about after the fact is not an incentive.
+                if (state.bonusPoints > 0)
+                {
+                    const auto rewardBox = pips.withLeft (x + AbcTrainTheme::Spacing::small);
+                    g.setColour (state.challengeComplete ? theme.positive : theme.textDim);
+                    g.setFont (AbcTrainLookAndFeel::microFont());
+                    g.drawText ("+" + juce::String (state.bonusPoints),
+                                rewardBox, juce::Justification::centredLeft, false);
+                }
+            }
+        }
+
+    private:
+        State state;
+    };
+
     // The promotion test, visible: one pip per required consecutive
     // correct answer. The mechanic existed and mattered - five in a row
     // takes the level - but lived only in a line of text, which is why a
@@ -874,13 +1014,19 @@ private:
     // and control", not just a passive auto-scaling number. Still backed
     // by the same points system underneath (see
     // ProgressManager::setLevelManually), so the two never disagree.
+    // Kept as the source of the localised strings the banner draws, but no
+    // longer added to the editor: two 12px labels were what made the
+    // return loop look like a footnote.
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;
+    DailyBanner dailyBanner;
 
     // How many of Achievements::all() have been earned. Home screen only.
 
-    // Height of the home screen's status row (level line + daily line).
-    static constexpr int homeStatusHeight = 20;
+    // Height of the home screen's daily banner: a line of text over a row
+    // of day/progress dots, with card padding around both. It was 20 - one
+    // line of small text - when the streak and the challenge were labels.
+    static constexpr int homeStatusHeight = 52;
 
     void showAchievementToast (const juce::String& achievementId);
 

@@ -192,6 +192,14 @@ ProgressManager::GameStats ProgressManager::getStatsForGame (int gameIndex) cons
     return statsPerGame[(size_t) gameIndex];
 }
 
+int ProgressManager::getConsecutiveCorrectForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) consecutiveCorrectPerGame.size())
+        return 0;
+
+    return consecutiveCorrectPerGame[(size_t) gameIndex];
+}
+
 void ProgressManager::recordSurvivalScore (int gameIndex, int score)
 {
     if (gameIndex < 0 || gameIndex >= (int) statsPerGame.size())
