@@ -97,7 +97,9 @@ void WaveformDisplay::paint (juce::Graphics& g)
     const auto& theme = AbcTrainTheme::current();
     const auto bounds = getLocalBounds().toFloat();
 
-    g.fillAll (theme.displayBackground);
+    g.fillAll (theme.windowBackground);
+    AbcTrainLookAndFeel::paintRecessedWell (g, bounds.reduced (0.5f),
+                                             AbcTrainTheme::Radius::well);
     AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
 
     const auto midY = bounds.getCentreY();

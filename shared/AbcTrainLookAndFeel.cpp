@@ -692,17 +692,10 @@ void AbcTrainLookAndFeel::paintSectionPanel (juce::Graphics& g, juce::Rectangle<
 {
     const auto& t = current();
 
-    juce::Path shape;
-    shape.addRoundedRectangle (bounds, Radius::panel);
-    dropShadowForPath (g, shape, 0.18f, 8, { 0, 2 });
-
-    juce::ColourGradient gradient (t.panelBackground.brighter (0.03f), bounds.getX(), bounds.getY(),
-                                    t.panelBackground.darker (0.02f), bounds.getX(), bounds.getBottom(), false);
-    g.setGradientFill (gradient);
-    g.fillRoundedRectangle (bounds, Radius::panel);
-
-    g.setColour (t.outline.withAlpha (0.55f));
-    g.drawRoundedRectangle (bounds, Radius::panel, 1.0f);
+    // One implementation of "a raised card", used here and by every other
+    // panel in the four plugins. Two near-identical hand-rolled versions of
+    // this is how the sections stopped matching each other.
+    paintRaisedCard (g, bounds);
 
     if (caption.isNotEmpty())
     {
@@ -719,6 +712,75 @@ void AbcTrainLookAndFeel::paintSectionPanel (juce::Graphics& g, juce::Rectangle<
         g.drawLine (bounds.getX() + (float) Spacing::medium, lineY,
                     bounds.getRight() - (float) Spacing::medium, lineY, 1.0f);
     }
+}
+
+void AbcTrainLookAndFeel::paintRaisedCard (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                            float elevation)
+{
+    const auto& t = current();
+
+    juce::Path shape;
+    shape.addRoundedRectangle (bounds, AbcTrainTheme::Radius::panel);
+
+    // The shadow scales with elevation and stays *under* the shape, never
+    // around it: a shadow on all four sides reads as a glow, and a glow
+    // says "selected", not "raised".
+    dropShadowForPath (g, shape, 0.34f * t.shadowStrength * elevation,
+                        (int) (14.0f * elevation), { 0, (int) (3.0f * elevation) });
+
+    // Lit from above. Two stops rather than a flat fill, and the difference
+    // is small enough that it reads as light rather than as a gradient.
+    juce::ColourGradient face (t.panelBackground.brighter (0.045f * elevation),
+                                bounds.getCentreX(), bounds.getY(),
+                                t.panelBackground.darker (0.03f * elevation),
+                                bounds.getCentreX(), bounds.getBottom(), false);
+    g.setGradientFill (face);
+    g.fillPath (shape);
+
+    // A one-pixel highlight along the top edge only. This is the cheapest
+    // convincing depth cue there is and the one most often left out.
+    g.setColour (t.textBright.withAlpha (0.06f * elevation));
+    g.drawLine (bounds.getX() + AbcTrainTheme::Radius::panel, bounds.getY() + 0.5f,
+                 bounds.getRight() - AbcTrainTheme::Radius::panel, bounds.getY() + 0.5f, 1.0f);
+
+    g.setColour (t.outline.withAlpha (0.9f));
+    g.strokePath (shape, juce::PathStrokeType (1.0f));
+}
+
+void AbcTrainLookAndFeel::paintRecessedWell (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                              float radius)
+{
+    const auto& t = current();
+
+    // Dark at the top, lighter at the bottom - the exact inverse of the
+    // card above, which is what makes one read as cut in and the other as
+    // sitting on top.
+    juce::ColourGradient inside (t.displayBackground.darker (0.18f),
+                                  bounds.getCentreX(), bounds.getY(),
+                                  t.displayBackground.brighter (0.04f),
+                                  bounds.getCentreX(), bounds.getBottom(), false);
+    g.setGradientFill (inside);
+    g.fillRoundedRectangle (bounds, radius);
+
+    // An inner shadow along the top lip only, drawn as a clipped stroke so
+    // it follows the corner radius instead of stopping at the corners.
+    {
+        juce::Graphics::ScopedSaveState clipped (g);
+
+        juce::Path shape;
+        shape.addRoundedRectangle (bounds, radius);
+        g.reduceClipRegion (shape);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            g.setColour (t.shadow.withAlpha (0.10f * t.shadowStrength * (float) (3 - i) / 3.0f));
+            g.drawLine (bounds.getX(), bounds.getY() + 0.5f + (float) i,
+                         bounds.getRight(), bounds.getY() + 0.5f + (float) i, 1.0f);
+        }
+    }
+
+    g.setColour (t.outline.withAlpha (0.7f));
+    g.drawRoundedRectangle (bounds, radius, 1.0f);
 }
 
 void AbcTrainLookAndFeel::paintSectionHeading (juce::Graphics& g, juce::Rectangle<float> bounds,

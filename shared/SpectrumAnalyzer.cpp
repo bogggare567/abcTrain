@@ -162,10 +162,12 @@ void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
     // the thing that read as raw and unfinished next to everything else.
     g.fillAll (theme.windowBackground);
 
+    // A well, not a flat rectangle: dark at its top lip, light at its
+    // bottom, so the analysis reads as recessed into the panel around it.
+    AbcTrainLookAndFeel::paintRecessedWell (g, bounds, AbcTrainTheme::Radius::well);
+
     juce::Path well;
     well.addRoundedRectangle (bounds, AbcTrainTheme::Radius::well);
-    g.setColour (theme.displayBackground);
-    g.fillPath (well);
 
     juce::Graphics::ScopedSaveState clipped (g);
     g.reduceClipRegion (well);

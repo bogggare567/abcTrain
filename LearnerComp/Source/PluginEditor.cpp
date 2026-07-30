@@ -305,6 +305,13 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     // the z-order mistake ADR 015, 016 and 017 each had to fix once.
     addChildComponent (moduleScreen);
 
+    // Resizable, with a floor that keeps the layout honest rather than
+    // letting somebody squeeze it into nonsense, and a ceiling so the
+    // knobs do not end up an inch across on a 5K display.
+    setResizable (true, true);
+    setResizeLimits (688, 591, 1344, 1137);
+    getConstrainer()->setFixedAspectRatio (0.0);
+
     setSize (840, 758);
 
     applyTheme();
@@ -454,7 +461,16 @@ void LearnerCompEditor::resized()
     // Caught by rendering the editor (tools/EditorSnapshots); the window
     // had 132px of dead space underneath at the same time, which is where
     // the extra height comes from rather than from a bigger window.
-    analysisSection = area.removeFromTop (460);
+    // Everything below the analysis has a fixed height on purpose: a
+    // rotary that grows is a rotary that stops matching its neighbours,
+    // and a preset chip does not get more readable for being taller.
+    const auto controlsHeight = 186 + Spacing::medium + 18 + Spacing::small;
+
+    // A share of what is available, not a pixel count. The knob row below
+    // needs a fixed height - a rotary that grows is a rotary that stops
+    // matching its neighbours - so the analysis takes everything left over,
+    // with a floor so it cannot be squeezed to nothing.
+    analysisSection = area.removeFromTop (juce::jmax (331, area.getHeight() - controlsHeight));
     {
         auto inner = analysisSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);

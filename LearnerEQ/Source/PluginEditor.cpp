@@ -260,6 +260,13 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     // Taller for the section panels' own padding/captions; the guide text
     // no longer needs a permanent strip (it floats on demand instead).
     // 20 + 32 + 28 + 432 + 12 + 212 + 20, derived from resized().
+    // Resizable, with a floor that keeps the layout honest rather than
+    // letting somebody squeeze it into nonsense, and a ceiling so the
+    // knobs do not end up an inch across on a 5K display.
+    setResizable (true, true);
+    setResizeLimits (647, 589, 1264, 1134);
+    getConstrainer()->setFixedAspectRatio (0.0);
+
     setSize (790, 756);
 
     applyTheme();
@@ -383,7 +390,16 @@ void LearnerEQEditor::resized()
     area.removeFromTop (Spacing::section);
 
     // --- analysis section: response curve + spectrum, waveform, peaks ---
-    analysisSection = area.removeFromTop (432);
+    // Everything below the analysis has a fixed height on purpose: a
+    // rotary that grows is a rotary that stops matching its neighbours,
+    // and a preset chip does not get more readable for being taller.
+    const auto controlsHeight = 212 + Spacing::medium + 18 + Spacing::small;
+
+    // A share of what is available, not a pixel count. The knob row below
+    // needs a fixed height - a rotary that grows is a rotary that stops
+    // matching its neighbours - so the analysis takes everything left over,
+    // with a floor so it cannot be squeezed to nothing.
+    analysisSection = area.removeFromTop (juce::jmax (311, area.getHeight() - controlsHeight));
     {
         auto inner = analysisSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);

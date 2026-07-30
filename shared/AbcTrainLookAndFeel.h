@@ -158,6 +158,20 @@ public:
     // three pieces instead of organising it. Used by EarTrainer's
     // training screen; the Learner plugins keep the panels, where a
     // raised surface genuinely separates controls from data displays.
+    // Depth, as two shapes with opposite lighting.
+    //
+    // A raised card is lit from above and casts downward; a recessed well
+    // is dark at its top edge and light at its bottom. That inversion is
+    // the whole of it - the same rounded rectangle reads as sitting on the
+    // surface or cut into it depending only on which edge is bright, and
+    // getting the two consistent across four plugins is most of what makes
+    // an interface look built rather than assembled.
+    static void paintRaisedCard (juce::Graphics&, juce::Rectangle<float> bounds,
+                                  float elevation = 1.0f);
+
+    static void paintRecessedWell (juce::Graphics&, juce::Rectangle<float> bounds,
+                                    float radius = 8.0f);
+
     static void paintSectionHeading (juce::Graphics&, juce::Rectangle<float> bounds,
                                      const juce::String& caption);
 
