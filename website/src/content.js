@@ -79,25 +79,26 @@ export const FAMILIES = [
 ];
 
 // The three teaching plugins. Module counts from the per-plugin module
-// files; Learner EQ deliberately has none — see ADR 027.
+// files; Learner EQ deliberately has no knob modules — see ADR 027 — and
+// four lessons instead.
 export const PLUGINS = [
   {
     key: 'eq',
     name: 'ABC Learner EQ',
-    body: 'A real four-band EQ on your own audio, with a live spectrum, the response curve drawn over it, and a sentence of guidance while you turn a band.',
-    modules: '2 guided lessons',
+    body: 'A graphical EQ on your own audio: eight free bands of any type — bells, shelves, high-pass, low-pass, notch — added and moved on the curve itself, over a spectrum labelled in sensations as well as numbers.',
+    modules: '4 guided lessons',
   },
   {
     key: 'comp',
     name: 'ABC Learner Comp',
     body: 'A real compressor with a gain-reduction meter that fills downward, four teaching presets, and per-knob training you answer by turning the plugin’s own knob.',
-    modules: '7 knob modules · 2 lessons',
+    modules: '7 knob modules · 4 lessons',
   },
   {
     key: 'verb',
     name: 'ABC Learner Verb',
     body: 'Room, hall, plate and a spring tank built from resonant allpass filters, with the same spectrum, meters and per-knob training.',
-    modules: '7 knob modules · 2 lessons',
+    modules: '7 knob modules · 4 lessons',
   },
 ];
 
