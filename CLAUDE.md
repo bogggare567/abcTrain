@@ -1024,6 +1024,16 @@ rationale; summary here.
   shadow instead.
 - **All four editors are resizable**, and `tools/EditorSnapshots` renders a
   `-Stretched` variant of two of them at 1.35× so "adaptive" is a checked
+  claim rather than a word. In EarTrainer the *answer* section absorbs the
+  leftover (a taller scale is a more precise scale; a taller heading is a
+  heading with air over it), the rows beneath it are taken off the
+  **bottom** first so the scale can have everything between, and the
+  section stops short of the bottom tool bar — that bar is positioned from
+  `getLocalBounds()` rather than from the running `area`, so taking the
+  full remaining height put the mode pills straight on top of it. `uiScale`
+  stays a separate axis: scaling the whole design answers "this window is
+  small on a 4K display", dragging the corner answers "I want to see more
+  at once", and neither now resets the other.
   The training screen's controls are **one row**, not two: mode pills and
   score on the left, A/B centred directly under the scale it compares, the
   hint on the right. A/B used to have a row of its own, which made five
@@ -1035,16 +1045,6 @@ rationale; summary here.
   Survival wrote "3 lives" into a zero-width box. The A/B pair is width-
   *capped*, never floored: a minimum wider than the space left is not a
   minimum, it is an overlap.
-  claim rather than a word. In EarTrainer the *answer* section absorbs the
-  leftover (a taller scale is a more precise scale; a taller heading is a
-  heading with air over it), the rows beneath it are taken off the
-  **bottom** first so the scale can have everything between, and the
-  section stops short of the bottom tool bar — that bar is positioned from
-  `getLocalBounds()` rather than from the running `area`, so taking the
-  full remaining height put the mode pills straight on top of it. `uiScale`
-  stays a separate axis: scaling the whole design answers "this window is
-  small on a 4K display", dragging the corner answers "I want to see more
-  at once", and neither now resets the other.
 - The three Learner editors are **resizable**: the analysis section takes
   whatever is left over, floored at its own content height, while
   everything below keeps a fixed height (a rotary that grows stops
