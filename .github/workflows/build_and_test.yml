@@ -12,9 +12,17 @@ on:
 # moved to ESM - in a pipeline whose release job has already been broken
 # once by a change nobody could test locally.
 #
-#   checkout v5, cache v5, upload-artifact v5  -> node24
-#   download-artifact v6                       -> node24
-#   softprops/action-gh-release v3             -> node24
+# Verified by reading each action's own `runs.using`, not its release
+# notes. The notes are misleading here: upload-artifact v5 and
+# download-artifact v6 both say they "support Node v24", which means
+# *compatible with* - they still declare node20 and the runner forces them
+# onto 24 with a deprecation warning. The first version of each that
+# actually declares node24 is one major higher.
+#
+#   checkout v5, cache v5        -> node24
+#   upload-artifact v6           -> node24  (v5 declares node20)
+#   download-artifact v7         -> node24  (v6 declares node20)
+#   action-gh-release v3         -> node24
 jobs:
   build-and-test:
     strategy:
@@ -73,7 +81,7 @@ jobs:
       # manual zip step needed. Per-OS name so VST3/AU/Standalone stay
       # separate downloads instead of one mixed-platform blob.
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: plugins-${{ matrix.os }}
           path: |
@@ -107,7 +115,7 @@ jobs:
 
       - name: Upload macOS installer
         if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: installer-macos
           path: abcTrain-macOS-*.dmg
@@ -130,7 +138,7 @@ jobs:
 
       - name: Upload Windows installer
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: installer-windows
           path: abcTrain-Windows-*-setup.exe
@@ -144,7 +152,7 @@ jobs:
 
       - name: Upload Linux installer
         if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: installer-linux
           path: abcTrain-Linux-*.tar.gz
@@ -163,7 +171,7 @@ jobs:
       contents: write
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
 
