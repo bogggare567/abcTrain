@@ -91,3 +91,47 @@ second one.**
   audio. Under the old ownership that reads freed memory.
 - Learner EQ still has no modules (ADR 027), so this changes Comp and
   Verb only.
+
+---
+
+## Addendum: Learner EQ becomes graphical, and gains pass filters
+
+ADR 027 gave Learner EQ no knob modules, on the grounds that graphical EQs
+with many bands already exist and what an EQ actually teaches is *where* a
+problem lives. That reasoning was right and the plugin did not follow it:
+it was four fixed bands and twelve rotary knobs, which is the opposite of
+pointing at a place.
+
+- **Eight free bands, any type**, added and removed on the curve itself.
+  Type is a property of the band rather than of its slot, so a shelf can
+  live anywhere. **High-pass, low-pass and notch exist at last** - between
+  them, most of what anyone reaches for first.
+- Eight rather than unlimited because every band is a set of APVTS
+  parameters that must exist up front to stay host-automatable and to save
+  with the session. Past eight, a *teaching* EQ stops being a lesson.
+- **One row of controls follows the selection** instead of one row per
+  band. No APVTS attachment: an attachment binds to one parameter for
+  life, and the selection moves. Values are pushed in on the timer and
+  written back through the parameter, which keeps automation and undo
+  honest.
+- **The spectrum is labelled in sensations** (`FrequencyZones.h`): Sub,
+  Bass, Boom, Body, Honk, Presence, Sibilance, Air, with a line under the
+  pointer saying what too much of that zone does. "Cut 300 Hz" is an
+  instruction you can follow without learning anything; the map of where a
+  mix gets boxy is the thing a mixer actually carries. Boundaries are the
+  conventional teaching ones, shared with `FrequencyRangeGame`, and the
+  zones can be switched off.
+- **Two new lessons the plugin previously could not teach**: what a
+  high-pass costs (the resonant bump of a high-Q corner, why phase
+  rotation is inaudible solo'd and audible in the sum, why "brickwall" is
+  a description rather than a goal) and what a low-pass is actually for
+  (housekeeping versus distance, and when a high shelf was what you
+  meant). Each step leaves a curve you can see and a sound you can hear
+  rather than a claim to take on trust.
+
+Three more bugs found by rendering rather than reading: zone names landed
+on the base class's own frequency labels (two rows of text in one strip);
+the frequency readout printed `999.9999390`, because a `Slider` prints its
+raw double unless told otherwise; and the nodes were invisible on the
+first frame, because the display's band list only arrived on the 30 Hz
+timer.

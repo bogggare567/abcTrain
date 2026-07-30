@@ -5,6 +5,7 @@
 #include "FrequencyZones.h"
 #include "VocalEqLesson.h"
 #include "FindResonanceLesson.h"
+#include "HighPassLesson.h"
 #include "../../shared/Version.h"
 #include "../../shared/i18n/LocalisationManager.h"
 #include <memory>
@@ -43,6 +44,8 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalEqLesson()),
       resonanceLessonController (p.apvts, buildFindResonanceLesson()),
+      highPassLessonController (p.apvts, buildHighPassLesson()),
+      lowPassLessonController (p.apvts, buildLowPassLesson()),
       // Same shared "abcTrain" settings folder the language preference
       // uses, so light/dark is one product-wide choice.
       themeProperties (LocalisationManager::makeDefaultOptions())
@@ -231,14 +234,20 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     lessonSelector.addItem ("Vocal EQ Basics", 1);
     lessonSelector.addItem ("Find & Fix a Resonance", 2);
+    lessonSelector.addItem ("High-pass: what it costs", 3);
+    lessonSelector.addItem ("Low-pass and the top end", 4);
     lessonSelector.onChange = [this]
     {
-        // Two lessons, one picker (see decisions/017) - only the selected
-        // one is ever shown/started; the other stays hidden.
-        if (lessonSelector.getSelectedId() == 1)
-            lessonController.showAndStart();
-        else if (lessonSelector.getSelectedId() == 2)
-            resonanceLessonController.showAndStart();
+        // One picker, four lessons (see decisions/017) - only the selected
+        // one is ever shown/started; the rest stay hidden.
+        switch (lessonSelector.getSelectedId())
+        {
+            case 1:  lessonController.showAndStart();          break;
+            case 2:  resonanceLessonController.showAndStart(); break;
+            case 3:  highPassLessonController.showAndStart();  break;
+            case 4:  lowPassLessonController.showAndStart();   break;
+            default: break;
+        }
     };
     // Nothing is selected until a lesson is picked, and an unlabelled
     // empty dropdown in the title row was the result - caught by rendering
@@ -326,13 +335,18 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         resized();
     };
 
-    addChildComponent (resonanceLessonController);
-    resonanceLessonController.onClosed = [this]
+    // One handler shape for all of them: reset the picker so the same
+    // lesson can be started twice in a row, and re-lay out.
+    for (auto* controller : { &resonanceLessonController, &highPassLessonController,
+                              &lowPassLessonController })
     {
-        // Back to "Lessons" so the same one can be started again.
-        lessonSelector.setSelectedId (0, juce::dontSendNotification);
-        resized();
-    };
+        addChildComponent (*controller);
+        controller->onClosed = [this]
+        {
+            lessonSelector.setSelectedId (0, juce::dontSendNotification);
+            resized();
+        };
+    }
 
     startTimerHz (30);
     // Taller for the section panels' own padding/captions; the guide text
@@ -449,8 +463,11 @@ void LearnerEQEditor::resized()
 {
     using namespace AbcTrainTheme;
 
-    lessonController.setBounds (getLocalBounds());
-    resonanceLessonController.setBounds (getLocalBounds());
+    // Every lesson overlay is full-size whether visible or not - see the
+    // LessonController class comment.
+    for (auto* controller : { &lessonController, &resonanceLessonController,
+                              &highPassLessonController, &lowPassLessonController })
+        controller->setBounds (getLocalBounds());
 
     auto area = getLocalBounds().reduced (Spacing::large);
 

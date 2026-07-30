@@ -105,6 +105,13 @@ private:
     LessonController lessonController;
     LessonController resonanceLessonController;
 
+    // The two lessons the pass filters made possible. Learner EQ has no
+    // knob-modules by choice (ADR 027) - what it teaches is judgement
+    // about where and how much, and these are the two moves where the
+    // reflex ("high-pass everything") most often outruns the reason.
+    LessonController highPassLessonController;
+    LessonController lowPassLessonController;
+
     // Icon buttons rather than 76px and 62px of text for two controls
     // pressed once a session - the same treatment EarTrainer's title row
     // already had (see decisions/022).
