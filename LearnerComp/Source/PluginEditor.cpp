@@ -4,6 +4,7 @@
 #include "ParameterGuide.h"
 #include "VocalCompressionLesson.h"
 #include "BusGlueLesson.h"
+#include "TransientLessons.h"
 #include "../../shared/Version.h"
 #include "../../shared/i18n/LocalisationManager.h"
 #include <array>
@@ -59,6 +60,8 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalCompressionLesson()),
       busGlueLessonController (p.apvts, buildBusGlueLesson()),
+      attackLessonController (p.apvts, buildAttackLesson()),
+      releaseLessonController (p.apvts, buildReleaseLesson()),
       // Same shared "abcTrain" settings folder the language preference
       // uses, so light/dark is one product-wide choice rather than a
       // per-plugin one.
@@ -197,13 +200,19 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         t.ready = localisation.getText ("module.ready");
         return t;
     }());
-    moduleScreen.setWalkthroughs ({ "Vocal Compression", "Bus Glue Compression" });
+    moduleScreen.setWalkthroughs ({ "Vocal Compression", "Bus Glue Compression",
+                                    "Attack: why fast kills the punch",
+                                    "Release, and where pumping comes from" });
     moduleScreen.onWalkthroughSelected = [this] (int which)
     {
-        if (which == 0)
-            lessonController.showAndStart();
-        else if (which == 1)
-            busGlueLessonController.showAndStart();
+        switch (which)
+        {
+            case 0:  lessonController.showAndStart();         break;
+            case 1:  busGlueLessonController.showAndStart();  break;
+            case 2:  attackLessonController.showAndStart();   break;
+            case 3:  releaseLessonController.showAndStart();  break;
+            default: break;
+        }
     };
     moduleScreen.onClosed = [this] { repaint(); };
     moduleScreen.prepare (processor.getSampleRate());
@@ -286,12 +295,13 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         resized();
     };
 
-    addChildComponent (busGlueLessonController);
-    busGlueLessonController.onClosed = [this]
+    // One shape for the rest of them rather than a copied block each.
+    for (auto* controller : { &busGlueLessonController, &attackLessonController,
+                              &releaseLessonController })
     {
-        // Back to "Lessons" so the same one can be started again.
-        resized();
-    };
+        addChildComponent (*controller);
+        controller->onClosed = [this] { resized(); };
+    }
 
     startTimerHz (30);
     // Taller than before: the two section panels carry their own padding
@@ -434,7 +444,9 @@ void LearnerCompEditor::resized()
     using namespace AbcTrainTheme;
 
     lessonController.setBounds (getLocalBounds());
-    busGlueLessonController.setBounds (getLocalBounds());
+    for (auto* controller : { &busGlueLessonController, &attackLessonController,
+                              &releaseLessonController })
+        controller->setBounds (getLocalBounds());
 
     auto area = getLocalBounds().reduced (Spacing::large);
 

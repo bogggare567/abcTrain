@@ -129,6 +129,13 @@ private:
     LessonController lessonController;
     LessonController busGlueLessonController;
 
+    // The two that explain the knobs rather than walking a workflow: what
+    // attack actually does to a transient, and where pumping comes from.
+    // The per-knob modules teach you to *hit* a value; these teach you why
+    // the value is what it is.
+    LessonController attackLessonController;
+    LessonController releaseLessonController;
+
     // Icon buttons rather than 76px and 62px of text for two controls
     // pressed once a session - the same treatment EarTrainer's title row
     // already had (see decisions/022).

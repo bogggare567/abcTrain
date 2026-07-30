@@ -123,6 +123,12 @@ private:
     LessonController lessonController;
     LessonController tailLessonController;
 
+    // The two that explain rather than walk: why pre-delay keeps a source
+    // in front of its room, and how Decay, Size and Damping each mean a
+    // different thing by "bigger".
+    LessonController preDelayLessonController;
+    LessonController sizeLessonController;
+
     // Icon buttons rather than 76px and 62px of text for two controls
     // pressed once a session - the same treatment EarTrainer's title row
     // already had (see decisions/022).

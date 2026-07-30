@@ -4,6 +4,7 @@
 #include "ReverbGuide.h"
 #include "VocalSpaceLesson.h"
 #include "BrightVsDarkTailLesson.h"
+#include "SpaceLessons.h"
 #include "../../shared/Version.h"
 #include "../../shared/i18n/LocalisationManager.h"
 #include <array>
@@ -58,6 +59,8 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     : AudioProcessorEditor (&p), processor (p),
       lessonController (p.apvts, buildVocalSpaceLesson()),
       tailLessonController (p.apvts, buildBrightVsDarkTailLesson()),
+      preDelayLessonController (p.apvts, buildPreDelayLesson()),
+      sizeLessonController (p.apvts, buildSizeAndDampingLesson()),
       // Same shared "abcTrain" settings folder the language preference
       // uses, so light/dark is one product-wide choice.
       themeProperties (LocalisationManager::makeDefaultOptions())
@@ -205,13 +208,19 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         t.ready = localisation.getText ("module.ready");
         return t;
     }());
-    moduleScreen.setWalkthroughs ({ "Space for Vocals", "Bright vs. Dark Tail" });
+    moduleScreen.setWalkthroughs ({ "Space for Vocals", "Bright vs. Dark Tail",
+                                    "Pre-delay: staying in front of the room",
+                                    "Three ways to say bigger" });
     moduleScreen.onWalkthroughSelected = [this] (int which)
     {
-        if (which == 0)
-            lessonController.showAndStart();
-        else if (which == 1)
-            tailLessonController.showAndStart();
+        switch (which)
+        {
+            case 0:  lessonController.showAndStart();          break;
+            case 1:  tailLessonController.showAndStart();      break;
+            case 2:  preDelayLessonController.showAndStart();  break;
+            case 3:  sizeLessonController.showAndStart();      break;
+            default: break;
+        }
     };
     moduleScreen.onClosed = [this] { repaint(); };
     moduleScreen.prepare (processor.getSampleRate());
@@ -294,12 +303,13 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         resized();
     };
 
-    addChildComponent (tailLessonController);
-    tailLessonController.onClosed = [this]
+    // One shape for the rest of them rather than a copied block each.
+    for (auto* controller : { &tailLessonController, &preDelayLessonController,
+                              &sizeLessonController })
     {
-        // Back to "Lessons" so the same one can be started again.
-        resized();
-    };
+        addChildComponent (*controller);
+        controller->onClosed = [this] { resized(); };
+    }
 
     startTimerHz (30);
     // Taller for the section panels' own padding/captions; the guide text
@@ -437,7 +447,9 @@ void LearnerVerbEditor::resized()
     using namespace AbcTrainTheme;
 
     lessonController.setBounds (getLocalBounds());
-    tailLessonController.setBounds (getLocalBounds());
+    for (auto* controller : { &tailLessonController, &preDelayLessonController,
+                              &sizeLessonController })
+        controller->setBounds (getLocalBounds());
 
     auto area = getLocalBounds().reduced (Spacing::large);
 

@@ -18,10 +18,17 @@ Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 - **EarTrainer** — multiple-choice ear-training games (9 today: EQ,
   compression, reverb type, pan position, delay time, distortion type,
   stereo width, gain/dB, named frequency range).
-- **LearnerEQ** — a real 4-band EQ that processes the host's own audio,
-  with a live spectrum + response-curve display, a scrolling waveform,
-  short contextual tooltips while dragging a band's frequency knob, a
-  Bypass toggle, and a guided Lesson.
+- **LearnerEQ** — a real **graphical** EQ that processes the host's own
+  audio: **eight free bands, any type** (bell / low shelf / high shelf /
+  **high-pass / low-pass / notch**), added and removed on the curve itself
+  (drag a node, double-click empty space to add, double-click a node to
+  remove, scroll for Q). The spectrum is labelled in **sensations** as
+  well as numbers — Sub / Bass / Boom / Body / Honk / Presence /
+  Sibilance / Air, with a line under the pointer saying what too much of
+  that zone does (`FrequencyZones.h`). One row of controls follows the
+  selection rather than one row per band. Four lessons, a Bypass toggle,
+  a scrolling waveform. See
+  [decisions/030](docs/decisions/030-learner-checks-speak-the-trainer-s-language.md).
 - **LearnerComp** — a real compressor processing the host's own audio,
   with a live spectrum, a scrolling waveform highlighting where it's
   reducing gain, a GR/peak meter row, contextual tooltips, 4 teaching
@@ -747,8 +754,11 @@ for the full rationale; summary here.
   Meant to be added as a full-size child of a Learner editor — every
   editor's `resized()` sets its bounds to `getLocalBounds()`
   unconditionally, whether visible or not.
-- Each Learner plugin now has **two** lessons (see
-  [decisions/017](docs/decisions/017-knowledge-base-content-pass-and-app-icons.md)),
+- Each Learner plugin now has **four** lessons (two workflow walkthroughs
+  and two that explain a knob rather than a recipe — see
+  [decisions/030](docs/decisions/030-learner-checks-speak-the-trainer-s-language.md):
+  EQ gets high-pass/low-pass, Comp gets attack/release, Verb gets
+  pre-delay/size-and-damping),
   so each editor owns two `LessonController` members (one per lesson,
   since one `LessonController` instance only ever holds one `MicroLesson`)
   and a small `lessonSelector` `ComboBox` — replacing the old single
