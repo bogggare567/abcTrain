@@ -98,6 +98,10 @@ private:
     juce::TextButton tourButton, noTourButton;
     juce::String tourQuestion;
     juce::Rectangle<int> tourQuestionBounds;
+
+    // Where the bouncing wordmark last painted, so the steady-state timer
+    // can repaint that strip alone instead of the whole window.
+    juce::Rectangle<int> wordmarkRepaintArea;
     juce::HyperlinkButton repoLink { "github.com/bogggare567/abcTrain",
                                       juce::URL ("https://github.com/bogggare567/abcTrain") };
 

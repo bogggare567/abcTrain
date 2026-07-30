@@ -935,26 +935,35 @@ void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String
     }
 }
 
-void AbcTrainLookAndFeel::paintBlurredBackdrop (juce::Graphics& g, juce::Component& sourceComponent,
-                                                 juce::Rectangle<int> bounds, float blurRadius,
-                                                 float cornerRadius)
+juce::Image AbcTrainLookAndFeel::blurredSnapshot (juce::Component& sourceComponent,
+                                                   juce::Rectangle<int> sourceArea, float blurRadius)
 {
-    if (bounds.isEmpty())
-        return;
+    if (sourceArea.isEmpty())
+        return {};
 
     // A genuine Gaussian blur, not a fake: render whatever is behind this
-    // area into an offscreen image, convolve it, and paint it back clipped
-    // to a rounded rectangle. juce::ImageConvolutionKernel is the one real
-    // blur primitive JUCE ships, and this is the one place in the UI where
-    // the layered-translucency trick used elsewhere wouldn't do - a
-    // tooltip needs the content behind it genuinely diffused, not tinted.
-    auto snapshot = sourceComponent.createComponentSnapshot (bounds, false);
+    // area into an offscreen image and convolve it.
+    // juce::ImageConvolutionKernel is the one real blur primitive JUCE
+    // ships, and this is the one place in the UI where the
+    // layered-translucency trick used elsewhere wouldn't do - a tooltip
+    // needs the content behind it genuinely diffused, not tinted.
+    auto snapshot = sourceComponent.createComponentSnapshot (sourceArea, false);
     if (! snapshot.isValid())
-        return;
+        return {};
 
     juce::ImageConvolutionKernel kernel ((int) juce::jmax (3.0f, blurRadius));
     kernel.createGaussianBlur (blurRadius);
     kernel.applyToImage (snapshot, snapshot, snapshot.getBounds());
+    return snapshot;
+}
+
+void AbcTrainLookAndFeel::paintBlurredBackdrop (juce::Graphics& g, juce::Component& sourceComponent,
+                                                 juce::Rectangle<int> bounds, float blurRadius,
+                                                 float cornerRadius)
+{
+    const auto snapshot = blurredSnapshot (sourceComponent, bounds, blurRadius);
+    if (! snapshot.isValid())
+        return;
 
     juce::Path clip;
     clip.addRoundedRectangle (bounds.toFloat(), cornerRadius);

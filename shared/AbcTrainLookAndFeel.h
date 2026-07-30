@@ -205,6 +205,14 @@ public:
     static void paintBlurredBackdrop (juce::Graphics&, juce::Component& sourceComponent,
                                       juce::Rectangle<int> bounds, float blurRadius, float cornerRadius);
 
+    // The expensive half of paintBlurredBackdrop, split out so a caller can
+    // do it *once* and keep the result. Snapshotting a component renders its
+    // entire subtree, and the 2D convolution on top is O(area x kernel^2) -
+    // fine for one frame, ruinous for sixty a second. A caller that repaints
+    // every tick must cache this image, not re-make it.
+    static juce::Image blurredSnapshot (juce::Component& sourceComponent,
+                                        juce::Rectangle<int> sourceArea, float blurRadius);
+
     // Eased interaction state for components that draw themselves and want
     // the same hover feel as LookAndFeel-drawn widgets.
     WidgetStateRegistry& getStateRegistry() noexcept { return stateRegistry; }

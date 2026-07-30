@@ -145,13 +145,24 @@ void SupportScreenComponent::timerCallback()
 
     elapsedMs += 1000.0 / (double) tickHz;
 
+    auto revealing = false;
+
     for (size_t i = 0; i < wordReveal.size(); ++i)
     {
         const auto start = wordStaggerMs * (double) i;
-        wordReveal[i] = (float) juce::jlimit (0.0, 1.0, (elapsedMs - start) / wordArriveMs);
+        const auto target = (float) juce::jlimit (0.0, 1.0, (elapsedMs - start) / wordArriveMs);
+        revealing = revealing || ! juce::approximatelyEqual (wordReveal[i], target);
+        wordReveal[i] = target;
     }
 
-    repaint();
+    // Once the reveal has finished, the only thing still moving is the
+    // bouncing wordmark - so only that strip is repainted. This screen
+    // opens on every launch, and repainting the whole gradient-and-noise
+    // window at 60 Hz forever was the app's first impression.
+    if (revealing || wordmarkRepaintArea.isEmpty())
+        repaint();
+    else
+        repaint (wordmarkRepaintArea);
 }
 
 void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<float> area)
@@ -237,7 +248,12 @@ void SupportScreenComponent::paint (juce::Graphics& g)
 
     area.removeFromTop (AbcTrainTheme::Spacing::medium);
 
-    paintWordmark (g, area.removeFromTop (wordmarkHeight).toFloat());
+    // Remembered so the steady-state bounce can repaint just this strip.
+    // Expanded past the lift height because a letter mid-hop paints above
+    // the strip's own top edge.
+    const auto wordmarkStrip = area.removeFromTop (wordmarkHeight);
+    wordmarkRepaintArea = wordmarkStrip.expanded (0, 10);
+    paintWordmark (g, wordmarkStrip.toFloat());
 
     area.removeFromTop (AbcTrainTheme::Spacing::small);
 

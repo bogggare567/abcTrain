@@ -27,6 +27,11 @@ void GuideTooltip::setText (const juce::String& newText, int autoDismissMs)
     if (newText.isNotEmpty() && newText != text)
         text = newText;
 
+    // A fresh appearance gets a fresh look at what is behind the card;
+    // while it stays up, the cached blur is reused frame after frame.
+    if (newText.isNotEmpty() && visibility <= 0.001f)
+        backdropCache = {};
+
     visibilityTarget = newText.isEmpty() ? 0.0f : 1.0f;
     dismissCountdownMs = newText.isEmpty() ? 0 : juce::jmax (0, autoDismissMs);
 }
@@ -41,6 +46,26 @@ void GuideTooltip::timerCallback()
         {
             dismissCountdownMs = 0;
             visibilityTarget = 0.0f;
+        }
+    }
+
+    // Build the blurred backdrop exactly once, at the moment the card is
+    // about to appear - while our own paint() is still a no-op (visibility
+    // is 0), so the snapshot of the parent contains everything *except* us:
+    // no echo of a previous frame, and no way for the snapshot to re-enter
+    // this component's paint. This used to be done inside paint() itself,
+    // every frame, which re-rendered the whole editor and ran a 2D
+    // convolution tens of times a second for the length of every knob drag
+    // - the single biggest source of "the plugin feels laggy". Worse, the
+    // result was drawn offset by the card's own position in parent space
+    // and clipped away entirely, so all that cost bought nothing visible.
+    if (visibilityTarget > 0.5f && visibility <= 0.001f
+        && (! backdropCache.isValid() || backdropCacheArea != getBounds()))
+    {
+        if (auto* parent = getParentComponent())
+        {
+            backdropCache = AbcTrainLookAndFeel::blurredSnapshot (*parent, getBounds(), blurRadius);
+            backdropCacheArea = getBounds();
         }
     }
 
@@ -76,22 +101,19 @@ void GuideTooltip::paint (juce::Graphics& g)
     juce::Graphics::ScopedSaveState saved (g);
     g.setOpacity (eased);
 
-    if (auto* parent = getParentComponent())
+    // The cached backdrop (built in timerCallback at the moment of
+    // appearance, never here). Blurred at the card's resting position and
+    // merely *drawn* at the animated one - the few pixels of rise select
+    // marginally different source content, which a Gaussian at this radius
+    // has already smeared into invisibility.
+    if (backdropCache.isValid() && backdropCacheArea == getBounds())
     {
-        // Snapshot the parent, not this component: createComponentSnapshot
-        // renders the target *and its children*, so snapshotting ourselves
-        // would recurse into this very paint() call. Taking the parent's
-        // pixels for our own screen area gives exactly the content sitting
-        // behind the card.
-        //
-        // The snapshot still contains this tooltip's previous frame, which
-        // is harmless here - the card is translucent and heavily blurred,
-        // so a faint echo of the last frame is indistinguishable from the
-        // blur itself, and avoiding it entirely would mean hiding and
-        // re-showing the component mid-paint.
-        const auto areaInParent = getBounds().translated (0, (int) offsetY);
-        AbcTrainLookAndFeel::paintBlurredBackdrop (g, *parent, areaInParent, blurRadius,
-                                                    AbcTrainTheme::Radius::panel);
+        juce::Path clip;
+        clip.addRoundedRectangle (bounds, AbcTrainTheme::Radius::panel);
+
+        juce::Graphics::ScopedSaveState clipState (g);
+        g.reduceClipRegion (clip);
+        g.drawImageAt (backdropCache, 0, (int) offsetY);
     }
 
     // Tinted glass over the blur, so text contrast doesn't depend on
@@ -112,7 +134,10 @@ void GuideTooltip::paint (juce::Graphics& g)
     g.fillRoundedRectangle (rule, 1.0f);
 
     g.setColour (theme.text);
-    g.setFont (juce::Font (juce::FontOptions (AbcTrainLookAndFeel::bodyFontHeight)));
+    // Through the ladder, not a raw FontOptions: this is one of the three
+    // strings that ignored the user's text-size setting (and the chosen
+    // typeface) while everything around it obeyed both.
+    g.setFont (AbcTrainLookAndFeel::bodyFont());
     g.drawFittedText (text,
                       bounds.reduced (18.0f, 8.0f).toNearestInt(),
                       juce::Justification::centredLeft, 3);

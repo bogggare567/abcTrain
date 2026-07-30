@@ -538,7 +538,12 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
                                            x - labelWidth * 0.5f);
 
         const auto rowY = mark.emphasised ? lowerRowY : upperRowY;
-        g.setFont (juce::Font (juce::FontOptions (mark.emphasised ? 10.5f : 9.5f)));
+        // Derived from the ladder's micro step so the text-size slider and
+        // the typeface choice reach these labels too - they were raw
+        // literals, which is why they stayed put while every other string
+        // in the window scaled.
+        const auto markFont = AbcTrainLookAndFeel::microFont();
+        g.setFont (markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f)));
         g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.85f : 0.5f));
         g.drawText (mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
                      juce::Justification::centred, false);

@@ -99,7 +99,7 @@ public:
                                                theme.textDim.withAlpha (eased), 1.6f);
 
         g.setColour (theme.textBright.withAlpha (eased));
-        g.setFont (juce::Font (juce::FontOptions (15.0f).withStyle ("Bold")));
+        g.setFont (AbcTrainLookAndFeel::headingFont());
         g.drawText (title, content.toNearestInt(), juce::Justification::centredLeft, true);
     }
 

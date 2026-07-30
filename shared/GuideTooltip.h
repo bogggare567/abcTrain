@@ -44,5 +44,18 @@ private:
     float visibilityTarget = 0.0f;
     int dismissCountdownMs = 0;
 
+    // The blurred backdrop, made once per appearance rather than per frame.
+    //
+    // This used to be recomputed inside paint(): a full snapshot of the
+    // parent editor (which re-renders the spectrum, the waveform, every
+    // knob) plus a 2D Gaussian convolution - and since the tooltip sits
+    // over displays that repaint at 30 Hz, that work ran tens of times a
+    // second for the whole duration of every drag. It was the single
+    // biggest source of "the plugin feels laggy". The card is translucent
+    // glass, so the content behind it being a moment old is invisible;
+    // re-blurring it live was cost with no observable effect.
+    juce::Image backdropCache;
+    juce::Rectangle<int> backdropCacheArea;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GuideTooltip)
 };
