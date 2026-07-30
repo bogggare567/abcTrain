@@ -39,8 +39,8 @@
         </line>
     </choices-outline>
 
-    <!-- Ear Trainer -->
-    <choice id="choice_eartrainer" title="Ear Trainer" description="Ear-training games: guess the boosted/cut band, the compression strength, the reverb type. Points, levels, daily streak."/>
+    <!-- ABC Ear Trainer -->
+    <choice id="choice_eartrainer" title="ABC Ear Trainer" description="Ear-training games: guess the boosted/cut band, the compression strength, the reverb type. Points, levels, daily streak."/>
     <choice id="choice_eartrainer_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
         <pkg-ref id="com.earsnap.abctrain.eartrainer.vst3"/>
     </choice>
@@ -51,8 +51,8 @@
         <pkg-ref id="com.earsnap.abctrain.eartrainer.app"/>
     </choice>
 
-    <!-- Learner EQ -->
-    <choice id="choice_learnereq" title="Learner EQ" description="A real 4-band EQ with a live spectrum + response curve, a scrolling waveform, contextual tooltips, a Bypass toggle, and a guided Lesson."/>
+    <!-- ABC Learner EQ -->
+    <choice id="choice_learnereq" title="ABC Learner EQ" description="A real 4-band EQ with a live spectrum + response curve, a scrolling waveform, contextual tooltips, a Bypass toggle, and a guided Lesson."/>
     <choice id="choice_learnereq_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnereq.vst3"/>
     </choice>
@@ -63,8 +63,8 @@
         <pkg-ref id="com.earsnap.abctrain.learnereq.app"/>
     </choice>
 
-    <!-- Learner Comp -->
-    <choice id="choice_learnercomp" title="Learner Comp" description="A real compressor with a live spectrum, a scrolling waveform with gain-reduction highlighting, GR/peak meters, 4 teaching presets, a Bypass toggle, and a guided Lesson."/>
+    <!-- ABC Learner Comp -->
+    <choice id="choice_learnercomp" title="ABC Learner Comp" description="A real compressor with a live spectrum, a scrolling waveform with gain-reduction highlighting, GR/peak meters, 4 teaching presets, a Bypass toggle, and a guided Lesson."/>
     <choice id="choice_learnercomp_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnercomp.vst3"/>
     </choice>
@@ -75,8 +75,8 @@
         <pkg-ref id="com.earsnap.abctrain.learnercomp.app"/>
     </choice>
 
-    <!-- Learner Verb -->
-    <choice id="choice_learnerverb" title="Learner Verb" description="A real reverb (Room/Hall/Plate/Spring) with the same live spectrum + scrolling waveform view as Learner Comp, 4 teaching presets, a Bypass toggle, and a guided Lesson."/>
+    <!-- ABC Learner Verb -->
+    <choice id="choice_learnerverb" title="ABC Learner Verb" description="A real reverb (Room/Hall/Plate/Spring) with the same live spectrum + scrolling waveform view as ABC Learner Comp, 4 teaching presets, a Bypass toggle, and a guided Lesson."/>
     <choice id="choice_learnerverb_vst3" title="VST3" description="For Ableton Live, Cubase, Reaper, Studio One, and most other DAWs." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnerverb.vst3"/>
     </choice>

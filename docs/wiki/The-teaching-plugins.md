@@ -1,14 +1,19 @@
 # The teaching plugins
 
+> In a plugin browser they are **ABC Learner EQ**, **ABC Learner Comp** and
+> **ABC Learner Verb**, by *soundkorb*. Everything sorts under ABC so the
+> four arrive together rather than scattered across the alphabet. This page
+> uses the short names in prose.
+
 Three real effects that process your host's audio and explain themselves
 while doing it. Every parameter is host-automatable and saves with the
 session, like any other plugin.
 
 | | What it is |
 |---|---|
-| **Learner EQ** | Four bands - low shelf, two bells, high shelf - over a live spectrum with the response curve drawn on it. Guide text appears while you turn a frequency knob. |
-| **Learner Comp** | A soft-knee compressor with a gain-reduction meter that fills **downward**, because that is the direction the sound goes. |
-| **Learner Verb** | Room, hall, plate and spring, with decay, pre-delay, size, damping, mix and width. |
+| **ABC Learner EQ** | Four bands - low shelf, two bells, high shelf - over a live spectrum with the response curve drawn on it. Guide text appears while you turn a frequency knob. |
+| **ABC Learner Comp** | A soft-knee compressor with a gain-reduction meter that fills **downward**, because that is the direction the sound goes. |
+| **ABC Learner Verb** | Room, hall, plate and spring, with decay, pre-delay, size, damping, mix and width. |
 
 ## Practice audio
 

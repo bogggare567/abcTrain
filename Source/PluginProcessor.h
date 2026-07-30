@@ -26,7 +26,7 @@ public:
     // juce_add_plugin target, and this file is also compiled into the
     // EditorSnapshots console app. Same reason recorded in
     // docs/diagrams/ci-pipeline.md, bug 1.
-    const juce::String getName() const override { return "Ear Trainer"; }
+    const juce::String getName() const override { return "ABC Ear Trainer"; }
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }

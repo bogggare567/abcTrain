@@ -56,7 +56,7 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     setLookAndFeel (&lookAndFeel);
 
     // Drawn by paint() with letter-spacing rather than via the Label.
-    titleLabel.setText ("Learner EQ", juce::dontSendNotification);
+    titleLabel.setText ("ABC Learner EQ", juce::dontSendNotification);
     titleLabel.setVisible (false);
 
     themeButton.onClick = [this] { toggleTheme(); };

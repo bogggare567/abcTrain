@@ -59,8 +59,9 @@
 | | |
 |---|---|
 | Название | abcTrain — *ambiance · balance · clarity* |
-| Версия на момент брифа | **v1.2.2**, опубликована 30.07.2026 |
-| Плагинов | 4: Ear Trainer, Learner EQ, Learner Comp, Learner Verb |
+| Версия на момент брифа | **v1.3.0**, опубликована 30.07.2026 |
+| Плагинов | 4: ABC Ear Trainer, ABC Learner EQ, ABC Learner Comp, ABC Learner Verb |
+| Производитель (как видит DAW) | soundkorb |
 | Упражнений в тренажёре | **9** |
 | Модулей обучения | **14** (7 в Learner Comp, 7 в Learner Verb) |
 | Достижений | 24 |
@@ -96,12 +97,12 @@
 
 ### Три обучающих плагина
 
-- **Learner EQ** — четырёхполосный эквалайзер: живой спектр, кривая
+- **ABC Learner EQ** — четырёхполосный эквалайзер: живой спектр, кривая
   отклика, подсказка по диапазону, пока крутишь частоту.
-- **Learner Comp** — компрессор с мягким коленом: спектр, бегущая
+- **ABC Learner Comp** — компрессор с мягким коленом: спектр, бегущая
   осциллограмма, метр гейн-редукции, **7 модулей обучения** и 2 сквозных
   разбора.
-- **Learner Verb** — ревербератор (Room / Hall / Plate / Spring): те же
+- **ABC Learner Verb** — ревербератор (Room / Hall / Plate / Spring): те же
   визуализации, **7 модулей обучения** и 2 разбора.
 
 ### Окна тянутся
@@ -287,14 +288,14 @@ sans-serif`. Цифры в показаниях — моноширинные.
 | Поддержать | `https://www.donationalerts.com/r/bogdankorablev` |
 | Лицензия | `https://github.com/bogggare567/abcTrain/blob/main/LICENSE` |
 
-Прямые ссылки на файлы **v1.2.2** — для трёх кнопок по ОС. Если версия
+Прямые ссылки на файлы **v1.3.0** — для трёх кнопок по ОС. Если версия
 поменяется, поменяйте номер в четырёх местах или ведите все кнопки на
 `/releases/latest`.
 
 ```
-https://github.com/bogggare567/abcTrain/releases/download/v1.2.2/abcTrain-macOS-1.2.2.dmg
-https://github.com/bogggare567/abcTrain/releases/download/v1.2.2/abcTrain-Windows-1.2.2-setup.exe
-https://github.com/bogggare567/abcTrain/releases/download/v1.2.2/abcTrain-Linux-1.2.2.tar.gz
+https://github.com/bogggare567/abcTrain/releases/download/v1.3.0/abcTrain-macOS-1.3.0.dmg
+https://github.com/bogggare567/abcTrain/releases/download/v1.3.0/abcTrain-Windows-1.3.0-setup.exe
+https://github.com/bogggare567/abcTrain/releases/download/v1.3.0/abcTrain-Linux-1.3.0.tar.gz
 ```
 
 ---

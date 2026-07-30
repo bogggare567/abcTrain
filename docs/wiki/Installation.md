@@ -49,6 +49,20 @@ which plugins you want and where the VST3s should go (`$HOME/.vst3`,
 `/usr/lib/vst3` via sudo, or a path you type). If it will not run,
 `chmod +x install.sh` first.
 
+## What they are called
+
+| In your plugin browser | Vendor |
+|---|---|
+| ABC Ear Trainer | soundkorb |
+| ABC Learner EQ | soundkorb |
+| ABC Learner Comp | soundkorb |
+| ABC Learner Verb | soundkorb |
+
+Renamed in **v1.3.0**. If you have a project saved against the older
+builds, the host will report those plugins as missing - the identifiers a
+host uses are derived from the vendor and product names, so to it these are
+new plugins. There is no way around that; a rename is a rename.
+
 ## Where things end up
 
 | | macOS | Windows | Linux |

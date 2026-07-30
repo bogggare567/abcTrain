@@ -1,4 +1,4 @@
-abcTrain - Ear Trainer / Learner EQ / Learner Comp / Learner Verb
+abcTrain - ABC Ear Trainer / ABC Learner EQ / ABC Learner Comp / ABC Learner Verb
 
 To install: run ./install.sh from inside this folder. It will ask which
 plugins you want and where VST3 plugins and the Standalone apps should

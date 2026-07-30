@@ -74,7 +74,7 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     setLookAndFeel (&lookAndFeel);
 
     // Drawn by paint() with letter-spacing rather than via the Label.
-    titleLabel.setText ("Learner Comp", juce::dontSendNotification);
+    titleLabel.setText ("ABC Learner Comp", juce::dontSendNotification);
     titleLabel.setVisible (false);
 
     themeButton.onClick = [this] { toggleTheme(); };

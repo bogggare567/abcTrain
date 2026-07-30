@@ -65,15 +65,15 @@ each editor and photographs it. Nothing is a mockup.
 <td><img src="docs/screenshots/LearnerComp-dark.png" alt="Learner Comp: live spectrum, scrolling waveform, a gain-reduction meter and seven knobs"></td>
 </tr>
 <tr>
-<td align="center"><b>Learner EQ</b> — four bands over a live spectrum, with guide text while you turn a knob.</td>
-<td align="center"><b>Learner Comp</b> — a gain-reduction meter that fills <i>downward</i>, because that is the direction the sound goes.</td>
+<td align="center"><b>ABC Learner EQ</b> — four bands over a live spectrum, with guide text while you turn a knob.</td>
+<td align="center"><b>ABC Learner Comp</b> — a gain-reduction meter that fills <i>downward</i>, because that is the direction the sound goes.</td>
 </tr>
 <tr>
 <td><img src="docs/screenshots/LearnerVerb-dark.png" alt="Learner Verb: room, chamber, hall, plate and spring, with decay, pre-delay, size, damping, mix and width"></td>
 <td><img src="docs/screenshots/EarTrainer-light.png" alt="The Ear Trainer home screen in the light theme"></td>
 </tr>
 <tr>
-<td align="center"><b>Learner Verb</b> — five reverb types, each with a preset that says <i>why</i> it is set that way.</td>
+<td align="center"><b>ABC Learner Verb</b> — five reverb types, each with a preset that says <i>why</i> it is set that way.</td>
 <td align="center"><b>A real light theme</b>, designed rather than inverted — warm paper, deeper accents, softer shadows.</td>
 </tr>
 </table>

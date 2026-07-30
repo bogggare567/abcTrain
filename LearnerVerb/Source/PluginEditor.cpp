@@ -72,7 +72,7 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     setLookAndFeel (&lookAndFeel);
 
     // Drawn by paint() with letter-spacing rather than via the Label.
-    titleLabel.setText ("Learner Verb", juce::dontSendNotification);
+    titleLabel.setText ("ABC Learner Verb", juce::dontSendNotification);
     titleLabel.setVisible (false);
 
     themeButton.onClick = [this] { toggleTheme(); };

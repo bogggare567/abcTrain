@@ -1,4 +1,17 @@
-# Ear Trainer / Learner EQ / Learner Comp / Learner Verb — project notes
+# ABC Ear Trainer / ABC Learner EQ / ABC Learner Comp / ABC Learner Verb — project notes
+
+**Product names all begin with `ABC`, and the vendor is `soundkorb`** (from
+v1.3.0). CMake target names and source folders keep the short forms
+(`EarTrainer`, `LearnerEQ/`) — only `PRODUCT_NAME`, `COMPANY_NAME`,
+`PLUGIN_MANUFACTURER_CODE`, each processor's `getName()` and each Learner
+editor's title label carry the prefix. The prefix is a distribution
+decision: plugin browsers sort alphabetically, and four members scattered
+across E and L are four things to remember to look for.
+**Renaming broke host compatibility on purpose** — JUCE derives the VST3
+class ID and AU subtype from company + product, so projects saved against
+the pre-1.3.0 builds report the plugins as missing. There is no migration
+path; it was done at two stars and one tagged release because the cost only
+grows.
 
 Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
 

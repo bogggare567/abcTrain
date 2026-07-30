@@ -149,12 +149,29 @@ juce_add_binary_data(BrandData
         LICENSE
 )
 
+# Every product name begins with "ABC", and that is a distribution
+# decision rather than a stylistic one: plugin browsers sort
+# alphabetically, so a suite whose four members scatter across E and L is
+# four things a person has to remember to look for. Under ABC they arrive
+# together, next to the pack they belong to.
+#
+# The vendor changed with them. "EarSnap" was a name from before this was
+# abcTrain and it is what DAWs print in the manufacturer column, so
+# leaving it would have made every plugin list read "ABC Learner EQ" by
+# someone unrelated.
+#
+# **This breaks existing sessions.** JUCE derives the VST3 class ID and the
+# AU subtype from the company and product names, so to a host these are new
+# plugins and a project saved against the old ones will report them
+# missing. There is no migration path for that - a rename is a rename. Done
+# now, at two stars and one tagged release, because the cost only grows.
+
 juce_add_plugin(EarTrainer
-    COMPANY_NAME "EarSnap"
-    PLUGIN_MANUFACTURER_CODE Esnp
+    COMPANY_NAME "soundkorb"
+    PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Eqg1
     FORMATS AU VST3 Standalone
-    PRODUCT_NAME "Ear Trainer"
+    PRODUCT_NAME "ABC Ear Trainer"
     ICON_BIG assets/icons/eartrainer.png
     ICON_SMALL assets/icons/eartrainer_small.png
     IS_SYNTH FALSE
@@ -228,11 +245,11 @@ target_link_libraries(EarTrainer
 )
 
 juce_add_plugin(LearnerEQ
-    COMPANY_NAME "EarSnap"
-    PLUGIN_MANUFACTURER_CODE Esnp
+    COMPANY_NAME "soundkorb"
+    PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Leq1
     FORMATS AU VST3 Standalone
-    PRODUCT_NAME "Learner EQ"
+    PRODUCT_NAME "ABC Learner EQ"
     ICON_BIG assets/icons/learnereq.png
     ICON_SMALL assets/icons/learnereq_small.png
     IS_SYNTH FALSE
@@ -292,11 +309,11 @@ target_link_libraries(LearnerEQ
 )
 
 juce_add_plugin(LearnerComp
-    COMPANY_NAME "EarSnap"
-    PLUGIN_MANUFACTURER_CODE Esnp
+    COMPANY_NAME "soundkorb"
+    PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Lcp1
     FORMATS AU VST3 Standalone
-    PRODUCT_NAME "Learner Comp"
+    PRODUCT_NAME "ABC Learner Comp"
     ICON_BIG assets/icons/learnercomp.png
     ICON_SMALL assets/icons/learnercomp_small.png
     IS_SYNTH FALSE
@@ -356,11 +373,11 @@ target_link_libraries(LearnerComp
 )
 
 juce_add_plugin(LearnerVerb
-    COMPANY_NAME "EarSnap"
-    PLUGIN_MANUFACTURER_CODE Esnp
+    COMPANY_NAME "soundkorb"
+    PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Lvb1
     FORMATS AU VST3 Standalone
-    PRODUCT_NAME "Learner Verb"
+    PRODUCT_NAME "ABC Learner Verb"
     ICON_BIG assets/icons/learnerverb.png
     ICON_SMALL assets/icons/learnerverb_small.png
     IS_SYNTH FALSE

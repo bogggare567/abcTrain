@@ -9,10 +9,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # name:folder-key (folder-key must match package_tar.sh's PLUGINS array)
 PLUGINS=(
-    "Ear Trainer:EarTrainer"
-    "Learner EQ:LearnerEQ"
-    "Learner Comp:LearnerComp"
-    "Learner Verb:LearnerVerb"
+    "ABC Ear Trainer:EarTrainer"
+    "ABC Learner EQ:LearnerEQ"
+    "ABC Learner Comp:LearnerComp"
+    "ABC Learner Verb:LearnerVerb"
 )
 
 ask_yes_no() {

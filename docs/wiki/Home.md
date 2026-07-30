@@ -1,7 +1,10 @@
 # abcTrain
 
 Four audio plugins: one ear trainer and three effects that teach you what
-their controls do while processing real audio. Free, open source, macOS /
+their controls do while processing real audio. In your host they appear as
+**ABC Ear Trainer**, **ABC Learner EQ**, **ABC Learner Comp** and
+**ABC Learner Verb**, by *soundkorb* - all under ABC so the four sort
+together instead of scattering across the alphabet. Free, open source, macOS /
 Windows / Linux, as VST3, AU and Standalone.
 
 **[Download the latest release](https://github.com/bogggare567/abcTrain/releases/latest)**
@@ -37,7 +40,7 @@ if you want to know which button to press, you are in the right place.
 «Подробнее» → «Выполнить в любом случае». Это говорит «издатель не
 проверен», а не «файл плохой» — [подробнее](Installation).
 
-Откройте **Ear Trainer** (standalone или как плагин в DAW). На первом
+Откройте **ABC Ear Trainer** (standalone или как плагин в DAW). На первом
 запуске предложат тридцатисекундную экскурсию — она показывает пальцем,
 что на что отвечает. Дальше выберите упражнение, слушайте, переключайте
 A/B пробелом и отвечайте шкалой.

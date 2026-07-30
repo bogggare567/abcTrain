@@ -52,12 +52,12 @@ cp "$REPO_ROOT/LICENSE" "$SCRIPT_DIR/LICENSE.txt"
 
 # key:TargetDirName:Product Name (must match CMakeLists.txt's target name
 # and PRODUCT_NAME for that target exactly, including the space in
-# "Learner EQ" etc.)
+# "ABC Learner EQ" etc.)
 PLUGINS=(
-    "eartrainer:EarTrainer:Ear Trainer"
-    "learnereq:LearnerEQ:Learner EQ"
-    "learnercomp:LearnerComp:Learner Comp"
-    "learnerverb:LearnerVerb:Learner Verb"
+    "eartrainer:EarTrainer:ABC Ear Trainer"
+    "learnereq:LearnerEQ:ABC Learner EQ"
+    "learnercomp:LearnerComp:ABC Learner Comp"
+    "learnerverb:LearnerVerb:ABC Learner Verb"
 )
 
 build_component_pkg() {
