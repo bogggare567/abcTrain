@@ -76,7 +76,7 @@ namespace
 
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
-                       answered };
+                       answered, survivalRun };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -122,6 +122,9 @@ namespace
 
                 if (extra == Extra::answered)
                     editor.answerForSnapshot();
+
+                if (extra == Extra::survivalRun)
+                    editor.startRunForSnapshot (SessionManager::Mode::survival);
 
                 if (extra == Extra::sounds)
                     editor.openSoundsForSnapshot();
@@ -247,6 +250,7 @@ int main (int argc, char* argv[])
             // answer slider rather than a row of named choices.
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Training", 0);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Answered", 0, Extra::answered);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);

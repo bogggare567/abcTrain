@@ -125,6 +125,21 @@ public:
         choiceSlider.completeAnimation();
     }
 
+    // Snapshot seam for a Survival run in progress: the HUD replaces the
+    // mode pills, so it is a different screen and needs its own shot.
+    // Started directly rather than through beginRunWithCountdown(), since
+    // the countdown needs a message loop the snapshot tool never pumps.
+    void startRunForSnapshot (SessionManager::Mode mode)
+    {
+        session.setMode (mode);
+        runStarted = true;
+        startNewRun();
+        session.registerAnswer (true);
+        session.registerAnswer (false);   // one heart gone, so the HUD shows both states
+        refreshRunStatus();
+        resized();
+    }
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -345,6 +360,212 @@ private:
         juce::Colour colour;
         float progress = 0.0f;
         juce::Animator animator = juce::ValueAnimatorBuilder{}.build();
+        juce::VBlankAnimatorUpdater updater { this };
+    };
+
+    // The 3-2-1 before a Survival/Blitz run. A run used to start the
+    // instant a pill was clicked, which is how a checkbox behaves, not how
+    // an event begins - there was no moment where you gather yourself, so
+    // a run never felt like something you *entered*. Covers the answer
+    // area (and swallows its clicks) for under two seconds; Practice
+    // never sees it, because Practice is the mode without pressure.
+    class RunCountdown : public juce::Component,
+                          private juce::Timer
+    {
+    public:
+        RunCountdown() { setInterceptsMouseClicks (true, true); }
+        ~RunCountdown() override { stopTimer(); }
+
+        void start (const juce::String& newCaption, std::function<void()> newOnDone)
+        {
+            caption = newCaption;
+            onDone = std::move (newOnDone);
+            elapsedMs = 0.0;
+            setVisible (true);
+            toFront (false);
+            startTimerHz (30);
+            repaint();
+        }
+
+        // Screen changes mid-countdown abandon the run start entirely -
+        // firing onDone into a screen the player has left would begin a
+        // run nobody is looking at.
+        void cancel()
+        {
+            stopTimer();
+            onDone = nullptr;
+            setVisible (false);
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            const auto& theme = AbcTrainTheme::current();
+
+            g.setColour (theme.windowBackground.withAlpha (0.72f));
+            g.fillRoundedRectangle (getLocalBounds().toFloat(), AbcTrainTheme::Radius::panel);
+
+            const auto step = (int) (elapsedMs / stepMs);           // 0,1,2
+            const auto digit = juce::jmax (1, 3 - step);
+            const auto within = (float) (elapsedMs - (double) step * stepMs) / (float) stepMs;
+
+            // Each digit lands (scales down into place) then holds; the
+            // fade-out belongs to the next digit's arrival, not to it.
+            const auto eased = AbcTrainTheme::Ease::out (juce::jlimit (0.0f, 1.0f, within * 2.2f));
+            const auto scale = 1.35f - 0.35f * eased;
+
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::headingFont());
+            g.drawText (caption,
+                        getLocalBounds().toFloat().withTrimmedTop ((float) getHeight() * 0.22f)
+                                                   .withHeight (20.0f),
+                        juce::Justification::centred, false);
+
+            auto digitFont = AbcTrainLookAndFeel::displayFont();
+            digitFont = digitFont.withHeight (digitFont.getHeight() * 2.2f * scale);
+            g.setColour (theme.textBright.withAlpha (0.35f + 0.65f * eased));
+            g.setFont (digitFont);
+            g.drawText (juce::String (digit), getLocalBounds().toFloat(),
+                        juce::Justification::centred, false);
+        }
+
+    private:
+        void timerCallback() override
+        {
+            elapsedMs += 1000.0 / 30.0;
+
+            if (elapsedMs >= stepMs * 3.0)
+            {
+                stopTimer();
+                setVisible (false);
+
+                // Moved off before calling: onDone may restart this very
+                // countdown (play-again flows), and a callback that
+                // clears itself mid-call is a callback that vanishes
+                // under its own feet.
+                auto done = std::move (onDone);
+                onDone = nullptr;
+                if (done != nullptr)
+                    done();
+                return;
+            }
+
+            repaint();
+        }
+
+        static constexpr double stepMs = 600.0;
+        juce::String caption;
+        std::function<void()> onDone;
+        double elapsedMs = 0.0;
+    };
+
+    // Lives, clock and run score while a Survival/Blitz run is live -
+    // *instead of* the mode pills, not beside them. A run you can silently
+    // re-mode mid-flight is a setting; hiding the pills for the duration
+    // is what makes a run something you finish (or walk out of via Home).
+    class RunHud : public juce::Component
+    {
+    public:
+        void set (SessionManager::Mode newMode, int newLives, int newSeconds, int newScore)
+        {
+            if (newLives < lives && lives >= 0)
+                flashLostLife();
+
+            mode = newMode;
+            lives = newLives;
+            seconds = newSeconds;
+            score = newScore;
+            repaint();
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            const auto& theme = AbcTrainTheme::current();
+            auto area = getLocalBounds().toFloat();
+
+            // Run score first: it is the number the run is *about*.
+            g.setColour (theme.textBright);
+            g.setFont (AbcTrainLookAndFeel::titleFont());
+            const auto scoreBox = area.removeFromLeft (52.0f);
+            g.drawText (juce::String (score), scoreBox, juce::Justification::centredLeft, false);
+
+            if (mode == SessionManager::Mode::survival)
+            {
+                // Hearts, drawn - the vocabulary every game player already
+                // reads. The most recently lost one flashes out.
+                const auto r = 9.0f;
+                auto x = area.getX() + r;
+                const auto cy = area.getCentreY();
+
+                for (int i = 0; i < SessionManager::survivalLives; ++i)
+                {
+                    const auto alive = i < lives;
+                    const auto justLost = (i == lives) && flash > 0.001f;
+
+                    auto heart = heartPath (x, cy, r * (justLost ? 1.0f + 0.6f * flash : 1.0f));
+
+                    if (alive)
+                    {
+                        g.setColour (theme.negative);
+                        g.fillPath (heart);
+                    }
+                    else if (justLost)
+                    {
+                        g.setColour (theme.negative.withAlpha (flash * 0.9f));
+                        g.fillPath (heart);
+                    }
+                    else
+                    {
+                        g.setColour (theme.outline);
+                        g.strokePath (heart, juce::PathStrokeType (1.4f));
+                    }
+
+                    x += r * 2.0f + 7.0f;
+                }
+            }
+            else if (mode == SessionManager::Mode::blitz)
+            {
+                const auto urgent = seconds <= 15;
+                g.setColour (urgent ? theme.negative : theme.text);
+                g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (
+                    AbcTrainLookAndFeel::monoFontHeight * AbcTrainLookAndFeel::getTextScale() * 1.35f));
+                g.drawText (juce::String::formatted ("%d:%02d", seconds / 60, seconds % 60),
+                            area, juce::Justification::centredLeft, false);
+            }
+        }
+
+    private:
+        void flashLostLife()
+        {
+            if (! flashAnimator.isComplete())
+                flashAnimator.complete();
+
+            flashAnimator = juce::ValueAnimatorBuilder{}
+                                .withEasing (juce::Easings::createEaseOut())
+                                .withDurationMs (450.0)
+                                .withValueChangedCallback ([this] (float t)
+                                {
+                                    flash = 1.0f - t;
+                                    repaint();
+                                })
+                                .build();
+            updater.addAnimator (flashAnimator, [this] { updater.removeAnimator (flashAnimator); });
+            flashAnimator.start();
+        }
+
+        static juce::Path heartPath (float cx, float cy, float r)
+        {
+            juce::Path p;
+            p.startNewSubPath (cx, cy + r * 0.95f);
+            p.cubicTo (cx - r * 1.6f, cy - r * 0.1f, cx - r * 0.9f, cy - r * 1.1f, cx, cy - r * 0.35f);
+            p.cubicTo (cx + r * 0.9f, cy - r * 1.1f, cx + r * 1.6f, cy - r * 0.1f, cx, cy + r * 0.95f);
+            p.closeSubPath();
+            return p;
+        }
+
+        SessionManager::Mode mode = SessionManager::Mode::practice;
+        int lives = -1, seconds = 0, score = 0;
+        float flash = 0.0f;
+        juce::Animator flashAnimator = juce::ValueAnimatorBuilder{}.build();
         juce::VBlankAnimatorUpdater updater { this };
     };
 
@@ -611,6 +832,28 @@ private:
     // own terms (lives or clock) and posts a score against the exercise;
     // see SessionManager.
     SessionManager session;
+
+    // Stage 3 of ADR 029: a run begins with a countdown and is played
+    // under a HUD, not next to a row of mode pills.
+    RunCountdown runCountdown;
+    RunHud runHud;
+
+    // True while a Survival/Blitz run is being played (not merely armed):
+    // the pills and session score hide, the HUD shows. One predicate so
+    // resized() and refreshRunStatus() can never disagree about it.
+    bool isRunHudActive() const noexcept
+    {
+        return session.getMode() != SessionManager::Mode::practice
+               && session.isRunActive() && runStarted;
+    }
+
+    // setMode()/startRun() arm a run; the countdown finishing is what
+    // *starts* it. Without this flag the HUD appeared (and the pills
+    // vanished) the moment a pill was clicked, while the countdown was
+    // still saying "get ready".
+    bool runStarted = false;
+
+    void beginRunWithCountdown();
     // Three pills, one visibly on. A ComboBox meant the current mode was a
     // word in a well and the other two were behind a popup - so "what are
     // my options" cost a click, and the answer appeared as an OS menu that

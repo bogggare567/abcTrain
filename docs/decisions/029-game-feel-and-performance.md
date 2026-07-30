@@ -114,11 +114,42 @@ find out is the product**. Everything here serves that ten seconds.
   deliberate near-miss, so the state stage 2 exists for is on the
   contact sheet in both themes.
 
-## Stages 3-4 (planned)
+## Stage 3 — modes as events
 
-- **Stage 3, modes as events**: a run starts with a countdown and a HUD,
-  not a pill toggle; "one more run" is one tap on the results screen.
-- **Stage 4, anchors**: the daily streak and daily challenge surfaced as
+A Survival run used to begin the instant a pill was clicked. That is how
+a checkbox behaves. There was no moment where you gather yourself, and
+nothing on screen said "you are *in* something" - so a run never felt
+entered, only configured.
+
+- **`RunCountdown`** covers the answer area for 1.8s with 3-2-1, each
+  digit scaling into place, and *silences the signal* while it runs - the
+  first sound of a run should be the run's first question. Practice never
+  sees it: Practice is the mode without pressure, and a countdown before
+  a pressureless run is theatre. `beginRunWithCountdown()` replaced the
+  direct `startNewRun()` at every entry point that starts a *run* (mode
+  pill, restart, play-again, picking a training from Home); `startNewRun()`
+  itself stays as the round-level call the countdown finishes into.
+- **`runStarted`** separates *armed* from *playing*. Without it the HUD
+  appeared and the pills vanished while the countdown was still counting.
+- **`RunHud`** replaces the pills and the session score for the duration -
+  run score, then drawn hearts (the vocabulary every player already
+  reads; the lost one flashes out) or a mono clock that turns negative-
+  coloured under 15s. Taking exactly the slot the pills vacate is
+  deliberate: A/B must not shift when a run starts or ends. Hiding the
+  pills is the point - a run you can silently re-mode mid-flight is a
+  setting; the way out is Home, which ends the run honestly.
+- **`runStatusLabel` goes quiet during a live run** rather than repeating
+  the HUD's numbers in a smaller voice. It still reports the run being
+  over, which is the one state the HUD does not cover.
+- **Leaving the training screen cancels a countdown outright**
+  (`RunCountdown::cancel`), because firing its completion into a screen
+  the player has left would start a run nobody is looking at. The
+  callback is also moved-from before invocation, since play-again
+  restarts the very countdown whose callback is running.
+
+## Stage 4 (planned)
+
+- **Anchors**: the daily streak and daily challenge surfaced as
   first-class cards on Home, achievement pulse, session goal.
 
 Each stage lands as its own commit with snapshots re-rendered before and

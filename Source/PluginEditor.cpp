@@ -255,9 +255,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         }
 
         // Picking a training starts it - the home screen's job is to get
-        // out of the way, not to make you confirm twice.
+        // out of the way, not to make you confirm twice. Through the
+        // countdown path, so arriving with Survival or Blitz still armed
+        // gets its 3-2-1 rather than an ambush.
         showScreen (Screen::training);
-        startNewRun();
+        beginRunWithCountdown();
     };
 
     homeScreen.onFavouriteToggled = [this] (int index, bool shouldBeFavourite)
@@ -291,8 +293,15 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addAndMakeVisible (instructionLabel);
 
 
-    restartButton.onClick = [this] { startNewRun(); };
+    restartButton.onClick = [this] { beginRunWithCountdown(); };
     addChildComponent (restartButton);
+
+    // The run HUD lives in the control row; the countdown sits over the
+    // answer section (added later than the slider, so it paints above the
+    // thing it is covering, but before the results/toast overlays, which
+    // must stay on top of everything).
+    addChildComponent (runHud);
+    addChildComponent (runCountdown);
 
     beforeButton.onClick = [this] { setPlayProcessed (false); };
     afterButton.onClick = [this] { setPlayProcessed (true); };
@@ -566,7 +575,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     runResults.onPlayAgain = [this]
     {
         runResults.setVisible (false);
-        startNewRun();
+        beginRunWithCountdown();
     };
 
     runResults.onGoHome = [this]
@@ -958,6 +967,10 @@ void EarTrainerEditor::resized()
                                                      juce::jmax (0, answerSection.getY() - 34),
                                                      140, 88));
 
+        // The countdown covers the whole answer section: the numbers land
+        // where the question is about to be.
+        runCountdown.setBounds (answerSection);
+
         // *One* row under the scale, not two.
         //
         // A/B sat on its own row and the mode pills on another, which made
@@ -987,16 +1000,27 @@ void EarTrainerEditor::resized()
             // the middle, directly under the scale it compares - it is the
             // control touched most often, so it gets the centre.
             const auto pillWidth = 62;
+            const auto modesSlotWidth = pillWidth * 3 + Spacing::medium + 92;
 
-            for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
-                pill->setBounds (controlRow.removeFromLeft (pillWidth)
-                                     .withSizeKeepingCentre (pillWidth, 28));
+            if (isRunHudActive())
+            {
+                // The HUD takes exactly the slot the pills + session score
+                // vacate, so A/B never shifts when a run starts or ends.
+                runHud.setBounds (controlRow.removeFromLeft (modesSlotWidth)
+                                      .withSizeKeepingCentre (modesSlotWidth, 30));
+            }
+            else
+            {
+                for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+                    pill->setBounds (controlRow.removeFromLeft (pillWidth)
+                                         .withSizeKeepingCentre (pillWidth, 28));
 
-            // Score and the lives/clock readout ride along with the modes:
-            // they say how *this* run is going, which is the same subject
-            // the pills set.
-            controlRow.removeFromLeft (Spacing::medium);
-            scoreLabel.setBounds (controlRow.removeFromLeft (92));
+                // Score and the lives/clock readout ride along with the modes:
+                // they say how *this* run is going, which is the same subject
+                // the pills set.
+                controlRow.removeFromLeft (Spacing::medium);
+                scoreLabel.setBounds (controlRow.removeFromLeft (92));
+            }
 
             // Only reserve width for the lives/clock readout when there is
             // one. In Practice there is nothing to report, and holding 86px
@@ -1296,7 +1320,44 @@ void EarTrainerEditor::modeSelected()
                      : blitzButton.getToggleState()   ? SessionManager::Mode::blitz
                                                       : SessionManager::Mode::practice);
 
-    startNewRun();
+    beginRunWithCountdown();
+}
+
+void EarTrainerEditor::beginRunWithCountdown()
+{
+    // Practice starts instantly: it is the mode without pressure, and a
+    // countdown before a pressureless run is theatre.
+    if (session.getMode() == SessionManager::Mode::practice)
+    {
+        runStarted = false;
+        startNewRun();
+        return;
+    }
+
+    // Anything still in flight belongs to whatever this replaces.
+    ++pendingAdvanceId;
+    runStarted = false;
+
+    // Quiet while the numbers fall - the run's first sound should be the
+    // run's first question.
+    processor.setSignalEnabled (false);
+    refreshRunStatus();
+    resized();
+
+    const auto caption = session.getMode() == SessionManager::Mode::survival
+                             ? survivalButton.getButtonText()
+                             : blitzButton.getButtonText();
+
+    // Capturing `this` raw is safe here: runCountdown is a member, its
+    // timer stops in its own destructor, and the editor outlives it.
+    runCountdown.setBounds (answerSection);
+    runCountdown.start (caption, [this]
+    {
+        runStarted = true;
+        processor.setSignalEnabled (currentScreen == Screen::training);
+        startNewRun();
+        resized();
+    });
 }
 
 void EarTrainerEditor::startNewRun()
@@ -1375,6 +1436,29 @@ void EarTrainerEditor::clearHint()
 
 void EarTrainerEditor::refreshRunStatus()
 {
+    // The HUD replaces the pills, the session score and the status label
+    // while a run is being played - a run you can silently re-mode
+    // mid-flight is a setting, not an event. Visibility is decided here
+    // (the one place run state changes funnel through); bounds in
+    // resized().
+    {
+        const auto onTraining = currentScreen == Screen::training;
+        const auto hudNow = isRunHudActive();
+        const auto hudWasVisible = runHud.isVisible();
+
+        runHud.setVisible (onTraining && hudNow);
+        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+            pill->setVisible (onTraining && ! hudNow);
+        scoreLabel.setVisible (onTraining && ! hudNow);
+
+        if (hudNow)
+            runHud.set (session.getMode(), session.getLivesRemaining(),
+                        session.getSecondsRemaining(), session.getRunScore());
+
+        if (hudWasVisible != (onTraining && hudNow))
+            resized();
+    }
+
     // Whether this label has text decides whether the control row reserves
     // width for it, so a mode change has to re-lay the row out. Without
     // this, switching to Survival wrote "3 lives" into a zero-width box.
@@ -1404,34 +1488,12 @@ void EarTrainerEditor::refreshRunStatus()
         return;
     }
 
-    if (mode == SessionManager::Mode::survival)
-    {
-        // Lives as filled/empty pips rather than a number - readable at a
-        // glance, which is the point of a life counter.
-        // Wrapped in juce::String explicitly: juce::String has no
-        // unambiguous operator+= for a raw CharPointer_UTF8, and the plain
-        // const char* overload would not treat these as UTF-8 (the same
-        // gotcha that mojibake'd the language display names, see ADR 011).
-        const juce::String filledPip (juce::CharPointer_UTF8 ("\xe2\x97\x8f"));   // U+25CF
-        const juce::String emptyPip  (juce::CharPointer_UTF8 ("\xe2\x97\x8b"));   // U+25CB
-
-        juce::String pips;
-        for (int i = 0; i < SessionManager::survivalLives; ++i)
-            pips += (i < session.getLivesRemaining()) ? filledPip : emptyPip;
-
-        runStatusLabel.setText (pips + "   " + juce::String (session.getRunScore()),
-                                 juce::dontSendNotification);
-        runStatusLabel.setColour (juce::Label::textColourId,
-                                   session.getLivesRemaining() <= 1 ? theme.negative : theme.text);
-        return;
-    }
-
-    const auto seconds = session.getSecondsRemaining();
-    runStatusLabel.setText (juce::String (seconds) + "s   " + juce::String (session.getRunScore()),
-                             juce::dontSendNotification);
-    runStatusLabel.setColour (juce::Label::textColourId,
-                               seconds <= 10 ? theme.negative : theme.text);
-    if (! hadText)
+    // While the run is actually being played, the HUD (above) carries the
+    // lives/clock/score - the old text readout would say the same thing
+    // twice, in a smaller voice. It also stays empty during the countdown,
+    // when the run is armed but not yet anything to report on.
+    runStatusLabel.setText ({}, juce::dontSendNotification);
+    if (hadText)
         resized();
 }
 
@@ -1526,14 +1588,22 @@ void EarTrainerEditor::showScreen (Screen screen)
     // The instruction label additionally collapses once the exercise is
     // familiar; the flyup and pips manage their own visibility (the flyup
     // is only ever shown by an answer, the pips only by a live test), but
-    // both must vanish when the screen does.
+    // both must vanish when the screen does. A countdown mid-flight is
+    // abandoned outright - starting a run into a screen the player just
+    // left would be worse than not starting it.
     if (onTraining)
         instructionLabel.setVisible (shouldShowInstructions());
     if (! onTraining)
     {
         pointsFlyup.setVisible (false);
         promotionPips.setVisible (false);
+        runCountdown.cancel();
     }
+
+    // Pills vs. HUD is run state, and refreshRunStatus() is where run
+    // state funnels; without this, returning to Training mid-run showed
+    // the pills for a frame (or forever, if nothing else refreshed).
+    refreshRunStatus();
 
     // Level, streak and the daily challenge belong to the screen you plan
     // from, not the one you answer on.
