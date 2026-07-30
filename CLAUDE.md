@@ -1024,6 +1024,17 @@ rationale; summary here.
   shadow instead.
 - **All four editors are resizable**, and `tools/EditorSnapshots` renders a
   `-Stretched` variant of two of them at 1.35× so "adaptive" is a checked
+  The training screen's controls are **one row**, not two: mode pills and
+  score on the left, A/B centred directly under the scale it compares, the
+  hint on the right. A/B used to have a row of its own, which made five
+  levels of importance on a screen that should have four — and the two rows
+  were the same subject anyway (how this round is being played). Five
+  groups only fit at the design width because `runStatusLabel` reserves no
+  width when it has nothing to show, and `refreshRunStatus` calls
+  `resized()` when that emptiness changes — without it, switching to
+  Survival wrote "3 lives" into a zero-width box. The A/B pair is width-
+  *capped*, never floored: a minimum wider than the space left is not a
+  minimum, it is an overlap.
   claim rather than a word. In EarTrainer the *answer* section absorbs the
   leftover (a taller scale is a more precise scale; a taller heading is a
   heading with air over it), the rows beneath it are taken off the
