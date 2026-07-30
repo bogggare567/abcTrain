@@ -209,6 +209,38 @@ float AbcTrainLookAndFeel::getTextScale() noexcept
     return sharedTextScale;
 }
 
+juce::Font AbcTrainLookAndFeel::displayFont()
+{
+    // Near-zero tracking: at this size the default letter spacing reads as
+    // loose, and a wordmark that looks loose looks like body text scaled up.
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                           displayFontHeight * sharedTextScale, juce::Font::bold));
+}
+
+juce::Font AbcTrainLookAndFeel::headingFont()
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                           headingFontHeight * sharedTextScale, juce::Font::bold));
+}
+
+juce::Font AbcTrainLookAndFeel::bodyFont()
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                           bodyFontHeight * sharedTextScale, juce::Font::plain));
+}
+
+juce::Font AbcTrainLookAndFeel::labelFont()
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                           labelFontHeight * sharedTextScale, juce::Font::plain));
+}
+
+juce::Font AbcTrainLookAndFeel::microFont()
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                           microFontHeight * sharedTextScale, juce::Font::plain));
+}
+
 juce::Font AbcTrainLookAndFeel::titleFont()
 {
     return juce::Font (juce::FontOptions (interfaceTypefaceName(),

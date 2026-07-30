@@ -348,7 +348,7 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
     // Labels alternate between two rows: at eight or nine choices, one row
     // of labels across this width collides. Staggering is what the
     // reference scales do for exactly the same reason.
-    g.setFont (juce::Font (juce::FontOptions (11.5f)));
+    g.setFont (AbcTrainLookAndFeel::captionFont());
 
     const auto labelRowHeight = 15.0f;
     const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 2.0f;
@@ -416,13 +416,13 @@ void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
         AbcTrainLookAndFeel::drawTrackedText (
             g, choiceLabels[highlighted],
             bigLabelArea.translated (feedbackWobblePx, 0.0f),
-            juce::Font (juce::FontOptions (26.0f, juce::Font::bold)),
+            AbcTrainLookAndFeel::titleFont().withHeight (26.0f * AbcTrainLookAndFeel::getTextScale()),
             valueColour, 1.6f, juce::Justification::centred);
     }
     else
     {
         g.setColour (theme.textDim.withAlpha (0.55f));
-        g.setFont (juce::Font (juce::FontOptions (13.0f)));
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
         g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
     }
 
@@ -584,7 +584,7 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
     if (! cursorEngaged || valueFormatter == nullptr)
     {
         g.setColour (theme.textDim.withAlpha (0.55f));
-        g.setFont (juce::Font (juce::FontOptions (13.0f)));
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
         g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
         return;
     }
@@ -594,7 +594,8 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
     // point of a value that tracks the pointer. Clamped to the panel so it
     // can't run off either end.
     const auto text = valueFormatter (cursorNormalised);
-    const auto font = juce::Font (juce::FontOptions (24.0f, juce::Font::bold));
+    const auto font = AbcTrainLookAndFeel::titleFont()
+                          .withHeight (24.0f * AbcTrainLookAndFeel::getTextScale());
     const auto textWidth = AbcTrainLookAndFeel::trackedTextWidth (text, font, 1.2f) + 16.0f;
 
     const auto centreX = juce::jlimit (scaleArea.getX() + textWidth * 0.5f,
@@ -616,7 +617,7 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
     if (answered && targetNormalised >= 0.0f && ! lastCorrect)
     {
         const auto targetText = valueFormatter (targetNormalised);
-        const auto targetFont = juce::Font (juce::FontOptions (15.0f, juce::Font::bold));
+        const auto targetFont = AbcTrainLookAndFeel::headingFont();
         const auto targetWidth = AbcTrainLookAndFeel::trackedTextWidth (targetText, targetFont, 1.0f) + 12.0f;
         const auto targetX = juce::jlimit (scaleArea.getX() + targetWidth * 0.5f,
                                             scaleArea.getRight() - targetWidth * 0.5f,

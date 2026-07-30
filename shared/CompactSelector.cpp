@@ -6,7 +6,7 @@ namespace
 {
     juce::Font valueFont()
     {
-        return juce::Font (juce::FontOptions (12.0f).withStyle ("Bold"));
+        return AbcTrainLookAndFeel::headingFont();
     }
 
     constexpr float tracking = 0.8f;

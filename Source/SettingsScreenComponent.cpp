@@ -154,7 +154,7 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     licenceView.setReadOnly (true);
     licenceView.setScrollbarsShown (true);
     licenceView.setCaretVisible (false);
-    licenceView.setFont (juce::Font (juce::FontOptions (11.0f)));
+    licenceView.setFont (AbcTrainLookAndFeel::captionFont());
     licenceView.setText (juce::String::fromUTF8 (BrandBinaryData::LICENSE,
                                                   BrandBinaryData::LICENSESize));
     addAndMakeVisible (licenceView);
@@ -350,7 +350,7 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
         }
 
         g.setColour (selected ? theme.textBright : theme.text);
-        g.setFont (juce::Font (juce::FontOptions (13.0f)));
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
         g.drawText (labels[i], bounds.withTrimmedLeft (14), juce::Justification::centredLeft, true);
     }
 }
@@ -435,7 +435,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
     AbcTrainLookAndFeel::drawTrackedText (g, heading,
                                            page.removeFromTop (26).toFloat(),
-                                           juce::Font (juce::FontOptions (16.0f).withStyle ("Bold")),
+                                           AbcTrainLookAndFeel::headingFont(),
                                            theme.textBright, 1.2f);
 
     page.removeFromTop (AbcTrainTheme::Spacing::small);
@@ -443,7 +443,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     if (currentPage == Page::about)
     {
         g.setColour (theme.textDim);
-        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         g.drawText ("abcTrain " + juce::String (CurrentVersion::string),
                      page.removeFromTop (18), juce::Justification::centredLeft, false);
 

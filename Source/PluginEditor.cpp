@@ -236,7 +236,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     auto& gameManager = processor.getGameManager();
 
     currentGameLabel.setJustificationType (juce::Justification::centredLeft);
-    currentGameLabel.setFont (juce::Font (juce::FontOptions (15.0f, juce::Font::bold)));
+    currentGameLabel.setFont (AbcTrainLookAndFeel::headingFont());
     addAndMakeVisible (currentGameLabel);
 
     backButton.onClick = [this] { showScreen (Screen::home); };
@@ -377,7 +377,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addAndMakeVisible (scoreLabel);
 
     feedbackLabel.setJustificationType (juce::Justification::centred);
-    feedbackLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
+    feedbackLabel.setFont (AbcTrainLookAndFeel::headingFont());
     addAndMakeVisible (feedbackLabel);
 
 

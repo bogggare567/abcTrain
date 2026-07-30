@@ -130,12 +130,12 @@ void AchievementsScreenComponent::paintEntry (juce::Graphics& g, const Entry& en
     auto text = row;
 
     g.setColour (entry.earned ? theme.textBright : theme.text.withAlpha (0.75f));
-    g.setFont (juce::Font (juce::FontOptions (13.0f).withStyle ("Bold")));
+    g.setFont (AbcTrainLookAndFeel::headingFont());
     g.drawText (entry.name, text.removeFromTop (18.0f).toNearestInt(),
                  juce::Justification::centredLeft, true);
 
     g.setColour (theme.textDim.withAlpha (entry.earned ? 0.9f : 0.7f));
-    g.setFont (juce::Font (juce::FontOptions (11.0f)));
+    g.setFont (AbcTrainLookAndFeel::captionFont());
     g.drawText (entry.description, text.removeFromTop (16.0f).toNearestInt(),
                  juce::Justification::centredLeft, true);
 }
@@ -162,11 +162,11 @@ void AchievementsScreenComponent::paint (juce::Graphics& g)
     auto header = card.reduced ((float) AbcTrainTheme::Spacing::large).toNearestInt();
 
     AbcTrainLookAndFeel::drawTrackedText (g, titleText, header.removeFromTop (26).toFloat(),
-                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+                                           AbcTrainLookAndFeel::headingFont(),
                                            theme.textBright, 1.2f);
 
     g.setColour (theme.textDim);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
+    g.setFont (AbcTrainLookAndFeel::labelFont());
     g.drawText (subtitleText, header.removeFromTop (18), juce::Justification::centredLeft, true);
 
     // The list scrolls inside its own clip, so rows cannot paint over the

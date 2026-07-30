@@ -34,9 +34,32 @@ public:
     // means "use the palette's accent", which is what EarTrainer wants.
     void refreshFromTheme (juce::Colour accentOverride = juce::Colours::transparentBlack);
 
-    static constexpr float titleFontHeight = 22.0f;
-    static constexpr float bodyFontHeight = 14.0f;
-    static constexpr float monoFontHeight = 16.0f;
+    // One type ladder, six roles, and every piece of text in four plugins
+    // picks one of them. Before this there were fifty-four separate
+    // FontOptions literals across the codebase - 12.5f here, 13.0f there,
+    // 11.5f in a third place - which is not a hierarchy, it is fifty-four
+    // independent decisions that happen to be near each other.
+    //
+    // Named by role rather than by size on purpose: "heading" survives a
+    // change of scale, "15px" is a fact about today's window.
+    //
+    // The steps are roughly a 1.15 ratio, which is tight enough that
+    // adjacent levels look deliberate rather than accidental and wide
+    // enough that they are distinguishable at a glance.
+    static juce::Font displayFont();   // the wordmark, and nothing else
+    static juce::Font headingFont();   // section and card titles
+    static juce::Font bodyFont();      // sentences
+    static juce::Font labelFont();     // control labels
+    static juce::Font microFont();     // counters, step markers
+
+    static constexpr float displayFontHeight = 30.0f;
+    static constexpr float headingFontHeight = 15.0f;
+    static constexpr float labelFontHeight = 12.0f;
+    static constexpr float microFontHeight = 10.0f;
+
+    static constexpr float titleFontHeight = 20.0f;
+    static constexpr float bodyFontHeight = 13.0f;
+    static constexpr float monoFontHeight = 13.0f;
     static constexpr float captionFontHeight = 11.0f;
 
     // The value readout under a rotary knob, in the mono face - so a knob

@@ -161,7 +161,7 @@ void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<f
     // display face this is as much of a wordmark as a system font can be
     // made into: weight, size and negative-ish tracking doing the work a
     // drawn logotype would otherwise do.
-    const auto font = juce::Font (juce::FontOptions (46.0f).withStyle ("Bold"));
+    const auto font = AbcTrainLookAndFeel::titleFont();
     constexpr float tracking = 0.4f;
 
     // "abc" in the three family colours, "Train" in plain bright text.
@@ -231,7 +231,7 @@ void SupportScreenComponent::paint (juce::Graphics& g)
     // --- the three words, arriving one at a time -------------------------
     {
         const char* const wordKeys[] = { "brand.a", "brand.b", "brand.c" };
-        const auto wordFont = juce::Font (juce::FontOptions (15.0f));
+        const auto wordFont = AbcTrainLookAndFeel::titleFont();
         auto row = area.removeFromTop (wordsHeight).toFloat();
 
         // Laid out as one centred line, measured first so the words don't
@@ -281,7 +281,7 @@ void SupportScreenComponent::paint (juce::Graphics& g)
     if (tourQuestion.isNotEmpty())
     {
         g.setColour (AbcTrainTheme::current().textDim);
-        g.setFont (juce::Font (juce::FontOptions (12.5f)));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         g.drawText (tourQuestion, tourQuestionBounds, juce::Justification::centred, true);
     }
 }

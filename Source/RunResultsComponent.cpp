@@ -143,11 +143,11 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
     // --- heading: which exercise, which mode -----------------------------
     AbcTrainLookAndFeel::drawTrackedText (g, titleText, inner.removeFromTop (26).toFloat(),
-                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+                                           AbcTrainLookAndFeel::headingFont(),
                                            theme.textBright, 1.2f);
 
     g.setColour (theme.textDim);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
+    g.setFont (AbcTrainLookAndFeel::labelFont());
     g.drawText (summary.exerciseName + "  ·  " + summary.modeName,
                  inner.removeFromTop (18), juce::Justification::centredLeft, true);
 
@@ -184,13 +184,13 @@ void RunResultsComponent::paint (juce::Graphics& g)
     if (summary.isNewBest)
     {
         g.setColour (theme.positive);
-        g.setFont (juce::Font (juce::FontOptions (13.0f).withStyle ("Bold")));
+        g.setFont (AbcTrainLookAndFeel::headingFont());
         g.drawText (newBestText, inner.removeFromTop (20), juce::Justification::centred, false);
     }
     else
     {
         g.setColour (theme.textDim);
-        g.setFont (juce::Font (juce::FontOptions (11.0f)));
+        g.setFont (AbcTrainLookAndFeel::captionFont());
         g.drawText (accuracyCaption + ": " + juce::String (juce::roundToInt (summary.lifetimeAccuracy * 100.0f))
                         + "%  (" + juce::String (summary.rounds) + ")",
                      inner.removeFromTop (20), juce::Justification::centred, false);

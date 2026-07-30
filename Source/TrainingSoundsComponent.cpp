@@ -44,7 +44,7 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     addAndMakeVisible (importButton);
 
     rootFolderLabel.setJustificationType (juce::Justification::centred);
-    rootFolderLabel.setFont (juce::Font (juce::FontOptions (11.0f)));
+    rootFolderLabel.setFont (AbcTrainLookAndFeel::captionFont());
     addAndMakeVisible (rootFolderLabel);
 
     // Reveals the library folder in Finder/Explorer. "Where did my import
@@ -290,7 +290,7 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
         auto text = row.reduced (10, 0);
 
         g.setColour (selected ? theme.textBright : theme.text);
-        g.setFont (juce::Font (juce::FontOptions (12.5f)));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         g.drawText (name, text.removeFromLeft (text.getWidth() - 34),
                      juce::Justification::centredLeft, true);
 
@@ -326,7 +326,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
         const auto anything = ! library.getCategories().isEmpty();
 
         g.setColour (theme.textDim);
-        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         g.drawFittedText (anything ? pickCategoryText : emptyMessage,
                            pane.withTrimmedTop (18), juce::Justification::centredTop, 4);
         return;
@@ -372,7 +372,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
         }
 
         g.setColour (isPinned ? theme.textBright : theme.text);
-        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         g.drawText ((*files)[i].getFileNameWithoutExtension(), text,
                      juce::Justification::centredLeft, true);
     }
@@ -401,7 +401,7 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
 
     AbcTrainLookAndFeel::drawTrackedText (g, titleLabel.getText(),
                                            inner.removeFromTop ((float) headerHeight),
-                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+                                           AbcTrainLookAndFeel::headingFont(),
                                            theme.textBright, 1.2f);
 
     inner.removeFromTop ((float) AbcTrainTheme::Spacing::large);
@@ -418,7 +418,7 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
                                         .toNearestInt());
 
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.0f)));
+            g.setFont (AbcTrainLookAndFeel::captionFont());
             g.drawText (importProgressFile, row.toNearestInt(),
                          juce::Justification::centredRight, true);
         }
@@ -428,7 +428,7 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
             // question - just the answer, because "where did my import go"
             // was unanswerable from this screen.
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.0f)));
+            g.setFont (AbcTrainLookAndFeel::captionFont());
             g.drawText (rootFolderLabel.getText(), row.toNearestInt(),
                          juce::Justification::centredLeft, true);
         }
@@ -454,7 +454,7 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
         footer.removeFromRight (110 + AbcTrainTheme::Spacing::small + 110);
 
         g.setColour (theme.text);
-        g.setFont (juce::Font (juce::FontOptions (12.0f)));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         g.drawText (statusLabel.getText(), footer, juce::Justification::centredLeft, true);
     }
 }

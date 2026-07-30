@@ -8,7 +8,7 @@ LessonController::LessonController (juce::AudioProcessorValueTreeState& stateToC
     setOpaque (true);
 
     titleLabel.setJustificationType (juce::Justification::centred);
-    titleLabel.setFont (juce::Font (juce::FontOptions (16.0f, juce::Font::bold)));
+    titleLabel.setFont (AbcTrainLookAndFeel::headingFont());
     addAndMakeVisible (titleLabel);
 
     progressLabel.setJustificationType (juce::Justification::centred);

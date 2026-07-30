@@ -201,7 +201,7 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
 
     auto nameArea = inner.removeFromTop (30.0f);
     g.setColour (theme.textBright);
-    g.setFont (juce::Font (juce::FontOptions (13.0f).withStyle ("Bold")));
+    g.setFont (AbcTrainLookAndFeel::headingFont());
     g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft, 2, 0.85f);
 
     if (card.statsLine.isNotEmpty())
@@ -383,7 +383,7 @@ void HomeScreenComponent::paintHoverTip (juce::Graphics& g)
     g.strokePath (card, juce::PathStrokeType (1.0f));
 
     g.setColour (theme.text);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
+    g.setFont (AbcTrainLookAndFeel::labelFont());
     g.drawFittedText (text, box.reduced (AbcTrainTheme::Spacing::small),
                        juce::Justification::centred, 3, 0.9f);
 }

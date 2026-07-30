@@ -663,11 +663,11 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
     const auto& theme = AbcTrainTheme::current();
 
     AbcTrainLookAndFeel::drawTrackedText (g, text.shelfTitle, area.removeFromTop (26).toFloat(),
-                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+                                           AbcTrainLookAndFeel::headingFont(),
                                            theme.textBright, 1.2f);
 
     g.setColour (theme.textDim);
-    g.setFont (juce::Font (juce::FontOptions (12.0f)));
+    g.setFont (AbcTrainLookAndFeel::labelFont());
     g.drawText (text.shelfSubtitle,
                  area.removeFromTop (20), juce::Justification::centredLeft, true);
 
@@ -683,7 +683,7 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
         if (isWalkthrough && i == (int) modules.size())
         {
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.0f)));
+            g.setFont (AbcTrainLookAndFeel::captionFont());
             g.drawText (text.walkthroughs.toUpperCase(), row.translated (0, -22).withHeight (16),
                          juce::Justification::centredLeft, true);
         }
@@ -724,11 +724,11 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
         }
 
         g.setColour (tier > 0 ? theme.textBright : theme.text);
-        g.setFont (juce::Font (juce::FontOptions (13.0f).withStyle ("Bold")));
+        g.setFont (AbcTrainLookAndFeel::headingFont());
         g.drawText (name, text.removeFromTop (18), juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
-        g.setFont (juce::Font (juce::FontOptions (11.0f)));
+        g.setFont (AbcTrainLookAndFeel::captionFont());
         g.drawText (why, text.removeFromTop (16), juce::Justification::centredLeft, true);
     }
 }
@@ -742,7 +742,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         return;
 
     AbcTrainLookAndFeel::drawTrackedText (g, definition->name, area.removeFromTop (26).toFloat(),
-                                           juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
+                                           AbcTrainLookAndFeel::headingFont(),
                                            theme.textBright, 1.2f);
 
     // Where you are, as four marks rather than "step 2 of 4" - the shape of
@@ -758,7 +758,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         for (int i = 0; i < 4; ++i)
         {
             const auto here = order[i] == phase;
-            const auto font = juce::Font (juce::FontOptions (10.5f));
+            const auto font = AbcTrainLookAndFeel::microFont();
             const auto width = AbcTrainLookAndFeel::trackedTextWidth (names[i], font, 0.8f) + 16.0f;
 
             g.setColour (here ? accent : theme.textDim.withAlpha (0.5f));
@@ -778,7 +778,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
     area.removeFromTop (AbcTrainTheme::Spacing::small);
     area.removeFromBottom (buttonHeight + AbcTrainTheme::Spacing::small);
 
-    const auto bodyFont = juce::Font (juce::FontOptions (13.0f));
+    const auto bodyFont = AbcTrainLookAndFeel::bodyFont();
     g.setFont (bodyFont);
 
     switch (phase)
@@ -792,7 +792,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
                                juce::Justification::topLeft, 6);
 
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.0f)));
+            g.setFont (AbcTrainLookAndFeel::captionFont());
             g.drawText ("Step " + juce::String (demoStep + 1) + " of "
                             + juce::String ((int) definition->demoSteps.size())
                             + " - the knobs below are moving as you read.",
@@ -814,7 +814,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
             // track, your mark on it, and the accept band drawn around your
             // mark at the width the tier allows.
             g.setColour (theme.textBright);
-            g.setFont (juce::Font (juce::FontOptions (15.0f).withStyle ("Bold")));
+            g.setFont (AbcTrainLookAndFeel::headingFont());
             g.drawText (text.match, band.removeFromTop (24), juce::Justification::centred, false);
 
             band.removeFromTop (12);
@@ -846,7 +846,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
                     // the track stays empty rather than displaying a
                     // position that is not an answer yet.
                     g.setColour (theme.textDim.withAlpha (0.55f));
-                    g.setFont (juce::Font (juce::FontOptions (11.0f)));
+                    g.setFont (AbcTrainLookAndFeel::captionFont());
                     g.drawText (text.reference, scale, juce::Justification::centred, false);
                 }
                 else
@@ -873,7 +873,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
             }
 
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.5f)));
+            g.setFont (AbcTrainLookAndFeel::captionFont());
             g.drawText (text.turnKnob, band.removeFromTop (18), juce::Justification::centred, false);
             break;
         }
@@ -881,7 +881,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         case Phase::result:
         {
             g.setColour (lastAttemptPassed ? accent : theme.textBright);
-            g.setFont (juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")));
+            g.setFont (AbcTrainLookAndFeel::headingFont());
             g.drawText (lastAttemptPassed ? text.passed : text.notYet,
                          area.removeFromTop (26), juce::Justification::centred, false);
 
@@ -893,7 +893,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
                          area.removeFromTop (26), juce::Justification::centred, false);
 
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (12.0f)));
+            g.setFont (AbcTrainLookAndFeel::labelFont());
             g.drawText (text.youSaid + " " + formatValue (playerValue),
                          area.removeFromTop (20), juce::Justification::centred, false);
             break;

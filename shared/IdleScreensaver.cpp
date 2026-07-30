@@ -53,7 +53,7 @@ void IdleScreensaver::dismiss()
 
 juce::Rectangle<float> IdleScreensaver::markBounds() const
 {
-    const auto font = juce::Font (juce::FontOptions (17.0f));
+    const auto font = AbcTrainLookAndFeel::titleFont();
     const auto width = AbcTrainLookAndFeel::trackedTextWidth (text, font, 2.6f) + 4.0f;
 
     return { position.x, position.y, width, 24.0f };
@@ -146,6 +146,6 @@ void IdleScreensaver::paint (juce::Graphics& g)
     // plate made it a badge sliding around, and a badge is a thing with a
     // purpose. This has none, which is the point.
     AbcTrainLookAndFeel::drawTrackedText (g, text, markBounds(),
-                                           juce::Font (juce::FontOptions (17.0f)),
+                                           AbcTrainLookAndFeel::titleFont(),
                                            bounceColour (colourIndex).withAlpha (0.72f), 2.6f);
 }
