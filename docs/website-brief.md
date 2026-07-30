@@ -59,7 +59,7 @@
 | | |
 |---|---|
 | Название | abcTrain — *ambiance · balance · clarity* |
-| Версия на момент брифа | **v1.3.0**, опубликована 30.07.2026 |
+| Версия на момент брифа | **v1.3.1**, опубликована 30.07.2026 |
 | Плагинов | 4: ABC Ear Trainer, ABC Learner EQ, ABC Learner Comp, ABC Learner Verb |
 | Производитель (как видит DAW) | soundkorb |
 | Упражнений в тренажёре | **9** |
@@ -288,14 +288,14 @@ sans-serif`. Цифры в показаниях — моноширинные.
 | Поддержать | `https://www.donationalerts.com/r/bogdankorablev` |
 | Лицензия | `https://github.com/bogggare567/abcTrain/blob/main/LICENSE` |
 
-Прямые ссылки на файлы **v1.3.0** — для трёх кнопок по ОС. Если версия
+Прямые ссылки на файлы **v1.3.1** — для трёх кнопок по ОС. Если версия
 поменяется, поменяйте номер в четырёх местах или ведите все кнопки на
 `/releases/latest`.
 
 ```
-https://github.com/bogggare567/abcTrain/releases/download/v1.3.0/abcTrain-macOS-1.3.0.dmg
-https://github.com/bogggare567/abcTrain/releases/download/v1.3.0/abcTrain-Windows-1.3.0-setup.exe
-https://github.com/bogggare567/abcTrain/releases/download/v1.3.0/abcTrain-Linux-1.3.0.tar.gz
+https://github.com/bogggare567/abcTrain/releases/download/v1.3.1/abcTrain-macOS-1.3.1.dmg
+https://github.com/bogggare567/abcTrain/releases/download/v1.3.1/abcTrain-Windows-1.3.1-setup.exe
+https://github.com/bogggare567/abcTrain/releases/download/v1.3.1/abcTrain-Linux-1.3.1.tar.gz
 ```
 
 ---
