@@ -122,7 +122,10 @@ private:
     IconButton modulesButton { AppIcons::Icon::modules };
     ModuleProgress moduleProgress { processor.getSharedProperties() };
     ModuleScreenComponent moduleScreen { processor.apvts, moduleProgress,
-                                          processor.getPracticeSource() };
+                                          processor.getPracticeSource(),
+                                          [this] (const juce::String& id, float value)
+                                          { processor.setCheckOverride (id, value); },
+                                          [this] { processor.clearCheckOverride(); } };
     LessonController lessonController;
     LessonController busGlueLessonController;
 

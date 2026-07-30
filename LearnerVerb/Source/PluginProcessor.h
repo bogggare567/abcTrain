@@ -63,11 +63,42 @@ public:
     // Practice audio: the shared reference library, played through this
     // plugin so it is not silent outside a DAW. Off by default - see
     // shared/PracticeAudioSource.h.
+    // While a training module's check is auditioning its hidden reference,
+    // one parameter is processed at a value the *knob does not show*.
+    //
+    // The obvious implementation - write the target into the parameter -
+    // is the one that cannot work: the knob is bound to that parameter, so
+    // it would move to the answer and give it away. So the parameter keeps
+    // holding whatever the player dialled, and the override is applied on
+    // the way into the DSP instead.
+    //
+    // Matched by pointer rather than by ID string, because the comparison
+    // happens per block on the audio thread and comparing juce::Strings
+    // there is work with no reason to exist.
+    void setCheckOverride (const juce::String& parameterID, float value);
+    void clearCheckOverride();
+
     ReferenceAudioLibrary& getPracticeLibrary() noexcept { return practiceLibrary; }
     PracticeAudioSource& getPracticeSource() noexcept { return practiceSource; }
     juce::PropertiesFile& getSharedProperties() noexcept { return sharedProperties; }
 
 private:
+
+    // See setCheckOverride. Null target means "no override", which is the
+    // state for all but a few seconds of this plugin's life.
+    std::atomic<std::atomic<float>*> checkOverrideTarget { nullptr };
+    std::atomic<float> checkOverrideValue { 0.0f };
+
+    // Audio thread. One atomic pointer compare per parameter read.
+    float valueOf (const juce::String& parameterID) const noexcept
+    {
+        auto* raw = apvts.getRawParameterValue (parameterID);
+
+        if (raw == nullptr)
+            return 0.0f;
+
+        return raw == checkOverrideTarget.load() ? checkOverrideValue.load() : raw->load();
+    }
 
     // Product-wide preferences (the same "abcTrain" file the theme,
     // language and reference library already share), not APVTS state:

@@ -18,15 +18,20 @@ namespace
         {
             case 1:  return 210;  // demo: explanation, step counter
             case 2:  return 190;  // try it
-            default: return 0;    // shelf and check size themselves
+            case 3:  return 250;  // check: question, tier, live readout
+            case 4:  return 230;  // result
+            default: return 0;    // the shelf sizes itself
         }
     }
 }
 
 ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState& state,
                                               ModuleProgress& progressToUse,
-                                              PracticeAudioSource& source)
-    : apvts (state), progress (progressToUse), practiceSource (source)
+                                              PracticeAudioSource& source,
+                                              std::function<void (const juce::String&, float)> set,
+                                              std::function<void()> clear)
+    : apvts (state), progress (progressToUse), practiceSource (source),
+      setOverride (std::move (set)), clearOverride (std::move (clear))
 {
     for (auto* button : { &backButton, &nextButton, &readyButton, &referenceButton,
                           &mineButton, &submitButton, &againButton, &doneButton, &closeButton })
@@ -71,7 +76,13 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
     referenceButton.onClick = [this]
     {
         auditioningReference = true;
-        setParameter (currentModule()->check.parameterID, hiddenTarget);
+
+        // The knob stays where the player left it; the reference goes
+        // straight into the DSP past it.
+        if (setOverride != nullptr)
+            if (auto* definition = currentModule())
+                setOverride (definition->check.parameterID, hiddenTarget);
+
         refreshAuditionButtons();
         repaint();
     };
@@ -79,7 +90,10 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
     mineButton.onClick = [this]
     {
         auditioningReference = false;
-        setParameter (currentModule()->check.parameterID, playerValue);
+
+        if (clearOverride != nullptr)
+            clearOverride();
+
         refreshAuditionButtons();
         repaint();
     };
@@ -99,28 +113,6 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
             onClosed();
     };
 
-    answerSlider.setRange (0.0, 1.0, 0.0);
-    addChildComponent (answerSlider);
-
-    answerSlider.onValueChange = [this]
-    {
-        auto* definition = currentModule();
-
-        if (definition == nullptr)
-            return;
-
-        const auto& check = definition->check;
-        const auto t = (float) answerSlider.getValue();
-
-        playerValue = check.drawLogarithmically && check.minTarget > 0.0f
-                          ? check.minTarget * std::pow (check.maxTarget / check.minTarget, t)
-                          : check.minTarget + t * (check.maxTarget - check.minTarget);
-
-        if (! auditioningReference)
-            setParameter (check.parameterID, playerValue);
-
-        repaint();
-    };
 
     startTimerHz (60);
 }
@@ -130,6 +122,9 @@ ModuleScreenComponent::~ModuleScreenComponent()
     // The processor holds a raw pointer to `bed`. Clear it before this
     // object - and the buffer with it - goes away.
     practiceSource.setOverrideBuffer (nullptr);
+
+    if (clearOverride != nullptr)
+        clearOverride();
 }
 
 void ModuleScreenComponent::setModules (std::vector<TrainingModule::Definition> newModules)
@@ -197,7 +192,9 @@ void ModuleScreenComponent::openModule (int index)
 void ModuleScreenComponent::goToPhase (Phase newPhase)
 {
     phase = newPhase;
-    expansionTarget = newPhase == Phase::check || newPhase == Phase::result ? 1.0f : 0.0f;
+    // No phase covers the knobs any more: during the check they are how
+    // you answer.
+    expansionTarget = 0.0f;
     layoutButtons();
     repaint();
 }
@@ -219,24 +216,21 @@ void ModuleScreenComponent::beginCheck()
 
     hiddenTarget = TrainingModule::drawTarget (check, random);
 
-    // Start the player somewhere neutral rather than on the answer.
-    playerValue = check.drawLogarithmically && check.minTarget > 0.0f
-                      ? std::sqrt (check.minTarget * check.maxTarget)
-                      : (check.minTarget + check.maxTarget) * 0.5f;
+    // Put the knob somewhere neutral once, then never touch it again: from
+    // here on its position *is* the answer, and moving it would be the
+    // panel answering for the player.
+    const auto neutral = check.drawLogarithmically && check.minTarget > 0.0f
+                             ? std::sqrt (check.minTarget * check.maxTarget)
+                             : (check.minTarget + check.maxTarget) * 0.5f;
 
-    if (check.unit == TrainingModule::Unit::choice)
-        playerValue = check.minTarget;
-
-    const auto normalised = check.drawLogarithmically && check.minTarget > 0.0f
-                                ? std::log (playerValue / check.minTarget)
-                                      / std::log (check.maxTarget / check.minTarget)
-                                : (playerValue - check.minTarget) / (check.maxTarget - check.minTarget);
-
-    answerSlider.setValue (juce::jlimit (0.0, 1.0, (double) normalised),
-                            juce::dontSendNotification);
+    setParameter (check.parameterID, check.unit == TrainingModule::Unit::choice
+                                         ? check.minTarget : neutral);
 
     auditioningReference = true;
-    setParameter (check.parameterID, hiddenTarget);
+
+    if (setOverride != nullptr)
+        setOverride (check.parameterID, hiddenTarget);
+
     refreshAuditionButtons();
 
     // A fresh instance of the bed, so the check is not the same recording
@@ -244,6 +238,13 @@ void ModuleScreenComponent::beginCheck()
     playBed (check.bed, random.nextInt (10000));
 
     goToPhase (Phase::check);
+}
+
+float ModuleScreenComponent::currentKnobValue() const
+{
+    auto* definition = currentModule();
+
+    return definition != nullptr ? getParameter (definition->check.parameterID) : 0.0f;
 }
 
 void ModuleScreenComponent::refreshAuditionButtons()
@@ -268,6 +269,12 @@ void ModuleScreenComponent::submitAnswer()
         return;
 
     const auto& check = definition->check;
+
+    // Whatever the knob says now is the answer.
+    playerValue = currentKnobValue();
+
+    if (clearOverride != nullptr)
+        clearOverride();
 
     lastAttemptPassed = TrainingModule::passes (check, hiddenTarget, playerValue, checkTier);
     lastAttemptQuality = TrainingModule::quality (check, hiddenTarget, playerValue, checkTier);
@@ -339,6 +346,11 @@ void ModuleScreenComponent::playBed (TrainingModule::Bed which, int seed)
 void ModuleScreenComponent::stopBed()
 {
     practiceSource.setOverrideBuffer (nullptr);
+
+    // An override left armed would silently keep processing at a value no
+    // knob shows, for as long as the plugin stayed loaded.
+    if (clearOverride != nullptr)
+        clearOverride();
 }
 
 juce::Rectangle<int> ModuleScreenComponent::panelBounds() const
@@ -353,8 +365,11 @@ juce::Rectangle<int> ModuleScreenComponent::panelBounds() const
         return area.withHeight (juce::jmin (area.getHeight(), needed));
     }
 
-    const auto resting = juce::jmin (area.getHeight(),
-                                      contentHeightFor (phase == Phase::demo ? 1 : 2));
+    const auto forPhase = phase == Phase::demo   ? 1
+                        : phase == Phase::tryIt  ? 2
+                        : phase == Phase::check  ? 3 : 4;
+
+    const auto resting = juce::jmin (area.getHeight(), contentHeightFor (forPhase));
     const auto height = resting + (int) ((float) (area.getHeight() - resting) * expansion);
 
     return area.withHeight (juce::jlimit (0, area.getHeight(), height));
@@ -379,7 +394,6 @@ void ModuleScreenComponent::layoutButtons()
                           &mineButton, &submitButton, &againButton, &doneButton, &closeButton })
         button->setVisible (false);
 
-    answerSlider.setVisible (false);
 
     auto area = panelBounds().reduced (AbcTrainTheme::Spacing::large);
 
@@ -418,8 +432,6 @@ void ModuleScreenComponent::layoutButtons()
             place (referenceButton, 104);
             place (closeButton, 84);
 
-            answerSlider.setVisible (true);
-            answerSlider.setBounds (checkBandBounds().removeFromBottom (36).reduced (0, 6));
             break;
 
         case Phase::result:
@@ -489,6 +501,9 @@ void ModuleScreenComponent::timerCallback()
         expansion += juce::jlimit (-step, step, expansionTarget - expansion);
         moved = true;
     }
+
+    if (phase == Phase::check && ! auditioningReference)
+        moved = true;   // the readout follows the knob, which this panel does not own
 
     if (appearAmount < 1.0f)
     {
@@ -765,7 +780,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
 
             g.setColour (theme.text);
             g.drawFittedText ("Something is set to a value you cannot see. Switch between "
-                              "Reference and Mine, and move the slider until they match.",
+                              "Reference and Mine, and turn the knob until they match.",
                                band.removeFromTop (44), juce::Justification::centredTop, 3);
 
             g.setColour (theme.textDim);
@@ -783,7 +798,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
             auto readout = band.removeFromBottom (56);
             g.setColour (auditioningReference ? theme.textDim : accent);
             g.setFont (juce::Font (AbcTrainLookAndFeel::monoFont()).withHeight (26.0f));
-            g.drawText (auditioningReference ? "reference" : formatValue (playerValue),
+            g.drawText (auditioningReference ? "reference" : formatValue (currentKnobValue()),
                          readout, juce::Justification::centred, true);
 
             if (! auditioningReference)

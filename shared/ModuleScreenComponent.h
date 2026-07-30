@@ -16,17 +16,27 @@
 // lesson about a knob you cannot touch is a slideshow. Everything outside
 // the painted panel falls through to whatever is beneath it, via hitTest.
 //
-// During the *check* it takes the whole area instead, and that is not a
-// layout convenience: with the spectrum and the knobs on screen the answer
-// is readable off the display, and a check you can see the answer to is not
-// a check. The panel grows into place rather than jumping, so where it went
-// is legible.
+// The check works the same way, and for a better reason than it used to.
+// **You answer by turning the plugin's own knob** - not a slider this panel
+// invented, which was a second answering mechanic in a product that already
+// had one and made the plugins feel unlike the trainer. So the knobs must
+// stay reachable during the check too; only the analysis section is covered,
+// which is also what stops the answer being readable off the spectrum.
+//
+// The hidden reference is applied through Processor::setCheckOverride rather
+// than by writing the parameter, because the knob is bound to that parameter
+// and would otherwise move to the answer and give it away.
 class ModuleScreenComponent : public juce::Component,
                                private juce::Timer
 {
 public:
+    // The two callbacks are how the panel reaches the processor's check
+    // override without knowing which processor it is - the alternative was
+    // a template, for two call sites.
     ModuleScreenComponent (juce::AudioProcessorValueTreeState&, ModuleProgress&,
-                           PracticeAudioSource&);
+                           PracticeAudioSource&,
+                           std::function<void (const juce::String&, float)> setOverride,
+                           std::function<void()> clearOverride);
     ~ModuleScreenComponent() override;
 
     void setModules (std::vector<TrainingModule::Definition>);
@@ -90,12 +100,15 @@ private:
     juce::String formatValue (float value) const;
     static juce::String describeTolerance (const TrainingModule::Check&, int tier);
     void refreshAuditionButtons();
+    float currentKnobValue() const;
 
     const TrainingModule::Definition* currentModule() const;
 
     juce::AudioProcessorValueTreeState& apvts;
     ModuleProgress& progress;
     PracticeAudioSource& practiceSource;
+    std::function<void (const juce::String&, float)> setOverride;
+    std::function<void()> clearOverride;
 
     std::vector<TrainingModule::Definition> modules;
     juce::StringArray walkthroughs;
@@ -148,7 +161,6 @@ private:
                      againButton { "Try again" }, doneButton { "Done" },
                      closeButton { "Close" };
 
-    juce::Slider answerSlider { juce::Slider::LinearHorizontal, juce::Slider::NoTextBox };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ModuleScreenComponent)
 };

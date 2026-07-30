@@ -923,13 +923,22 @@ rationale; summary here.
   append-only constraint nothing enforces.
 - `shared/ModuleScreenComponent.{h,cpp}` — the module panel inside Learner
   Comp and Learner Verb, opened by a checklist `IconButton` that replaced
-  the "Lessons" `ComboBox`. **It deliberately does not cover the whole
-  editor**: during the demonstration and the try-it step it sits over the
-  analysis section only and `hitTest` returns false outside the painted
-  panel, so the knobs stay live underneath — a lesson about a knob you
-  cannot touch is a slideshow. During the **check** it takes the whole
-  area, because with the spectrum and the knobs on screen the answer is
-  readable off the display. The two audition buttons (Reference / Mine)
+  the "Lessons" `ComboBox`. **It never covers the knobs**: it sits over
+  the analysis section only and `hitTest` returns false outside the
+  painted panel. During the demo that is because a lesson about a knob you
+  cannot touch is a slideshow; during the **check** it is because
+  **you answer by turning the plugin's own knob**. The panel invented its
+  own slider once, which was a second answering mechanic in a product that
+  already had one and made the plugins feel unlike the trainer. Covering
+  the analysis section is also what stops the answer being readable off
+  the spectrum. The hidden reference reaches the DSP through
+  `LearnerCompProcessor::setCheckOverride` (matched by raw-parameter
+  *pointer*, so the per-block audio-thread test is not a `juce::String`
+  comparison) rather than by writing the parameter — the knob is bound to
+  that parameter and would otherwise travel to the answer and give it
+  away. `stopBed()` and the destructor both clear the override, since one
+  left armed would keep processing at a value no knob shows. The two
+  audition buttons (Reference / Mine)
   are load-bearing, not decoration: matching a hidden value without being
   able to switch back to it is a guess, not a listening task. Every
   parameter is saved on entry and restored on exit. The two existing

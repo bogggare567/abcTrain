@@ -74,12 +74,23 @@ void LearnerCompProcessor::prepareToPlay (double sampleRate, int)
 void LearnerCompProcessor::updateEngineParameters()
 {
     engine.setParameters (
-        apvts.getRawParameterValue (thresholdParamId)->load(),
-        apvts.getRawParameterValue (ratioParamId)->load(),
-        apvts.getRawParameterValue (attackParamId)->load(),
-        apvts.getRawParameterValue (releaseParamId)->load(),
-        apvts.getRawParameterValue (kneeParamId)->load(),
-        apvts.getRawParameterValue (makeupParamId)->load());
+        valueOf (thresholdParamId),
+        valueOf (ratioParamId),
+        valueOf (attackParamId),
+        valueOf (releaseParamId),
+        valueOf (kneeParamId),
+        valueOf (makeupParamId));
+}
+
+void LearnerCompProcessor::setCheckOverride (const juce::String& parameterID, float value)
+{
+    checkOverrideValue.store (value);
+    checkOverrideTarget.store (apvts.getRawParameterValue (parameterID));
+}
+
+void LearnerCompProcessor::clearCheckOverride()
+{
+    checkOverrideTarget.store (nullptr);
 }
 
 void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -101,7 +112,7 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     auto* display = waveformDisplay.load();
     auto* analyzer = spectrumAnalyzer.load();
 
-    const bool bypassed = apvts.getRawParameterValue (bypassParamId)->load() > 0.5f;
+    const bool bypassed = valueOf (bypassParamId) > 0.5f;
 
     if (bypassed)
     {
@@ -127,7 +138,7 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 
     updateEngineParameters();
     const auto dryWetFraction = juce::jlimit (0.0f, 1.0f,
-        apvts.getRawParameterValue (dryWetParamId)->load() / 100.0f);
+        valueOf (dryWetParamId) / 100.0f);
 
     for (int i = 0; i < numSamples; ++i)
     {

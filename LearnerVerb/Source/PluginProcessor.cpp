@@ -81,16 +81,27 @@ void LearnerVerbProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
 
 void LearnerVerbProcessor::updateEngineParameters()
 {
-    const auto typeIndex = (int) apvts.getRawParameterValue (typeParamId)->load();
+    const auto typeIndex = (int) valueOf (typeParamId);
     const auto type = static_cast<ReverbEngine::Type> (juce::jlimit (0, 3, typeIndex));
 
     engine.setParameters (
         type,
-        apvts.getRawParameterValue (decayParamId)->load(),
-        apvts.getRawParameterValue (preDelayParamId)->load(),
-        apvts.getRawParameterValue (sizeParamId)->load() / 100.0f,
-        apvts.getRawParameterValue (dampingParamId)->load() / 100.0f,
-        apvts.getRawParameterValue (widthParamId)->load() / 100.0f);
+        valueOf (decayParamId),
+        valueOf (preDelayParamId),
+        valueOf (sizeParamId) / 100.0f,
+        valueOf (dampingParamId) / 100.0f,
+        valueOf (widthParamId) / 100.0f);
+}
+
+void LearnerVerbProcessor::setCheckOverride (const juce::String& parameterID, float value)
+{
+    checkOverrideValue.store (value);
+    checkOverrideTarget.store (apvts.getRawParameterValue (parameterID));
+}
+
+void LearnerVerbProcessor::clearCheckOverride()
+{
+    checkOverrideTarget.store (nullptr);
 }
 
 void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -112,7 +123,7 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    const bool bypassed = apvts.getRawParameterValue (bypassParamId)->load() > 0.5f;
+    const bool bypassed = valueOf (bypassParamId) > 0.5f;
 
     wetBuffer.makeCopyOf (buffer, true);
     juce::dsp::AudioBlock<float> wetBlock (wetBuffer);
@@ -125,7 +136,7 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // state (the reverb tail) stays warm - no click or cold-start thump
     // if bypass is toggled off mid-tail.
     const auto dryWetFraction = bypassed ? 0.0f
-        : juce::jlimit (0.0f, 1.0f, apvts.getRawParameterValue (dryWetParamId)->load() / 100.0f);
+        : juce::jlimit (0.0f, 1.0f, valueOf (dryWetParamId) / 100.0f);
 
     auto* display = waveformDisplay.load();
     auto* analyzer = spectrumAnalyzer.load();
