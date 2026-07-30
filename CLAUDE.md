@@ -125,6 +125,14 @@ exact screenshot and icon paths, the palette and font stack taken from
 claim" section listing the things that would collapse on first inspection
 — unsigned builds, no stem separation, stereo width still on pink noise).
 Re-check its version numbers and asset URLs whenever a release is tagged.
+`docs/wiki/` (the **user-facing** manual, mirrored to the GitHub wiki:
+install, first ten minutes, the nine exercises, the teaching plugins and
+their modules, importing your own audio, levels/achievements,
+troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
+`docs/`, which is written for whoever changes the code — if a page here
+starts explaining a decision, it belongs in an ADR instead. The wiki git
+remote only exists once a first page has been created in the browser,
+which is why these live in the repo and are pushed from here).
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.

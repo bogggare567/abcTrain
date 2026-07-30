@@ -26,6 +26,8 @@ one free, open-source suite for macOS, Windows and Linux.
 [![How it works](https://img.shields.io/badge/How%20it%20works-2A2A3A?style=flat-square)](#-how-it-works)
 [![The nine exercises](https://img.shields.io/badge/9%20exercises-2A2A3A?style=flat-square)](#-9-games)
 [![Roadmap](https://img.shields.io/badge/Roadmap-2A2A3A?style=flat-square)](docs/roadmap.md)
+[![Wiki](https://img.shields.io/badge/Wiki-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/wiki)
+[![Discussions](https://img.shields.io/badge/Discussions-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/discussions)
 [![Contribute](https://img.shields.io/badge/Contribute-2A2A3A?style=flat-square)](docs/orientation.md)
 
 <br>
@@ -466,6 +468,31 @@ Trying it before it's finished is genuinely useful — see
 and what's already known to be incomplete (so you don't file a bug for
 something already tracked).
 
+## 💬 Where to ask what
+
+Four places, and which one you want is decided by what you have, not by how
+important it feels.
+
+| You have | Go here |
+|---|---|
+| a **question** about using it | [Discussions → Q&A](https://github.com/bogggare567/abcTrain/discussions/categories/q-a) |
+| something **broken** — a crash, a host that will not load it, an installer that fails | [Issues](https://github.com/bogggare567/abcTrain/issues/new/choose) |
+| an **idea** | [Discussions → Ideas](https://github.com/bogggare567/abcTrain/discussions/categories/ideas) — start with the problem, not the solution |
+| something you **made** with it | [Discussions → Show and tell](https://github.com/bogggare567/abcTrain/discussions/categories/show-and-tell) |
+
+The [**wiki**](https://github.com/bogggare567/abcTrain/wiki) answers the
+questions that already have answers: installing it, what each exercise
+trains, how to import your own audio, how levels work, and what to do when
+something goes wrong. It is written for people using the suite; the `docs/`
+folder here is written for people changing it.
+
+Before reporting a crash, check you are on the current release — a
+use-after-free that killed Learner Comp and Learner Verb mid-check was
+fixed in v1.2.2. A crash report beats a description, because it names the
+line; the wiki's
+[Troubleshooting](https://github.com/bogggare567/abcTrain/wiki/Troubleshooting)
+page says where your OS keeps them.
+
 ## 🤝 Contributing
 
 Good first contributions, roughly in order of how self-contained they are:
@@ -489,7 +516,10 @@ Free, open source, and staying that way — no paid tier, no subscription,
 nothing locked behind anything.
 
 If it's useful to you, a **[star](https://github.com/bogggare567/abcTrain)**
-helps other people find it, and a donation keeps it moving. Both are
+helps other people find it — GitHub lists everyone who has starred a
+repository at
+[/stargazers](https://github.com/bogggare567/abcTrain/stargazers), so it is
+a public thank-you rather than an anonymous number, and a donation keeps it moving. Both are
 optional and neither unlocks anything: gating software behind a star is
 against [GitHub's rules on incentivised engagement](https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies),
 and would be trivially bypassable anyway.
