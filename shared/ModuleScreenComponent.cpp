@@ -445,12 +445,39 @@ void ModuleScreenComponent::layoutButtons()
             break;
 
         case Phase::check:
+        {
+            // Laid out like the trainer's answer row, not as four equal
+            // grey buttons in a huddle. Reference/Mine is one *pair*,
+            // centred under the scale it compares - the same shape and the
+            // same place as A/B - because it is the same act: hearing the
+            // treated thing against your own. Submit sits right, where a
+            // commit belongs; leaving sits left, out of the way.
+            //
+            // Four identically-weighted buttons made the two that matter
+            // most look like housekeeping.
             place (submitButton, 96);
-            place (mineButton, 80);
-            place (referenceButton, 104);
-            place (closeButton, 84);
+
+            auto leaveArea = row.removeFromLeft (84);
+            closeButton.setVisible (true);
+            closeButton.setBounds (leaveArea);
+
+            const auto pairWidth = juce::jmin (200, row.getWidth() - AbcTrainTheme::Spacing::medium * 2);
+
+            if (pairWidth > 60)
+            {
+                auto pair = row.withSizeKeepingCentre (pairWidth, buttonHeight);
+                const auto half = (pair.getWidth() - AbcTrainTheme::Spacing::tight) / 2;
+
+                referenceButton.setVisible (true);
+                referenceButton.setBounds (pair.removeFromLeft (half));
+                pair.removeFromLeft (AbcTrainTheme::Spacing::tight);
+
+                mineButton.setVisible (true);
+                mineButton.setBounds (pair);
+            }
 
             break;
+        }
 
         case Phase::result:
             place (doneButton, 84);
@@ -504,9 +531,16 @@ juce::String ModuleScreenComponent::formatValue (float value) const
     }
 
     const auto shown = value * check.displayScale;
-    const auto decimals = std::abs (shown) < 10.0f ? 1 : 0;
 
-    return juce::String (shown, decimals) + check.unitSuffix;
+    // juce::String (double, 0) does *not* mean "round to an integer" - it
+    // means "use the shortest representation that round-trips", so 26.7496
+    // printed as "26.7496 ms" wherever a value happened to be over ten.
+    // It had nowhere to show before the check grew a scale with numbers on
+    // it; it was wrong in every module the whole time.
+    if (std::abs (shown) < 10.0f)
+        return juce::String (shown, 1) + check.unitSuffix;
+
+    return juce::String (juce::roundToInt (shown)) + check.unitSuffix;
 }
 
 void ModuleScreenComponent::timerCallback()
@@ -520,8 +554,13 @@ void ModuleScreenComponent::timerCallback()
         moved = true;
     }
 
-    if (phase == Phase::check && ! auditioningReference)
-        moved = true;   // the readout follows the knob, which this panel does not own
+    // The mark and the readout follow the knob, which this panel does not
+    // own and gets no callback from. Tracked during the whole check, not
+    // just while auditioning your own setting: the knob is yours to turn
+    // at any point, and a scale that froze whenever the reference played
+    // was most of why the old check screen looked dead.
+    if (phase == Phase::check)
+        moved = true;
 
     if (appearAmount < 1.0f)
     {
@@ -810,71 +849,158 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         {
             auto band = checkBandBounds();
 
-            // Three words, not three sentences. What to do is *shown*: a
-            // track, your mark on it, and the accept band drawn around your
-            // mark at the width the tier allows.
+            // Rebuilt to speak the trainer's language (ADR 030).
+            //
+            // What was here: an 8px line that showed *nothing at all*
+            // while the reference played - which is most of the time - so
+            // the screen was a black strip with the word "Reference" in
+            // it, and the instruction "turn the knob" written underneath.
+            // A check explained in sentences, in a product whose whole
+            // answer mechanic is a scale you can read.
+            //
+            // What is here now is the trainer's own vocabulary: a
+            // recessed well with real-unit grid marks, your knob drawn on
+            // it live as you turn it, the accept band around your mark,
+            // and a value readout riding above it. The same picture the
+            // trainer shows, driven by the plugin's own knob instead of a
+            // drag.
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::headingFont());
-            g.drawText (text.match, band.removeFromTop (24), juce::Justification::centred, false);
+            g.drawText (text.match, band.removeFromTop (22), juce::Justification::centred, false);
 
-            band.removeFromTop (12);
+            band.removeFromTop (6);
 
+            const auto& check = definition->check;
+
+            const auto toNormalised = [&check] (float value)
             {
-                auto scale = band.removeFromTop (44).reduced (34, 0);
-                const auto& check = definition->check;
-
-                const auto toNormalised = [&check] (float value)
-                {
-                    if (check.drawLogarithmically && check.minTarget > 0.0f && value > 0.0f)
-                        return juce::jlimit (0.0f, 1.0f,
-                            std::log (value / check.minTarget)
-                                / std::log (check.maxTarget / check.minTarget));
-
+                if (check.drawLogarithmically && check.minTarget > 0.0f && value > 0.0f)
                     return juce::jlimit (0.0f, 1.0f,
-                        (value - check.minTarget)
-                            / juce::jmax (0.0001f, check.maxTarget - check.minTarget));
-                };
+                        std::log (value / check.minTarget)
+                            / std::log (check.maxTarget / check.minTarget));
 
-                const auto track = scale.withSizeKeepingCentre (scale.getWidth(), 8).toFloat();
+                return juce::jlimit (0.0f, 1.0f,
+                    (value - check.minTarget)
+                        / juce::jmax (0.0001f, check.maxTarget - check.minTarget));
+            };
 
-                g.setColour (theme.displayBackground);
-                g.fillRoundedRectangle (track, 4.0f);
+            const auto fromNormalised = [&check] (float t)
+            {
+                if (check.drawLogarithmically && check.minTarget > 0.0f)
+                    return check.minTarget * std::pow (check.maxTarget / check.minTarget, t);
 
-                if (auditioningReference)
-                {
-                    // Nothing of yours to show while the reference plays, so
-                    // the track stays empty rather than displaying a
-                    // position that is not an answer yet.
-                    g.setColour (theme.textDim.withAlpha (0.55f));
-                    g.setFont (AbcTrainLookAndFeel::captionFont());
-                    g.drawText (text.reference, scale, juce::Justification::centred, false);
-                }
-                else
-                {
-                    // The lit zone is how much slack this tier allows, drawn
-                    // around *your* mark. Its width is the answer to "how
-                    // close is close enough" without a number anywhere.
-                    const auto here = toNormalised (currentKnobValue());
-                    const auto half = juce::jlimit (0.02f, 0.45f,
-                        TrainingModule::toleranceForTier (check, checkTier) * 0.5f);
+                return check.minTarget + (check.maxTarget - check.minTarget) * t;
+            };
 
-                    auto lit = track.withWidth (track.getWidth() * half * 2.0f)
-                                    .withCentre ({ track.getX() + track.getWidth() * here,
-                                                    track.getCentreY() });
+            // The value readout rides over the mark rather than sitting
+            // centred, so the number and the line it belongs to are never
+            // far apart - exactly as on the trainer's scale.
+            auto readoutRow = band.removeFromTop (30);
+            band.removeFromTop (4);
 
-                    g.setColour (accent.withAlpha (0.22f));
-                    g.fillRoundedRectangle (lit.getIntersection (track), 4.0f);
+            auto well = band.removeFromBottom (juce::jmax (72, band.getHeight() - 6)).toFloat();
+            AbcTrainLookAndFeel::paintRecessedWell (g, well, AbcTrainTheme::Radius::well);
 
-                    const auto x = track.getX() + track.getWidth() * here;
-                    g.setColour (accent);
-                    g.fillRoundedRectangle ({ x - 1.5f, track.getY() - 7.0f,
-                                               3.0f, track.getHeight() + 14.0f }, 1.5f);
-                }
+            const auto xFor = [&well] (float t)
+            {
+                return well.getX() + well.getWidth() * juce::jlimit (0.0f, 1.0f, t);
+            };
+
+            // Grid marks in the parameter's real unit. A scale with no
+            // numbers on it cannot tell you what "a bit more" means, which
+            // is the one thing a knob check has to teach.
+            const auto labelRow = 15.0f;
+            constexpr int numMarks = 5;
+
+            for (int i = 0; i < numMarks; ++i)
+            {
+                const auto t = (float) i / (float) (numMarks - 1);
+                const auto x = xFor (t);
+
+                g.setColour (theme.textDim.withAlpha (0.24f));
+                g.drawLine (x, well.getY() + 5.0f, x, well.getBottom() - labelRow - 3.0f, 1.0f);
+
+                if (check.unit == TrainingModule::Unit::choice)
+                    continue;
+
+                const auto boxWidth = 62.0f;
+                const auto boxX = juce::jlimit (well.getX() + 1.0f,
+                                                 well.getRight() - boxWidth - 1.0f,
+                                                 x - boxWidth * 0.5f);
+
+                g.setColour (theme.textDim.withAlpha (0.5f));
+                g.setFont (AbcTrainLookAndFeel::microFont());
+                g.drawText (formatValue (fromNormalised (t)),
+                            juce::Rectangle<float> (boxX, well.getBottom() - labelRow - 1.0f,
+                                                     boxWidth, labelRow),
+                            juce::Justification::centred, false);
             }
 
-            g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (text.turnKnob, band.removeFromTop (18), juce::Justification::centred, false);
+            const auto here = toNormalised (currentKnobValue());
+            const auto half = juce::jlimit (0.02f, 0.45f,
+                TrainingModule::toleranceForTier (check, checkTier) * 0.5f);
+
+            // Everything that belongs *inside* the well is drawn in this
+            // scope. The readout below is deliberately outside it: it sits
+            // above the well, and reduceClipRegion intersects rather than
+            // replaces, so drawing it under the well's clip produced an
+            // empty region and no text at all - the same mistake the
+            // tooltip backdrop made (ADR 029).
+            {
+                juce::Graphics::ScopedSaveState clipped (g);
+                juce::Path wellClip;
+                wellClip.addRoundedRectangle (well, AbcTrainTheme::Radius::well);
+                g.reduceClipRegion (wellClip);
+
+            // The accept band, drawn around *your* mark: its width is the
+            // answer to "how close is close enough" with no number in it.
+            {
+                const auto left = xFor (here - half);
+                const auto right = xFor (here + half);
+                const auto lit = juce::Rectangle<float> (left, well.getY(),
+                                                          right - left, well.getHeight() - labelRow);
+
+                g.setColour (accent.withAlpha (0.16f));
+                g.fillRect (lit);
+
+                g.setColour (accent.withAlpha (0.34f));
+                g.drawLine (lit.getX(), lit.getY(), lit.getX(), lit.getBottom(), 1.0f);
+                g.drawLine (lit.getRight(), lit.getY(), lit.getRight(), lit.getBottom(), 1.0f);
+            }
+
+            // Your knob, live. Shown while the reference is playing too -
+            // it is still where your knob is, and hiding it left the
+            // screen blank for most of the exercise.
+            {
+                const auto x = xFor (here);
+
+                g.setColour (accent.withAlpha (0.22f));
+                g.fillRect (juce::Rectangle<float> (x - 3.0f, well.getY(),
+                                                     6.0f, well.getHeight() - labelRow));
+
+                g.setColour (accent);
+                g.fillRect (juce::Rectangle<float> (x - 1.0f, well.getY(),
+                                                     2.0f, well.getHeight() - labelRow));
+            }
+            }
+
+            // The value readout rides over the mark, clamped inside the
+            // well so it cannot run off either end.
+            {
+                const auto readoutText = formatValue (currentKnobValue());
+                const auto font = AbcTrainLookAndFeel::titleFont();
+                const auto width = AbcTrainLookAndFeel::trackedTextWidth (readoutText, font, 1.0f) + 18.0f;
+                const auto centreX = juce::jlimit (well.getX() + width * 0.5f,
+                                                    well.getRight() - width * 0.5f,
+                                                    xFor (here));
+
+                AbcTrainLookAndFeel::drawTrackedText (
+                    g, readoutText,
+                    juce::Rectangle<float> (centreX - width * 0.5f, (float) readoutRow.getY(),
+                                             width, (float) readoutRow.getHeight()),
+                    font, theme.textBright, 1.0f, juce::Justification::centred);
+            }
+
             break;
         }
 
