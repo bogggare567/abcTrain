@@ -87,8 +87,9 @@ private:
     LocalisationManager& localisation;
     juce::PropertiesFile& properties;
 
-    juce::Label textScaleLabel, typefaceLabel, backgroundLabel, scrimLabel;
+    juce::Label textScaleLabel, typefaceLabel, screensaverLabel, backgroundLabel, scrimLabel;
     CompactSelector typefaceSelector;
+    CompactSelector screensaverSelector;
     juce::Slider textScaleSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::Slider scrimSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::TextButton chooseBackgroundButton, clearBackgroundButton, closeButton;

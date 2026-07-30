@@ -86,6 +86,12 @@ private:
     // same motion the guide card uses, so the app has one idea of how
     // things arrive rather than three.
     std::array<float, 3> wordReveal { { 0.0f, 0.0f, 0.0f } };
+
+    // The three letters keep bouncing after they have arrived, each a third
+    // of a cycle behind the last, so the mark reads as three things rather
+    // than one word. It never stops: this screen is the front door and a
+    // door with something alive on it is one people do not mind opening.
+    double bouncePhase = 0.0;
     double elapsedMs = 0.0;
 
     juce::TextButton donateButton, starButton, continueButton;

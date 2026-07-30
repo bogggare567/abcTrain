@@ -1,4 +1,5 @@
 #include "SettingsScreenComponent.h"
+#include "../shared/IdleScreensaver.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AbcTrainTheme.h"
 #include "../shared/Version.h"
@@ -68,6 +69,48 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
 
     typefaceLabel.setText ("Typeface", juce::dontSendNotification);
     addAndMakeVisible (typefaceLabel);
+
+    // Off first, because "make it stop" is the request somebody arrives
+    // here with.
+    {
+        const std::pair<const char*, int> options[] {
+            { "Off", 0 }, { "1 min", 60 }, { "3 min", 180 }, { "5 min", 300 }, { "10 min", 600 }
+        };
+
+        const auto saved = properties.getIntValue (IdleScreensaver::idleSecondsKey,
+                                                    IdleScreensaver::defaultIdleSeconds);
+        auto selected = 3;
+
+        for (int i = 0; i < 5; ++i)
+        {
+            screensaverSelector.addItem (options[(size_t) i].first, i + 1,
+                                          options[(size_t) i].second == 0
+                                              ? juce::String ("off")
+                                              : juce::String (options[(size_t) i].second / 60) + "m");
+
+            if (options[(size_t) i].second == saved)
+                selected = i + 1;
+        }
+
+        screensaverSelector.setSelectedId (selected, juce::dontSendNotification);
+
+        screensaverSelector.onChange = [this]
+        {
+            const int seconds[] = { 0, 60, 180, 300, 600 };
+            const auto chosen = seconds[juce::jlimit (0, 4, screensaverSelector.getSelectedId() - 1)];
+
+            properties.setValue (IdleScreensaver::idleSecondsKey, chosen);
+            properties.saveIfNeeded();
+
+            if (onSettingsChanged != nullptr)
+                onSettingsChanged();
+        };
+
+        addAndMakeVisible (screensaverSelector);
+    }
+
+    screensaverLabel.setText ("Screensaver", juce::dontSendNotification);
+    addAndMakeVisible (screensaverLabel);
 
     scrimSlider.setRange (0.0, 0.9, 0.05);
     scrimSlider.setValue (properties.getDoubleValue (backgroundScrimKey, 0.55),
@@ -252,6 +295,8 @@ void SettingsScreenComponent::selectPage (Page page)
     textScaleSlider.setVisible (appearance);
     typefaceLabel.setVisible (appearance);
     typefaceSelector.setVisible (appearance);
+    screensaverLabel.setVisible (appearance);
+    screensaverSelector.setVisible (appearance);
 
     for (auto* c : { (juce::Component*) &backgroundLabel, (juce::Component*) &scrimLabel,
                      (juce::Component*) &chooseBackgroundButton,
@@ -431,6 +476,14 @@ void SettingsScreenComponent::resized()
         typefaceSelector.setBounds (fontRow.removeFromLeft (
             juce::jmax (90, typefaceSelector.getPreferredWidth()))
                 .withSizeKeepingCentre (juce::jmax (90, typefaceSelector.getPreferredWidth()), 24));
+
+        page.removeFromTop (AbcTrainTheme::Spacing::small);
+
+        auto saverRow = page.removeFromTop (32);
+        screensaverLabel.setBounds (saverRow.removeFromLeft (120));
+        const auto saverWidth = juce::jmax (90, screensaverSelector.getPreferredWidth());
+        screensaverSelector.setBounds (saverRow.removeFromLeft (saverWidth)
+                                           .withSizeKeepingCentre (saverWidth, 24));
     }
     else
     {

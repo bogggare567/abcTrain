@@ -575,7 +575,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     screensaver.onDismissed = [this] { repaint(); };
     screensaver.setIdleSeconds (localisationProperties.getIntValue (
-        IdleScreensaver::idleSecondsKey, 90));
+        IdleScreensaver::idleSecondsKey, IdleScreensaver::defaultIdleSeconds));
 
     addChildComponent (screensaver);
 

@@ -46,6 +46,19 @@ public:
     // knob; a walkthrough is a whole workflow. Two entry points for "teach
     // me something" in one title row was the confusion this removes.
     void setWalkthroughs (juce::StringArray names);
+
+    // Every caption, localised by the caller. Shared code keeps no
+    // LocalisationManager, same as UpdatePrompt.
+    struct Strings
+    {
+        juce::String match, reference, mine, submit, turnKnob;
+        juce::String passed, notYet, itWas, youSaid, again, done;
+        juce::String phaseWatch, phaseTry, phaseCheck, phaseResult;
+        juce::String shelfTitle, shelfSubtitle, walkthroughs, walkthroughWhy;
+        juce::String clips, pickCategory, close, back, next, ready;
+    };
+
+    void setStrings (Strings);
     std::function<void (int)> onWalkthroughSelected;
     void setAccentColour (juce::Colour);
 
@@ -112,6 +125,7 @@ private:
 
     std::vector<TrainingModule::Definition> modules;
     juce::StringArray walkthroughs;
+    Strings text;
     juce::Colour accent { 0xff7f77dd };
 
     Phase phase = Phase::shelf;

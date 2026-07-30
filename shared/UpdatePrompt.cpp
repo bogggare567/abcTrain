@@ -59,7 +59,49 @@ namespace UpdatePrompt
         // question belongs - not in a plugin's UI.
         return downloaded.startAsProcess();
        #else
-        downloaded.revealToUser();
+        // Linux: extract and install into the *user's* plugin folder, which
+        // needs no root. The tarball's own install.sh is interactive and
+        // offers system-wide locations; running a downloaded shell script
+        // unattended is not something this will do, so it does the one part
+        // that is unambiguous and safe.
+        const auto staging = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                 .getChildFile ("abcTrain-update");
+
+        staging.deleteRecursively();
+        staging.createDirectory();
+
+        juce::ChildProcess untar;
+
+        if (! untar.start (juce::StringArray { "tar", "-xzf", downloaded.getFullPathName(),
+                                                "-C", staging.getFullPathName() }))
+            return false;
+
+        untar.waitForProcessToFinish (60000);
+
+        const auto vst3Folder = juce::File::getSpecialLocation (juce::File::userHomeDirectory)
+                                    .getChildFile (".vst3");
+        vst3Folder.createDirectory();
+
+        auto installed = 0;
+
+        for (const auto& bundle : staging.findChildFiles (juce::File::findDirectories, true, "*.vst3"))
+        {
+            const auto destination = vst3Folder.getChildFile (bundle.getFileName());
+
+            destination.deleteRecursively();
+
+            if (bundle.copyDirectoryTo (destination))
+                ++installed;
+        }
+
+        staging.deleteRecursively();
+
+        if (installed == 0)
+        {
+            downloaded.revealToUser();
+            return false;
+        }
+
         return true;
        #endif
     }

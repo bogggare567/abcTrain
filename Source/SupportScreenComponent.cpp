@@ -22,9 +22,8 @@ namespace
     // one layout is how a screen ends up with its text in a different
     // place from its buttons.
     constexpr int iconHeight = 76;
-    constexpr int wordmarkHeight = 40;
+    constexpr int wordmarkHeight = 54;
     constexpr int wordsHeight = 26;
-    constexpr int bodyHeight = 76;
     constexpr int continueHeight = 36;
     constexpr int asksHeight = 32;
 
@@ -83,6 +82,8 @@ SupportScreenComponent::SupportScreenComponent (LocalisationManager& localisatio
         if (onTourRequested != nullptr)
             onTourRequested();
     };
+    tourButton.setColour (juce::TextButton::buttonColourId,
+                           AbcTrainTheme::current().accent.withAlpha (0.9f));
     addChildComponent (tourButton);
 
     noTourButton.onClick = [this]
@@ -135,10 +136,12 @@ void SupportScreenComponent::timerCallback()
     if (! isVisible())
         return;
 
-    const auto total = wordStaggerMs * 2.0 + wordArriveMs;
+    // The reveal finishes; the bounce does not, so this no longer returns
+    // early once the words have arrived.
+    bouncePhase += juce::MathConstants<double>::twoPi / (1.9 * (double) tickHz);
 
-    if (elapsedMs > total)
-        return;
+    if (bouncePhase > juce::MathConstants<double>::twoPi)
+        bouncePhase -= juce::MathConstants<double>::twoPi;
 
     elapsedMs += 1000.0 / (double) tickHz;
 
@@ -154,8 +157,12 @@ void SupportScreenComponent::timerCallback()
 void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<float> area)
 {
     const auto& theme = AbcTrainTheme::current();
-    const auto font = juce::Font (juce::FontOptions (34.0f).withStyle ("Bold"));
-    constexpr float tracking = 1.5f;
+    // Bigger and tighter than body text by a long way. Without a licensed
+    // display face this is as much of a wordmark as a system font can be
+    // made into: weight, size and negative-ish tracking doing the work a
+    // drawn logotype would otherwise do.
+    const auto font = juce::Font (juce::FontOptions (46.0f).withStyle ("Bold"));
+    constexpr float tracking = 0.4f;
 
     // "abc" in the three family colours, "Train" in plain bright text.
     // Drawn glyph by glyph because the three letters need three colours
@@ -176,8 +183,19 @@ void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<f
         const auto colour = i < 3 ? AbcTrainTheme::accentFor (familyForWord (i))
                                   : theme.textBright;
 
+        // a, b and c hop; "Train" stays put. A phase third apart each, and
+        // only the upper half of the sine is used - a letter that dips
+        // *below* its baseline reads as sinking, not bouncing.
+        auto lift = 0.0f;
+
+        if (i < 3)
+        {
+            const auto phase = bouncePhase - (double) i * (juce::MathConstants<double>::twoPi / 3.0);
+            lift = -6.0f * (float) juce::jmax (0.0, std::sin (phase));
+        }
+
         AbcTrainLookAndFeel::drawTrackedText (g, letter,
-                                               area.withX (x).withWidth (width),
+                                               area.withX (x).withWidth (width).translated (0.0f, lift),
                                                font, colour, tracking,
                                                juce::Justification::centred);
         x += width;
@@ -259,10 +277,6 @@ void SupportScreenComponent::paint (juce::Graphics& g)
 
     area.removeFromTop (AbcTrainTheme::Spacing::large);
 
-    g.setColour (theme.textDim);
-    g.setFont (juce::Font (juce::FontOptions (13.0f)));
-    g.drawFittedText (localisation.getText ("ui.supportBody"),
-                       area.removeFromTop (bodyHeight), juce::Justification::centredTop, 5);
 
     if (tourQuestion.isNotEmpty())
     {
@@ -278,7 +292,6 @@ juce::Rectangle<int> SupportScreenComponent::contentArea (juce::Rectangle<int> b
 
     const auto total = iconHeight + Spacing::medium + wordmarkHeight
                            + Spacing::small + wordsHeight
-                           + Spacing::large + bodyHeight
                            + Spacing::large + continueHeight
                            + Spacing::medium + asksHeight;
 
@@ -310,7 +323,6 @@ void SupportScreenComponent::resized()
 
     area.removeFromTop (iconHeight + Spacing::medium + wordmarkHeight
                         + Spacing::small + wordsHeight
-                        + Spacing::large + bodyHeight
                         + Spacing::large);
 
     // "Continue" is the primary action and sits alone, above the two asks
@@ -326,10 +338,10 @@ void SupportScreenComponent::resized()
             // should want.
             tourQuestionBounds = primary.withHeight (18).translated (0, -22);
 
-            auto pair = primary.withSizeKeepingCentre (356, 36);
-            tourButton.setBounds (pair.removeFromLeft (172));
-            pair.removeFromLeft (12);
-            noTourButton.setBounds (pair);
+            auto pair = primary.withSizeKeepingCentre (330, 38);
+            tourButton.setBounds (pair.removeFromLeft (196));
+            pair.removeFromLeft (10);
+            noTourButton.setBounds (pair.withSizeKeepingCentre (124, 30));
         }
         else
         {

@@ -139,6 +139,24 @@ void ModuleScreenComponent::setWalkthroughs (juce::StringArray names)
     repaint();
 }
 
+void ModuleScreenComponent::setStrings (Strings newStrings)
+{
+    text = std::move (newStrings);
+
+    backButton.setButtonText (text.back);
+    nextButton.setButtonText (text.next);
+    readyButton.setButtonText (text.ready);
+    referenceButton.setButtonText (text.reference);
+    mineButton.setButtonText (text.mine);
+    submitButton.setButtonText (text.submit);
+    againButton.setButtonText (text.again);
+    doneButton.setButtonText (text.done);
+    closeButton.setButtonText (text.close);
+
+    layoutButtons();
+    repaint();
+}
+
 void ModuleScreenComponent::setAccentColour (juce::Colour colour)
 {
     accent = colour;
@@ -644,13 +662,13 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::drawTrackedText (g, "Modules", area.removeFromTop (26).toFloat(),
+    AbcTrainLookAndFeel::drawTrackedText (g, text.shelfTitle, area.removeFromTop (26).toFloat(),
                                            juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")),
                                            theme.textBright, 1.2f);
 
     g.setColour (theme.textDim);
     g.setFont (juce::Font (juce::FontOptions (12.0f)));
-    g.drawText ("One knob each. Watch it, try it, then prove you can hear it.",
+    g.drawText (text.shelfSubtitle,
                  area.removeFromTop (20), juce::Justification::centredLeft, true);
 
     for (int i = 0; i < numShelfRows(); ++i)
@@ -666,13 +684,13 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
         {
             g.setColour (theme.textDim);
             g.setFont (juce::Font (juce::FontOptions (11.0f)));
-            g.drawText ("WALKTHROUGHS", row.translated (0, -22).withHeight (16),
+            g.drawText (text.walkthroughs.toUpperCase(), row.translated (0, -22).withHeight (16),
                          juce::Justification::centredLeft, true);
         }
 
         const auto name = isWalkthrough ? walkthroughs[i - (int) modules.size()]
                                         : modules[(size_t) i].name;
-        const auto why = isWalkthrough ? juce::String ("A whole workflow, not one control.")
+        const auto why = isWalkthrough ? text.walkthroughWhy
                                        : modules[(size_t) i].why;
         const auto tier = isWalkthrough ? 0 : progress.getTierPassed (modules[(size_t) i].id);
 
@@ -732,14 +750,28 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
     {
         auto marks = area.removeFromTop (16);
         const Phase order[] = { Phase::demo, Phase::tryIt, Phase::check, Phase::result };
+        const juce::String names[] { text.phaseWatch, text.phaseTry,
+                                      text.phaseCheck, text.phaseResult };
+
+        auto x = (float) marks.getX();
 
         for (int i = 0; i < 4; ++i)
         {
-            const juce::Rectangle<float> bar ((float) (marks.getX() + i * 34), (float) marks.getY() + 6.0f,
-                                               26.0f, 3.0f);
-            g.setColour (order[i] == phase ? accent
-                                            : theme.outline.withAlpha (0.8f));
-            g.fillRoundedRectangle (bar, 1.5f);
+            const auto here = order[i] == phase;
+            const auto font = juce::Font (juce::FontOptions (10.5f));
+            const auto width = AbcTrainLookAndFeel::trackedTextWidth (names[i], font, 0.8f) + 16.0f;
+
+            g.setColour (here ? accent : theme.textDim.withAlpha (0.5f));
+            g.setFont (font);
+            g.drawText (names[i], juce::Rectangle<float> (x, (float) marks.getY(),
+                                                          width, 16.0f).toNearestInt(),
+                         juce::Justification::centredLeft, false);
+
+            if (here)
+                g.fillRoundedRectangle ({ x, (float) marks.getBottom() - 1.0f,
+                                           width - 16.0f, 2.0f }, 1.0f);
+
+            x += width;
         }
     }
 
@@ -778,61 +810,92 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         {
             auto band = checkBandBounds();
 
-            g.setColour (theme.text);
-            g.drawFittedText ("Something is set to a value you cannot see. Switch between "
-                              "Reference and Mine, and turn the knob until they match.",
-                               band.removeFromTop (44), juce::Justification::centredTop, 3);
+            // Three words, not three sentences. What to do is *shown*: a
+            // track, your mark on it, and the accept band drawn around your
+            // mark at the width the tier allows.
+            g.setColour (theme.textBright);
+            g.setFont (juce::Font (juce::FontOptions (15.0f).withStyle ("Bold")));
+            g.drawText (text.match, band.removeFromTop (24), juce::Justification::centred, false);
 
-            g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.0f)));
-            g.drawText ("Tier " + juce::String (checkTier) + " of "
-                            + juce::String (TrainingModule::numTiers) + " - "
-                            + describeTolerance (definition->check, checkTier),
-                         band.removeFromTop (18), juce::Justification::centred, true);
+            band.removeFromTop (12);
 
-            // The value the player is on, big and in the middle, directly
-            // above the slider that sets it. Small text at the top and a
-            // control at the bottom of an empty panel is two halves of one
-            // control with the window in between them.
-            band.removeFromBottom (36);
-            auto readout = band.removeFromBottom (56);
-            g.setColour (auditioningReference ? theme.textDim : accent);
-            g.setFont (juce::Font (AbcTrainLookAndFeel::monoFont()).withHeight (26.0f));
-            g.drawText (auditioningReference ? "reference" : formatValue (currentKnobValue()),
-                         readout, juce::Justification::centred, true);
-
-            if (! auditioningReference)
             {
-                g.setColour (theme.textDim);
-                g.setFont (juce::Font (juce::FontOptions (11.0f)));
-                g.drawText ("yours", readout.translated (0, 26),
-                             juce::Justification::centred, true);
+                auto scale = band.removeFromTop (44).reduced (34, 0);
+                const auto& check = definition->check;
+
+                const auto toNormalised = [&check] (float value)
+                {
+                    if (check.drawLogarithmically && check.minTarget > 0.0f && value > 0.0f)
+                        return juce::jlimit (0.0f, 1.0f,
+                            std::log (value / check.minTarget)
+                                / std::log (check.maxTarget / check.minTarget));
+
+                    return juce::jlimit (0.0f, 1.0f,
+                        (value - check.minTarget)
+                            / juce::jmax (0.0001f, check.maxTarget - check.minTarget));
+                };
+
+                const auto track = scale.withSizeKeepingCentre (scale.getWidth(), 8).toFloat();
+
+                g.setColour (theme.displayBackground);
+                g.fillRoundedRectangle (track, 4.0f);
+
+                if (auditioningReference)
+                {
+                    // Nothing of yours to show while the reference plays, so
+                    // the track stays empty rather than displaying a
+                    // position that is not an answer yet.
+                    g.setColour (theme.textDim.withAlpha (0.55f));
+                    g.setFont (juce::Font (juce::FontOptions (11.0f)));
+                    g.drawText (text.reference, scale, juce::Justification::centred, false);
+                }
+                else
+                {
+                    // The lit zone is how much slack this tier allows, drawn
+                    // around *your* mark. Its width is the answer to "how
+                    // close is close enough" without a number anywhere.
+                    const auto here = toNormalised (currentKnobValue());
+                    const auto half = juce::jlimit (0.02f, 0.45f,
+                        TrainingModule::toleranceForTier (check, checkTier) * 0.5f);
+
+                    auto lit = track.withWidth (track.getWidth() * half * 2.0f)
+                                    .withCentre ({ track.getX() + track.getWidth() * here,
+                                                    track.getCentreY() });
+
+                    g.setColour (accent.withAlpha (0.22f));
+                    g.fillRoundedRectangle (lit.getIntersection (track), 4.0f);
+
+                    const auto x = track.getX() + track.getWidth() * here;
+                    g.setColour (accent);
+                    g.fillRoundedRectangle ({ x - 1.5f, track.getY() - 7.0f,
+                                               3.0f, track.getHeight() + 14.0f }, 1.5f);
+                }
             }
 
+            g.setColour (theme.textDim);
+            g.setFont (juce::Font (juce::FontOptions (11.5f)));
+            g.drawText (text.turnKnob, band.removeFromTop (18), juce::Justification::centred, false);
             break;
         }
 
         case Phase::result:
         {
             g.setColour (lastAttemptPassed ? accent : theme.textBright);
-            g.setFont (juce::Font (juce::FontOptions (15.0f).withStyle ("Bold")));
-            g.drawText (lastAttemptPassed ? "Passed" : "Not this time",
-                         area.removeFromTop (24), juce::Justification::centredLeft, true);
+            g.setFont (juce::Font (juce::FontOptions (17.0f).withStyle ("Bold")));
+            g.drawText (lastAttemptPassed ? text.passed : text.notYet,
+                         area.removeFromTop (26), juce::Justification::centred, false);
 
-            g.setColour (theme.text);
-            g.setFont (bodyFont);
-            g.drawText ("It was " + formatValue (hiddenTarget) + ". You said "
-                            + formatValue (playerValue) + ".",
-                         area.removeFromTop (22), juce::Justification::centredLeft, true);
+            area.removeFromTop (10);
+
+            g.setColour (theme.textBright);
+            g.setFont (juce::Font (AbcTrainLookAndFeel::monoFont()).withHeight (20.0f));
+            g.drawText (text.itWas + " " + formatValue (hiddenTarget),
+                         area.removeFromTop (26), juce::Justification::centred, false);
 
             g.setColour (theme.textDim);
-            g.setFont (juce::Font (juce::FontOptions (11.0f)));
-            g.drawText (lastAttemptPassed
-                            ? juce::String (juce::roundToInt (lastAttemptQuality * 100.0f))
-                                  + "% of the way to dead on. The knob has moved to the answer."
-                            : "The knob has moved to the answer - listen to it against what "
-                              "you had.",
-                         area.removeFromTop (18), juce::Justification::centredLeft, true);
+            g.setFont (juce::Font (juce::FontOptions (12.0f)));
+            g.drawText (text.youSaid + " " + formatValue (playerValue),
+                         area.removeFromTop (20), juce::Justification::centred, false);
             break;
         }
 

@@ -43,6 +43,10 @@ public:
 
     static constexpr const char* idleSecondsKey = "screensaverIdleSeconds";
 
+    // Three minutes. Long enough that it never interrupts somebody
+    // thinking, short enough to appear while a session is left open.
+    static constexpr int defaultIdleSeconds = 180;
+
 private:
     void timerCallback() override;
     void dismiss();
@@ -57,7 +61,7 @@ private:
     // original did - that colour change is most of what people remember.
     int colourIndex = 0;
 
-    double idleSeconds = 90.0;
+    double idleSeconds = 180.0;
     double untouchedFor = 0.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (IdleScreensaver)

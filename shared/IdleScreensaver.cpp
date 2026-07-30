@@ -53,10 +53,10 @@ void IdleScreensaver::dismiss()
 
 juce::Rectangle<float> IdleScreensaver::markBounds() const
 {
-    const auto font = juce::Font (juce::FontOptions (26.0f).withStyle ("Bold"));
-    const auto width = AbcTrainLookAndFeel::trackedTextWidth (text, font, 1.4f) + 26.0f;
+    const auto font = juce::Font (juce::FontOptions (17.0f));
+    const auto width = AbcTrainLookAndFeel::trackedTextWidth (text, font, 2.6f) + 4.0f;
 
-    return { position.x, position.y, width, 44.0f };
+    return { position.x, position.y, width, 24.0f };
 }
 
 void IdleScreensaver::resized()
@@ -140,17 +140,12 @@ void IdleScreensaver::paint (juce::Graphics& g)
     // Nearly black rather than transparent: the point is a dark screen with
     // one moving thing on it, and a translucent wash over nine exercise
     // tiles is just a dimmed app.
-    g.fillAll (theme.windowBackground.darker (0.75f));
+    g.fillAll (theme.windowBackground.darker (0.85f));
 
-    const auto colour = bounceColour (colourIndex);
-    const auto mark = markBounds();
-
-    // A soft plate under the wordmark so it reads on any background, and so
-    // the thing bouncing has a shape rather than being loose letters.
-    g.setColour (colour.withAlpha (0.14f));
-    g.fillRoundedRectangle (mark, AbcTrainTheme::Radius::panel);
-
-    AbcTrainLookAndFeel::drawTrackedText (g, text, mark,
-                                           juce::Font (juce::FontOptions (26.0f).withStyle ("Bold")),
-                                           colour, 1.4f);
+    // No plate, no glow, no border. Text on black, and nothing else - the
+    // plate made it a badge sliding around, and a badge is a thing with a
+    // purpose. This has none, which is the point.
+    AbcTrainLookAndFeel::drawTrackedText (g, text, markBounds(),
+                                           juce::Font (juce::FontOptions (17.0f)),
+                                           bounceColour (colourIndex).withAlpha (0.72f), 2.6f);
 }

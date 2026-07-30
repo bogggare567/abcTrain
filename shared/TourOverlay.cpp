@@ -4,7 +4,7 @@
 
 namespace
 {
-    constexpr int captionHeight = 76;
+    constexpr int captionHeight = 88;
     constexpr int captionWidth = 320;
     constexpr int buttonHeight = 28;
 }
@@ -115,10 +115,10 @@ juce::Rectangle<int> TourOverlay::captionBoundsFor (juce::Rectangle<float> hole)
     auto x = juce::jlimit (area.getX() + 12, juce::jmax (area.getX() + 12, area.getRight() - captionWidth - 12),
                             (int) hole.getCentreX() - captionWidth / 2);
 
-    const auto below = (int) hole.getBottom() + 14;
+    const auto below = (int) hole.getBottom() + 20;
     const auto y = below + captionHeight + 12 <= area.getBottom()
                        ? below
-                       : juce::jmax (area.getY() + 12, (int) hole.getY() - captionHeight - 14);
+                       : juce::jmax (area.getY() + 12, (int) hole.getY() - captionHeight - 20);
 
     return { x, y, captionWidth, captionHeight };
 }
@@ -204,25 +204,60 @@ void TourOverlay::paint (juce::Graphics& g)
     shade.addRoundedRectangle (drawnHole, AbcTrainTheme::Radius::panel);
     shade.setUsingNonZeroWinding (false);
 
-    g.setColour (theme.shadow.withAlpha (0.72f * eased));
+    g.setColour (theme.shadow.withAlpha (0.58f * eased));
     g.fillPath (shade);
 
-    g.setColour (theme.accent.withAlpha (0.85f * eased));
+    // Two rings: a soft wide one that reads as a glow, and a crisp one on
+    // the edge. The control underneath is undimmed, so this only has to say
+    // "here", not "look harder".
+    g.setColour (theme.accent.withAlpha (0.20f * eased));
+    g.drawRoundedRectangle (drawnHole.expanded (4.0f), AbcTrainTheme::Radius::panel + 4.0f, 6.0f);
+    g.setColour (theme.accent.withAlpha (0.9f * eased));
     g.drawRoundedRectangle (drawnHole, AbcTrainTheme::Radius::panel, 1.6f);
 
-    const auto caption = captionBoundsFor (targetHole);
+    const auto caption = captionBoundsFor (targetHole).toFloat();
 
-    juce::Path card;
-    card.addRoundedRectangle (caption.toFloat(), AbcTrainTheme::Radius::panel);
-    juce::DropShadow (theme.shadow.withAlpha (0.6f), 18, { 0, 4 }).drawForPath (g, card);
+    // A speech bubble with a tail, not a floating panel. The tail is the
+    // whole point: a card near a highlighted control still leaves you
+    // working out which of the two things it belongs to, and an arrow
+    // pointing at it does not. Comics settled this a century ago.
+    juce::Path bubble;
+    bubble.addRoundedRectangle (caption, AbcTrainTheme::Radius::panel);
+
+    {
+        // The tail leaves from whichever edge faces the hole, and its tip
+        // stops just short of the outline so the two shapes read as
+        // pointing rather than touching.
+        const auto below = caption.getY() > drawnHole.getBottom();
+        const auto tipY = below ? drawnHole.getBottom() + 3.0f : drawnHole.getY() - 3.0f;
+        const auto baseY = below ? caption.getY() + 1.0f : caption.getBottom() - 1.0f;
+
+        const auto tipX = juce::jlimit (caption.getX() + 24.0f, caption.getRight() - 24.0f,
+                                         drawnHole.getCentreX());
+
+        bubble.startNewSubPath (tipX - 11.0f, baseY);
+        bubble.lineTo (tipX, tipY);
+        bubble.lineTo (tipX + 11.0f, baseY);
+        bubble.closeSubPath();
+    }
+
+    juce::DropShadow (theme.shadow.withAlpha (0.6f), 18, { 0, 4 }).drawForPath (g, bubble);
 
     g.setColour (theme.panelBackground);
-    g.fillPath (card);
-    g.setColour (theme.outline);
-    g.strokePath (card, juce::PathStrokeType (1.0f));
+    g.fillPath (bubble);
+    g.setColour (theme.accent.withAlpha (0.55f));
+    g.strokePath (bubble, juce::PathStrokeType (1.4f));
 
-    auto text = caption.reduced (14, 12);
+    auto text = caption.toNearestInt().reduced (14, 12);
     text.removeFromBottom (buttonHeight);
+
+    {
+        auto counter = text.removeFromTop (14);
+        g.setColour (theme.textDim);
+        g.setFont (juce::Font (juce::FontOptions (10.5f)));
+        g.drawText (juce::String (currentStep + 1) + " / " + juce::String ((int) steps.size()),
+                     counter, juce::Justification::topRight, false);
+    }
 
     g.setColour (theme.text);
     g.setFont (juce::Font (juce::FontOptions (12.5f)));

@@ -167,6 +167,36 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     addAndMakeVisible (modulesButton);
 
     moduleScreen.setModules (CompressorModules::all());
+    moduleScreen.setStrings ([this]
+    {
+        ModuleScreenComponent::Strings t;
+        t.match = localisation.getText ("module.match");
+        t.reference = localisation.getText ("module.reference");
+        t.mine = localisation.getText ("module.mine");
+        t.submit = localisation.getText ("module.submit");
+        t.turnKnob = localisation.getText ("module.turnKnob");
+        t.passed = localisation.getText ("module.passed");
+        t.notYet = localisation.getText ("module.notYet");
+        t.itWas = localisation.getText ("module.itWas");
+        t.youSaid = localisation.getText ("module.youSaid");
+        t.again = localisation.getText ("module.again");
+        t.done = localisation.getText ("module.done");
+        t.phaseWatch = localisation.getText ("module.phaseWatch");
+        t.phaseTry = localisation.getText ("module.phaseTry");
+        t.phaseCheck = localisation.getText ("module.phaseCheck");
+        t.phaseResult = localisation.getText ("module.phaseResult");
+        t.shelfTitle = localisation.getText ("module.shelfTitle");
+        t.shelfSubtitle = localisation.getText ("module.shelfSubtitle");
+        t.walkthroughs = localisation.getText ("module.walkthroughs");
+        t.walkthroughWhy = localisation.getText ("module.walkthroughWhy");
+        t.clips = localisation.getText ("module.clips");
+        t.pickCategory = localisation.getText ("module.pickCategory");
+        t.close = localisation.getText ("module.close");
+        t.back = localisation.getText ("module.back");
+        t.next = localisation.getText ("module.next");
+        t.ready = localisation.getText ("module.ready");
+        return t;
+    }());
     moduleScreen.setWalkthroughs ({ "Vocal Compression", "Bus Glue Compression" });
     moduleScreen.onWalkthroughSelected = [this] (int which)
     {
