@@ -44,16 +44,40 @@ public:
     bool isEnabled() const noexcept { return enabled.load(); }
 
     // Plays this buffer instead of the library's selection, for as long as
-    // it is set. A training module owns a bed it generated and wants heard
-    // regardless of what the player picked in the title row - so the
-    // override is a pointer rather than a copy, and the module clears it
-    // before the buffer dies.
+    // it is set. A training module generates a bed and wants it heard
+    // regardless of what the player picked in the title row.
+    //
+    // **This takes ownership, and that is the whole point.**
+    //
+    // It used to take a raw pointer to a buffer the module panel owned -
+    // and the panel belongs to the *editor*, which a host destroys the
+    // moment someone closes the plugin window, while audio keeps running.
+    // So: the audio thread loads the pointer at the top of a block, the
+    // window closes mid-block, the panel's buffers are freed, and the rest
+    // of that block reads freed memory. That is a use-after-free on the
+    // audio thread - the shape of crash that shows up as "the plugin dies
+    // while I'm using it" and never in a test. Clearing the pointer in the
+    // panel's destructor does not help: the block is already in flight.
+    //
+    // Beds now live here instead, in the *processor*, which the host only
+    // destroys after it has stopped calling processBlock. Every bed is
+    // kept for the processor's lifetime rather than freed when the next
+    // one arrives - the same accepted memory tradeoff as
+    // ReferenceAudioLibrary::loadedBuffers, for the same reason: there is
+    // no safe moment on the message thread to know the audio thread has
+    // finished with one.
     //
     // Message thread only for the caller; the audio thread only ever loads
     // the atomic.
-    void setOverrideBuffer (const juce::AudioBuffer<float>* buffer) noexcept
+    void publishOverrideBuffer (juce::AudioBuffer<float>&& buffer)
     {
-        override.store (buffer);
+        auto* owned = ownedOverrides.add (new juce::AudioBuffer<float> (std::move (buffer)));
+        override.store (owned);
+    }
+
+    void clearOverrideBuffer() noexcept
+    {
+        override.store (nullptr);
     }
 
     // Replaces the block with the library's current clip, looped, and
@@ -67,11 +91,15 @@ public:
     // rather than a fade from silence.
     bool fillBlock (juce::AudioBuffer<float>& buffer) noexcept
     {
-        const auto* clip = override.load();
+        // Loaded once, not twice. Reading the atomic a second time to ask
+        // "is an override set" let the message thread clear it in between,
+        // so a block could decide it had a clip and then decide it wanted
+        // no audio - an audible stutter at exactly the moment a check
+        // ends.
+        const auto* overrideClip = override.load();
+        const auto* clip = overrideClip != nullptr ? overrideClip : library.getActiveBuffer();
 
-        if (clip == nullptr)
-            clip = library.getActiveBuffer();
-        const auto wantsAudio = (enabled.load() || override.load() != nullptr)
+        const auto wantsAudio = (enabled.load() || overrideClip != nullptr)
                                 && clip != nullptr && clip->getNumSamples() > 0;
 
         if (! wantsAudio && currentGain <= 0.0001f)
@@ -139,6 +167,10 @@ private:
 
     std::atomic<bool> enabled { false };
     std::atomic<const juce::AudioBuffer<float>*> override { nullptr };
+
+    // Owned here so they outlive every editor. Never emptied while this
+    // object is alive - see publishOverrideBuffer.
+    juce::OwnedArray<juce::AudioBuffer<float>> ownedOverrides;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PracticeAudioSource)
 };

@@ -119,9 +119,9 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
 
 ModuleScreenComponent::~ModuleScreenComponent()
 {
-    // The processor holds a raw pointer to `bed`. Clear it before this
-    // object - and the buffer with it - goes away.
-    practiceSource.setOverrideBuffer (nullptr);
+    // Stop the bed. The buffer itself is owned by PracticeAudioSource in
+    // the processor and deliberately outlives this panel.
+    practiceSource.clearOverrideBuffer();
 
     if (clearOverride != nullptr)
         clearOverride();
@@ -353,17 +353,17 @@ float ModuleScreenComponent::getParameter (const juce::String& id) const
 
 void ModuleScreenComponent::playBed (TrainingModule::Bed which, int seed)
 {
-    // Publish only once the new buffer is complete, and never free the old
-    // one - see the note on renderedBeds.
-    auto* fresh = renderedBeds.add (new juce::AudioBuffer<float> (
-        LessonAudioBed::render (which, bedSampleRate, seed)));
-
-    practiceSource.setOverrideBuffer (fresh);
+    // Handed to PracticeAudioSource, which owns it from here. It lives in
+    // the processor, so the bed outlives this panel - closing the plugin
+    // window mid-check used to free the buffer the audio thread was
+    // reading. See publishOverrideBuffer.
+    practiceSource.publishOverrideBuffer (
+        LessonAudioBed::render (which, bedSampleRate, seed));
 }
 
 void ModuleScreenComponent::stopBed()
 {
-    practiceSource.setOverrideBuffer (nullptr);
+    practiceSource.clearOverrideBuffer();
 
     // An override left armed would silently keep processing at a value no
     // knob shows, for as long as the plugin stayed loaded.

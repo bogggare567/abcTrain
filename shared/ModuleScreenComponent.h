@@ -151,18 +151,18 @@ private:
 
     double bedSampleRate = 44100.0;
 
-    // Every rendered bed is kept alive for this panel's whole lifetime
-    // rather than freed when the next one is made.
+    // Beds are *not* owned here any more.
     //
-    // This was a real use-after-free on the audio thread: `bed` was a
-    // single buffer, playBed() reassigned it, and AudioBuffer's assignment
-    // frees the old allocation - the one whose address the processor was
-    // still reading through setOverrideBuffer, in the middle of a block.
-    // Freeing it under the audio thread is exactly the shape of crash that
-    // shows up as "the plugin dies while I am using it" and never in a
-    // test. Same fix, and the same accepted memory tradeoff, as
-    // ReferenceAudioLibrary::loadedBuffers.
-    juce::OwnedArray<juce::AudioBuffer<float>> renderedBeds;
+    // They used to be, and it was still a use-after-free - just a rarer
+    // one than the first. Keeping every bed alive fixed "the next bed
+    // frees the one being played", but this panel belongs to the editor,
+    // and a host destroys the editor whenever the window is closed while
+    // audio keeps running. Closing the window during a check freed every
+    // bed underneath a block already in flight.
+    //
+    // PracticeAudioSource owns them now: it lives in the processor, which
+    // the host only destroys after it has stopped calling processBlock.
+    // See publishOverrideBuffer for the full note.
 
     // 0 = panel over the analysis area, 1 = panel over everything.
     float expansion = 0.0f;

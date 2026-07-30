@@ -85,6 +85,53 @@ public:
             expectEquals (buffer.getSample (0, 511), 1.0f);
         }
 
+        beginTest ("a published bed outlives the caller that made it");
+        {
+            // The crash this guards against: the module panel belongs to
+            // the editor, and a host destroys the editor whenever the
+            // window is closed while audio keeps running. When the panel
+            // owned the beds, closing the window during a check freed the
+            // buffer out from under a block already in flight.
+            //
+            // Modelled here by letting the caller's buffer go out of
+            // scope entirely and then asking for audio: if ownership did
+            // not transfer, this reads freed memory.
+            PracticeAudioSource source (library);
+            source.prepare (44100.0);
+
+            {
+                juce::AudioBuffer<float> bed (1, 2048);
+                for (int i = 0; i < bed.getNumSamples(); ++i)
+                    bed.setSample (0, i, 0.75f);
+
+                source.publishOverrideBuffer (std::move (bed));
+            }   // the caller's buffer is gone from here on
+
+            juce::AudioBuffer<float> buffer (2, 512);
+
+            // Long enough for the 30 ms enable fade to finish, so the
+            // sample value is the bed's own rather than a fraction of it.
+            for (int block = 0; block < 10; ++block)
+            {
+                fillWith (buffer, 0.0f);
+                expect (source.fillBlock (buffer), "an override plays even with nothing enabled");
+            }
+
+            expectWithinAbsoluteError (buffer.getSample (0, 511), 0.75f, 0.02f);
+
+            // Clearing stops playback without freeing anything: a bed the
+            // audio thread may still be inside must not be destroyed.
+            source.clearOverrideBuffer();
+
+            for (int block = 0; block < 10; ++block)
+            {
+                fillWith (buffer, 0.0f);
+                source.fillBlock (buffer);
+            }
+
+            expectWithinAbsoluteError (buffer.getSample (0, 511), 0.0f, 0.0001f);
+        }
+
         folder.deleteRecursively();
     }
 
