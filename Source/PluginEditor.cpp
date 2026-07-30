@@ -1167,12 +1167,6 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 
 void EarTrainerEditor::timerCallback()
 {
-    if (screenFade < 1.0f)
-    {
-        screenFade = juce::jmin (1.0f, screenFade + 0.16f);
-        repaint();
-    }
-
     if (session.getMode() != SessionManager::Mode::blitz || ! session.isRunActive())
         return;
 
@@ -1339,20 +1333,36 @@ void EarTrainerEditor::paintOverChildren (juce::Graphics& g)
     if (screenFade >= 1.0f)
         return;
 
-    // Over the children, not under them: a fade painted underneath is a
-    // fade nobody sees.
+    // A veil that lifts, not a blackout that clears. The first version went
+    // to full opacity, so a screen change read as the window blinking off
+    // and back on rather than as one screen replacing another. Forty per
+    // cent is enough to register as a transition and little enough that the
+    // arriving screen is legible the whole way through.
+    constexpr float veil = 0.4f;
+
     g.setColour (AbcTrainTheme::current().windowBackground
-                     .withAlpha (1.0f - AbcTrainTheme::Ease::out (screenFade)));
+                     .withAlpha (veil * (1.0f - screenFade)));
     g.fillAll();
 }
 
 void EarTrainerEditor::beginScreenFade()
 {
+    screenFadeUpdater.removeAnimator (screenFadeAnimator);
+
     screenFade = 0.0f;
 
-    // Driven by the editor's existing 30Hz refresh timer rather than a
-    // second one - there is already a tick, and two timers for one
-    // animation is how they drift apart.
+    screenFadeAnimator = juce::ValueAnimatorBuilder{}
+                             .withEasing (juce::Easings::createEaseOut())
+                             .withDurationMs (AbcTrainTheme::Duration::transition)
+                             .withValueChangedCallback ([this] (float t)
+                             {
+                                 screenFade = t;
+                                 repaint();
+                             })
+                             .build();
+
+    screenFadeUpdater.addAnimator (screenFadeAnimator);
+    screenFadeAnimator.start();
 }
 
 void EarTrainerEditor::showScreen (Screen screen)

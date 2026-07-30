@@ -489,7 +489,13 @@ private:
     // arriving screen: long enough that the eye registers a transition and
     // does not have to re-find everything from scratch, short enough that
     // nobody waiting to answer a round notices it happened.
+    // Driven by juce_animation on the display's own frame rate, not by the
+    // editor's refresh Timer - that one runs at **1 Hz**, and stepping an
+    // alpha by 0.16 per tick against it gave a six-second blackout advancing
+    // one frame a second. Which is exactly what it looked like.
     float screenFade = 1.0f;
+    juce::Animator screenFadeAnimator = juce::ValueAnimatorBuilder{}.build();
+    juce::VBlankAnimatorUpdater screenFadeUpdater { this };
     void beginScreenFade();
 
     // The first screen is not a transition, it is an arrival. Without this
