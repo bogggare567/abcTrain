@@ -247,5 +247,11 @@
   "ui.levelNumber": "等级 {{level}}",
   "ui.promotionOpenedCaption": "升级考验进行中",
   "ui.promotionOpenedTitle": "连续答对 {{count}} 次即可升级",
-  "ui.showInstructions": "练习说明"
+  "ui.showInstructions": "练习说明",
+  "eq.band": "频段 {{number}}",
+  "eq.noBand": "无频段",
+  "eq.zoneHint": "拖动节点 · 双击添加或删除 · 滚轮调 Q",
+  "eq.freq": "频率",
+  "eq.gain": "增益",
+  "eq.q": "Q"
 }

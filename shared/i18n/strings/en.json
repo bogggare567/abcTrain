@@ -247,5 +247,11 @@
   "ui.levelNumber": "level {{level}}",
   "ui.promotionOpenedCaption": "Level test is on",
   "ui.promotionOpenedTitle": "{{count}} in a row takes the level",
-  "ui.showInstructions": "How this exercise works"
+  "ui.showInstructions": "How this exercise works",
+  "eq.band": "Band {{number}}",
+  "eq.noBand": "No band",
+  "eq.zoneHint": "Drag a node · double-click to add or remove · scroll for Q",
+  "eq.freq": "Freq",
+  "eq.gain": "Gain",
+  "eq.q": "Q"
 }

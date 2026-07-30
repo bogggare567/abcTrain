@@ -247,5 +247,11 @@
   "ui.levelNumber": "уровень {{level}}",
   "ui.promotionOpenedCaption": "Тест на уровень открыт",
   "ui.promotionOpenedTitle": "{{count}} подряд — и уровень твой",
-  "ui.showInstructions": "Как работает упражнение"
+  "ui.showInstructions": "Как работает упражнение",
+  "eq.band": "Полоса {{number}}",
+  "eq.noBand": "Нет полосы",
+  "eq.zoneHint": "Тяни узел · двойной клик — добавить или убрать · колесо — Q",
+  "eq.freq": "Частота",
+  "eq.gain": "Усиление",
+  "eq.q": "Q"
 }

@@ -247,5 +247,11 @@
   "ui.levelNumber": "레벨 {{level}}",
   "ui.promotionOpenedCaption": "레벨 테스트 진행 중",
   "ui.promotionOpenedTitle": "{{count}}연속 정답이면 레벨 획득",
-  "ui.showInstructions": "연습 방법"
+  "ui.showInstructions": "연습 방법",
+  "eq.band": "밴드 {{number}}",
+  "eq.noBand": "밴드 없음",
+  "eq.zoneHint": "노드를 드래그 · 더블클릭으로 추가/삭제 · 휠로 Q 조절",
+  "eq.freq": "주파수",
+  "eq.gain": "게인",
+  "eq.q": "Q"
 }

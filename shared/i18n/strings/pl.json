@@ -247,5 +247,11 @@
   "ui.levelNumber": "poziom {{level}}",
   "ui.promotionOpenedCaption": "Test poziomu trwa",
   "ui.promotionOpenedTitle": "{{count}} z rzędu zdobywa poziom",
-  "ui.showInstructions": "Jak działa ćwiczenie"
+  "ui.showInstructions": "Jak działa ćwiczenie",
+  "eq.band": "Pasmo {{number}}",
+  "eq.noBand": "Brak pasma",
+  "eq.zoneHint": "Przeciągnij punkt · dwuklik dodaje lub usuwa · kółko zmienia Q",
+  "eq.freq": "Częst.",
+  "eq.gain": "Wzm.",
+  "eq.q": "Q"
 }

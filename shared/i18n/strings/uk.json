@@ -247,5 +247,11 @@
   "ui.levelNumber": "рівень {{level}}",
   "ui.promotionOpenedCaption": "Тест на рівень відкрито",
   "ui.promotionOpenedTitle": "{{count}} поспіль — і рівень твій",
-  "ui.showInstructions": "Як працює вправа"
+  "ui.showInstructions": "Як працює вправа",
+  "eq.band": "Смуга {{number}}",
+  "eq.noBand": "Немає смуги",
+  "eq.zoneHint": "Тягни вузол · подвійний клік — додати або прибрати · колесо — Q",
+  "eq.freq": "Частота",
+  "eq.gain": "Підсилення",
+  "eq.q": "Q"
 }

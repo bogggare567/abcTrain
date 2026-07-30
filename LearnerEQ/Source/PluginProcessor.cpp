@@ -15,19 +15,36 @@ juce::AudioProcessorValueTreeState::ParameterLayout LearnerEQProcessor::createPa
 {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-    const std::array<float, numBands> defaultFreqs { 100.0f, 800.0f, 3000.0f, 8000.0f };
-
     juce::NormalisableRange<float> freqRange (20.0f, 20000.0f, 1.0f, 0.3f);
     juce::NormalisableRange<float> gainRange (-18.0f, 18.0f, 0.1f);
-    juce::NormalisableRange<float> qRange (0.1f, 10.0f, 0.01f, 0.4f);
+    juce::NormalisableRange<float> qRange (0.1f, 18.0f, 0.01f, 0.4f);
 
-    for (int band = 0; band < numBands; ++band)
+    juce::StringArray typeNames;
+    for (int t = 0; t < EQCoefficients::numTypes; ++t)
+        typeNames.add (EQCoefficients::nameForType (EQCoefficients::typeFromIndex (t)));
+
+    // Every band exists as parameters whether it is switched on or not:
+    // APVTS is fixed at construction, and a host needs the automation
+    // lanes and the saved state to be there regardless of how many bands
+    // happen to be in use right now.
+    //
+    // One band is on by default - a flat bell at 1 kHz. An EQ that opens
+    // completely empty gives a first-time user nothing to grab, and the
+    // whole interaction here is grabbing something.
+    for (int band = 0; band < maxBands; ++band)
     {
-        const juce::String bandName (EQCoefficients::nameForBand (band));
+        const auto bandName = "Band " + juce::String (band + 1);
+
+        params.push_back (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID (onParamId (band), 1), bandName + " On", band == 0));
+
+        params.push_back (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID (typeParamId (band), 1), bandName + " Type",
+            typeNames, (int) EQCoefficients::BandType::bell));
 
         params.push_back (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID (freqParamId (band), 1), bandName + " Freq",
-            freqRange, defaultFreqs[(size_t) band]));
+            freqRange, 1000.0f));
 
         params.push_back (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID (gainParamId (band), 1), bandName + " Gain",
@@ -77,14 +94,76 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
 
 void LearnerEQProcessor::updateFilters()
 {
-    for (int band = 0; band < numBands; ++band)
+    for (int band = 0; band < maxBands; ++band)
     {
+        const auto on = apvts.getRawParameterValue (onParamId (band))->load() > 0.5f;
+        bandActive[(size_t) band] = on;
+
+        if (! on)
+            continue;   // a band that is off costs nothing to skip
+
+        const auto type = EQCoefficients::typeFromIndex (
+            (int) apvts.getRawParameterValue (typeParamId (band))->load());
         const auto freq = apvts.getRawParameterValue (freqParamId (band))->load();
         const auto gain = apvts.getRawParameterValue (gainParamId (band))->load();
         const auto q = apvts.getRawParameterValue (qParamId (band))->load();
 
-        *filters[(size_t) band].state = *EQCoefficients::make (band, sampleRate, freq, gain, q);
+        *filters[(size_t) band].state = *EQCoefficients::make (type, sampleRate, freq, gain, q);
     }
+}
+
+bool LearnerEQProcessor::isBandOn (int band) const noexcept
+{
+    if (band < 0 || band >= maxBands)
+        return false;
+
+    return apvts.getRawParameterValue (onParamId (band))->load() > 0.5f;
+}
+
+EQCoefficients::BandType LearnerEQProcessor::getBandType (int band) const noexcept
+{
+    if (band < 0 || band >= maxBands)
+        return EQCoefficients::BandType::bell;
+
+    return EQCoefficients::typeFromIndex (
+        (int) apvts.getRawParameterValue (typeParamId (band))->load());
+}
+
+int LearnerEQProcessor::addBand (float freqHz, float gainDb, EQCoefficients::BandType type)
+{
+    for (int band = 0; band < maxBands; ++band)
+    {
+        if (isBandOn (band))
+            continue;
+
+        const auto set = [this] (const juce::String& id, float value)
+        {
+            if (auto* parameter = apvts.getParameter (id))
+                parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
+        };
+
+        // Order matters: the shape is set before the band is switched on,
+        // so it can never be audible for a block at the previous band's
+        // settings.
+        set (typeParamId (band), (float) (int) type);
+        set (freqParamId (band), freqHz);
+        set (gainParamId (band), EQCoefficients::usesGain (type) ? gainDb : 0.0f);
+        set (qParamId (band), type == EQCoefficients::BandType::notch ? 6.0f : 0.7f);
+        set (onParamId (band), 1.0f);
+
+        return band;
+    }
+
+    return -1;
+}
+
+void LearnerEQProcessor::removeBand (int band)
+{
+    if (band < 0 || band >= maxBands)
+        return;
+
+    if (auto* parameter = apvts.getParameter (onParamId (band)))
+        parameter->setValueNotifyingHost (0.0f);
 }
 
 void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -116,8 +195,10 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
         juce::dsp::AudioBlock<float> block (buffer);
         juce::dsp::ProcessContextReplacing<float> context (block);
-        for (auto& filter : filters)
-            filter.process (context);
+
+        for (int band = 0; band < maxBands; ++band)
+            if (bandActive[(size_t) band])
+                filters[(size_t) band].process (context);
     }
 
     if (auto* display = waveformDisplay.load())

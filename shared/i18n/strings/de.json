@@ -247,5 +247,11 @@
   "ui.levelNumber": "Level {{level}}",
   "ui.promotionOpenedCaption": "Level-Test läuft",
   "ui.promotionOpenedTitle": "{{count}} in Folge holen das Level",
-  "ui.showInstructions": "So funktioniert die Übung"
+  "ui.showInstructions": "So funktioniert die Übung",
+  "eq.band": "Band {{number}}",
+  "eq.noBand": "Kein Band",
+  "eq.zoneHint": "Punkt ziehen · Doppelklick zum Hinzufügen/Entfernen · Scrollen für Q",
+  "eq.freq": "Freq",
+  "eq.gain": "Gain",
+  "eq.q": "Q"
 }

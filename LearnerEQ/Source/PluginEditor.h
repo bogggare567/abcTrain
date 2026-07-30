@@ -36,15 +36,38 @@ private:
     void applyTheme();
     void toggleTheme();
 
-    struct BandControls
-    {
-        juce::Slider freqSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-        juce::Slider gainSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-        juce::Slider qSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-        juce::Label nameLabel;
-        std::array<juce::Label, 3> knobLabels;   // Freq / Gain / Q
-        std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> freqAttachment, gainAttachment, qAttachment;
-    };
+    // The selected band's controls - *one* set, not one per band.
+    //
+    // There used to be four columns of three knobs, permanently on
+    // screen, whether or not you were touching any of them. Twelve
+    // controls to say what is now said by the node under your pointer.
+    // These exist for the two things a curve cannot express well: the
+    // exact number, and the filter type.
+    //
+    // They follow the selection rather than owning it: no attachments,
+    // because the selected band changes and an APVTS attachment is bound
+    // to one parameter for its lifetime. The editor's 30 Hz timer pushes
+    // values in, and onValueChange writes back through the parameter -
+    // which is also what keeps host automation and undo working.
+    juce::ComboBox typeSelector;
+    juce::Slider freqSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Slider gainSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Slider qSlider    { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Label freqLabel, gainLabel, qLabel, typeLabel;
+
+    // "Boom - warmth, then mud and boxiness". One line, under the
+    // pointer's zone. The map of sensations is the thing a mixer actually
+    // carries; the numbers are how you write it down afterwards.
+    juce::Label zoneLabel;
+    juce::TextButton zonesButton { "Zones" };
+
+    // -1 when nothing is selected.
+    int selectedBand = -1;
+    void selectBand (int band);
+    void pushSelectedBandToControls();
+    void writeParameter (const juce::String& id, float value);
+    void refreshZoneLabel();
+    void pushBandsToDisplay();
 
     // Declared first so it's constructed before, and destroyed after,
     // every other Component below - see the class comment on
@@ -71,7 +94,6 @@ private:
     WaveformDisplay waveform;
     juce::Label inputPeakLabel;
     juce::Label outputPeakLabel;
-    std::array<BandControls, LearnerEQProcessor::numBands> bands;
 
     juce::ToggleButton bypassButton { "Bypass" };
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;

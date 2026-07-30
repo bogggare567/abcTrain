@@ -247,5 +247,11 @@
   "ui.levelNumber": "レベル {{level}}",
   "ui.promotionOpenedCaption": "レベルテスト中",
   "ui.promotionOpenedTitle": "{{count}} 連続正解でレベル獲得",
-  "ui.showInstructions": "この練習のしくみ"
+  "ui.showInstructions": "この練習のしくみ",
+  "eq.band": "バンド {{number}}",
+  "eq.noBand": "バンドなし",
+  "eq.zoneHint": "ノードをドラッグ · ダブルクリックで追加/削除 · ホイールで Q",
+  "eq.freq": "周波数",
+  "eq.gain": "ゲイン",
+  "eq.q": "Q"
 }

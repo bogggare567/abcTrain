@@ -2,6 +2,7 @@
 #include "../../shared/UpdatePrompt.h"
 #include "EQCoefficients.h"
 #include "FrequencyGuide.h"
+#include "FrequencyZones.h"
 #include "VocalEqLesson.h"
 #include "FindResonanceLesson.h"
 #include "../../shared/Version.h"
@@ -80,69 +81,146 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
     addAndMakeVisible (outputPeakLabel);
 
-    for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
+    // ---- the curve is the instrument ----
+    spectrum.onBandSelected = [this] (int band) { selectBand (band); };
+
+    spectrum.onBandMoved = [this] (int band, float freqHz, float gainDb)
     {
-        auto& controls = bands[(size_t) band];
+        writeParameter (LearnerEQProcessor::freqParamId (band), freqHz);
 
-        controls.nameLabel.setText (EQCoefficients::nameForBand (band), juce::dontSendNotification);
-        controls.nameLabel.setJustificationType (juce::Justification::centred);
-        addAndMakeVisible (controls.nameLabel);
+        // A pass filter or a notch has no gain to move, so vertical drag
+        // does nothing for them rather than writing a value the shape
+        // ignores. A control that looks like it works and does not is
+        // worse than one that visibly does not.
+        if (EQCoefficients::usesGain (processor.getBandType (band)))
+            writeParameter (LearnerEQProcessor::gainParamId (band), gainDb);
 
-        // Three identical knobs per band with only the band's name above
-        // them: nothing on screen said which was frequency, which was gain
-        // and which was Q. The numbers underneath don't answer it either -
-        // 0.70 could be a Q or a gain. Obvious in a rendered editor,
-        // invisible to every test.
-        const char* const knobCaptions[] = { "Freq", "Gain", "Q" };
+        guideTooltip.setText (juce::String (EQCoefficients::nameForType (processor.getBandType (band)))
+                                   + " - " + FrequencyGuide::describe (freqHz));
+        pushSelectedBandToControls();
+    };
 
-        for (int knob = 0; knob < 3; ++knob)
-        {
-            auto& caption = controls.knobLabels[(size_t) knob];
-            caption.setText (knobCaptions[knob], juce::dontSendNotification);
-            caption.setJustificationType (juce::Justification::centred);
-            caption.setFont (AbcTrainLookAndFeel::captionFont());
-            addAndMakeVisible (caption);
-        }
+    spectrum.onBandQChanged = [this] (int band, float q)
+    {
+        writeParameter (LearnerEQProcessor::qParamId (band), q);
+        pushSelectedBandToControls();
+    };
 
-        for (auto* slider : { &controls.freqSlider, &controls.gainSlider, &controls.qSlider })
-        {
-            addAndMakeVisible (slider);
+    spectrum.onBandAdded = [this] (float freqHz, float gainDb)
+    {
+        // Below 45 Hz a new band is almost always meant to be a high-pass
+        // - that is what anyone reaches for down there - so offering a
+        // bell first would make the common case the two-step one.
+        const auto type = freqHz < 45.0f ? EQCoefficients::BandType::highPass
+                                         : EQCoefficients::BandType::bell;
 
-            // See the same call in LearnerComp - and note the order: this
-            // must follow addAndMakeVisible, or the slider has no parent
-            // and resolves back to JUCE's default LookAndFeel.
-            slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 56, 18);
-        }
+        const auto added = processor.addBand (freqHz, gainDb, type);
 
-        controls.freqAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-            processor.apvts, LearnerEQProcessor::freqParamId (band), controls.freqSlider);
-        controls.gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-            processor.apvts, LearnerEQProcessor::gainParamId (band), controls.gainSlider);
-        controls.qAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-            processor.apvts, LearnerEQProcessor::qParamId (band), controls.qSlider);
+        if (added >= 0)
+            selectBand (added);
+    };
 
-        auto& freqSlider = controls.freqSlider;
+    spectrum.onBandRemoved = [this] (int band)
+    {
+        processor.removeBand (band);
 
-        freqSlider.onDragStart = [this, band, &freqSlider]
-        {
-            guideTooltip.setText (juce::String (EQCoefficients::nameForBand (band)) + ": "
-                                       + FrequencyGuide::describe ((float) freqSlider.getValue()));
-            spectrum.setHighlightedBand (band);
-        };
+        if (selectedBand == band)
+            selectBand (-1);
+    };
 
-        freqSlider.onValueChange = [this, band, &freqSlider]
-        {
-            if (freqSlider.isMouseButtonDown())
-                guideTooltip.setText (juce::String (EQCoefficients::nameForBand (band)) + ": "
-                                           + FrequencyGuide::describe ((float) freqSlider.getValue()));
-        };
+    spectrum.onPointerMoved = [this] { refreshZoneLabel(); };
 
-        freqSlider.onDragEnd = [this]
-        {
-            guideTooltip.setText ({});
-            spectrum.setHighlightedBand (-1);
-        };
+    // ---- the selected band's exact numbers ----
+    for (int type = 0; type < EQCoefficients::numTypes; ++type)
+        typeSelector.addItem (EQCoefficients::nameForType (EQCoefficients::typeFromIndex (type)), type + 1);
+
+    typeSelector.onChange = [this]
+    {
+        if (selectedBand < 0)
+            return;
+
+        writeParameter (LearnerEQProcessor::typeParamId (selectedBand),
+                        (float) (typeSelector.getSelectedId() - 1));
+        pushSelectedBandToControls();
+    };
+
+    addAndMakeVisible (typeSelector);
+
+    freqSlider.setRange (20.0, 20000.0);
+    freqSlider.setSkewFactorFromMidPoint (1000.0);
+    gainSlider.setRange (-18.0, 18.0, 0.1);
+    qSlider.setRange (0.1, 18.0, 0.01);
+    qSlider.setSkewFactorFromMidPoint (1.2);
+
+    // Without this the frequency box read "999.9999390". A slider prints
+    // its raw double unless told otherwise, and the number under a knob is
+    // the one thing on this panel that has to be exact *and* readable.
+    freqSlider.setNumDecimalPlacesToDisplay (0);
+    freqSlider.setTextValueSuffix (" Hz");
+    gainSlider.setNumDecimalPlacesToDisplay (1);
+    gainSlider.setTextValueSuffix (" dB");
+    qSlider.setNumDecimalPlacesToDisplay (2);
+
+    freqSlider.onValueChange = [this]
+    {
+        if (selectedBand < 0)
+            return;
+
+        writeParameter (LearnerEQProcessor::freqParamId (selectedBand), (float) freqSlider.getValue());
+
+        if (freqSlider.isMouseButtonDown())
+            guideTooltip.setText (FrequencyGuide::describe ((float) freqSlider.getValue()));
+    };
+
+    freqSlider.onDragEnd = [this] { guideTooltip.setText ({}); };
+
+    gainSlider.onValueChange = [this]
+    {
+        if (selectedBand >= 0)
+            writeParameter (LearnerEQProcessor::gainParamId (selectedBand), (float) gainSlider.getValue());
+    };
+
+    qSlider.onValueChange = [this]
+    {
+        if (selectedBand >= 0)
+            writeParameter (LearnerEQProcessor::qParamId (selectedBand), (float) qSlider.getValue());
+    };
+
+    for (auto* slider : { &freqSlider, &gainSlider, &qSlider })
+    {
+        addAndMakeVisible (slider);
+        slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 62, 18);
     }
+
+    for (auto* label : { &typeLabel, &freqLabel, &gainLabel, &qLabel })
+    {
+        label->setJustificationType (juce::Justification::centred);
+        label->setFont (AbcTrainLookAndFeel::captionFont());
+        addAndMakeVisible (label);
+    }
+
+    freqLabel.setText (localisation.getText ("eq.freq"), juce::dontSendNotification);
+    gainLabel.setText (localisation.getText ("eq.gain"), juce::dontSendNotification);
+    qLabel.setText (localisation.getText ("eq.q"), juce::dontSendNotification);
+    refreshZoneLabel();
+
+    zoneLabel.setJustificationType (juce::Justification::centredLeft);
+    zoneLabel.setFont (AbcTrainLookAndFeel::bodyFont());
+    addAndMakeVisible (zoneLabel);
+
+    zonesButton.setClickingTogglesState (true);
+    zonesButton.setToggleState (true, juce::dontSendNotification);
+    zonesButton.onClick = [this] { spectrum.setZonesVisible (zonesButton.getToggleState()); };
+    addAndMakeVisible (zonesButton);
+
+    selectBand (0);
+
+    // The display's band list arrives on the 30 Hz timer, so without this
+    // the curve and its nodes are empty for the first frame after the
+    // window opens - and permanently empty anywhere the message loop is
+    // not pumped, which is how tools/EditorSnapshots first showed a
+    // node-less curve.
+    pushBandsToDisplay();
 
     processor.setSpectrumAnalyser (&spectrum);
     processor.setWaveformDisplay (&waveform);
@@ -280,8 +358,10 @@ void LearnerEQEditor::applyTheme()
     outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
 
-    for (auto& controls : bands)
-        controls.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
+    for (auto* label : { &typeLabel, &freqLabel, &gainLabel, &qLabel })
+        label->setColour (juce::Label::textColourId, theme.textDim);
+
+    refreshZoneLabel();
 
     // The glyph cross-fades rather than cutting, so the toggle reads as
     // one control changing state (see IconButton).
@@ -421,33 +501,37 @@ void LearnerEQEditor::resized()
 
     area.removeFromTop (Spacing::medium);
 
-    // --- band section: one column of freq/gain/Q per band ---
-    controlSection = area.removeFromTop (212);   // +14 for the Freq/Gain/Q captions
+    // --- one row for the selected band: type, then its three numbers ---
+    // Twelve knobs became four controls that follow your selection. The
+    // curve says *where*; this says exactly what.
+    controlSection = area.removeFromTop (150);
     {
         auto inner = controlSection.reduced (Spacing::medium);
         inner.removeFromTop (Spacing::large);
 
-        const auto columnWidth = inner.getWidth() / LearnerEQProcessor::numBands;
-        for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
+        auto zoneRow = inner.removeFromTop (22);
+        zonesButton.setBounds (zoneRow.removeFromRight (78).withSizeKeepingCentre (78, 22));
+        zoneRow.removeFromRight (Spacing::small);
+        zoneLabel.setBounds (zoneRow);
+
+        inner.removeFromTop (Spacing::small);
+
+        const auto columnWidth = inner.getWidth() / 4;
+
+        auto typeColumn = inner.removeFromLeft (columnWidth).reduced (Spacing::small, 0);
+        typeLabel.setBounds (typeColumn.removeFromTop (14));
+        typeSelector.setBounds (typeColumn.removeFromTop (28));
+
+        const auto place = [&inner, columnWidth] (juce::Label& caption, juce::Slider& slider)
         {
             auto column = inner.removeFromLeft (columnWidth).reduced (Spacing::tight, 0);
-            auto& controls = bands[(size_t) band];
+            caption.setBounds (column.removeFromTop (14));
+            slider.setBounds (column);
+        };
 
-            controls.nameLabel.setBounds (column.removeFromTop (18));
-
-            // Three knobs side by side per band rather than stacked: the
-            // stacked layout needed 270px of height per column, which is
-            // what forced the window so tall and left the bands cramped.
-            const auto knobWidth = column.getWidth() / 3;
-
-            auto captionRow = column.removeFromTop (14);
-            for (auto& caption : controls.knobLabels)
-                caption.setBounds (captionRow.removeFromLeft (knobWidth));
-
-            controls.freqSlider.setBounds (column.removeFromLeft (knobWidth));
-            controls.gainSlider.setBounds (column.removeFromLeft (knobWidth));
-            controls.qSlider.setBounds (column);
-        }
+        place (freqLabel, freqSlider);
+        place (gainLabel, gainSlider);
+        place (qLabel, qSlider);
     }
 
     soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
@@ -480,17 +564,16 @@ void LearnerEQEditor::timerCallback()
         }
     }
 
-    std::array<float, 4> freqs {}, gains {}, qs {};
+    pushBandsToDisplay();
 
-    for (int band = 0; band < LearnerEQProcessor::numBands; ++band)
-    {
-        freqs[(size_t) band] = processor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (band))->load();
-        gains[(size_t) band] = processor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (band))->load();
-        qs[(size_t) band] = processor.apvts.getRawParameterValue (LearnerEQProcessor::qParamId (band))->load();
-    }
+    // A band can go away without this editor doing it - a host automating
+    // the On parameter, or a preset load - so the selection is re-checked
+    // every frame rather than only when this editor changes it.
+    if (selectedBand >= 0 && ! processor.isBandOn (selectedBand))
+        selectBand (-1);
 
-    const auto sr = processor.getSampleRate();
-    spectrum.setEQState (sr > 0.0 ? sr : 44100.0, freqs, gains, qs);
+    pushSelectedBandToControls();
+
 
     inputPeakLabel.setText ("In: "
                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)
@@ -501,4 +584,112 @@ void LearnerEQEditor::timerCallback()
                                   + juce::String (juce::Decibels::gainToDecibels (waveform.getOutputPeak(), -60.0f), 1)
                                   + " dB",
                               juce::dontSendNotification);
+}
+
+// ---------------------------------------------------------------------------
+// The selected band
+//
+// One set of controls follows the selection instead of one set per band
+// owning its own. That rules out APVTS attachments, which bind to a single
+// parameter for their lifetime - so values are pushed in on the editor's
+// timer and written back through the parameter object, which is what keeps
+// host automation, undo and the "someone else moved it" case working.
+// ---------------------------------------------------------------------------
+
+void LearnerEQEditor::writeParameter (const juce::String& id, float value)
+{
+    if (auto* parameter = processor.apvts.getParameter (id))
+        parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
+}
+
+void LearnerEQEditor::selectBand (int band)
+{
+    selectedBand = (band >= 0 && processor.isBandOn (band)) ? band : -1;
+    spectrum.setSelectedBand (selectedBand);
+    pushSelectedBandToControls();
+}
+
+void LearnerEQEditor::pushSelectedBandToControls()
+{
+    const auto hasBand = selectedBand >= 0;
+
+    typeSelector.setEnabled (hasBand);
+    freqSlider.setEnabled (hasBand);
+    qSlider.setEnabled (hasBand);
+
+    if (! hasBand)
+    {
+        gainSlider.setEnabled (false);
+        typeLabel.setText (localisation.getText ("eq.noBand"), juce::dontSendNotification);
+        return;
+    }
+
+    const auto type = processor.getBandType (selectedBand);
+
+    typeLabel.setText (localisation.getText ("eq.band",
+                                              { { "number", juce::String (selectedBand + 1) } }),
+                        juce::dontSendNotification);
+
+    // Gain is greyed for the shapes that have none. A pass filter cuts by
+    // its slope, not by an amount, and a gain control on it would be a
+    // control that lies.
+    gainSlider.setEnabled (EQCoefficients::usesGain (type));
+
+    typeSelector.setSelectedId ((int) type + 1, juce::dontSendNotification);
+
+    // dontSendNotification throughout: these are a mirror of the
+    // parameters, and echoing them straight back would be a write loop
+    // that fights whatever the user is currently dragging.
+    freqSlider.setValue (processor.apvts.getRawParameterValue (
+        LearnerEQProcessor::freqParamId (selectedBand))->load(), juce::dontSendNotification);
+    gainSlider.setValue (processor.apvts.getRawParameterValue (
+        LearnerEQProcessor::gainParamId (selectedBand))->load(), juce::dontSendNotification);
+    qSlider.setValue (processor.apvts.getRawParameterValue (
+        LearnerEQProcessor::qParamId (selectedBand))->load(), juce::dontSendNotification);
+}
+
+void LearnerEQEditor::refreshZoneLabel()
+{
+    const auto freq = spectrum.getPointerFrequency();
+
+    if (freq < 0.0f)
+    {
+        // The hint for the gesture, when there is nothing to report. The
+        // surface has no other affordance saying you can make a band.
+        zoneLabel.setText (localisation.getText ("eq.zoneHint"), juce::dontSendNotification);
+        zoneLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
+        return;
+    }
+
+    const auto& zone = FrequencyZones::zoneFor (freq);
+
+    zoneLabel.setText (juce::String (zone.name) + " - " + zone.feels
+                           + "   ·   " + juce::String (juce::roundToInt (freq)) + " Hz",
+                        juce::dontSendNotification);
+    zoneLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().text);
+}
+
+void LearnerEQEditor::pushBandsToDisplay()
+{
+    // Only the bands that are on. The display draws exactly what the DSP
+    // runs, so the curve can never show a band the audio does not have.
+    std::vector<SpectrumAnalyserComponent::Band> active;
+    active.reserve (LearnerEQProcessor::maxBands);
+
+    for (int band = 0; band < LearnerEQProcessor::maxBands; ++band)
+    {
+        if (! processor.isBandOn (band))
+            continue;
+
+        SpectrumAnalyserComponent::Band entry;
+        entry.index = band;
+        entry.type = processor.getBandType (band);
+        entry.freqHz = processor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (band))->load();
+        entry.gainDb = processor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (band))->load();
+        entry.q = processor.apvts.getRawParameterValue (LearnerEQProcessor::qParamId (band))->load();
+        active.push_back (entry);
+    }
+
+    const auto sr = processor.getSampleRate();
+    spectrum.setEQState (sr > 0.0 ? sr : 44100.0, std::move (active));
 }

@@ -247,5 +247,11 @@
   "ui.levelNumber": "nivel {{level}}",
   "ui.promotionOpenedCaption": "Prueba de nivel activa",
   "ui.promotionOpenedTitle": "{{count}} seguidas y el nivel es tuyo",
-  "ui.showInstructions": "Cómo funciona el ejercicio"
+  "ui.showInstructions": "Cómo funciona el ejercicio",
+  "eq.band": "Banda {{number}}",
+  "eq.noBand": "Sin banda",
+  "eq.zoneHint": "Arrastra un punto · doble clic para añadir o quitar · rueda para la Q",
+  "eq.freq": "Frec",
+  "eq.gain": "Ganancia",
+  "eq.q": "Q"
 }
