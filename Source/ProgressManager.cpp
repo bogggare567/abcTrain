@@ -79,6 +79,9 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float qual
     auto& stats = statsPerGame[(size_t) gameIndex];
     ++stats.roundsPlayed;
 
+    AnswerOutcome outcome;
+    outcome.wasCorrect = wasCorrect;
+
     if (wasCorrect)
     {
         ++consecutiveCorrectPerGame[(size_t) gameIndex];
@@ -91,6 +94,8 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float qual
         {
             dailyChallengeComplete = true;
             progressPerGame[(size_t) gameIndex].points += dailyChallengeBonusPoints;
+            outcome.dailyChallengeJustCompleted = true;
+            outcome.pointsAwarded += dailyChallengeBonusPoints;
         }
     }
     else
@@ -98,10 +103,14 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float qual
         consecutiveCorrectPerGame[(size_t) gameIndex] = 0;
     }
 
-    applyAnswerToProgress (gameIndex, wasCorrect, juce::jlimit (0.0f, 1.0f, quality));
+    applyAnswerToProgress (gameIndex, wasCorrect, juce::jlimit (0.0f, 1.0f, quality), outcome);
 
     refreshAchievements();
     saveState();
+
+    if (onAnswerScored != nullptr)
+        onAnswerScored (gameIndex, outcome);
+
     sendChangeMessage();
 }
 
@@ -222,42 +231,62 @@ int ProgressManager::indexOfGame (const Game& game) const noexcept
     return -1;
 }
 
-bool ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality)
+void ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality,
+                                              AnswerOutcome& outcome)
 {
     auto& game = progressPerGame[(size_t) gameIndex];
+
+    const auto finish = [&]
+    {
+        outcome.level = game.level;
+        outcome.promotionPending = game.promotionPending;
+        outcome.promotionStreak = game.promotionStreak;
+    };
 
     if (! wasCorrect)
     {
         // A wrong answer costs the promotion test, never a level or a
         // point. Demotion would make people avoid the exercises they are
         // worst at, which are exactly the ones worth doing.
+        outcome.promotionJustFailed = game.promotionPending && game.promotionStreak > 0;
         game.promotionStreak = 0;
-        return false;
+        finish();
+        return;
     }
 
-    game.points += pointsPerCorrectAnswer
-                       + juce::roundToInt ((float) precisionBonusPoints * quality);
+    const auto earned = pointsPerCorrectAnswer
+                            + juce::roundToInt ((float) precisionBonusPoints * quality);
+    game.points += earned;
+    outcome.pointsAwarded += earned;
 
     if (game.level < maxLevel && ! game.promotionPending
         && game.points >= pointsRequiredForLevel (game.level + 1))
     {
         game.promotionPending = true;
         game.promotionStreak = 0;
+        outcome.promotionJustOpened = true;
     }
 
     if (! game.promotionPending)
-        return false;
+    {
+        finish();
+        return;
+    }
 
     if (++game.promotionStreak < promotionTestLength)
-        return false;
+    {
+        finish();
+        return;
+    }
 
     ++game.level;
     game.promotionPending = false;
     game.promotionStreak = 0;
+    outcome.leveledUp = true;
 
     // Only this exercise gets harder. That is the whole point.
     gameManager.getGame (gameIndex).setDifficulty (game.level);
-    return true;
+    finish();
 }
 
 int ProgressManager::getLevelForGame (int gameIndex) const noexcept

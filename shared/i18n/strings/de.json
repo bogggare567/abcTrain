@@ -242,5 +242,10 @@
   "module.close": "Schließen",
   "module.back": "Zurück",
   "module.next": "Weiter",
-  "module.ready": "Bereit"
+  "module.ready": "Bereit",
+  "ui.levelTaken": "Level geschafft!",
+  "ui.levelNumber": "Level {{level}}",
+  "ui.promotionOpenedCaption": "Level-Test läuft",
+  "ui.promotionOpenedTitle": "{{count}} in Folge holen das Level",
+  "ui.showInstructions": "So funktioniert die Übung"
 }

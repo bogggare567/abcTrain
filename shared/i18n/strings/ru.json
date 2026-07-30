@@ -242,5 +242,10 @@
   "module.close": "Закрыть",
   "module.back": "Назад",
   "module.next": "Далее",
-  "module.ready": "Готов"
+  "module.ready": "Готов",
+  "ui.levelTaken": "Уровень взят!",
+  "ui.levelNumber": "уровень {{level}}",
+  "ui.promotionOpenedCaption": "Тест на уровень открыт",
+  "ui.promotionOpenedTitle": "{{count}} подряд — и уровень твой",
+  "ui.showInstructions": "Как работает упражнение"
 }

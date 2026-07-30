@@ -33,7 +33,12 @@ namespace AppIcons
         // A checklist, for the training modules. Reads as a list of things
         // to get through, which is what a module shelf is - a book or a cap
         // would say "reading", and none of this is reading.
-        modules
+        modules,
+
+        // A question mark, for re-opening an exercise's instructions once
+        // they have collapsed. Bare, not circled: at 16px a ring around a
+        // glyph this detailed eats the glyph.
+        help
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().

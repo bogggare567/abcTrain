@@ -105,6 +105,26 @@ public:
         refreshFromGameState();
     }
 
+    // Snapshot seam for the answered state - the moment stage 2 of ADR
+    // 029 exists for, so it must be photographable. Submits a deliberate
+    // near-miss so the shot shows the guess, the target *and* the band
+    // between them; the tool never pumps a message loop, so the async
+    // ProgressManager listener never fires and no real progress is
+    // written.
+    void answerForSnapshot()
+    {
+        auto& game = processor.getGameManager().getActiveGame();
+        game.newRound();
+
+        if (game.usesContinuousScale())
+            game.submitNormalisedAnswer (juce::jlimit (0.0f, 1.0f, game.getCorrectNormalised() + 0.18f));
+        else
+            game.submitAnswer (0);
+
+        refreshFromGameState();
+        choiceSlider.completeAnimation();
+    }
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -261,6 +281,157 @@ private:
         juce::VBlankAnimatorUpdater updater { this };
     };
 
+    // "+12" that leaps from the answer and drifts upward as it fades: the
+    // one place in the loop where earned points should feel *gained*
+    // rather than bookkept. Until this existed, the only trace of an
+    // answer's worth was a label quietly holding a different number.
+    // Non-interactive; a new award landing mid-flight simply restarts it -
+    // the newest number is the one that matters, same rule as the toast.
+    class PointsFlyup : public juce::Component
+    {
+    public:
+        PointsFlyup() { setInterceptsMouseClicks (false, false); }
+
+        void show (const juce::String& newText, juce::Colour newColour)
+        {
+            text = newText;
+            colour = newColour;
+
+            if (! animator.isComplete())
+                animator.complete();
+
+            animator = juce::ValueAnimatorBuilder{}
+                           .withEasing (juce::Easings::createEaseOut())
+                           .withDurationMs (1050.0)
+                           .withValueChangedCallback ([this] (float t)
+                           {
+                               progress = t;
+                               repaint();
+                           })
+                           .build();
+
+            updater.addAnimator (animator, [this]
+            {
+                updater.removeAnimator (animator);
+                setVisible (false);
+            });
+
+            setVisible (true);
+            toFront (false);
+            animator.start();
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            if (text.isEmpty())
+                return;
+
+            // Rises through the component; fades only over the last part,
+            // so the number is readable for most of the flight.
+            const auto travel = (float) getHeight() - 26.0f;
+            const auto y = travel * (1.0f - progress);
+            const auto alpha = progress < 0.6f ? 1.0f
+                                               : juce::jmax (0.0f, 1.0f - (progress - 0.6f) / 0.4f);
+
+            g.setColour (colour.withAlpha (alpha));
+            g.setFont (AbcTrainLookAndFeel::titleFont());
+            g.drawText (text,
+                        juce::Rectangle<float> (0.0f, y, (float) getWidth(), 26.0f),
+                        juce::Justification::centred, false);
+        }
+
+    private:
+        juce::String text;
+        juce::Colour colour;
+        float progress = 0.0f;
+        juce::Animator animator = juce::ValueAnimatorBuilder{}.build();
+        juce::VBlankAnimatorUpdater updater { this };
+    };
+
+    // The promotion test, visible: one pip per required consecutive
+    // correct answer. The mechanic existed and mattered - five in a row
+    // takes the level - but lived only in a line of text, which is why a
+    // player could be two answers from a level-up and not feel it.
+    class PromotionPips : public juce::Component
+    {
+    public:
+        void set (int newFilled, int newTotal)
+        {
+            if (newFilled == filled && newTotal == total)
+                return;
+
+            const auto gained = newFilled > filled;
+            filled = newFilled;
+            total = newTotal;
+
+            // Pop the newest pip in; a reset (wrong answer during the
+            // test) just repaints - the emptying itself is the message.
+            if (gained)
+            {
+                if (! popAnimator.isComplete())
+                    popAnimator.complete();
+
+                popAnimator = juce::ValueAnimatorBuilder{}
+                                  .withEasing (juce::Easings::createEaseOutBack())
+                                  .withDurationMs (260.0)
+                                  .withValueChangedCallback ([this] (float t)
+                                  {
+                                      pop = t;
+                                      repaint();
+                                  })
+                                  .build();
+                updater.addAnimator (popAnimator, [this] { updater.removeAnimator (popAnimator); });
+                popAnimator.start();
+            }
+
+            repaint();
+        }
+
+        void paint (juce::Graphics& g) override
+        {
+            if (total <= 0)
+                return;
+
+            const auto& theme = AbcTrainTheme::current();
+            const auto radius = 4.0f;
+            const auto gap = 6.0f;
+            const auto span = (float) total * radius * 2.0f + (float) (total - 1) * gap;
+            auto x = ((float) getWidth() - span) * 0.5f + radius;
+            const auto y = (float) getHeight() * 0.5f;
+
+            for (int i = 0; i < total; ++i)
+            {
+                const auto isNewest = (i == filled - 1);
+                const auto scale = isNewest ? 0.6f + 0.4f * pop : 1.0f;
+                const auto r = radius * scale;
+
+                if (i < filled)
+                {
+                    // createEaseOutBack overshoots past 1.0 - that is the
+                    // pop - so anything derived from it must be clamped
+                    // before it becomes an alpha.
+                    g.setColour (theme.accent.withAlpha (juce::jlimit (0.0f, 1.0f, 0.35f * (isNewest ? pop : 1.0f))));
+                    g.fillEllipse (x - r - 2.0f, y - r - 2.0f, (r + 2.0f) * 2.0f, (r + 2.0f) * 2.0f);
+                    g.setColour (theme.accent);
+                    g.fillEllipse (x - r, y - r, r * 2.0f, r * 2.0f);
+                }
+                else
+                {
+                    g.setColour (theme.outline);
+                    g.drawEllipse (x - radius, y - radius, radius * 2.0f, radius * 2.0f, 1.2f);
+                }
+
+                x += radius * 2.0f + gap;
+            }
+        }
+
+    private:
+        int filled = 0, total = 0;
+        float pop = 1.0f;
+        juce::Animator popAnimator = juce::ValueAnimatorBuilder{}.build();
+        juce::VBlankAnimatorUpdater updater { this };
+    };
+
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
 
     // Pushes the active palette into every widget that sets its own colours
@@ -342,6 +513,21 @@ private:
     // about this exercise, not about the run.
     juce::Label levelProgressLabel;
     juce::Label feedbackLabel;
+
+    // The moment of answer, made visible (stage 2 of ADR 029): what the
+    // answer earned, and how far into the promotion test this exercise is.
+    PointsFlyup pointsFlyup;
+    PromotionPips promotionPips;
+    void handleAnswerScored (int gameIndex, const ProgressManager::AnswerOutcome&);
+
+    // Collapses the instruction paragraph once an exercise is familiar
+    // (a handful of lifetime correct answers), reclaiming the space for
+    // the answer scale; the "?" button brings it back for re-reading.
+    // Session-scoped on purpose - "show me again" is a moment, not a
+    // setting.
+    IconButton instructionsButton { AppIcons::Icon::help };
+    bool instructionsPinnedOpen = false;
+    bool shouldShowInstructions() const;
     // No "New Round" button: rounds advance on their own, and a button
     // that only duplicates something automatic is a button to remove.
     // This one exists *only* while a Survival/Blitz run is over, which is

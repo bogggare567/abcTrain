@@ -359,6 +359,21 @@ namespace AppIcons
             p.lineTo (15.0f, 7.5f);
             return p;
         }
+
+        juce::Path helpPath()
+        {
+            // A question mark: the hook drawn as an arc that opens
+            // downward into a short stem, plus a separate dot.
+            juce::Path p;
+            p.addCentredArc (12.0f, 8.5f, 4.5f, 4.5f,
+                             0.0f,
+                             -2.1f, 1.85f,   // radians; from upper-left, over the top, down the right
+                             true);
+            p.lineTo (12.0f, 15.0f);
+
+            p.addEllipse (11.1f, 18.6f, 1.8f, 1.8f);
+            return p;
+        }
     juce::Path getPath (Icon icon, float a)
     {
         switch (icon)
@@ -387,6 +402,7 @@ namespace AppIcons
             case Icon::award:          return awardPath();
             case Icon::settings:       return settingsPath();
             case Icon::modules:        return modulesPath();
+            case Icon::help:           return helpPath();
         }
 
         return eqPath (a);

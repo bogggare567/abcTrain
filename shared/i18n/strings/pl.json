@@ -242,5 +242,10 @@
   "module.close": "Zamknij",
   "module.back": "Wstecz",
   "module.next": "Dalej",
-  "module.ready": "Gotów"
+  "module.ready": "Gotów",
+  "ui.levelTaken": "Poziom zdobyty!",
+  "ui.levelNumber": "poziom {{level}}",
+  "ui.promotionOpenedCaption": "Test poziomu trwa",
+  "ui.promotionOpenedTitle": "{{count}} z rzędu zdobywa poziom",
+  "ui.showInstructions": "Jak działa ćwiczenie"
 }

@@ -242,5 +242,10 @@
   "module.close": "Fechar",
   "module.back": "Voltar",
   "module.next": "Próximo",
-  "module.ready": "Pronto"
+  "module.ready": "Pronto",
+  "ui.levelTaken": "Nível conquistado!",
+  "ui.levelNumber": "nível {{level}}",
+  "ui.promotionOpenedCaption": "Teste de nível ativo",
+  "ui.promotionOpenedTitle": "{{count}} seguidas conquistam o nível",
+  "ui.showInstructions": "Como funciona o exercício"
 }

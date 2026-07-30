@@ -35,8 +35,13 @@ void ChoiceSliderComponent::timerCallback()
     if (enterAmount < 1.0f)
         enterAmount = juce::jmin (1.0f, enterAmount + step / (float) AbcTrainTheme::Duration::transition);
 
+    const auto previousReveal = revealAmount;
+    if (answered && revealAmount < 1.0f)
+        revealAmount = juce::jmin (1.0f, revealAmount + step / (float) AbcTrainTheme::Duration::transition);
+
     if (std::abs (touchAmount - previousTouch) > 0.002f
-        || std::abs (enterAmount - previousEnter) > 0.002f)
+        || std::abs (enterAmount - previousEnter) > 0.002f
+        || std::abs (revealAmount - previousReveal) > 0.002f)
     {
         repaint();
     }
@@ -89,6 +94,7 @@ void ChoiceSliderComponent::resetForNewRound()
     targetNormalised = -1.0f;
     feedbackGlow = 0.0f;
     feedbackWobblePx = 0.0f;
+    revealAmount = 1.0f;   // idle; the next answer restarts it at 0
     repaint();
 }
 
@@ -99,6 +105,7 @@ void ChoiceSliderComponent::showAnswer (int newCorrectIndex, int newChosenIndex,
     chosenIndex = newChosenIndex;
     lastCorrect = wasCorrect;
     previewIndex = newChosenIndex;
+    revealAmount = 0.0f;
     startFeedbackAnimation (wasCorrect);
     repaint();
 }
@@ -323,18 +330,30 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         // between the two shades has to be bigger than it looks like it
         // should be on paper - at 0.045/0.015 (the first attempt, checked
         // in the running app) the bands were indistinguishable.
-        auto zoneFill = (i % 2 == 0) ? theme.displayBackground.brighter (0.11f)
-                                     : theme.displayBackground.brighter (0.02f);
-
-        if (answered && i == correctIndex)
-            zoneFill = theme.positive.withAlpha (0.28f);
-        else if (answered && i == chosenIndex && ! lastCorrect)
-            zoneFill = theme.negative.withAlpha (0.28f);
-        else if (isHighlighted)
-            zoneFill = theme.accent.withAlpha (0.26f + 0.08f * touch);
+        const auto zoneFill = (i % 2 == 0) ? theme.displayBackground.brighter (0.11f)
+                                           : theme.displayBackground.brighter (0.02f);
 
         g.setColour (zoneFill);
         g.fillRect (zone);
+
+        // Verdict and highlight are overlays on the stripe rather than
+        // replacements for it, so the answer colours can fade in on the
+        // reveal instead of snapping - the stripe stays put underneath.
+        const auto reveal = AbcTrainTheme::Ease::out (revealAmount);
+        auto overlay = juce::Colours::transparentBlack;
+
+        if (answered && i == correctIndex)
+            overlay = theme.positive.withAlpha (0.28f * reveal);
+        else if (answered && i == chosenIndex && ! lastCorrect)
+            overlay = theme.negative.withAlpha (0.28f * reveal);
+        else if (isHighlighted)
+            overlay = theme.accent.withAlpha (0.26f + 0.08f * touch);
+
+        if (! overlay.isTransparent())
+        {
+            g.setColour (overlay);
+            g.fillRect (zone);
+        }
 
         // Hairline between zones (not after the last one).
         if (i > 0)
@@ -456,6 +475,7 @@ void ChoiceSliderComponent::showContinuousAnswer (float chosen, float target, bo
     cursorNormalised = juce::jlimit (0.0f, 1.0f, chosen);
     cursorEngaged = true;
     targetNormalised = juce::jlimit (0.0f, 1.0f, target);
+    revealAmount = 0.0f;
     startFeedbackAnimation (wasCorrect);
     repaint();
 }
@@ -481,11 +501,15 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     // ---- tolerance band ----
     // Before answering it travels with the cursor, so the player can see
     // exactly how much slack this difficulty allows *while aiming*. After
-    // answering it sits on the target, so "was I inside?" is answerable at
-    // a glance rather than by comparing two numbers.
+    // answering it *slides* from the guess to the target - the size of the
+    // miss is shown as motion, not left to be read off two numbers - and
+    // settles there, so "was I inside?" is answerable at a glance.
     if (toleranceNormalised > 0.0f)
     {
-        const auto bandCentre = answered ? targetNormalised : cursorNormalised;
+        const auto reveal = AbcTrainTheme::Ease::out (revealAmount);
+        const auto bandCentre = answered
+                                    ? cursorNormalised + (targetNormalised - cursorNormalised) * reveal
+                                    : cursorNormalised;
         const auto showBand = answered || cursorEngaged;
 
         if (showBand && bandCentre >= 0.0f)
@@ -498,15 +522,24 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
             // Strong enough to actually see: at 0.055 alpha (the first
             // attempt) the band was invisible against the well, which
             // defeats its whole purpose of showing the player their slack.
+            // The colour crosses from accent to verdict as the band
+            // travels, so it arrives at the target already telling you
+            // how the round went.
+            const auto verdict = lastCorrect ? theme.positive : theme.negative;
             auto bandColour = theme.accent.withAlpha (0.14f);
+            auto edgeColour = theme.accent.withAlpha (0.3f);
             if (answered)
-                bandColour = (lastCorrect ? theme.positive : theme.negative).withAlpha (0.20f);
+            {
+                bandColour = theme.accent.interpolatedWith (verdict, reveal)
+                                          .withAlpha (0.14f + 0.06f * reveal);
+                edgeColour = theme.accent.interpolatedWith (verdict, reveal)
+                                          .withAlpha (0.3f + 0.15f * reveal);
+            }
 
             g.setColour (bandColour);
             g.fillRect (band);
 
-            g.setColour ((answered ? (lastCorrect ? theme.positive : theme.negative)
-                                   : theme.accent).withAlpha (answered ? 0.45f : 0.3f));
+            g.setColour (edgeColour);
             g.drawLine (band.getX(), band.getY(), band.getX(), band.getBottom(), 1.0f);
             g.drawLine (band.getRight(), band.getY(), band.getRight(), band.getBottom(), 1.0f);
         }
@@ -550,11 +583,15 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     }
 
     // ---- the target marker, once the round is over ----
+    // Sweeps down as the band arrives rather than appearing fully formed.
     if (answered && targetNormalised >= 0.0f)
     {
+        const auto reveal = AbcTrainTheme::Ease::out (revealAmount);
         const auto x = xFor (targetNormalised);
-        g.setColour (theme.accentWarm);
-        g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 2.0f);
+        const auto top = scaleArea.getY() + 2.0f;
+        const auto fullHeight = scaleArea.getHeight() - 4.0f;
+        g.setColour (theme.accentWarm.withAlpha (0.35f + 0.65f * reveal));
+        g.drawLine (x, top, x, top + fullHeight * reveal, 2.0f);
     }
 
     // ---- the player's own line ----

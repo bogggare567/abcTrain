@@ -75,13 +75,47 @@ floats, not repaints. The radial-gradient window background repaints only
 within JUCE's dirty-region clip, so caching it into an image would buy
 little and cost invalidation complexity.
 
-## Stages 2-4 (planned)
+## Stage 2 — the moment of answer
 
-- **Stage 2, the moment of answer**: reveal the truth *on the scale*
-  (marker, tolerance band, both values), points that visibly fly to the
-  progress line, the promotion test as something you can see, a level-up
-  that actually celebrates, instructions that collapse once the exercise
-  is familiar.
+The heart of the loop, rebuilt around one principle: **the moment you
+find out is the product**. Everything here serves that ten seconds.
+
+- **`ProgressManager::AnswerOutcome` + `onAnswerScored`.** The manager
+  always knew what an answer produced - `applyAnswerToProgress` even
+  returned "the level changed" as its bool - and `registerAnswer` threw
+  it away. It now fills an outcome struct (points awarded including
+  bonuses, promotion opened/failed, level taken) and fires a callback,
+  synchronously, the same null-safe single-slot shape as
+  `onAchievementEarned`. Covered by a new test group driving the callback
+  through a full grind-open-fail-pass cycle.
+- **The reveal is motion, not a repaint.** On a continuous answer the
+  tolerance band *slides* from the player's guess to the true value
+  (colour crossing from accent to verdict as it goes), and the target
+  marker sweeps down as it arrives - the size of the miss is shown as
+  travel distance, which no pair of printed numbers ever conveyed.
+  Discrete zones fade their verdict colours in on the same eased value.
+  Driven by the slider's existing 60 Hz timer; `completeAnimation()` is
+  the snapshot seam.
+- **Points fly.** `PointsFlyup` lifts "+12" (or "+65" when the daily
+  bonus lands, in the warm accent) from the verdict line up through the
+  exercise header. The number was always paid; now it is *felt*.
+- **The promotion test is visible.** `PromotionPips` sits beside the
+  verdict line while a test is live: five dots, the newest popping in
+  with an ease-out-back overshoot. Opening the test and taking the level
+  both announce themselves through the existing `AchievementToast` - one
+  vocabulary for "something was earned".
+- **Instructions collapse once familiar** (3 lifetime correct answers on
+  that exercise): the paragraph's height flows to the answer scale, and a
+  "?" `IconButton` in the exercise row (new `AppIcons::Icon::help` glyph)
+  brings it back for a session. Familiarity is per-exercise and the
+  pin is deliberately not persisted - "show me again" is a moment, not a
+  setting.
+- **`EditorSnapshots` gained an `answered` extra** rendering a
+  deliberate near-miss, so the state stage 2 exists for is on the
+  contact sheet in both themes.
+
+## Stages 3-4 (planned)
+
 - **Stage 3, modes as events**: a run starts with a countdown and a HUD,
   not a pill toggle; "one more run" is one tap on the results screen.
 - **Stage 4, anchors**: the daily streak and daily challenge surfaced as

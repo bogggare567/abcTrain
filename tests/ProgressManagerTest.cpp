@@ -139,6 +139,65 @@ public:
             expectEquals (progress.getPromotionStreakForGame (0), 0);
         }
 
+        beginTest ("onAnswerScored reports what each answer produced (ADR 029)");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("outcome"));
+
+            ProgressManager::AnswerOutcome last;
+            int lastIndex = -1;
+            progress.onAnswerScored = [&] (int index, const ProgressManager::AnswerOutcome& outcome)
+            {
+                lastIndex = index;
+                last = outcome;
+            };
+
+            // A dead-centre correct answer is worth base + full precision.
+            progress.registerAnswer (0, true, 1.0f);
+            expectEquals (lastIndex, 0);
+            expect (last.wasCorrect);
+            expectEquals (last.pointsAwarded,
+                           ProgressManager::pointsPerCorrectAnswer + ProgressManager::precisionBonusPoints);
+            expect (! last.leveledUp);
+            expect (! last.promotionJustOpened);
+
+            // A wrong answer awards nothing and, with no test live, fails
+            // nothing either.
+            progress.registerAnswer (0, false);
+            expect (! last.wasCorrect);
+            expectEquals (last.pointsAwarded, 0);
+            expect (! last.promotionJustFailed, "no test was live to fail");
+
+            // Grind to the threshold: the answer that crosses it reports
+            // the promotion opening; the fifth in a row after that reports
+            // the level-up, exactly once.
+            auto sawOpen = false;
+            auto sawLevelUp = false;
+
+            for (int i = 0; i < 40 && ! sawLevelUp; ++i)
+            {
+                progress.registerAnswer (0, true, 1.0f);
+                sawOpen = sawOpen || last.promotionJustOpened;
+                sawLevelUp = sawLevelUp || last.leveledUp;
+            }
+
+            expect (sawOpen, "crossing the threshold should report the test opening");
+            expect (sawLevelUp, "passing the test should report the level-up");
+            expectEquals (last.level, 2, "the outcome carries the level after the answer");
+            expect (! last.promotionPending, "the test closed with the level");
+
+            // A wrong answer during a live test reports the failure.
+            for (int i = 0; i < 30 && ! progress.isPromotionPendingForGame (0); ++i)
+                progress.registerAnswer (0, true, 1.0f);
+
+            if (progress.isPromotionPendingForGame (0))
+            {
+                progress.registerAnswer (0, true, 1.0f);   // one into the test
+                progress.registerAnswer (0, false);
+                expect (last.promotionJustFailed, "a wrong answer mid-test should say so");
+            }
+        }
+
         beginTest ("levelling one exercise does not touch another's difficulty");
         {
             GameManager gameManager;

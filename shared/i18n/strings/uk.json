@@ -242,5 +242,10 @@
   "module.close": "Закрити",
   "module.back": "Назад",
   "module.next": "Далі",
-  "module.ready": "Готовий"
+  "module.ready": "Готовий",
+  "ui.levelTaken": "Рівень взято!",
+  "ui.levelNumber": "рівень {{level}}",
+  "ui.promotionOpenedCaption": "Тест на рівень відкрито",
+  "ui.promotionOpenedTitle": "{{count}} поспіль — і рівень твій",
+  "ui.showInstructions": "Як працює вправа"
 }

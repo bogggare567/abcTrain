@@ -242,5 +242,10 @@
   "module.close": "关闭",
   "module.back": "上一步",
   "module.next": "下一步",
-  "module.ready": "准备好了"
+  "module.ready": "准备好了",
+  "ui.levelTaken": "升级成功！",
+  "ui.levelNumber": "等级 {{level}}",
+  "ui.promotionOpenedCaption": "升级考验进行中",
+  "ui.promotionOpenedTitle": "连续答对 {{count}} 次即可升级",
+  "ui.showInstructions": "练习说明"
 }

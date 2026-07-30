@@ -242,5 +242,10 @@
   "module.close": "閉じる",
   "module.back": "戻る",
   "module.next": "次へ",
-  "module.ready": "準備完了"
+  "module.ready": "準備完了",
+  "ui.levelTaken": "レベルアップ！",
+  "ui.levelNumber": "レベル {{level}}",
+  "ui.promotionOpenedCaption": "レベルテスト中",
+  "ui.promotionOpenedTitle": "{{count}} 連続正解でレベル獲得",
+  "ui.showInstructions": "この練習のしくみ"
 }

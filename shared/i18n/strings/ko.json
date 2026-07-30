@@ -242,5 +242,10 @@
   "module.close": "닫기",
   "module.back": "뒤로",
   "module.next": "다음",
-  "module.ready": "준비됐어요"
+  "module.ready": "준비됐어요",
+  "ui.levelTaken": "레벨 획득!",
+  "ui.levelNumber": "레벨 {{level}}",
+  "ui.promotionOpenedCaption": "레벨 테스트 진행 중",
+  "ui.promotionOpenedTitle": "{{count}}연속 정답이면 레벨 획득",
+  "ui.showInstructions": "연습 방법"
 }

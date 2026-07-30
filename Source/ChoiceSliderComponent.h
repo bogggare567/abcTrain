@@ -68,6 +68,19 @@ public:
     // release point - never while just dragging/previewing.
     std::function<void (int)> onChoiceSelected;
 
+    // Jumps every eased value to its end state, for tools/EditorSnapshots
+    // (which never pumps a message loop). Same seam, same reason, as
+    // RunResultsComponent::completeAnimation.
+    void completeAnimation()
+    {
+        enterAmount = 1.0f;
+        revealAmount = 1.0f;
+        touchAmount = touchTarget;
+        if (! feedbackAnimator.isComplete())
+            feedbackAnimator.complete();
+        repaint();
+    }
+
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
@@ -147,6 +160,15 @@ private:
     // widgets, applied to a component that draws itself.
     float touchAmount = 0.0f;
     float touchTarget = 0.0f;
+
+    // The answer reveal: 0 at the moment of answering, easing to 1. In
+    // continuous mode the tolerance band *travels* from the player's guess
+    // to the true value along this - the distance of the miss is shown as
+    // motion rather than left to be read off two numbers - and the target
+    // marker sweeps in with it. In discrete mode the zone colours fade in
+    // on it. Instant reveals were correct but weightless: the moment the
+    // whole round exists for deserves more than a repaint.
+    float revealAmount = 1.0f;
 
     // Game-switch transition: setChoices() restarts this at 0, and the new
     // choices rise into place while fading up rather than appearing

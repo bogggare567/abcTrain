@@ -401,6 +401,28 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                 safeThis->showAchievementToast (id);
         };
 
+    // The moment of answer (ADR 029, stage 2): what it earned, whether the
+    // promotion test moved, whether a level was taken. Same SafePointer
+    // shape as the achievement callback above, for the same reason.
+    processor.getProgressManager().onAnswerScored =
+        [safeThis = juce::Component::SafePointer<EarTrainerEditor> (this)]
+        (int scoredGameIndex, const ProgressManager::AnswerOutcome& outcome)
+        {
+            if (safeThis != nullptr)
+                safeThis->handleAnswerScored (scoredGameIndex, outcome);
+        };
+
+    addChildComponent (pointsFlyup);
+    addChildComponent (promotionPips);
+
+    instructionsButton.onClick = [this]
+    {
+        instructionsPinnedOpen = ! instructionsPinnedOpen;
+        resized();
+        repaint();
+    };
+    addChildComponent (instructionsButton);
+
     gameManager.getActiveGame().addChangeListener (this);
     processor.getProgressManager().addChangeListener (this);
     localisation.addChangeListener (this);
@@ -844,7 +866,12 @@ void EarTrainerEditor::resized()
     area.removeFromTop (Spacing::section);
 
     // --- exercise section: which game, and what you're listening for ---
-    exerciseSection = area.removeFromTop (124);
+    // Collapses to just the name row once the exercise is familiar (see
+    // shouldShowInstructions); the freed height flows to the answer
+    // section below, which is the part that improves by being taller.
+    const auto instructionsShown = shouldShowInstructions();
+    exerciseSection = area.removeFromTop (instructionsShown ? 124
+                                                            : Spacing::large + 30 + Spacing::small);
     {
         auto inner = exerciseSection;
         inner.removeFromTop (Spacing::large);   // clear the section heading
@@ -857,6 +884,8 @@ void EarTrainerEditor::resized()
         gameRow.removeFromLeft (Spacing::large);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
+        instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
+        gameRow.removeFromRight (Spacing::tight);
         levelProgressLabel.setBounds (gameRow.removeFromRight (210));
         currentGameLabel.setBounds (gameRow);
 
@@ -914,8 +943,20 @@ void EarTrainerEditor::resized()
         auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
 
-        feedbackLabel.setBounds (inner.removeFromTop (24));
+        // The pips live beside the verdict line - the promotion test is
+        // part of the answer moment, not part of the header. Reserved on
+        // both sides so the verdict text stays truly centred.
+        auto feedbackRow = inner.removeFromTop (24);
+        promotionPips.setBounds (feedbackRow.removeFromRight (90));
+        feedbackRow.removeFromLeft (90);
+        feedbackLabel.setBounds (feedbackRow);
         inner.removeFromTop (Spacing::tight);
+
+        // A corridor for the points flyup: rises from the verdict line up
+        // through the exercise section's lower edge.
+        pointsFlyup.setBounds (juce::Rectangle<int> (answerSection.getCentreX() - 70,
+                                                     juce::jmax (0, answerSection.getY() - 34),
+                                                     140, 88));
 
         // *One* row under the scale, not two.
         //
@@ -1151,6 +1192,63 @@ void EarTrainerEditor::showAchievementToast (const juce::String& achievementId)
     // An id this build doesn't define (a save from a newer version) shows
     // nothing rather than an empty card - same graceful-miss rule as the
     // icon and i18n lookups.
+}
+
+bool EarTrainerEditor::shouldShowInstructions() const
+{
+    if (instructionsPinnedOpen)
+        return true;
+
+    // Familiar means a handful of lifetime correct answers on *this*
+    // exercise. Below that, the paragraph earns its space; above it, the
+    // space belongs to the answer scale and the "?" brings the text back.
+    const auto index = processor.getGameManager().getActiveGameIndex();
+    return processor.getProgressManager().getStatsForGame (index).correctAnswers < 3;
+}
+
+void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressManager::AnswerOutcome& outcome)
+{
+    // Answers land from the active game's own change broadcast, so a
+    // different index here would mean a stale callback - drop it.
+    if (scoredGameIndex != processor.getGameManager().getActiveGameIndex()
+        || currentScreen != Screen::training)
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+
+    if (outcome.pointsAwarded > 0)
+    {
+        // "+60" with the daily bonus folded in is one fact, not two - the
+        // flyup is a number, and the daily card on Home explains itself.
+        pointsFlyup.show ("+" + juce::String (outcome.pointsAwarded),
+                          outcome.dailyChallengeJustCompleted ? theme.accentWarm : theme.positive);
+    }
+
+    // The promotion test: visible while live, gone while not. set() pops
+    // the newest pip on its own.
+    promotionPips.setVisible (outcome.promotionPending);
+    if (outcome.promotionPending)
+        promotionPips.set (outcome.promotionStreak, ProgressManager::promotionTestLength);
+
+    if (outcome.leveledUp)
+    {
+        // The one moment the whole points system builds toward. The toast
+        // is the same furniture achievements use - one vocabulary for
+        // "something was earned".
+        achievementToast.show (localisation.getText ("ui.levelTaken"),
+                                translateGameName (processor.getGameManager().getActiveGame().getName(), localisation)
+                                    + " - " + localisation.getText ("ui.levelNumber",
+                                                                     { { "level", juce::String (outcome.level) } }));
+    }
+    else if (outcome.promotionJustOpened)
+    {
+        // The test opening is worth a beat of its own: from here, five in
+        // a row takes the level, and a player two answers in should *feel*
+        // that.
+        achievementToast.show (localisation.getText ("ui.promotionOpenedCaption"),
+                                localisation.getText ("ui.promotionOpenedTitle",
+                                                       { { "count", juce::String (ProgressManager::promotionTestLength) } }));
+    }
 }
 
 void EarTrainerEditor::languageSelected()
@@ -1419,9 +1517,22 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &hintButton,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
-                     (juce::Component*) &levelProgressLabel })
+                     (juce::Component*) &levelProgressLabel,
+                     (juce::Component*) &instructionsButton })
     {
         c->setVisible (onTraining);
+    }
+
+    // The instruction label additionally collapses once the exercise is
+    // familiar; the flyup and pips manage their own visibility (the flyup
+    // is only ever shown by an answer, the pips only by a live test), but
+    // both must vanish when the screen does.
+    if (onTraining)
+        instructionLabel.setVisible (shouldShowInstructions());
+    if (! onTraining)
+    {
+        pointsFlyup.setVisible (false);
+        promotionPips.setVisible (false);
     }
 
     // Level, streak and the daily challenge belong to the screen you plan
@@ -1516,6 +1627,7 @@ void EarTrainerEditor::refreshLocalisedText()
     supportScreen.refresh();
     settingsScreen.refresh();
     settingsButton.setTooltip (localisation.getText ("ui.settings"));
+    instructionsButton.setTooltip (localisation.getText ("ui.showInstructions"));
 
     trainingSounds.setStrings (localisation.getText ("ui.trainingSounds"),
                                 localisation.getText ("ui.soundsSource"),
@@ -1840,6 +1952,24 @@ void EarTrainerEditor::refreshFromGameState()
         // the progress.
         scoreLabel.setText (tally, juce::dontSendNotification);
         levelProgressLabel.setText (levelLine, juce::dontSendNotification);
+
+        // Pips mirror whichever exercise is now active; the collapse rule
+        // re-evaluates as answers accumulate, and a change of verdict
+        // needs a re-layout since the exercise section's height depends
+        // on it.
+        if (currentScreen == Screen::training)
+        {
+            promotionPips.setVisible (progress.isPromotionPendingForGame (index));
+            promotionPips.set (progress.getPromotionStreakForGame (index),
+                               ProgressManager::promotionTestLength);
+
+            const auto wantInstructions = shouldShowInstructions();
+            if (instructionLabel.isVisible() != wantInstructions)
+            {
+                instructionLabel.setVisible (wantInstructions);
+                resized();
+            }
+        }
     }
 
     if (game.hasAnswered())

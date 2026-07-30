@@ -242,5 +242,10 @@
   "module.close": "Close",
   "module.back": "Back",
   "module.next": "Next",
-  "module.ready": "I'm ready"
+  "module.ready": "I'm ready",
+  "ui.levelTaken": "Level up!",
+  "ui.levelNumber": "level {{level}}",
+  "ui.promotionOpenedCaption": "Level test is on",
+  "ui.promotionOpenedTitle": "{{count}} in a row takes the level",
+  "ui.showInstructions": "How this exercise works"
 }

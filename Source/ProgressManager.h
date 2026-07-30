@@ -160,6 +160,30 @@ public:
     // null callback is fine.
     std::function<void (const juce::String&)> onAchievementEarned;
 
+    // What one answer actually produced - the facts the UI needs to make
+    // the moment land. applyAnswerToProgress always *knew* these (it even
+    // returned "the level changed" as its bool), but registerAnswer
+    // discarded them, which is why a level-up used to happen with no
+    // fanfare whatsoever: the one moment the whole points system builds
+    // toward arrived as a silent label refresh.
+    struct AnswerOutcome
+    {
+        int pointsAwarded = 0;              // base + precision + any daily bonus
+        bool wasCorrect = false;
+        bool dailyChallengeJustCompleted = false;
+        bool promotionJustOpened = false;   // points threshold crossed, test now live
+        bool promotionJustFailed = false;   // wrong answer reset a live test
+        bool leveledUp = false;
+        int level = 1;                      // after this answer
+        int promotionStreak = 0;            // progress through a live test
+        bool promotionPending = false;
+    };
+
+    // Fired synchronously from registerAnswer, after state is saved and
+    // before the generic change broadcast. Null is fine, same as
+    // onAchievementEarned.
+    std::function<void (int gameIndex, const AnswerOutcome&)> onAnswerScored;
+
     void recordSurvivalScore (int gameIndex, int score);
     void recordBlitzScore (int gameIndex, int score);
 
@@ -203,8 +227,9 @@ private:
     std::vector<GameProgress> progressPerGame;
 
     // Applies points, opens a promotion when the threshold is crossed, and
-    // advances or resets the test. Returns true if the level changed.
-    bool applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality);
+    // advances or resets the test. Fills the outcome as it goes.
+    void applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality,
+                                AnswerOutcome& outcome);
 
     int streakDays = 0;
     juce::String lastSessionDate;
