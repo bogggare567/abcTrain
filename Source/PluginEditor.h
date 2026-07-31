@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "../shared/UpdateWindow.h"
 #include <juce_animation/juce_animation.h>
 #include "PluginProcessor.h"
 #include "ChoiceSliderComponent.h"
@@ -1129,6 +1130,12 @@ private:
     // themselves is planned there later, this just points at the site
     // that exists today.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
+
+    // The update, as something you can watch. Added last of all the
+    // children so it paints over everything, including the lesson
+    // overlays - an update is the one thing that should not be behind
+    // anything.
+    UpdateWindow updateWindow;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerEditor)
 };

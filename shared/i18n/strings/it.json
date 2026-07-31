@@ -253,5 +253,20 @@
   "eq.zoneHint": "Trascina un punto · doppio clic per aggiungere o togliere · rotella per il Q",
   "eq.freq": "Freq",
   "eq.gain": "Guadagno",
-  "eq.q": "Q"
+  "eq.q": "Q",
+  "upd.title": "Aggiornamento disponibile",
+  "upd.body": "È uscita la versione {{latest}}. Hai la {{current}}.",
+  "upd.installedHere": "Trovato su questo computer",
+  "upd.nothingFound": "Nessuna copia installata trovata nei posti abituali.",
+  "upd.noAsset": "Questa release non ha ancora un installer per il tuo sistema.",
+  "upd.install": "Scarica e installa",
+  "upd.later": "Più tardi",
+  "upd.cancel": "Annulla",
+  "upd.openPage": "Apri la pagina della release",
+  "upd.downloading": "Download {{done}} di {{total}} MB",
+  "upd.opening": "Avvio dell'installer…",
+  "upd.failed": "Download fallito. Controlla la connessione e riprova.",
+  "upd.finishedPlugin": "Installato. Riavvia la DAW — nessun programma può sostituire un plugin che l'host ha già aperto.",
+  "upd.finishedApp": "Installato. Chiudo l'app per lasciare spazio alla nuova versione…",
+  "upd.versionUnknown": "versione sconosciuta"
 }

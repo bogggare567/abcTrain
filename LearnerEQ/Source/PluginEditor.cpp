@@ -12,6 +12,33 @@
 
 namespace
 {
+    // Every caption the update window shows, localised here because shared
+    // code keeps no LocalisationManager of its own - the same shape as
+    // UpdatePrompt's strings and ModuleScreenComponent's.
+    UpdateWindow::Strings updateWindowStrings (const LocalisationManager& loc)
+    {
+        UpdateWindow::Strings s;
+        s.title          = loc.getText ("upd.title");
+        s.body           = loc.getText ("upd.body");
+        s.installedHere  = loc.getText ("upd.installedHere");
+        s.nothingFound   = loc.getText ("upd.nothingFound");
+        s.noAsset        = loc.getText ("upd.noAsset");
+        s.install        = loc.getText ("upd.install");
+        s.later          = loc.getText ("upd.later");
+        s.cancel         = loc.getText ("upd.cancel");
+        s.openPage       = loc.getText ("upd.openPage");
+        s.downloading    = loc.getText ("upd.downloading");
+        s.opening        = loc.getText ("upd.opening");
+        s.failed         = loc.getText ("upd.failed");
+        s.finishedPlugin = loc.getText ("upd.finishedPlugin");
+        s.finishedApp    = loc.getText ("upd.finishedApp");
+        s.versionUnknown = loc.getText ("upd.versionUnknown");
+        return s;
+    }
+}
+
+namespace
+{
     // Every string the update prompt needs, pulled from this editor's own
     // LocalisationManager. The dialogue used to be hardcoded English on a
     // Russian interface, which is exactly the kind of seam that says
@@ -232,29 +259,62 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         processor.apvts, LearnerEQProcessor::bypassParamId, bypassButton);
     addAndMakeVisible (bypassButton);
 
-    lessonSelector.addItem ("Vocal EQ Basics", 1);
-    lessonSelector.addItem ("Find & Fix a Resonance", 2);
-    lessonSelector.addItem ("High-pass: what it costs", 3);
-    lessonSelector.addItem ("Low-pass and the top end", 4);
-    lessonSelector.onChange = [this]
+    moduleScreen.setStrings ([this]
     {
-        // One picker, four lessons (see decisions/017) - only the selected
-        // one is ever shown/started; the rest stay hidden.
-        switch (lessonSelector.getSelectedId())
+        ModuleScreenComponent::Strings t;
+        t.match = localisation.getText ("module.match");
+        t.reference = localisation.getText ("module.reference");
+        t.mine = localisation.getText ("module.mine");
+        t.submit = localisation.getText ("module.submit");
+        t.turnKnob = localisation.getText ("module.turnKnob");
+        t.passed = localisation.getText ("module.passed");
+        t.notYet = localisation.getText ("module.notYet");
+        t.itWas = localisation.getText ("module.itWas");
+        t.youSaid = localisation.getText ("module.youSaid");
+        t.again = localisation.getText ("module.again");
+        t.done = localisation.getText ("module.done");
+        t.phaseWatch = localisation.getText ("module.phaseWatch");
+        t.phaseTry = localisation.getText ("module.phaseTry");
+        t.phaseCheck = localisation.getText ("module.phaseCheck");
+        t.phaseResult = localisation.getText ("module.phaseResult");
+        t.shelfTitle = localisation.getText ("module.shelfTitle");
+        t.shelfSubtitle = localisation.getText ("module.shelfSubtitle");
+        t.walkthroughs = localisation.getText ("module.walkthroughs");
+        t.walkthroughWhy = localisation.getText ("module.walkthroughWhy");
+        t.clips = localisation.getText ("module.clips");
+        t.pickCategory = localisation.getText ("module.pickCategory");
+        t.close = localisation.getText ("module.close");
+        t.back = localisation.getText ("module.back");
+        t.next = localisation.getText ("module.next");
+        t.ready = localisation.getText ("module.ready");
+        return t;
+    }());
+    // No knob modules here by choice (ADR 027): what an EQ teaches is
+    // judgement about *where*, not hitting a number on a dial. The shelf
+    // carries the four lessons and nothing else, and hides its own
+    // "walkthroughs" sub-heading when there is no module list above it.
+    moduleScreen.setModules ({});
+    moduleScreen.setWalkthroughs ({ "Vocal EQ Basics", "Find & Fix a Resonance",
+                                    "High-pass: what it costs",
+                                    "Low-pass and the top end" });
+    moduleScreen.onWalkthroughSelected = [this] (int which)
+    {
+        switch (which)
         {
-            case 1:  lessonController.showAndStart();          break;
-            case 2:  resonanceLessonController.showAndStart(); break;
-            case 3:  highPassLessonController.showAndStart();  break;
-            case 4:  lowPassLessonController.showAndStart();   break;
+            case 0:  lessonController.showAndStart();          break;
+            case 1:  resonanceLessonController.showAndStart(); break;
+            case 2:  highPassLessonController.showAndStart();  break;
+            case 3:  lowPassLessonController.showAndStart();   break;
             default: break;
         }
     };
-    // Nothing is selected until a lesson is picked, and an unlabelled
-    // empty dropdown in the title row was the result - caught by rendering
-    // the editor (tools/EditorSnapshots). Re-cleared on close below, so
-    // picking the same lesson twice in a row still starts it.
-    lessonSelector.setTextWhenNothingSelected ("Lessons");
-    addAndMakeVisible (lessonSelector);
+    moduleScreen.onClosed = [this] { repaint(); };
+    moduleScreen.prepare (processor.getSampleRate());
+    moduleScreen.setAccentColour (accent);
+
+    modulesButton.setTooltip (localisation.getText ("module.shelfTitle"));
+    modulesButton.onClick = [this] { moduleScreen.openShelf(); };
+    addAndMakeVisible (modulesButton);
 
     updateButton.onClick = [this]
     {
@@ -293,13 +353,11 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
             safeThis->guideTooltip.setText ({});
 
-            UpdatePrompt::offer (release, updateStrings (safeThis->localisation),
-                                  safeThis.getComponent(),
-                                  [safeThis] (juce::String text)
-                                  {
-                                      if (safeThis != nullptr)
-                                          safeThis->guideTooltip.setText (text, 8000);
-                                  });
+            // A window, not a tooltip. The progress was always real and
+            // always went somewhere nobody was looking.
+            safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
+            safeThis->updateWindow.show (release,
+                juce::JUCEApplicationBase::isStandaloneApp());
         });
 
         juce::Timer::callAfterDelay (6000, [safeThis, handled]
@@ -331,7 +389,6 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     lessonController.onClosed = [this]
     {
         // Back to "Lessons" so the same one can be started again.
-        lessonSelector.setSelectedId (0, juce::dontSendNotification);
         resized();
     };
 
@@ -343,10 +400,15 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         addChildComponent (*controller);
         controller->onClosed = [this]
         {
-            lessonSelector.setSelectedId (0, juce::dontSendNotification);
             resized();
         };
     }
+
+    // Absolutely last, so it covers every other overlay. An update is the
+    // one thing that should never be behind something else.
+    addChildComponent (moduleScreen);
+    addChildComponent (updateWindow);
+    updateWindow.onClosed = [this] { resized(); repaint(); };
 
     startTimerHz (30);
     // Taller for the section panels' own padding/captions; the guide text
@@ -461,6 +523,9 @@ void LearnerEQEditor::paintOverChildren (juce::Graphics& g)
 
 void LearnerEQEditor::resized()
 {
+    updateWindow.setBounds (getLocalBounds());
+    moduleScreen.setBounds (getLocalBounds());
+
     using namespace AbcTrainTheme;
 
     // Every lesson overlay is full-size whether visible or not - see the
@@ -472,8 +537,9 @@ void LearnerEQEditor::resized()
     auto area = getLocalBounds().reduced (Spacing::large);
 
     auto titleRow = area.removeFromTop (32);
-    lessonSelector.setBounds (titleRow.removeFromRight (156));
     titleRow.removeFromRight (Spacing::small);
+    modulesButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
+    titleRow.removeFromRight (Spacing::tight);
     themeButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
     titleRow.removeFromRight (Spacing::tight);
     updateButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));

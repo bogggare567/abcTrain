@@ -135,3 +135,38 @@ the frequency readout printed `999.9999390`, because a `Slider` prints its
 raw double unless told otherwise; and the nodes were invisible on the
 first frame, because the display's band list only arrived on the 30 Hz
 timer.
+
+---
+
+## Addendum 2: the update you can watch, and one door for lessons
+
+**The progress was always real and always invisible.** `UpdatePrompt`
+reported download progress through a `say(text)` callback, and every
+editor routed that into a *tooltip* — a line of text next to the pointer,
+over a control nobody is hovering while a 40 MB transfer runs. Work with
+no visible surface is work that appears not to be happening, which is
+exactly the complaint.
+
+`shared/UpdateWindow` is a real panel: what is being fetched, how far
+along in both a bar and megabytes, and **what is already installed on this
+machine and where** (`shared/InstalledPlugins.h` scans the standard VST3 /
+AU / Standalone locations, both shared and per-user, and reads each
+bundle's version). "Which copy is this replacing" was the one question
+nobody could answer.
+
+It is a child of the editor, not an OS dialogue, for the same reason every
+other panel here is — and it never runs a nested message loop, because a
+plugin that blocks the host's event loop hangs the DAW.
+
+**On automatic restart, the honest limit:** the standalone app is its own
+process and now closes itself after the installer starts, so the new
+version takes over. A *plugin* cannot restart the DAW hosting it, and no
+program on any platform can replace a dynamic library the host already
+has mapped into memory. That is why the closing sentence differs by
+context rather than promising the same thing everywhere.
+
+**Learner EQ's lessons moved into the shelf** Comp and Verb use, replacing
+a bare `ComboBox`. Same door, same shape, in all three. It carries no knob
+modules — ADR 027's reasoning stands, and the shelf now hides its
+"walkthroughs" sub-heading when there is no module list above to
+distinguish them from.

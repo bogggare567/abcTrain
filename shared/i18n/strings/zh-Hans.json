@@ -253,5 +253,20 @@
   "eq.zoneHint": "拖动节点 · 双击添加或删除 · 滚轮调 Q",
   "eq.freq": "频率",
   "eq.gain": "增益",
-  "eq.q": "Q"
+  "eq.q": "Q",
+  "upd.title": "有可用更新",
+  "upd.body": "{{latest}} 已发布，你当前是 {{current}}。",
+  "upd.installedHere": "在这台电脑上找到",
+  "upd.nothingFound": "在常用位置没有找到已安装的副本。",
+  "upd.noAsset": "此版本暂时没有适用于你系统的安装程序。",
+  "upd.install": "下载并安装",
+  "upd.later": "稍后",
+  "upd.cancel": "取消",
+  "upd.openPage": "打开发布页面",
+  "upd.downloading": "正在下载 {{done}} / {{total}} MB",
+  "upd.opening": "正在启动安装程序…",
+  "upd.failed": "下载失败。请检查网络后重试。",
+  "upd.finishedPlugin": "已安装。请重启宿主 —— 任何程序都无法替换宿主已加载的插件。",
+  "upd.finishedApp": "已安装。正在关闭应用，让新版本生效…",
+  "upd.versionUnknown": "版本未知"
 }

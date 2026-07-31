@@ -253,5 +253,20 @@
   "eq.zoneHint": "노드를 드래그 · 더블클릭으로 추가/삭제 · 휠로 Q 조절",
   "eq.freq": "주파수",
   "eq.gain": "게인",
-  "eq.q": "Q"
+  "eq.q": "Q",
+  "upd.title": "업데이트가 있습니다",
+  "upd.body": "{{latest}} 버전이 나왔습니다. 현재는 {{current}}입니다.",
+  "upd.installedHere": "이 컴퓨터에서 찾음",
+  "upd.nothingFound": "일반적인 위치에서 설치된 사본을 찾지 못했습니다.",
+  "upd.noAsset": "이 릴리스에는 아직 사용 중인 시스템용 설치 프로그램이 없습니다.",
+  "upd.install": "다운로드 후 설치",
+  "upd.later": "나중에",
+  "upd.cancel": "취소",
+  "upd.openPage": "릴리스 페이지 열기",
+  "upd.downloading": "다운로드 중 {{done}} / {{total}} MB",
+  "upd.opening": "설치 프로그램을 시작합니다…",
+  "upd.failed": "다운로드에 실패했습니다. 연결을 확인하고 다시 시도하세요.",
+  "upd.finishedPlugin": "설치했습니다. DAW를 다시 시작하세요 — 호스트가 이미 불러온 플러그인은 어떤 프로그램도 교체할 수 없습니다.",
+  "upd.finishedApp": "설치했습니다. 새 버전이 적용되도록 앱을 닫는 중…",
+  "upd.versionUnknown": "버전 알 수 없음"
 }

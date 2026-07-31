@@ -253,5 +253,20 @@
   "eq.zoneHint": "Przeciągnij punkt · dwuklik dodaje lub usuwa · kółko zmienia Q",
   "eq.freq": "Częst.",
   "eq.gain": "Wzm.",
-  "eq.q": "Q"
+  "eq.q": "Q",
+  "upd.title": "Dostępna aktualizacja",
+  "upd.body": "Jest wersja {{latest}}. Masz {{current}}.",
+  "upd.installedHere": "Znaleziono na tym komputerze",
+  "upd.nothingFound": "Nie znaleziono zainstalowanej kopii w typowych miejscach.",
+  "upd.noAsset": "To wydanie nie ma jeszcze instalatora dla twojego systemu.",
+  "upd.install": "Pobierz i zainstaluj",
+  "upd.later": "Później",
+  "upd.cancel": "Anuluj",
+  "upd.openPage": "Otwórz stronę wydania",
+  "upd.downloading": "Pobieranie {{done}} z {{total}} MB",
+  "upd.opening": "Uruchamiam instalator…",
+  "upd.failed": "Pobieranie nie powiodło się. Sprawdź połączenie i spróbuj ponownie.",
+  "upd.finishedPlugin": "Zainstalowano. Uruchom DAW ponownie — żaden program nie podmieni wtyczki, którą host już otworzył.",
+  "upd.finishedApp": "Zainstalowano. Zamykam aplikację, żeby nowa wersja przejęła…",
+  "upd.versionUnknown": "wersja nieznana"
 }

@@ -189,6 +189,7 @@ target_sources(EarTrainer
         shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
+        shared/UpdateWindow.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/ChoiceSliderComponent.cpp
@@ -266,6 +267,8 @@ target_sources(LearnerEQ
     PRIVATE
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
+        shared/UpdateWindow.cpp
+        shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -330,6 +333,7 @@ target_sources(LearnerComp
     PRIVATE
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
+        shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
@@ -394,6 +398,7 @@ target_sources(LearnerVerb
     PRIVATE
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
+        shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
@@ -453,6 +458,7 @@ target_sources(EarTrainerTests
         shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
+        shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
@@ -567,6 +573,7 @@ target_sources(EditorSnapshots
         shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
+        shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp

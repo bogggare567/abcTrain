@@ -12,6 +12,33 @@
 
 namespace
 {
+    // Every caption the update window shows, localised here because shared
+    // code keeps no LocalisationManager of its own - the same shape as
+    // UpdatePrompt's strings and ModuleScreenComponent's.
+    UpdateWindow::Strings updateWindowStrings (const LocalisationManager& loc)
+    {
+        UpdateWindow::Strings s;
+        s.title          = loc.getText ("upd.title");
+        s.body           = loc.getText ("upd.body");
+        s.installedHere  = loc.getText ("upd.installedHere");
+        s.nothingFound   = loc.getText ("upd.nothingFound");
+        s.noAsset        = loc.getText ("upd.noAsset");
+        s.install        = loc.getText ("upd.install");
+        s.later          = loc.getText ("upd.later");
+        s.cancel         = loc.getText ("upd.cancel");
+        s.openPage       = loc.getText ("upd.openPage");
+        s.downloading    = loc.getText ("upd.downloading");
+        s.opening        = loc.getText ("upd.opening");
+        s.failed         = loc.getText ("upd.failed");
+        s.finishedPlugin = loc.getText ("upd.finishedPlugin");
+        s.finishedApp    = loc.getText ("upd.finishedApp");
+        s.versionUnknown = loc.getText ("upd.versionUnknown");
+        return s;
+    }
+}
+
+namespace
+{
     // Every string the update prompt needs, pulled from this editor's own
     // LocalisationManager. The dialogue used to be hardcoded English on a
     // Russian interface, which is exactly the kind of seam that says
@@ -262,13 +289,11 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
 
             safeThis->guideTooltip.setText ({});
 
-            UpdatePrompt::offer (release, updateStrings (safeThis->localisation),
-                                  safeThis.getComponent(),
-                                  [safeThis] (juce::String text)
-                                  {
-                                      if (safeThis != nullptr)
-                                          safeThis->guideTooltip.setText (text, 8000);
-                                  });
+            // A window, not a tooltip. The progress was always real and
+            // always went somewhere nobody was looking.
+            safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
+            safeThis->updateWindow.show (release,
+                juce::JUCEApplicationBase::isStandaloneApp());
         });
 
         juce::Timer::callAfterDelay (6000, [safeThis, handled]
@@ -310,6 +335,11 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
         addChildComponent (*controller);
         controller->onClosed = [this] { resized(); };
     }
+
+    // Absolutely last, so it covers every other overlay. An update is the
+    // one thing that should never be behind something else.
+    addChildComponent (updateWindow);
+    updateWindow.onClosed = [this] { resized(); repaint(); };
 
     startTimerHz (30);
     // Taller for the section panels' own padding/captions; the guide text
@@ -444,6 +474,8 @@ void LearnerVerbEditor::refreshPresetChips()
 
 void LearnerVerbEditor::resized()
 {
+    updateWindow.setBounds (getLocalBounds());
+
     using namespace AbcTrainTheme;
 
     lessonController.setBounds (getLocalBounds());

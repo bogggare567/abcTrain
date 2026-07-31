@@ -377,7 +377,8 @@ juce::Rectangle<int> ModuleScreenComponent::panelBounds() const
 
     if (phase == Phase::shelf)
     {
-        const auto rows = numShelfRows() * rowHeight + (walkthroughs.isEmpty() ? 0 : 26);
+        const auto rows = numShelfRows() * rowHeight
+                              + ((walkthroughs.isEmpty() || modules.empty()) ? 0 : 26);
         const auto needed = AbcTrainTheme::Spacing::large * 2 + 48 + rows + buttonHeight + 12;
 
         return area.withHeight (juce::jmin (area.getHeight(), needed));
@@ -719,7 +720,11 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
 
         const auto isWalkthrough = i >= (int) modules.size();
 
-        if (isWalkthrough && i == (int) modules.size())
+        // The sub-heading exists to separate walkthroughs from the
+        // modules above them. With no modules - Learner EQ, which has none
+        // by choice (ADR 027) - there is nothing to separate them from,
+        // and a heading over the only group on the shelf is noise.
+        if (isWalkthrough && i == (int) modules.size() && ! modules.empty())
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont());

@@ -253,5 +253,20 @@
   "eq.zoneHint": "ノードをドラッグ · ダブルクリックで追加/削除 · ホイールで Q",
   "eq.freq": "周波数",
   "eq.gain": "ゲイン",
-  "eq.q": "Q"
+  "eq.q": "Q",
+  "upd.title": "アップデートがあります",
+  "upd.body": "バージョン {{latest}} が公開されました。現在は {{current}} です。",
+  "upd.installedHere": "このコンピュータで見つかりました",
+  "upd.nothingFound": "通常の場所にインストール済みのコピーが見つかりません。",
+  "upd.noAsset": "このリリースにはお使いのシステム向けのインストーラーがまだありません。",
+  "upd.install": "ダウンロードしてインストール",
+  "upd.later": "あとで",
+  "upd.cancel": "キャンセル",
+  "upd.openPage": "リリースページを開く",
+  "upd.downloading": "ダウンロード中 {{done}} / {{total}} MB",
+  "upd.opening": "インストーラーを起動しています…",
+  "upd.failed": "ダウンロードに失敗しました。接続を確認してもう一度お試しください。",
+  "upd.finishedPlugin": "インストールしました。DAW を再起動してください — ホストが既に読み込んだプラグインは、どのプログラムにも置き換えられません。",
+  "upd.finishedApp": "インストールしました。新しいバージョンに切り替えるためアプリを終了します…",
+  "upd.versionUnknown": "バージョン不明"
 }

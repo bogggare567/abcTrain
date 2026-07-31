@@ -1,6 +1,9 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "../../shared/UpdateWindow.h"
+#include "../../shared/ModuleScreenComponent.h"
+#include "../../shared/ModuleProgress.h"
 #include "PluginProcessor.h"
 #include "SpectrumAnalyser.h"
 #include "../../shared/WaveformDisplay.h"
@@ -101,7 +104,20 @@ private:
     // Two lessons (see decisions/017) means a small picker instead of one
     // "Lesson" button - each LessonController owns its own MicroLesson, and
     // only one is ever visible/started at a time (see lessonSelector.onChange).
-    juce::ComboBox lessonSelector;
+    // The same shelf Comp and Verb use, so "teach me something" is one
+    // door with one shape in all three plugins. It was a bare ComboBox
+    // here, which is a different affordance for the same act.
+    //
+    // **No knob modules, deliberately** (ADR 027, and the user's own
+    // reasoning): what an EQ teaches is judgement about where a problem
+    // lives, not hitting a number on a dial. The shelf carries the four
+    // lessons and nothing else.
+    IconButton modulesButton { AppIcons::Icon::modules };
+    ModuleProgress moduleProgress { processor.getSharedProperties() };
+    ModuleScreenComponent moduleScreen { processor.apvts, moduleProgress,
+                                          processor.getPracticeSource(),
+                                          [] (const juce::String&, float) {},
+                                          [] {} };
     LessonController lessonController;
     LessonController resonanceLessonController;
 
@@ -145,6 +161,12 @@ private:
 
     // Product site link - see decisions/016.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
+
+    // The update, as something you can watch. Added last of all the
+    // children so it paints over everything, including the lesson
+    // overlays - an update is the one thing that should not be behind
+    // anything.
+    UpdateWindow updateWindow;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEQEditor)
 };

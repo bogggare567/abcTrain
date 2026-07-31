@@ -7,6 +7,33 @@
 
 namespace
 {
+    // Every caption the update window shows, localised here because shared
+    // code keeps no LocalisationManager of its own - the same shape as
+    // UpdatePrompt's strings and ModuleScreenComponent's.
+    UpdateWindow::Strings updateWindowStrings (const LocalisationManager& loc)
+    {
+        UpdateWindow::Strings s;
+        s.title          = loc.getText ("upd.title");
+        s.body           = loc.getText ("upd.body");
+        s.installedHere  = loc.getText ("upd.installedHere");
+        s.nothingFound   = loc.getText ("upd.nothingFound");
+        s.noAsset        = loc.getText ("upd.noAsset");
+        s.install        = loc.getText ("upd.install");
+        s.later          = loc.getText ("upd.later");
+        s.cancel         = loc.getText ("upd.cancel");
+        s.openPage       = loc.getText ("upd.openPage");
+        s.downloading    = loc.getText ("upd.downloading");
+        s.opening        = loc.getText ("upd.opening");
+        s.failed         = loc.getText ("upd.failed");
+        s.finishedPlugin = loc.getText ("upd.finishedPlugin");
+        s.finishedApp    = loc.getText ("upd.finishedApp");
+        s.versionUnknown = loc.getText ("upd.versionUnknown");
+        return s;
+    }
+}
+
+namespace
+{
     // Every string the update prompt needs, pulled from this editor's own
     // LocalisationManager. The dialogue used to be hardcoded English on a
     // Russian interface, which is exactly the kind of seam that says
@@ -374,6 +401,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     // 1 Hz is all the Blitz clock needs, and it's the only thing on this
     // timer - no reason to run the whole editor at animation rate.
+    // Absolutely last, so it covers every other overlay. An update is the
+    // one thing that should never be behind something else.
+    addChildComponent (updateWindow);
+    updateWindow.onClosed = [this] { resized(); repaint(); };
+
     startTimerHz (1);
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
@@ -488,13 +520,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
             safeThis->updateButton.setTooltip (updatesText);
 
-            UpdatePrompt::offer (release, updateStrings (safeThis->localisation),
-                                  safeThis.getComponent(),
-                                  [safeThis] (juce::String text)
-                                  {
-                                      if (safeThis != nullptr)
-                                          safeThis->showUpdateOutcome (text);
-                                  });
+            // A window, not a tooltip. The progress was always real and
+            // always went somewhere nobody was looking.
+            safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
+            safeThis->updateWindow.show (release,
+                juce::JUCEApplicationBase::isStandaloneApp());
         });
 
         // checkForUpdatesAsync's callback never fires at all on failure
@@ -810,6 +840,8 @@ bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
 
 void EarTrainerEditor::resized()
 {
+    updateWindow.setBounds (getLocalBounds());
+
     using namespace AbcTrainTheme;
 
     // Anything that changes the height while the hint is closed is a drag,

@@ -253,5 +253,20 @@
   "eq.zoneHint": "Drag a node · double-click to add or remove · scroll for Q",
   "eq.freq": "Freq",
   "eq.gain": "Gain",
-  "eq.q": "Q"
+  "eq.q": "Q",
+  "upd.title": "Update available",
+  "upd.body": "Version {{latest}} is out. You have {{current}}.",
+  "upd.installedHere": "Found on this computer",
+  "upd.nothingFound": "No installed copy found in the usual places.",
+  "upd.noAsset": "This release has no installer for your system yet.",
+  "upd.install": "Download and install",
+  "upd.later": "Later",
+  "upd.cancel": "Cancel",
+  "upd.openPage": "Open release page",
+  "upd.downloading": "Downloading {{done}} of {{total}} MB",
+  "upd.opening": "Starting the installer…",
+  "upd.failed": "The download failed. Check your connection and try again.",
+  "upd.finishedPlugin": "Installed. Restart your DAW to load the new version — no program can replace a plugin the host already has open.",
+  "upd.finishedApp": "Installed. Closing this app so the new version can take over…",
+  "upd.versionUnknown": "version unknown"
 }

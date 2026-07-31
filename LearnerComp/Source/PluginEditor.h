@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "../../shared/UpdateWindow.h"
 #include "PluginProcessor.h"
 #include "../../shared/WaveformDisplay.h"
 #include "../../shared/SpectrumAnalyzer.h"
@@ -170,6 +171,12 @@ private:
 
     // Product site link - see decisions/016.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
+
+    // The update, as something you can watch. Added last of all the
+    // children so it paints over everything, including the lesson
+    // overlays - an update is the one thing that should not be behind
+    // anything.
+    UpdateWindow updateWindow;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerCompEditor)
 };
