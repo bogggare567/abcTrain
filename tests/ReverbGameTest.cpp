@@ -9,55 +9,75 @@ public:
 
     void runTest() override
     {
-        beginTest ("every choice slot has a distinct, non-empty label");
+        beginTest ("always exactly two choices, at every level");
         {
-            // A regression guard for a real bug: the choices the UI counts
-            // in (0..getNumChoices()-1) and the indices typeLabels uses are
-            // two different spaces once types are unlocked in a chosen
-            // order rather than in label order. Getting that wrong marks
-            // correct answers wrong, silently.
+            // The rule that replaced "difficulty adds buttons". More
+            // options is more reading and more luck, not finer hearing;
+            // two alternatives is what a listening test uses, and
+            // difficulty became how close together the two are.
             ReverbGame game;
-            game.setDifficulty (10);
 
-            juce::StringArray seen;
-
-            for (int i = 0; i < game.getNumChoices(); ++i)
+            for (int level = 1; level <= 10; ++level)
             {
-                const auto label = game.getChoiceLabel (i);
-                expect (label.isNotEmpty(), "empty label at slot " + juce::String (i));
-                expect (! seen.contains (label), "duplicate label: " + label);
-                seen.add (label);
+                game.setDifficulty (level);
+                expectEquals (game.getNumChoices(), 2, "level " + juce::String (level));
             }
         }
 
-        beginTest ("defaults to the easy tier (2 choices) before setDifficulty is called");
+        beginTest ("the two labels are real, different type names");
         {
             ReverbGame game;
-            expectEquals (game.getNumChoices(), 2);
+
+            // Many rounds, because the pair is drawn fresh each time and a
+            // bug that mixes the pair up with the answer index would only
+            // show on some draws.
+            for (int level : { 1, 5, 10 })
+            {
+                game.setDifficulty (level);
+
+                for (int round = 0; round < 60; ++round)
+                {
+                    game.newRound();
+
+                    const auto a = game.getChoiceLabel (0);
+                    const auto b = game.getChoiceLabel (1);
+
+                    expect (a.isNotEmpty() && b.isNotEmpty(), "empty label");
+                    expect (a != b, "the same type offered twice: " + a);
+                }
+            }
         }
 
-        beginTest ("setDifficulty unlocks every type at the hard tier");
+        beginTest ("harder levels offer pairs that are closer together");
         {
-            ReverbGame game;
-            game.setDifficulty (10);
-            expectEquals (game.getNumChoices(), ReverbGame::numTypes);
-        }
-
-        beginTest ("setDifficulty tiers: 1-2 -> 2, 3-4 -> 3, 5-7 -> 4, 8-10 -> 5");
-        {
+            // The whole claim of the redesign, measured rather than
+            // asserted: draw many rounds at each end and compare how far
+            // apart the offered types are on the character axis.
             ReverbGame game;
 
-            game.setDifficulty (1);
-            expectEquals (game.getNumChoices(), 2);
+            const auto averageDistance = [&game] (int level)
+            {
+                game.setDifficulty (level);
 
-            game.setDifficulty (3);
-            expectEquals (game.getNumChoices(), 3);
+                auto total = 0.0f;
+                constexpr int rounds = 400;
 
-            game.setDifficulty (5);
-            expectEquals (game.getNumChoices(), 4);
+                for (int i = 0; i < rounds; ++i)
+                {
+                    game.newRound();
+                    total += ReverbGame::confusabilityForTest (game.getChoiceLabel (0),
+                                                                game.getChoiceLabel (1));
+                }
 
-            game.setDifficulty (8);
-            expectEquals (game.getNumChoices(), 5);
+                return total / (float) rounds;
+            };
+
+            const auto easy = averageDistance (1);
+            const auto hard = averageDistance (10);
+
+            expect (hard < easy,
+                    "level 10 pairs should be closer than level 1 pairs: "
+                        + juce::String (hard) + " vs " + juce::String (easy));
         }
 
         beginTest ("produces a non-silent buffer after newRound()");

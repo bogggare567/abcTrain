@@ -1,4 +1,5 @@
 #include "ReverbGame.h"
+#include "../../shared/PresetFamily.h"
 #include <cmath>
 
 const std::array<float, 4> ReverbGame::springFrequenciesHz { 320.0f, 730.0f, 1400.0f, 2600.0f };
@@ -49,7 +50,7 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
     juce::dsp::AudioBlock<float> block (buffer);
     juce::dsp::ProcessContextReplacing<float> context (block);
 
-    if (typeForSlot (correctTypeIndex) == springTypeIndex)
+    if (pairTypes[(size_t) correctTypeIndex] == springTypeIndex)
     {
         for (auto& allpass : springAllpass)
             allpass.process (context);
@@ -64,37 +65,96 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
 
 void ReverbGame::setDifficulty (int level)
 {
-    // Which types are in play, and in an order chosen so each new one is
-    // harder to separate from what is already there rather than just
-    // "another option".
+    // The count no longer moves - it is always two. What a level changes
+    // is which *pairs* may be drawn and how borderline an example may be.
+    difficultyLevel = juce::jlimit (1, 10, level);
+}
+
+std::vector<PresetFamily::Weighted> ReverbGame::weightsFor (const std::vector<Variant>& family)
+{
+    std::vector<PresetFamily::Weighted> weights;
+    weights.reserve (family.size());
+
+    for (int i = 0; i < (int) family.size(); ++i)
+        weights.push_back ({ i, family[(size_t) i].archetypal });
+
+    return weights;
+}
+
+float ReverbGame::confusabilityOf (int typeA, int typeB)
+{
+    // Where each type sits on a rough "how much like a big natural room"
+    // axis. Plate and Spring are off it - they are characters rather than
+    // geometries - so they are placed by how easily they are mistaken for
+    // something rather than by size.
     //
-    //   1-2   Room / Hall            - small against large
-    //   3-4   + Plate                - a character that is not a room
-    //   5-7   + Chamber              - now size alone stops working, because
-    //                                  Chamber sits between the first two
-    //   8-10  + Spring               - all five
+    //   Room 0.15 · Chamber 0.5 · Hall 0.9 · Plate 0.55 · Spring 0.35
     //
-    // This is still the only game where difficulty changes the choice
-    // count, which is why PluginEditor::refreshFromGameState has to cope
-    // with it changing mid-session (see ADR 002).
-    activeNumTypes = level <= 2 ? 2
-                   : level <= 4 ? 3
-                   : level <= 7 ? 4
-                                : numTypes;
+    // Chamber and Plate landing close together is not an accident: a
+    // damped plate and a bright chamber really are the pair people get
+    // wrong, and this is where that fact is written down.
+    static const std::array<float, numTypes> position { { 0.15f, 0.5f, 0.9f, 0.55f, 0.35f } };
+
+    const auto a = position[(size_t) juce::jlimit (0, numTypes - 1, typeA)];
+    const auto b = position[(size_t) juce::jlimit (0, numTypes - 1, typeB)];
+
+    // Spring's clang is unmistakable however close its position sits, so
+    // any pair containing it is easier than the distance suggests.
+    const auto involvesSpring = typeA == springTypeIndex || typeB == springTypeIndex;
+    const auto distance = std::abs (a - b);
+
+    return juce::jlimit (0.0f, 1.0f, involvesSpring ? juce::jmax (0.75f, distance) : distance);
+}
+
+std::array<int, 2> ReverbGame::drawPair()
+{
+    // Every unordered pair, with how far apart it is.
+    struct Candidate { int a, b; float distance; };
+    std::vector<Candidate> candidates;
+
+    for (int a = 0; a < numTypes; ++a)
+        for (int b = a + 1; b < numTypes; ++b)
+            candidates.push_back ({ a, b, confusabilityOf (a, b) });
+
+    // A level admits pairs no *easier* than its floor - so the hard tiers
+    // stop offering cathedral-against-booth - and never harder than its
+    // ceiling. Both move down together as the level rises.
+    const auto ceiling = juce::jmap ((float) difficultyLevel, 1.0f, 10.0f, 1.0f, 0.30f);
+    const auto floor = juce::jmap ((float) difficultyLevel, 1.0f, 10.0f, 0.55f, 0.0f);
+
+    std::vector<Candidate> allowed;
+    for (const auto& candidate : candidates)
+        if (candidate.distance <= ceiling && candidate.distance >= floor)
+            allowed.push_back (candidate);
+
+    // A window that admits nothing would be a round that cannot happen;
+    // fall back to the whole set rather than to a fixed pair, so the
+    // failure is boring rather than repetitive.
+    if (allowed.empty())
+        allowed = candidates;
+
+    const auto& picked = allowed[(size_t) random.nextInt ((int) allowed.size())];
+
+    // Which of the two is offered first is itself random, or the answer
+    // would drift towards one side of the scale.
+    return random.nextBool() ? std::array<int, 2> { { picked.a, picked.b } }
+                             : std::array<int, 2> { { picked.b, picked.a } };
 }
 
 void ReverbGame::newRound()
 {
-    // Everything the interface touches - the correct index, the chosen
-    // index, getChoiceLabel - is in *slot* space: 0..activeNumTypes-1, in
-    // unlock order. Only the DSP translates a slot to a type through
-    // typeOrder. Keeping both in one space was the first version, and it
-    // silently marked correct answers wrong as soon as the two orders
-    // diverged.
-    correctTypeIndex = random.nextInt (activeNumTypes);
+    // Draw the pair first, then which of the two is the answer, then
+    // which member of that type's family is playing. Three independent
+    // draws rather than one: the pair sets the *question*, the family
+    // member sets how archetypal the example is, and conflating them
+    // would make a hard pair always come with a hard example, which is
+    // twice as hard as intended and impossible to reason about.
+    pairTypes = drawPair();
+    correctTypeIndex = random.nextInt (2);
 
-    roundSizeJitter = random.nextFloat() * 0.1f - 0.05f;
-    roundDampingJitter = random.nextFloat() * 0.12f - 0.06f;
+    const auto& family = familyFor (pairTypes[(size_t) correctTypeIndex]);
+    roundVariant = family[(size_t) PresetFamily::choose (weightsFor (family), difficultyLevel, random)];
+
     chosenTypeIndex = -1;
     answered = false;
 
@@ -123,10 +183,10 @@ void ReverbGame::submitAnswer (int choiceIndex)
 
 juce::String ReverbGame::getChoiceLabel (int choiceIndex) const
 {
-    if (choiceIndex < 0 || choiceIndex >= activeNumTypes)
+    if (choiceIndex < 0 || choiceIndex >= 2)
         return {};
 
-    return typeLabels[(size_t) typeForSlot (choiceIndex)];
+    return typeLabels[(size_t) pairTypes[(size_t) choiceIndex]];
 }
 
 juce::String ReverbGame::getFeedbackText() const
@@ -135,48 +195,73 @@ juce::String ReverbGame::getFeedbackText() const
         return {};
 
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-           + "It was " + juce::String (typeLabels[(size_t) typeForSlot (correctTypeIndex)]) + " reverb.";
+           + "It was " + juce::String (typeLabels[(size_t) pairTypes[(size_t) correctTypeIndex]]) + " reverb.";
+}
+
+const std::vector<ReverbGame::Variant>& ReverbGame::familyFor (int type)
+{
+    // Every number here is tuned by ear rather than measured - the same
+    // "approximation, not a physical model" precedent ADR 004 records for
+    // LearnerVerb's own decay mapping. What matters is that the members of
+    // a family are recognisably the same *kind* of space while being
+    // audibly different rooms, and that the low-archetypal ones really do
+    // sit close to a neighbour.
+
+    static const std::vector<Variant> room {
+        { 0.16f, 0.62f, 0.42f, 0.30f, 1.00f },   // tiled booth: tight, dead, narrow
+        { 0.24f, 0.50f, 0.60f, 0.34f, 0.85f },   // wooden studio room
+        { 0.30f, 0.40f, 0.70f, 0.36f, 0.55f },   // big live room - starting to be a chamber
+        { 0.38f, 0.44f, 0.76f, 0.38f, 0.25f },   // borderline: nearly a chamber
+    };
+
+    static const std::vector<Variant> chamber {
+        { 0.55f, 0.45f, 0.80f, 0.36f, 1.00f },   // the textbook chamber
+        { 0.48f, 0.52f, 0.74f, 0.34f, 0.70f },   // smaller, darker
+        { 0.62f, 0.38f, 0.86f, 0.38f, 0.45f },   // larger, brighter - leaning hall
+        { 0.68f, 0.34f, 0.90f, 0.38f, 0.20f },   // borderline: nearly a small hall
+    };
+
+    static const std::vector<Variant> hall {
+        { 0.95f, 0.22f, 1.00f, 0.40f, 1.00f },   // cathedral-scale
+        { 0.88f, 0.26f, 0.96f, 0.38f, 0.80f },   // concert hall
+        { 0.78f, 0.32f, 0.92f, 0.36f, 0.50f },   // small hall
+        { 0.70f, 0.36f, 0.88f, 0.35f, 0.22f },   // borderline: nearly a chamber
+    };
+
+    static const std::vector<Variant> plate {
+        { 0.50f, 0.04f, 1.00f, 0.36f, 1.00f },   // bright, dense, no room cue at all
+        { 0.44f, 0.10f, 0.96f, 0.34f, 0.78f },   // a darker plate
+        { 0.58f, 0.14f, 1.00f, 0.36f, 0.48f },   // longer, softer top
+        { 0.52f, 0.22f, 0.94f, 0.35f, 0.20f },   // borderline: damped enough to read as a hall
+    };
+
+    // Spring is generated by the allpass cascade rather than by the
+    // Freeverb parameters, so its family varies the wet level and width
+    // only - the character comes from the filters.
+    static const std::vector<Variant> spring {
+        { 0.0f, 0.0f, 0.60f, 0.42f, 1.00f },
+        { 0.0f, 0.0f, 0.45f, 0.36f, 0.70f },
+        { 0.0f, 0.0f, 0.75f, 0.32f, 0.40f },
+    };
+
+    switch (type)
+    {
+        case 0:  return room;
+        case 1:  return chamber;
+        case 2:  return hall;
+        case 3:  return plate;
+        default: return spring;
+    }
 }
 
 void ReverbGame::updateReverbForType()
 {
     juce::dsp::Reverb::Parameters params;
     params.dryLevel = 0.0f;
-    params.wetLevel = 0.35f;
-
-    switch (typeForSlot (correctTypeIndex))
-    {
-        case 0: // Room: small, fairly damped, narrow
-            params.roomSize = 0.22f;
-            params.damping = 0.55f;
-            params.width = 0.55f;
-            break;
-        case 1: // Chamber: medium and darker than a hall - a real room,
-                // but a big one. Sits between Room and Hall on purpose.
-            params.roomSize = 0.55f;
-            params.damping = 0.45f;
-            params.width = 0.8f;
-            break;
-        case 2: // Hall: large, bright, wide tail
-            params.roomSize = 0.9f;
-            params.damping = 0.25f;
-            params.width = 1.0f;
-            break;
-        case 3: // Plate: dense and bright, not tied to a physical room size
-            params.roomSize = 0.5f;
-            params.damping = 0.08f;
-            params.width = 1.0f;
-            break;
-        default: // Spring - reverb object unused, allpass cascade handles it
-            break;
-    }
-
-    // Same reasoning again: without a nudge, "Hall" is one recording and
-    // the exercise degenerates into recognising it rather than hearing
-    // what a hall does. Small enough that no type wanders into another's
-    // territory.
-    params.roomSize = juce::jlimit (0.05f, 1.0f, params.roomSize + roundSizeJitter);
-    params.damping  = juce::jlimit (0.0f, 1.0f, params.damping + roundDampingJitter);
+    params.wetLevel = roundVariant.wet;
+    params.roomSize = juce::jlimit (0.05f, 1.0f, roundVariant.roomSize);
+    params.damping  = juce::jlimit (0.0f, 1.0f, roundVariant.damping);
+    params.width    = juce::jlimit (0.0f, 1.0f, roundVariant.width);
 
     reverb.setParameters (params);
 
@@ -185,4 +270,18 @@ void ReverbGame::updateReverbForType()
         const auto freq = springFrequenciesHz[(size_t) i];
         *springAllpass[(size_t) i].state = *juce::dsp::IIR::Coefficients<float>::makeAllPass (sampleRate, freq, springQ);
     }
+}
+
+float ReverbGame::confusabilityForTest (const juce::String& labelA, const juce::String& labelB)
+{
+    const auto indexOf = [] (const juce::String& label)
+    {
+        for (int i = 0; i < numTypes; ++i)
+            if (label == typeLabels[(size_t) i])
+                return i;
+
+        return 0;
+    };
+
+    return confusabilityOf (indexOf (labelA), indexOf (labelB));
 }
