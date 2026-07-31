@@ -13,6 +13,8 @@
 // tab. Stereo width needs two decorrelated noise sources, which is the
 // same reason it still trains on pink noise inside the trainer.
 
+import facts from './generated/plugin-facts.json';
+
 const PINK = { b0: 0, b1: 0, b2: 0 };
 
 // Paul Kellet's economy pink-noise filter - the same algorithm as
@@ -43,9 +45,9 @@ export const EXERCISES = [
     axisMin: 100 / Math.SQRT2,
     axisMax: 12800 * Math.SQRT2,
     log: true,
-    tolerance: 1.0,           // octaves, level 1
-    toleranceLabel: '±1 octave',
-    ticks: [100, 200, 400, 800, 1600, 3200, 6400, 12800],
+    tolerance: facts.tolerances.band,   // octaves, level 1, read from EQGame.cpp
+    toleranceLabel: `±${facts.tolerances.band} octave`,
+    ticks: facts.bandTicks,
     format: formatHz,
     axisNote: '100 Hz — 12.8 kHz, log scale',
     prompt: 'Where is the boost?',
@@ -77,8 +79,8 @@ export const EXERCISES = [
     // It stops at ±2.5 for level 1 and never goes below 1 dB even at level
     // 10 - below roughly that, a level difference stops being reliably
     // audible at all, and a tighter band would test luck.
-    tolerance: 2.5,
-    toleranceLabel: '±2.5 dB',
+    tolerance: facts.tolerances.gain,
+    toleranceLabel: `±${facts.tolerances.gain} dB`,
     ticks: [-9, -6, -3, 0, 3, 6, 9],
     format: (db) => `${db > 0 ? '+' : ''}${db.toFixed(1)} dB`,
     axisNote: '−9 dB — +9 dB',
@@ -102,8 +104,8 @@ export const EXERCISES = [
     axisMin: -1,
     axisMax: 1,
     log: false,
-    tolerance: 0.35,
-    toleranceLabel: '±35% of the field',
+    tolerance: facts.tolerances.pan,
+    toleranceLabel: `±${Math.round(facts.tolerances.pan * 100)}% of the field`,
     ticks: [-1, -0.5, 0, 0.5, 1],
     format: (p) => {
       const amount = Math.round(Math.abs(p) * 100);

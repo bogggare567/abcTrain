@@ -19,78 +19,40 @@ one free, open-source suite for macOS, Windows and Linux.
 [![Download for macOS, Windows and Linux](https://img.shields.io/badge/%E2%AC%87%20DOWNLOAD-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-5B9BD5?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
 &nbsp;
 [![Support the project on DonationAlerts](https://img.shields.io/badge/%E2%99%A5%20SUPPORT-DonationAlerts-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://www.donationalerts.com/r/bogdankorablev)
+&nbsp;
+[![Telegram channel](https://img.shields.io/badge/TELEGRAM-@vstabc-4FA3C7?style=for-the-badge&logo=telegram&logoColor=white&labelColor=1E1E2E)](https://t.me/vstabc)
 
 <br>
 
-[![Screenshots](https://img.shields.io/badge/Screenshots-2A2A3A?style=flat-square)](#-what-it-looks-like)
+[![Try it](https://img.shields.io/badge/Try%20it%20live-2A2A3A?style=flat-square)](https://bogggare567.github.io/abcTrain/)
 [![How it works](https://img.shields.io/badge/How%20it%20works-2A2A3A?style=flat-square)](#-how-it-works)
 [![The nine exercises](https://img.shields.io/badge/9%20exercises-2A2A3A?style=flat-square)](#-9-games)
 [![Roadmap](https://img.shields.io/badge/Roadmap-2A2A3A?style=flat-square)](docs/roadmap.md)
 [![Wiki](https://img.shields.io/badge/Wiki-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/wiki)
 [![Discussions](https://img.shields.io/badge/Discussions-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/discussions)
-[![Telegram](https://img.shields.io/badge/Telegram-@vstabc-4FA3C7?style=flat-square&labelColor=1E1E2E)](https://t.me/vstabc)
-
-[![Try it in your browser](https://img.shields.io/badge/%E2%96%B6%20TRY%20IT-in%20your%20browser-4FA3C7?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
-
-**[Play three real rounds without installing anything](https://bogggare567.github.io/abcTrain/)** —
-frequency, level and pan, with the same pink noise, the same log axis and
-the same accept band the plugin grades you against. Turn your volume down
-first; nothing makes a sound until you press play.
 [![Contribute](https://img.shields.io/badge/Contribute-2A2A3A?style=flat-square)](docs/orientation.md)
 
 <br>
 
-<img src="docs/screenshots/EarTrainer-dark.png" width="720" alt="The Ear Trainer home screen: nine exercises, each with its own level, accuracy and rounds played, and a strip of achievement badges below">
+[![▶ Try three real rounds in your browser](https://img.shields.io/badge/%E2%96%B6%20TRY%20IT%20NOW-no%20install%2C%20ten%20seconds-4FA3C7?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
 
 </div>
 
 ---
 
-## 📸 What it looks like
+## ▶ Try it, don't look at it
 
-Every picture here is the real app, rendered from the real code — see
-[`tools/EditorSnapshots.cpp`](tools/EditorSnapshots.cpp), which builds
-each editor and photographs it. Nothing is a mockup.
+**[bogggare567.github.io/abcTrain](https://bogggare567.github.io/abcTrain/)** — three
+real rounds in your browser: frequency, level and pan. Same pink noise, same
+log axis, same accept band the plugin grades you against, read straight out
+of the plugin's own source so the two cannot drift apart.
 
-<table>
-<tr>
-<td width="50%"><img src="docs/screenshots/EarTrainer-Training-dark.png" alt="A training round: the exercise, an A/B switch between treated and untreated, and a zoned frequency scale to answer on"></td>
-<td width="50%"><img src="docs/screenshots/EarTrainer-Training-light.png" alt="The same training round in the light theme"></td>
-</tr>
-<tr>
-<td colspan="2" align="center"><b>Answering.</b> Drag along the scale; a band that narrows as you level up decides whether you were close enough. <b>A/B</b> switches between the untreated sound and the one with the change in it — the only reliable way to hear a difference.</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/EarTrainer-Results-dark.png" alt="The run summary: score, accuracy against your lifetime figure, best streak, and where the four skill families stand"></td>
-<td><img src="docs/screenshots/EarTrainer-Achievements-dark.png" alt="The achievements shelf: earned ones with their metal, locked ones with a progress arc and a percentage"></td>
-</tr>
-<tr>
-<td align="center"><b>When a run ends</b> it tells you what happened — against your own record, never against invented percentiles.</td>
-<td align="center"><b>The shelf shows the locked ones too.</b> The unearned list is a map of the subject: it says what there is to get good at.</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/LearnerEQ-dark.png" alt="Learner EQ: a live spectrum with the response curve drawn over it, and four bands of frequency, gain and Q"></td>
-<td><img src="docs/screenshots/LearnerComp-dark.png" alt="Learner Comp: live spectrum, scrolling waveform, a gain-reduction meter and seven knobs"></td>
-</tr>
-<tr>
-<td align="center"><b>ABC Learner EQ</b> — four bands over a live spectrum, with guide text while you turn a knob.</td>
-<td align="center"><b>ABC Learner Comp</b> — a gain-reduction meter that fills <i>downward</i>, because that is the direction the sound goes.</td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/LearnerVerb-dark.png" alt="Learner Verb: room, chamber, hall, plate and spring, with decay, pre-delay, size, damping, mix and width"></td>
-<td><img src="docs/screenshots/EarTrainer-light.png" alt="The Ear Trainer home screen in the light theme"></td>
-</tr>
-<tr>
-<td align="center"><b>ABC Learner Verb</b> — five reverb types, each with a preset that says <i>why</i> it is set that way.</td>
-<td align="center"><b>A real light theme</b>, designed rather than inverted — warm paper, deeper accents, softer shadows.</td>
-</tr>
-</table>
+Screenshots used to live here. A picture of an ear trainer is the one thing
+that cannot show what an ear trainer does — you have to hear it get something
+wrong. The demo takes about ten seconds and needs nothing installed.
 
-Why the app is shaped this way — why per-exercise levels instead of one
-bar, why the locked achievements are shown, why there are no leaderboards
-— is written down in **[docs/user-journey.md](docs/user-journey.md)**.
+*(Turn your volume down first. Nothing makes a sound until you press play.)*
 
----
 
 ## The problem
 
@@ -541,6 +503,8 @@ and would be trivially bypassable anyway.
 <div align="center">
 
 [![Support the project on DonationAlerts](https://img.shields.io/badge/%E2%99%A5%20SUPPORT%20THIS%20PROJECT-DonationAlerts-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://www.donationalerts.com/r/bogdankorablev)
+&nbsp;
+[![Telegram channel](https://img.shields.io/badge/TELEGRAM-@vstabc-4FA3C7?style=for-the-badge&logo=telegram&logoColor=white&labelColor=1E1E2E)](https://t.me/vstabc)
 
 </div>
 

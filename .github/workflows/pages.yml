@@ -46,6 +46,16 @@ jobs:
       - run: npm ci
         working-directory: website
 
+      # Regenerate the facts the site takes from the plugin, then fail if
+      # the committed copy disagreed. Without the check a stale number
+      # would simply be overwritten at build time and nobody would learn
+      # that the site and the plugin had drifted.
+      - run: node tools/sync-from-plugin.mjs
+        working-directory: website
+
+      - run: git diff --exit-code website/src/generated/
+        name: The generated plugin facts are up to date
+
       # The site is served from a subpath (/abcTrain/), not from a domain
       # root, so every absolute asset URL would 404 without this.
       - run: npm run build -- --base=/abcTrain/

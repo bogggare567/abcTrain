@@ -1,0 +1,134 @@
+// Derives the site's facts from the plugin's own source, so the two cannot
+// drift.
+//
+// Before this, the palette in tokens.css and the tolerances in the demo
+// were *typed out* from the C++ by hand. That works exactly until somebody
+// changes a colour or widens an accept band, at which point the site
+// quietly starts describing a product that no longer exists — and nothing
+// fails, which is the worst kind of wrong.
+//
+// So: read the values out of the source of truth, write them to
+// src/generated/plugin-facts.json, and let the build fail loudly if a
+// value can no longer be found. A regex over C++ is a blunt instrument and
+// it is used here only on lines that are deliberately simple — a named
+// constant with a literal. If one of them stops matching, the extractor
+// throws rather than emitting a default, because a default here is a lie
+// with a plausible face.
+//
+//   node tools/sync-from-plugin.mjs [--check]
+//
+// --check exits non-zero if the generated file is stale, which is what CI
+// runs so a pull request cannot land a mismatch.
+
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const root = join(here, '..', '..');
+const out = join(here, '..', 'src', 'generated', 'plugin-facts.json');
+
+const read = (relative) => readFileSync(join(root, relative), 'utf8');
+
+// Every extraction goes through this, so a source change that breaks an
+// assumption stops the build instead of silently producing a stale number.
+function grab(source, label, pattern, transform = (m) => m[1]) {
+  const match = source.match(pattern);
+
+  if (!match) {
+    throw new Error(
+      `sync-from-plugin: could not find ${label}.\n` +
+        `The pattern ${pattern} no longer matches. Someone changed the plugin; ` +
+        `update this extractor rather than hand-editing the generated file.`,
+    );
+  }
+
+  return transform(match);
+}
+
+// --- the four skill-family colours, from AbcTrainTheme::accentFor --------
+const theme = read('shared/AbcTrainTheme.cpp');
+
+const familyColour = (family) =>
+  grab(
+    theme,
+    `the ${family} family colour`,
+    new RegExp(`case Family::${family}:\\s*return juce::Colour \\(0xff([0-9a-f]{6})\\)`),
+    (m) => `#${m[1]}`,
+  );
+
+// --- level-1 accept bands, from each game's setDifficulty ---------------
+const eq = read('Source/Games/EQGame.cpp');
+const db = read('Source/Games/DBGame.cpp');
+const pan = read('Source/Games/PanGame.cpp');
+
+const rampStart = (source, label, name) =>
+  grab(
+    source,
+    label,
+    new RegExp(`${name} = rampTolerance \\(level, ([0-9.]+)f`),
+    (m) => Number(m[1]),
+  );
+
+// --- the version the site should point at -------------------------------
+// The same `git describe` the plugin builds its own version string from
+// (ADR 012), so a tagged release updates the download links by existing
+// rather than by somebody remembering.
+const describe = execSync('git describe --tags --abbrev=0', { cwd: root })
+  .toString()
+  .trim();
+
+const facts = {
+  // Written into the file so it is obvious this is not hand-maintained.
+  generatedBy: 'website/tools/sync-from-plugin.mjs',
+  version: describe.replace(/^v/, ''),
+
+  families: {
+    frequency: familyColour('frequency'),
+    dynamics: familyColour('dynamics'),
+    space: familyColour('space'),
+    character: familyColour('character'),
+  },
+
+  // Level 1, which is what the demo plays at. The plugin narrows these as
+  // you earn the level; the demo says so rather than pretending it is the
+  // only setting.
+  tolerances: {
+    band: rampStart(eq, "EQGame's level-1 tolerance", 'toleranceOctaves'),
+    gain: rampStart(db, "DBGame's level-1 tolerance", 'toleranceDb'),
+    pan: rampStart(pan, "PanGame's level-1 tolerance", 'tolerancePan'),
+  },
+
+  // The eight octave centres the trainer marks its axis with.
+  bandTicks: grab(
+    eq,
+    "EQGame's grid frequencies",
+    /100\.0f, 200\.0f, 400\.0f, 800\.0f, 1600\.0f, 3200\.0f, 6400\.0f, 12800\.0f/,
+    () => [100, 200, 400, 800, 1600, 3200, 6400, 12800],
+  ),
+};
+
+const json = `${JSON.stringify(facts, null, 2)}\n`;
+
+if (process.argv.includes('--check')) {
+  const current = existsSync(out) ? readFileSync(out, 'utf8') : '';
+
+  if (current !== json) {
+    console.error(
+      'sync-from-plugin: src/generated/plugin-facts.json is out of date.\n' +
+        'The plugin changed and the site did not. Run:\n\n' +
+        '    node tools/sync-from-plugin.mjs\n',
+    );
+    process.exit(1);
+  }
+
+  console.log('sync-from-plugin: up to date.');
+  process.exit(0);
+}
+
+mkdirSync(dirname(out), { recursive: true });
+writeFileSync(out, json, 'utf8');
+console.log(`sync-from-plugin: wrote ${out}`);
+console.log(`  version ${facts.version}`);
+console.log(`  tolerances`, facts.tolerances);

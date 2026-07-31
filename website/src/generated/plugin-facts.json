@@ -1,0 +1,25 @@
+{
+  "generatedBy": "website/tools/sync-from-plugin.mjs",
+  "version": "1.4.1",
+  "families": {
+    "frequency": "#4fa3c7",
+    "dynamics": "#c77f4f",
+    "space": "#5fb98c",
+    "character": "#a878c9"
+  },
+  "tolerances": {
+    "band": 1,
+    "gain": 2.5,
+    "pan": 0.35
+  },
+  "bandTicks": [
+    100,
+    200,
+    400,
+    800,
+    1600,
+    3200,
+    6400,
+    12800
+  ]
+}

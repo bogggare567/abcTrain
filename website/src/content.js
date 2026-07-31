@@ -10,8 +10,13 @@
 // No user counts, no star counts, no download counts: the product is
 // pre-release and any number here would be invented.
 
+import facts from './generated/plugin-facts.json';
+
 export const RELEASE = {
-  version: '1.4.1',
+  // Generated from `git describe` against the plugin's own tags, so a
+  // release updates these links by being tagged rather than by somebody
+  // remembering to edit this file. See tools/sync-from-plugin.mjs.
+  version: facts.version,
   repo: 'https://github.com/bogggare567/abcTrain',
   releases: 'https://github.com/bogggare567/abcTrain/releases',
   site: 'https://soundkorb.ru',

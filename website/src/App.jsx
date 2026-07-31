@@ -31,38 +31,37 @@ function Masthead({ theme, onToggleTheme }) {
 function Hero() {
   return (
     <section className="wrap hero" id="top">
-      {/* The headline gets the full measure. A monospaced display face
-          eats roughly twice the line a sans does, so squeezing it into a
-          half-width column broke it onto one word per line. */}
       <p className="label" style={{ margin: 0 }}>
         Ear training · {RELEASE.vendor}
       </p>
       <h1>
-        Learn to hear what<br />
-        you’re <em>looking</em> at.
+        Try it before<br />
+        you <em>install</em> it.
       </h1>
 
-      <div className="hero__grid">
-        <div className="stack">
-          <p className="lede">
-            Four plugins that load in your DAW. Nine exercises that play you a processed
-            signal and ask one question about it. Three of them are real EQ, compressor
-            and reverb units that teach while they process your own audio.
-          </p>
-          <div className="row">
-            <a className="btn btn--primary" href="#get">Download v{RELEASE.version}</a>
-            <a className="btn" href={RELEASE.repo}>Source on GitHub</a>
-          </div>
-          <div className="hero__meta">
-            {FACTS.map(([k, v]) => (
-              <span key={k}>
-                {k} <b className="num" style={{ color: 'var(--dim)' }}>{v}</b>
-              </span>
-            ))}
-          </div>
-        </div>
+      {/* The demo is the pitch. Explaining an ear trainer in paragraphs is
+          what every other page does; letting somebody fail at one round
+          does it in ten seconds and cannot be argued with. Everything that
+          used to be prose about the exercises is now the thing itself. */}
+      <PlayableRound />
 
-        <PlayableRound />
+      <p className="lede" style={{ marginTop: 'var(--s-3)' }}>
+        That is one exercise of nine, at level one, in a browser tab. The
+        plugins run in your DAW on your own tracks — and three of them are real
+        EQ, compressor and reverb units that teach while they process.
+      </p>
+
+      <div className="row">
+        <a className="btn btn--primary" href="#get">Download v{RELEASE.version}</a>
+        <a className="btn" href={RELEASE.repo}>Source on GitHub</a>
+      </div>
+
+      <div className="hero__meta">
+        {FACTS.map(([k, v]) => (
+          <span key={k}>
+            {k} <b className="num" style={{ color: 'var(--dim)' }}>{v}</b>
+          </span>
+        ))}
       </div>
     </section>
   );
@@ -70,36 +69,24 @@ function Hero() {
 
 function Families() {
   return (
-    <section className="wrap rack" id="train">
-      <p className="label">What it trains</p>
-      <div className="stack-5">
-        <div className="prose stack-3">
-          <h2>Four things an ear can be taught.</h2>
-          <p className="lede">
-            The nine exercises are grouped by the skill they build, not by the effect they
-            use — and each group has its own colour everywhere in the product, so a run
-            you started yesterday is recognisable at a glance.
-          </p>
-        </div>
-
-        <div className="families">
-          {FAMILIES.map((f) => (
-            <article key={f.key} className={`family family--${f.key}`}>
-              <div>
-                <div className="family__name">{f.name}</div>
-                <div className="family__count">
-                  {f.exercises.length} exercise{f.exercises.length > 1 ? 's' : ''}
-                </div>
+    <section className="wrap rack rack--tight" id="train">
+      <p className="label">The other eight exercises</p>
+      <div className="families">
+        {FAMILIES.map((f) => (
+          <article key={f.key} className={`family family--${f.key}`}>
+            <div>
+              <div className="family__name">{f.name}</div>
+              <div className="family__count">
+                {f.exercises.length} exercise{f.exercises.length > 1 ? 's' : ''}
               </div>
-              <p className="family__what">{f.what}</p>
-              <ul className="family__list">
-                {f.exercises.map((e) => (
-                  <li key={e}>{e}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
+            </div>
+            <ul className="family__list">
+              {f.exercises.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -107,27 +94,16 @@ function Families() {
 
 function Plugins() {
   return (
-    <section className="wrap rack" id="plugins">
-      <p className="label">The teaching plugins</p>
-      <div className="stack-5">
-        <div className="prose stack-3">
-          <h2>Three of them process your actual track.</h2>
-          <p className="lede">
-            Not simulations. They are host-automatable units you can leave on a channel —
-            and while you turn a knob they tell you what it does, then hide a value and ask
-            you to dial it back by ear.
-          </p>
-        </div>
-
-        <div className="plugins">
-          {PLUGINS.map((p) => (
-            <article key={p.key} className={`plugin plugin--${p.key}`}>
-              <div className="plugin__name">{p.name}</div>
-              <p className="plugin__body">{p.body}</p>
-              <div className="plugin__modules">{p.modules}</div>
-            </article>
-          ))}
-        </div>
+    <section className="wrap rack rack--tight" id="plugins">
+      <p className="label">Three of them process your actual track</p>
+      <div className="plugins">
+        {PLUGINS.map((p) => (
+          <article key={p.key} className={`plugin plugin--${p.key}`}>
+            <div className="plugin__name">{p.name}</div>
+            <p className="plugin__body">{p.body}</p>
+            <div className="plugin__modules">{p.modules}</div>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -140,9 +116,6 @@ function Limits() {
       <div className="limits">
         <div className="prose stack-3">
           <h2>What it doesn’t do yet.</h2>
-          <p className="lede">
-            You will find all of this out in the first ten minutes. Better here than there.
-          </p>
         </div>
         <ul className="limits__list">
           {LIMITS.map((l) => (
@@ -165,11 +138,7 @@ function Get() {
       <p className="label">Download</p>
       <div className="stack-5">
         <div className="prose stack-3">
-          <h2>Version {RELEASE.version}, built on every push.</h2>
-          <p className="lede">
-            One installer per system, containing all four plugins. Pick the formats you
-            want during setup.
-          </p>
+          <h2>Version {RELEASE.version}, all four plugins.</h2>
         </div>
 
         <div className="downloads">
