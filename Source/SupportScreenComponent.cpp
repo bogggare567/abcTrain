@@ -1,4 +1,5 @@
 #include "SupportScreenComponent.h"
+#include "../shared/AmbientInstruments.h"
 #include "../shared/AbcTrainLookAndFeel.h"
 #include "../shared/AbcTrainTheme.h"
 #include <BrandBinaryData.h>
@@ -114,6 +115,7 @@ void SupportScreenComponent::refresh()
     // showing new text already faded in would look like a glitch.
     elapsedMs = 0.0;
     wordReveal = { { 0.0f, 0.0f, 0.0f } };
+    bouncePhase = 0.0;
 
     repaint();
 }
@@ -122,6 +124,14 @@ void SupportScreenComponent::completeReveal()
 {
     elapsedMs = wordStaggerMs * 2.0 + wordArriveMs + 1.0;
     wordReveal = { { 1.0f, 1.0f, 1.0f } };
+
+    // The wordmark's own sweep too, or a still frame shows no letters at
+    // all - the same reason this method exists for the three words.
+    bouncePhase = 2.0;
+
+    // Part-way into the first scene rather than at zero, so the contact
+    // sheet catches the background mid-figure instead of at its flattest.
+    ambientPhase = 3.2;
     repaint();
 }
 
@@ -138,10 +148,12 @@ void SupportScreenComponent::timerCallback()
 
     // The reveal finishes; the bounce does not, so this no longer returns
     // early once the words have arrived.
-    bouncePhase += juce::MathConstants<double>::twoPi / (1.9 * (double) tickHz);
+    // The wordmark sweep runs once and stops; the background keeps its
+    // own clock, which is what is still moving after that.
+    if (bouncePhase < 2.0)
+        bouncePhase += 1.0 / (double) tickHz;
 
-    if (bouncePhase > juce::MathConstants<double>::twoPi)
-        bouncePhase -= juce::MathConstants<double>::twoPi;
+    ambientPhase += 1.0 / (double) tickHz;
 
     elapsedMs += 1000.0 / (double) tickHz;
 
@@ -159,10 +171,10 @@ void SupportScreenComponent::timerCallback()
     // bouncing wordmark - so only that strip is repainted. This screen
     // opens on every launch, and repainting the whole gradient-and-noise
     // window at 60 Hz forever was the app's first impression.
-    if (revealing || wordmarkRepaintArea.isEmpty())
-        repaint();
-    else
-        repaint (wordmarkRepaintArea);
+    // The background is always moving, so the whole screen repaints. It
+    // is four thin figures at a few per cent alpha over a cached gradient,
+    // not the every-frame full re-render the letters used to force.
+    repaint();
 }
 
 void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<float> area)
@@ -194,33 +206,22 @@ void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<f
         const auto colour = i < 3 ? AbcTrainTheme::accentFor (familyForWord (i))
                                   : theme.textBright;
 
-        // a, b and c hop in turn; "Train" stays put.
+        // Still. The hop is gone.
         //
-        // Each hop occupies a third of the cycle and they are staggered by a
-        // third, so exactly one letter is in the air at a time and all three
-        // are down at phase zero. The first version used half-sines a third
-        // apart, which meant *some* letter was always mid-hop - including on
-        // the very first frame, where a raised "c" reads as a typo rather
-        // than as motion.
-        auto lift = 0.0f;
+        // It was the only moving thing on the screen, which put the whole
+        // weight of "this is alive" on a gag - and one that read as a toy
+        // beside the rest of the product. What is left is a single
+        // left-to-right reveal on arrival, the way a needle sweeps once
+        // and settles; after that the letters simply are. The motion moved
+        // to the background, where a background belongs.
+        const auto sweep = (float) juce::jlimit (0.0, 1.0,
+            (bouncePhase - (double) i * 0.16) / 0.55);
 
-        if (i < 3)
-        {
-            constexpr auto slice = juce::MathConstants<double>::twoPi / 3.0;
-
-            auto local = std::fmod (bouncePhase - (double) i * slice,
-                                     juce::MathConstants<double>::twoPi);
-
-            if (local < 0.0)
-                local += juce::MathConstants<double>::twoPi;
-
-            if (local < slice)
-                lift = -7.0f * (float) std::sin (local * 1.5);
-        }
+        const auto eased = AbcTrainTheme::Ease::out (sweep);
 
         AbcTrainLookAndFeel::drawTrackedText (g, letter,
-                                               area.withX (x).withWidth (width).translated (0.0f, lift),
-                                               font, colour, tracking,
+                                               area.withX (x).withWidth (width),
+                                               font, colour.withAlpha (eased), tracking,
                                                juce::Justification::centred);
         x += width;
     }
@@ -231,6 +232,13 @@ void SupportScreenComponent::paint (juce::Graphics& g)
     const auto& theme = AbcTrainTheme::current();
 
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+
+    // The instruments this product is about, drifting behind everything.
+    // This screen used to have exactly one moving thing - three hopping
+    // letters - which put the whole weight of "this is alive" on a gag.
+    // The motion lives here now and the wordmark is still.
+    AmbientInstruments::paint (g, getLocalBounds().toFloat().reduced ((float) AbcTrainTheme::Spacing::large),
+                                ambientPhase);
 
     auto area = getLocalBounds().reduced (AbcTrainTheme::Spacing::large * 2);
 

@@ -102,6 +102,16 @@ private:
     // Where the bouncing wordmark last painted, so the steady-state timer
     // can repaint that strip alone instead of the whole window.
     juce::Rectangle<int> wordmarkRepaintArea;
+
+    // Seconds, for the background instruments. Its own clock, so the
+    // wordmark's one-shot sweep can finish and stop while this carries on.
+    //
+    // **Started mid-scene, not at zero.** Each scene cross-fades in over
+    // its first 1.4 seconds, so a clock starting at zero means the screen
+    // opens on a second and a half of nothing - which is exactly the
+    // emptiness the background exists to fix, arriving at the worst
+    // possible moment.
+    double ambientPhase = 3.2;
     juce::HyperlinkButton repoLink { "github.com/bogggare567/abcTrain",
                                       juce::URL ("https://github.com/bogggare567/abcTrain") };
 
