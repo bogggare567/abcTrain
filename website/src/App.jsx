@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import PlayableRound from './components/PlayableRound.jsx';
+import Trainer from './trainer/Trainer.jsx';
 import { RELEASE, DOWNLOADS, FAMILIES, PLUGINS, LIMITS, FACTS } from './content.js';
 
 function Masthead({ theme, onToggleTheme }) {
@@ -43,7 +43,7 @@ function Hero() {
           what every other page does; letting somebody fail at one round
           does it in ten seconds and cannot be argued with. Everything that
           used to be prose about the exercises is now the thing itself. */}
-      <PlayableRound />
+      <Trainer />
 
       <p className="lede" style={{ marginTop: 'var(--s-3)' }}>
         That is one exercise of nine, at level one, in a browser tab. The

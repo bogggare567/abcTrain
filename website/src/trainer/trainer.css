@@ -1,0 +1,372 @@
+/* ---------------------------------------------------------------------
+   The trainer, styled as the plugin styles itself.
+
+   Same tokens as the rest of the site, which are themselves taken from
+   AbcTrainTheme - so the panel, the well, the section headings and the
+   four family colours are the plugin's, not a web interpretation of them.
+   --------------------------------------------------------------------- */
+
+.tr {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s-5);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.tr-title {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  color: var(--bright);
+}
+
+/* A caption with a hairline running off to the right - the plugin's own
+   section heading, which is what makes its screens read as sections
+   rather than as a list of widgets. */
+.tr-section {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+
+.tr-section__label {
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.tr-section::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* --- home ------------------------------------------------------------ */
+
+.tr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: var(--s-3);
+}
+
+.tr-card {
+  --hue: var(--freq);
+  text-align: left;
+  background: var(--raise);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--s-3) var(--s-4) var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: transform var(--d-hover) var(--ease),
+              border-color var(--d-hover) var(--ease);
+}
+
+.tr-card:hover { transform: translateY(-2px); border-color: var(--hue); }
+
+.tr-card--freq  { --hue: var(--freq); }
+.tr-card--dyn   { --hue: var(--dyn); }
+.tr-card--space { --hue: var(--space); }
+.tr-card--char  { --hue: var(--char); }
+
+.tr-card__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--s-2);
+}
+
+.tr-card__family {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hue);
+}
+
+.tr-card__level {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.tr-card__level b { color: var(--text); font-weight: 500; }
+
+.tr-card__name {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--bright);
+}
+
+.tr-card__stats {
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  color: var(--dim);
+}
+
+.tr-card__bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--well);
+  overflow: hidden;
+  margin-top: var(--s-1);
+}
+
+.tr-card__bar span {
+  display: block;
+  height: 100%;
+  background: var(--hue);
+  transition: width var(--d-move) var(--ease);
+}
+
+/* --- training -------------------------------------------------------- */
+
+.tr-exercise {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.tr-exercise__name {
+  --hue: var(--freq);
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 1.05rem;
+  color: var(--bright);
+  flex: 1;
+}
+
+.tr-exercise__name--freq  { --hue: var(--freq); }
+.tr-exercise__name--dyn   { --hue: var(--dyn); }
+.tr-exercise__name--space { --hue: var(--space); }
+.tr-exercise__name--char  { --hue: var(--char); }
+
+.tr-exercise__level {
+  font-size: var(--t-small);
+  color: var(--dim);
+}
+
+.tr-instructions {
+  color: var(--dim);
+  font-size: var(--t-small);
+  max-width: 78ch;
+}
+
+.tr-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.tr-readout {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: 1.55rem;
+  text-align: center;
+  color: var(--dim);
+  min-height: 1.5em;
+  transition: color var(--d-hover) var(--ease);
+}
+
+.tr-readout[data-state="good"] { color: var(--good); }
+.tr-readout[data-state="bad"]  { color: var(--bad); }
+
+/* The recessed well the scale lives in - the plugin's paintDisplayWell. */
+.tr-scale {
+  position: relative;
+  height: 190px;
+  background: var(--well);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-well);
+  cursor: crosshair;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.tr-scale__tick {
+  position: absolute;
+  top: 0;
+  bottom: 26px;
+  width: 1px;
+  background: var(--line);
+  opacity: 0.6;
+}
+
+.tr-scale__band {
+  position: absolute;
+  top: 0;
+  bottom: 26px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-inline: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  transition: left var(--d-move) var(--ease), width var(--d-move) var(--ease),
+              background var(--d-move) var(--ease);
+  pointer-events: none;
+}
+
+.tr-scale__band[data-state="good"] {
+  background: color-mix(in srgb, var(--good) 20%, transparent);
+  border-inline-color: color-mix(in srgb, var(--good) 55%, transparent);
+}
+
+.tr-scale__band[data-state="bad"] {
+  background: color-mix(in srgb, var(--bad) 20%, transparent);
+  border-inline-color: color-mix(in srgb, var(--bad) 55%, transparent);
+}
+
+.tr-scale__target {
+  position: absolute;
+  top: 0;
+  bottom: 26px;
+  width: 2px;
+  background: var(--warm);
+  pointer-events: none;
+}
+
+.tr-scale__cursor {
+  position: absolute;
+  top: 0;
+  bottom: 26px;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.tr-scale__cursor[data-state="good"] { background: var(--good); }
+.tr-scale__cursor[data-state="bad"]  { background: var(--bad); }
+
+.tr-scale__label {
+  position: absolute;
+  bottom: 6px;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* The zoned answer, for the five categorical exercises: regions you pick
+   between rather than a value to land on. */
+.tr-zones {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-well);
+  overflow: hidden;
+  min-height: 190px;
+}
+
+.tr-zone {
+  background: var(--well);
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  padding: var(--s-4) var(--s-2);
+  cursor: pointer;
+  transition: background var(--d-hover) var(--ease), color var(--d-hover) var(--ease);
+}
+
+.tr-zone:nth-child(even) { background: color-mix(in srgb, var(--well) 88%, var(--text)); }
+.tr-zone:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 22%, var(--well)); }
+.tr-zone:disabled { cursor: default; }
+
+.tr-zone[data-state="good"] { background: color-mix(in srgb, var(--good) 30%, var(--well)); color: var(--bright); }
+.tr-zone[data-state="bad"]  { background: color-mix(in srgb, var(--bad) 30%, var(--well)); color: var(--bright); }
+
+.tr-verdict {
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  text-align: center;
+  min-height: 1.4em;
+  color: var(--dim);
+}
+
+.tr-verdict[data-state="good"] { color: var(--good); }
+.tr-verdict[data-state="bad"]  { color: var(--bad); }
+
+/* One row, not two: modes and score left, A/B centred under the scale it
+   compares, the action right. */
+.tr-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.tr-score { font-size: var(--t-small); color: var(--dim); }
+
+.tr-ab { display: flex; gap: var(--s-1); }
+
+.tr-btn {
+  font-family: var(--mono);
+  font-size: var(--t-small);
+  padding: var(--s-2) var(--s-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--raise);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--d-hover) var(--ease),
+              border-color var(--d-hover) var(--ease);
+}
+
+.tr-btn:hover { background: color-mix(in srgb, var(--raise) 84%, var(--text)); }
+
+.tr-btn[data-on="true"] {
+  background: color-mix(in srgb, var(--accent) 28%, var(--raise));
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--bright);
+}
+
+.tr-btn--primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--ink);
+}
+
+.tr-btn--primary:hover { background: color-mix(in srgb, var(--accent) 88%, var(--bright)); }
+
+.tr-btn--home { padding-inline: var(--s-3); }
+
+.tr-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line-soft);
+  padding-top: var(--s-3);
+  margin-top: var(--s-2);
+}
+
+.tr-toolbar__note,
+.tr-toolbar__link {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+}
+
+.tr-toolbar__link { color: var(--accent); text-decoration: none; }
+.tr-toolbar__link:hover { text-decoration: underline; }
