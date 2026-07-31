@@ -1134,6 +1134,12 @@ private:
     // that exists today.
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
 
+    // Asking, once, where somebody is already deciding what to do next -
+    // not on the training screen, where it would be interrupting the one
+    // thing this app is for. Home only.
+    juce::HyperlinkButton donateLink { "Support the project",
+                                        juce::URL ("https://www.donationalerts.com/r/bogdankorablev") };
+
     // The update, as something you can watch. Added last of all the
     // children so it paints over everything, including the lesson
     // overlays - an update is the one thing that should not be behind

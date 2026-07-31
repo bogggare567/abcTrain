@@ -245,4 +245,36 @@ void RunResultsComponent::resized()
     homeButton.setBounds (footer.removeFromRight (120));
     footer.removeFromRight (Spacing::small);
     againButton.setBounds (footer.removeFromRight (140));
+
+    // The other modes sit on the left of the same row, so "again" and
+    // "differently" are the same distance from the eye - a run ending is
+    // the moment somebody is most willing to change how they play.
+    for (auto* button : modeButtons)
+    {
+        button->setBounds (footer.removeFromLeft (128).withHeight (34));
+        footer.removeFromLeft (Spacing::small);
+    }
+}
+
+void RunResultsComponent::setModeOffer (juce::String caption, juce::StringArray modeNames,
+                                         int currentMode)
+{
+    modeCaption = std::move (caption);
+    modeButtons.clear();
+
+    for (int i = 0; i < modeNames.size(); ++i)
+    {
+        // Only the ways you did *not* just play. Offering the mode that
+        // just ended, next to a button that already replays it, is two
+        // controls for one action.
+        if (i == currentMode)
+            continue;
+
+        auto* button = modeButtons.add (new juce::TextButton (modeNames[i]));
+        button->onClick = [this, i] { if (onModeChosen != nullptr) onModeChosen (i); };
+        addAndMakeVisible (*button);
+    }
+
+    resized();
+    repaint();
 }

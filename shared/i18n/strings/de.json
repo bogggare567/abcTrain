@@ -269,5 +269,8 @@
   "upd.finishedPlugin": "Installiert. Starte deine DAW neu — ein Plug-in, das der Host bereits geladen hat, kann kein Programm ersetzen.",
   "upd.finishedApp": "Installiert. App wird geschlossen, damit die neue Version übernehmen kann…",
   "upd.versionUnknown": "Version unbekannt",
-  "ui.endRun": "Beenden"
+  "ui.endRun": "Beenden",
+  "ui.modesUnlockedCaption": "Zeitmodi freigeschaltet",
+  "ui.modesUnlockedTitle": "Fünf in Folge - probier es gegen die Uhr",
+  "ui.tryAnotherMode": "Oder anders versuchen"
 }

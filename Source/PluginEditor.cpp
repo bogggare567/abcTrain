@@ -453,6 +453,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // Not added to the editor: it is now the source of the banner's
     // localised streak string, not a widget of its own.
     addChildComponent (dailyBanner);
+    donateLink.setJustificationType (juce::Justification::centredRight);
+    addChildComponent (donateLink);
 
     dailyChallengeLabel.setJustificationType (juce::Justification::centredLeft);
 
@@ -646,6 +648,23 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         showScreen (Screen::home);
     };
 
+    runResults.onModeChosen = [this] (int mode)
+    {
+        runResults.setVisible (false);
+
+        // The pills follow, so the row still says which mode is live -
+        // choosing here and leaving them stale would be two sources of
+        // truth for one thing.
+        practiceButton.setToggleState (mode == 0, juce::dontSendNotification);
+        survivalButton.setToggleState (mode == 1, juce::dontSendNotification);
+        blitzButton.setToggleState (mode == 2, juce::dontSendNotification);
+
+        session.setMode (mode == 1 ? SessionManager::Mode::survival
+                         : mode == 2 ? SessionManager::Mode::blitz
+                                     : SessionManager::Mode::practice);
+        beginRunWithCountdown();
+    };
+
     addChildComponent (runResults);
 
     achievementsScreen.onClosed = [this] { resized(); repaint(); };
@@ -726,6 +745,7 @@ void EarTrainerEditor::applyTheme()
     scoreLabel.setColour (juce::Label::textColourId, theme.text);
     streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
+    donateLink.setColour (juce::HyperlinkButton::textColourId, theme.accentWarm);
 
     // The icon shows the mode you'd switch *to*, and morphs between the
     // two rather than cutting - see IconButton.
@@ -933,6 +953,8 @@ void EarTrainerEditor::resized()
                                         .withSizeKeepingCentre (languageSelector.getPreferredWidth(), 22));
 
         soundkorbLink.setBounds (bar.removeFromRight (130).withSizeKeepingCentre (130, 18));
+        bar.removeFromRight (Spacing::medium);
+        donateLink.setBounds (bar.removeFromRight (150).withSizeKeepingCentre (150, 18));
     }
 
     area.removeFromTop (Spacing::section);
@@ -1274,6 +1296,23 @@ void EarTrainerEditor::showRunResults (int finalScore)
                             localisation.getText ("ui.newBest"),
                             localisation.getText ("ui.whereYouStand"));
 
+    // Offer the other two, but only for an exercise whose timed modes are
+    // open at all - otherwise the results of a Practice run would offer
+    // something the training screen still hides.
+    if (progress.areModesUnlockedForGame (gameIndex))
+    {
+        runResults.setModeOffer (localisation.getText ("ui.tryAnotherMode"),
+                                  { practiceButton.getButtonText(),
+                                    survivalButton.getButtonText(),
+                                    blitzButton.getButtonText() },
+                                  session.getMode() == SessionManager::Mode::survival ? 1
+                                  : session.getMode() == SessionManager::Mode::blitz  ? 2 : 0);
+    }
+    else
+    {
+        runResults.setModeOffer ({}, {}, 0);
+    }
+
     runResults.show (std::move (summary));
 }
 
@@ -1323,6 +1362,23 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
     promotionPips.setVisible (outcome.promotionPending);
     if (outcome.promotionPending)
         promotionPips.set (outcome.promotionStreak, ProgressManager::promotionTestLength);
+
+    // The one answer that opens the timed modes. Announced through the
+    // same toast achievements use - one vocabulary for "something was
+    // earned" - and only on the answer that crosses the line, because
+    // areModesUnlockedForGame stays true from then on.
+    {
+        auto& progress = processor.getProgressManager();
+        const auto streak = progress.getConsecutiveCorrectForGame (scoredGameIndex);
+
+        if (outcome.wasCorrect && streak == ProgressManager::streakToUnlockModes)
+        {
+            achievementToast.show (localisation.getText ("ui.modesUnlockedCaption"),
+                                    localisation.getText ("ui.modesUnlockedTitle"));
+            refreshRunStatus();
+            resized();
+        }
+    }
 
     if (outcome.leveledUp)
     {
@@ -1518,8 +1574,17 @@ void EarTrainerEditor::refreshRunStatus()
 
         runHud.setVisible (onTraining && hudNow);
         endRunButton.setVisible (onTraining && hudNow);
-        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
-            pill->setVisible (onTraining && ! hudNow);
+
+        // Practice is where every exercise starts, and the timed modes
+        // appear once you have shown you can hear the thing at all - see
+        // ProgressManager::areModesUnlockedForGame. Practice itself stays
+        // on screen throughout, so the row never empties.
+        const auto unlocked = processor.getProgressManager()
+                                  .areModesUnlockedForGame (processor.getGameManager().getActiveGameIndex());
+
+        practiceButton.setVisible (onTraining && ! hudNow);
+        survivalButton.setVisible (onTraining && ! hudNow && unlocked);
+        blitzButton.setVisible (onTraining && ! hudNow && unlocked);
         scoreLabel.setVisible (onTraining && ! hudNow);
 
         if (hudNow)
@@ -1679,6 +1744,7 @@ void EarTrainerEditor::showScreen (Screen screen)
     // Level, streak and the daily challenge belong to the screen you plan
     // from, not the one you answer on.
     dailyBanner.setVisible (onHome);
+    donateLink.setVisible (onHome);
 
     resized();
     repaint();
@@ -1765,6 +1831,7 @@ void EarTrainerEditor::refreshLocalisedText()
     settingsScreen.refresh();
     settingsButton.setTooltip (localisation.getText ("ui.settings"));
     instructionsButton.setTooltip (localisation.getText ("ui.showInstructions"));
+    donateLink.setButtonText (localisation.getText ("ui.support"));
     endRunButton.setButtonText (localisation.getText ("ui.endRun"));
 
     trainingSounds.setStrings (localisation.getText ("ui.trainingSounds"),

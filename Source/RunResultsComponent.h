@@ -79,6 +79,14 @@ public:
     std::function<void()> onPlayAgain;
     std::function<void()> onGoHome;
 
+    // "Try the other one." A run ending is the moment somebody is most
+    // willing to change how they play - they have just found out how the
+    // last way went - and until now the screen offered only the same mode
+    // again or the way out. Takes a SessionManager::Mode as an int so this
+    // component keeps knowing nothing about the session.
+    std::function<void (int mode)> onModeChosen;
+    void setModeOffer (juce::String caption, juce::StringArray modeNames, int currentMode);
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -103,6 +111,10 @@ private:
     juce::String newBestText, whereYouStandText;
 
     juce::TextButton againButton, homeButton;
+
+    // At most two: the modes that are not the one just played.
+    juce::OwnedArray<juce::TextButton> modeButtons;
+    juce::String modeCaption;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RunResultsComponent)
 };

@@ -269,5 +269,8 @@
   "upd.finishedPlugin": "Installed. Restart your DAW to load the new version — no program can replace a plugin the host already has open.",
   "upd.finishedApp": "Installed. Closing this app so the new version can take over…",
   "upd.versionUnknown": "version unknown",
-  "ui.endRun": "End run"
+  "ui.endRun": "End run",
+  "ui.modesUnlockedCaption": "Timed modes are open",
+  "ui.modesUnlockedTitle": "Five in a row - try one against a clock",
+  "ui.tryAnotherMode": "Or try it another way"
 }

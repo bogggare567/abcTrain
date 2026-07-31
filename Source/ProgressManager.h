@@ -135,6 +135,24 @@ public:
 
     GameStats getStatsForGame (int gameIndex) const;
 
+    // Whether Survival and Blitz are offered for this exercise yet.
+    //
+    // Practice is the only mode a new exercise starts with, and the timed
+    // ones appear once you have shown you can actually hear the thing -
+    // five right in a row. Offering all three on the first visit asks
+    // somebody to pick a pressure level for a skill they have not tested,
+    // and the honest answer at that point is always Practice.
+    //
+    // Derived from the lifetime best streak, which is already persisted,
+    // rather than from a new flag: one fact, one place, and an unlock
+    // that cannot disagree with the record that earned it.
+    static constexpr int streakToUnlockModes = 5;
+
+    bool areModesUnlockedForGame (int gameIndex) const
+    {
+        return getStatsForGame (gameIndex).bestStreak >= streakToUnlockModes;
+    }
+
     // "Trainings I'm interested in" - the player's own shortlist, pinned
     // to the top of the home screen. Persisted like everything else here,
     // because a focus you have to re-pick every launch isn't a focus.

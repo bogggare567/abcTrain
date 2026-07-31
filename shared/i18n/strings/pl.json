@@ -269,5 +269,8 @@
   "upd.finishedPlugin": "Zainstalowano. Uruchom DAW ponownie — żaden program nie podmieni wtyczki, którą host już otworzył.",
   "upd.finishedApp": "Zainstalowano. Zamykam aplikację, żeby nowa wersja przejęła…",
   "upd.versionUnknown": "wersja nieznana",
-  "ui.endRun": "Zakończ"
+  "ui.endRun": "Zakończ",
+  "ui.modesUnlockedCaption": "Tryby na czas odblokowane",
+  "ui.modesUnlockedTitle": "Pięć z rzędu - spróbuj na czas",
+  "ui.tryAnotherMode": "Albo spróbuj inaczej"
 }

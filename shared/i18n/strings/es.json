@@ -269,5 +269,8 @@
   "upd.finishedPlugin": "Instalado. Reinicia tu DAW — ningún programa puede sustituir un plugin que el anfitrión ya tiene abierto.",
   "upd.finishedApp": "Instalado. Cerrando la app para que la nueva versión tome el relevo…",
   "upd.versionUnknown": "versión desconocida",
-  "ui.endRun": "Terminar"
+  "ui.endRun": "Terminar",
+  "ui.modesUnlockedCaption": "Modos con tiempo disponibles",
+  "ui.modesUnlockedTitle": "Cinco seguidas - pruébalo contra el reloj",
+  "ui.tryAnotherMode": "O pruébalo de otra forma"
 }

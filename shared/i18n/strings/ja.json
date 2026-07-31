@@ -269,5 +269,8 @@
   "upd.finishedPlugin": "インストールしました。DAW を再起動してください — ホストが既に読み込んだプラグインは、どのプログラムにも置き換えられません。",
   "upd.finishedApp": "インストールしました。新しいバージョンに切り替えるためアプリを終了します…",
   "upd.versionUnknown": "バージョン不明",
-  "ui.endRun": "終了"
+  "ui.endRun": "終了",
+  "ui.modesUnlockedCaption": "タイムモードが開放",
+  "ui.modesUnlockedTitle": "5連続 — 時間制限で挑戦",
+  "ui.tryAnotherMode": "または別のやり方で"
 }
