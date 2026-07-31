@@ -1,0 +1,66 @@
+# Publishes the landing page - and with it the playable demo - to GitHub
+# Pages, so somebody can try the mechanic before downloading anything.
+#
+# A repository page cannot run the demo itself: GitHub renders README.md as
+# static Markdown and strips scripts, which is the correct thing for it to
+# do. Pages is the same account's own hosting, one click from the repo, and
+# it can run a real page.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Read the repo, write the Pages deployment, and mint the OIDC token the
+# deploy action authenticates with. Nothing wider than that.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and let a running one finish rather than
+# cancelling it - a half-applied deploy is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      # `npm ci` rather than `npm install`: it installs exactly the
+      # lockfile and fails if the two disagree, which is what you want in
+      # CI and never what you want on a laptop.
+      - run: npm ci
+        working-directory: website
+
+      # The site is served from a subpath (/abcTrain/), not from a domain
+      # root, so every absolute asset URL would 404 without this.
+      - run: npm run build -- --base=/abcTrain/
+        working-directory: website
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

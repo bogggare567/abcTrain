@@ -335,6 +335,7 @@ p { margin: 0; }
 }
 
 .scale__tickLabel {
+  --tick-inset: 26px;   /* half the widest label, so neither end is cut */
   position: absolute;
   bottom: 5px;
   transform: translateX(-50%);
@@ -631,4 +632,44 @@ p { margin: 0; }
   flex-wrap: wrap;
   gap: var(--s-5);
   justify-content: space-between;
+}
+
+/* --- exercise tabs on the demo -------------------------------------- *
+   One per exercise, tinted with its own skill-family hue - the same four
+   colours the product uses everywhere else, so the demo is already
+   teaching the grouping before anybody installs anything. */
+
+.round__tabs {
+  display: flex;
+  gap: var(--s-1);
+  flex-wrap: wrap;
+}
+
+.round__tab {
+  --hue: var(--freq);
+  font-family: var(--mono);
+  font-size: var(--t-label);
+  letter-spacing: 0.04em;
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition: color var(--d-hover) var(--ease),
+              background var(--d-hover) var(--ease),
+              border-color var(--d-hover) var(--ease);
+}
+
+.round__tab--freq  { --hue: var(--freq); }
+.round__tab--dyn   { --hue: var(--dyn); }
+.round__tab--space { --hue: var(--space); }
+.round__tab--char  { --hue: var(--char); }
+
+.round__tab:hover { color: var(--text); }
+
+.round__tab[data-active='true'] {
+  color: var(--hue);
+  border-color: color-mix(in srgb, var(--hue) 45%, transparent);
+  background: color-mix(in srgb, var(--hue) 12%, transparent);
 }

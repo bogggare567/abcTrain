@@ -29,6 +29,13 @@ one free, open-source suite for macOS, Windows and Linux.
 [![Wiki](https://img.shields.io/badge/Wiki-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/wiki)
 [![Discussions](https://img.shields.io/badge/Discussions-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/discussions)
 [![Telegram](https://img.shields.io/badge/Telegram-@vstabc-4FA3C7?style=flat-square&labelColor=1E1E2E)](https://t.me/vstabc)
+
+[![Try it in your browser](https://img.shields.io/badge/%E2%96%B6%20TRY%20IT-in%20your%20browser-4FA3C7?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
+
+**[Play three real rounds without installing anything](https://bogggare567.github.io/abcTrain/)** —
+frequency, level and pan, with the same pink noise, the same log axis and
+the same accept band the plugin grades you against. Turn your volume down
+first; nothing makes a sound until you press play.
 [![Contribute](https://img.shields.io/badge/Contribute-2A2A3A?style=flat-square)](docs/orientation.md)
 
 <br>
