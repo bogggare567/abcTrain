@@ -41,7 +41,7 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
         ++samplesSinceBurstStart;
     }
 
-    const auto& preset = presets[(size_t) correctLevelIndex];
+    const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
 
     if (playProcessed.load())
     {
@@ -72,6 +72,8 @@ void CompressionGame::setDifficulty (int level)
     // 4:1 / 8:1, which nobody can miss; at level 10 it is roughly
     // -17.4/-18/-18.7 dB at 3.6:1 / 4:1 / 4.4:1, where only the character
     // of the squeeze separates them.
+    difficultyLevel = juce::jlimit (1, 10, level);
+
     const auto spread = rampTolerance (level, 1.0f, 0.11f);
 
     struct Offsets { const char* label; float thresholdDb; float ratio; float makeupDb; };
@@ -96,7 +98,11 @@ void CompressionGame::setDifficulty (int level)
 
 void CompressionGame::newRound()
 {
-    correctLevelIndex = random.nextInt (numLevels);
+    // The pair sets the question; which of the two is the answer is a
+    // separate draw, so a hard pair does not also bias which side is
+    // right.
+    pairLevels = drawPair();
+    correctLevelIndex = random.nextInt (2);
 
     // A small random nudge on top of the preset, redrawn every round.
     //
@@ -133,7 +139,7 @@ void CompressionGame::submitAnswer (int choiceIndex)
 
 juce::String CompressionGame::getChoiceLabel (int choiceIndex) const
 {
-    return presets[(size_t) choiceIndex].label;
+    return presets[(size_t) pairLevels[(size_t) juce::jlimit (0, 1, choiceIndex)]].label;
 }
 
 juce::String CompressionGame::getFeedbackText() const
@@ -141,7 +147,7 @@ juce::String CompressionGame::getFeedbackText() const
     if (! answered)
         return {};
 
-    const auto& preset = presets[(size_t) correctLevelIndex];
+    const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + preset.label + " compression ("
            + juce::String (preset.ratio, 0) + ":1 at "
@@ -150,7 +156,34 @@ juce::String CompressionGame::getFeedbackText() const
 
 void CompressionGame::updateCompressor()
 {
-    const auto& preset = presets[(size_t) correctLevelIndex];
+    const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
     compressor.setThreshold (preset.thresholdDb + roundThresholdJitterDb);
     compressor.setRatio (juce::jmax (1.05f, preset.ratio + roundRatioJitter));
+}
+
+std::array<int, 2> CompressionGame::drawPair()
+{
+    // Three amounts means three pairs: the two ends, and the two
+    // neighbouring pairs. Weak-against-Strong is the giveaway; either
+    // neighbour pair is the real question.
+    //
+    // The chance of a neighbour pair climbs with the level rather than
+    // switching over at a threshold, so no single level-up suddenly makes
+    // the exercise feel like a different game. At level 1 it is one round
+    // in six; at level 10 the easy pair is gone entirely.
+    const auto neighbourChance = juce::jmap ((float) difficultyLevel, 1.0f, 10.0f, 0.17f, 1.0f);
+
+    const auto wantNeighbours = random.nextFloat() < neighbourChance;
+
+    auto pair = wantNeighbours
+                    ? (random.nextBool() ? std::array<int, 2> { { 0, 1 } }
+                                         : std::array<int, 2> { { 1, 2 } })
+                    : std::array<int, 2> { { 0, 2 } };
+
+    // Which side is offered first is random, or the louder answer would
+    // always sit on the same end of the scale.
+    if (random.nextBool())
+        std::swap (pair[0], pair[1]);
+
+    return pair;
 }

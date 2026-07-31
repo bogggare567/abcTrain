@@ -40,7 +40,11 @@ public:
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
 
-    int getNumChoices() const override { return numLevels; }
+    // Always two - see ReverbGame for the reasoning. Here the pair is
+    // drawn from Weak/Medium/Strong, and a level decides whether you get
+    // the two ends (easy) or two neighbours (hard) on top of the existing
+    // spread that already pulls all three together as you climb.
+    int getNumChoices() const override { return 2; }
     juce::String getChoiceLabel (int choiceIndex) const override;
 
     bool hasAnswered() const override { return answered; }
@@ -91,6 +95,14 @@ private:
     float roundThresholdJitterDb = 0.0f;
     float roundRatioJitter = 0.0f;
 
+    // The two amounts on offer this round, as indices into `presets`.
+    std::array<int, 2> pairLevels { { 0, 2 } };
+    int difficultyLevel = 1;
+
+    std::array<int, 2> drawPair();
+
+    // 0 = the two ends, 1 = adjacent. Used by tests to check that harder
+    // levels really do offer neighbours more often.
     int correctLevelIndex = 0;
     int chosenLevelIndex = -1;
     bool answered = false;
