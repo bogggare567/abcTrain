@@ -31,6 +31,7 @@ if you want to know which button to press, you are in the right place.
 | understand levels and badges | [Levels, streaks and achievements](Levels-streaks-and-achievements) |
 | fix something | [Troubleshooting](Troubleshooting) |
 | ask a question | [Discussions → Q&A](https://github.com/bogggare567/abcTrain/discussions) |
+| hear about new versions | [Telegram → @vstabc](https://t.me/vstabc) |
 | report a crash | [Issues](https://github.com/bogggare567/abcTrain/issues/new/choose) |
 
 ## Быстрый старт (RU)

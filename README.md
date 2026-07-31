@@ -28,6 +28,7 @@ one free, open-source suite for macOS, Windows and Linux.
 [![Roadmap](https://img.shields.io/badge/Roadmap-2A2A3A?style=flat-square)](docs/roadmap.md)
 [![Wiki](https://img.shields.io/badge/Wiki-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/wiki)
 [![Discussions](https://img.shields.io/badge/Discussions-2A2A3A?style=flat-square)](https://github.com/bogggare567/abcTrain/discussions)
+[![Telegram](https://img.shields.io/badge/Telegram-@vstabc-4FA3C7?style=flat-square&labelColor=1E1E2E)](https://t.me/vstabc)
 [![Contribute](https://img.shields.io/badge/Contribute-2A2A3A?style=flat-square)](docs/orientation.md)
 
 <br>
@@ -479,6 +480,12 @@ important it feels.
 | something **broken** — a crash, a host that will not load it, an installer that fails | [Issues](https://github.com/bogggare567/abcTrain/issues/new/choose) |
 | an **idea** | [Discussions → Ideas](https://github.com/bogggare567/abcTrain/discussions/categories/ideas) — start with the problem, not the solution |
 | something you **made** with it | [Discussions → Show and tell](https://github.com/bogggare567/abcTrain/discussions/categories/show-and-tell) |
+| to know when a **new version** lands | [Telegram → @vstabc](https://t.me/vstabc) |
+
+[**@vstabc**](https://t.me/vstabc) is a channel, not a chat: releases and
+what changed in them, and nothing else. Conversation stays in Discussions,
+where it is searchable, threaded and readable by someone who arrives a year
+from now - which a Telegram backlog is not.
 
 The [**wiki**](https://github.com/bogggare567/abcTrain/wiki) answers the
 questions that already have answers: installing it, what each exercise

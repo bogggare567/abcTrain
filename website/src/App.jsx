@@ -206,6 +206,7 @@ function Footer() {
         <div className="stack-3">
           <a href={RELEASE.repo}>GitHub</a>
           <a href={RELEASE.releases}>All releases</a>
+          <a href={RELEASE.telegram}>Telegram · @vstabc</a>
           <a href={RELEASE.site}>soundkorb.ru</a>
         </div>
       </div>

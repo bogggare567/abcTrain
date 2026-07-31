@@ -15,6 +15,7 @@ export const RELEASE = {
   repo: 'https://github.com/bogggare567/abcTrain',
   releases: 'https://github.com/bogggare567/abcTrain/releases',
   site: 'https://soundkorb.ru',
+  telegram: 'https://t.me/vstabc',
   vendor: 'soundkorb',
 };
 
