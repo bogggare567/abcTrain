@@ -979,6 +979,9 @@ private:
     RunCountdown runCountdown;
     RunHud runHud;
 
+    // Ends a live run without leaving the exercise - see the handler.
+    juce::TextButton endRunButton;
+
     // True while a Survival/Blitz run is being played (not merely armed):
     // the pills and session score hide, the HUD shows. One predicate so
     // resized() and refreshRunStatus() can never disagree about it.

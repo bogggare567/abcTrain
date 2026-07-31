@@ -330,6 +330,30 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (runHud);
     addChildComponent (runCountdown);
 
+    // The way out of a live run.
+    //
+    // Hiding the mode pills during a run was right - a run you can
+    // silently re-mode halfway through is a setting, not a run - but it
+    // left Home as the only exit, and Home leaves the exercise entirely.
+    // Somebody two minutes into a Blitz who just wants to stop is not
+    // asking to leave the exercise. Ending the run shows the results,
+    // which is also where "again" lives.
+    endRunButton.onClick = [this]
+    {
+        ++pendingAdvanceId;
+        runCountdown.cancel();
+
+        const auto score = session.getRunScore();
+        session.endRun();
+        runStarted = false;
+
+        showRunResults (score);
+        refreshRunStatus();
+        refreshFromGameState();
+        resized();
+    };
+    addChildComponent (endRunButton);
+
     beforeButton.onClick = [this] { setPlayProcessed (false); };
     afterButton.onClick = [this] { setPlayProcessed (true); };
     beforeButton.setClickingTogglesState (false);
@@ -461,6 +485,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     instructionsButton.onClick = [this]
     {
         instructionsPinnedOpen = ! instructionsPinnedOpen;
+
+        // Actually show it. This flipped the flag and re-laid the screen
+        // out around a label that was still invisible, so pressing "?"
+        // moved things very slightly and produced no text at all - the
+        // button looked broken because it was.
+        instructionLabel.setVisible (shouldShowInstructions());
         resized();
         repaint();
     };
@@ -1038,9 +1068,16 @@ void EarTrainerEditor::resized()
             if (isRunHudActive())
             {
                 // The HUD takes exactly the slot the pills + session score
-                // vacate, so A/B never shifts when a run starts or ends.
-                runHud.setBounds (controlRow.removeFromLeft (modesSlotWidth)
-                                      .withSizeKeepingCentre (modesSlotWidth, 30));
+                // vacate, so A/B never shifts when a run starts or ends -
+                // minus the width of the way out, which shares that slot.
+                constexpr int endWidth = 74;
+
+                endRunButton.setBounds (controlRow.removeFromLeft (endWidth)
+                                            .withSizeKeepingCentre (endWidth, 28));
+                controlRow.removeFromLeft (Spacing::small);
+
+                runHud.setBounds (controlRow.removeFromLeft (modesSlotWidth - endWidth - Spacing::small)
+                                      .withSizeKeepingCentre (modesSlotWidth - endWidth - Spacing::small, 30));
             }
             else
             {
@@ -1480,6 +1517,7 @@ void EarTrainerEditor::refreshRunStatus()
         const auto hudWasVisible = runHud.isVisible();
 
         runHud.setVisible (onTraining && hudNow);
+        endRunButton.setVisible (onTraining && hudNow);
         for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
             pill->setVisible (onTraining && ! hudNow);
         scoreLabel.setVisible (onTraining && ! hudNow);
@@ -1727,6 +1765,7 @@ void EarTrainerEditor::refreshLocalisedText()
     settingsScreen.refresh();
     settingsButton.setTooltip (localisation.getText ("ui.settings"));
     instructionsButton.setTooltip (localisation.getText ("ui.showInstructions"));
+    endRunButton.setButtonText (localisation.getText ("ui.endRun"));
 
     trainingSounds.setStrings (localisation.getText ("ui.trainingSounds"),
                                 localisation.getText ("ui.soundsSource"),

@@ -268,5 +268,6 @@
   "upd.failed": "Pobieranie nie powiodło się. Sprawdź połączenie i spróbuj ponownie.",
   "upd.finishedPlugin": "Zainstalowano. Uruchom DAW ponownie — żaden program nie podmieni wtyczki, którą host już otworzył.",
   "upd.finishedApp": "Zainstalowano. Zamykam aplikację, żeby nowa wersja przejęła…",
-  "upd.versionUnknown": "wersja nieznana"
+  "upd.versionUnknown": "wersja nieznana",
+  "ui.endRun": "Zakończ"
 }

@@ -268,5 +268,6 @@
   "upd.failed": "O download falhou. Verifique a conexão e tente de novo.",
   "upd.finishedPlugin": "Instalado. Reinicie a sua DAW — nenhum programa consegue substituir um plugin que o host já abriu.",
   "upd.finishedApp": "Instalado. Fechando o app para a nova versão assumir…",
-  "upd.versionUnknown": "versão desconhecida"
+  "upd.versionUnknown": "versão desconhecida",
+  "ui.endRun": "Terminar"
 }

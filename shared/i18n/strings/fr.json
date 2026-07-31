@@ -268,5 +268,6 @@
   "upd.failed": "Le téléchargement a échoué. Vérifiez la connexion et réessayez.",
   "upd.finishedPlugin": "Installé. Redémarrez votre DAW — aucun programme ne peut remplacer un plug-in déjà chargé par l'hôte.",
   "upd.finishedApp": "Installé. Fermeture de l'application pour laisser place à la nouvelle version…",
-  "upd.versionUnknown": "version inconnue"
+  "upd.versionUnknown": "version inconnue",
+  "ui.endRun": "Terminer"
 }

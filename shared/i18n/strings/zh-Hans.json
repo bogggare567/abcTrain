@@ -268,5 +268,6 @@
   "upd.failed": "下载失败。请检查网络后重试。",
   "upd.finishedPlugin": "已安装。请重启宿主 —— 任何程序都无法替换宿主已加载的插件。",
   "upd.finishedApp": "已安装。正在关闭应用，让新版本生效…",
-  "upd.versionUnknown": "版本未知"
+  "upd.versionUnknown": "版本未知",
+  "ui.endRun": "结束"
 }
