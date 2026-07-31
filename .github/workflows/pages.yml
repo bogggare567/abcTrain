@@ -33,6 +33,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Tags, not just the tip. sync-from-plugin.mjs asks
+          # `git describe --tags` for the version - the same source the
+          # plugin builds its own version string from - and checkout's
+          # default shallow clone has no tags at all, so it failed with
+          # "No names found, cannot describe anything". Which is what it
+          # was written to do rather than quietly emit a wrong number.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v5
         with:
