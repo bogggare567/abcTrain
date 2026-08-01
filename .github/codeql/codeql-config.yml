@@ -1,0 +1,37 @@
+name: abcTrain CodeQL config
+
+# What CodeQL should and should not look at.
+
+queries:
+  # security-extended, not the default set and not security-and-quality.
+  #
+  # Wider than the default because this project's real bug history is
+  # memory-safety shaped - a use-after-free reading a temporary's
+  # DynamicObject, an editor-owned buffer the audio thread kept reading
+  # after the window had closed - and both of those were found by hand
+  # rather than by any tool.
+  #
+  # Narrower than security-and-quality because that suite piles
+  # maintainability and style queries on top, and on a four-plugin C++
+  # codebase that is a few hundred alerts about naming and unused locals.
+  # A Security tab nobody opens is worse than no Security tab: the real
+  # finding, when it eventually arrives, arrives on page four.
+  - uses: security-extended
+
+paths-ignore:
+  # JUCE, fetched into the build tree by CMake FetchContent at configure
+  # time. Not ours, pinned to a tag, and larger than this whole repository
+  # put together.
+  #
+  # This filters the *results*, not the extraction: for a compiled
+  # language CodeQL sees whatever the compiler compiled, and JUCE really
+  # is compiled here. So the analysis still costs what it costs - what
+  # this buys is a Security tab about abcTrain's own code rather than
+  # about a pinned upstream framework.
+  - build/**
+  # The Vite output: minified duplicates of website/src, which is scanned.
+  - website/dist/**
+  - website/node_modules/**
+  # Generated at build time from the C++ sources - see
+  # website/tools/sync-from-plugin.mjs.
+  - website/src/generated/**

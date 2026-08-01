@@ -1,5 +1,8 @@
 <div align="center">
 
+[![English](https://img.shields.io/badge/English-5B9BD5?style=for-the-badge&labelColor=1E1E2E)](README.md)
+[![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-2A2A3A?style=for-the-badge&labelColor=1E1E2E)](README.ru.md)
+
 # abcTrain
 
 **Train your ears. Then use plugins that teach you while you mix.**
@@ -8,6 +11,7 @@ Nine ear-training exercises and three real, host-automatable effects —
 one free, open-source suite for macOS, Windows and Linux.
 
 [![Build and Test](https://img.shields.io/github/actions/workflow/status/bogggare567/abcTrain/build_and_test.yml?style=flat-square&labelColor=1E1E2E&color=5FB98C&label=build)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
+[![CodeQL](https://img.shields.io/github/actions/workflow/status/bogggare567/abcTrain/codeql.yml?style=flat-square&labelColor=1E1E2E&color=5FB98C&label=codeql)](https://github.com/bogggare567/abcTrain/actions/workflows/codeql.yml)
 [![Latest release](https://img.shields.io/github/v/release/bogggare567/abcTrain?style=flat-square&labelColor=1E1E2E&color=5B9BD5&label=release)](https://github.com/bogggare567/abcTrain/releases/latest)
 [![Formats](https://img.shields.io/badge/VST3%20%C2%B7%20AU%20%C2%B7%20Standalone-4A4A5A?style=flat-square&labelColor=1E1E2E)](#-download)
 [![Languages](https://img.shields.io/badge/languages-12-4A4A5A?style=flat-square&labelColor=1E1E2E)](#-supported-languages)
@@ -24,7 +28,6 @@ one free, open-source suite for macOS, Windows and Linux.
 
 <br>
 
-[![По-русски](https://img.shields.io/badge/%D0%9F%D0%9E--%D0%A0%D0%A3%D0%A1%D0%A1%D0%9A%D0%98-README-2A2A3A?style=flat-square)](README.ru.md)
 [![Try it](https://img.shields.io/badge/Try%20it%20live-2A2A3A?style=flat-square)](https://bogggare567.github.io/abcTrain/)
 [![How it works](https://img.shields.io/badge/How%20it%20works-2A2A3A?style=flat-square)](#-how-it-works)
 [![The nine exercises](https://img.shields.io/badge/9%20exercises-2A2A3A?style=flat-square)](#-9-games)

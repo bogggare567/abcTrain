@@ -1,5 +1,8 @@
 <div align="center">
 
+[![English](https://img.shields.io/badge/English-2A2A3A?style=for-the-badge&labelColor=1E1E2E)](README.md)
+[![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-5B9BD5?style=for-the-badge&labelColor=1E1E2E)](README.ru.md)
+
 # abcTrain
 
 **Натренируйте слух. Потом работайте в плагинах, которые объясняют себя по ходу сведения.**
@@ -17,7 +20,7 @@
 
 [![▶ Попробовать в браузере](https://img.shields.io/badge/%E2%96%B6%20%D0%9F%D0%9E%D0%9F%D0%A0%D0%9E%D0%91%D0%9E%D0%92%D0%90%D0%A2%D0%AC-%D0%B1%D0%B5%D0%B7%20%D1%83%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B8-4FA3C7?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
 
-*[English README](README.md) · [Вики по-русски](https://github.com/bogggare567/abcTrain/wiki/ru-Home)*
+*[Вики по-русски](https://github.com/bogggare567/abcTrain/wiki/ru-Home)*
 
 </div>
 
