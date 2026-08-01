@@ -24,6 +24,7 @@ one free, open-source suite for macOS, Windows and Linux.
 
 <br>
 
+[![По-русски](https://img.shields.io/badge/%D0%9F%D0%9E--%D0%A0%D0%A3%D0%A1%D0%A1%D0%9A%D0%98-README-2A2A3A?style=flat-square)](README.ru.md)
 [![Try it](https://img.shields.io/badge/Try%20it%20live-2A2A3A?style=flat-square)](https://bogggare567.github.io/abcTrain/)
 [![How it works](https://img.shields.io/badge/How%20it%20works-2A2A3A?style=flat-square)](#-how-it-works)
 [![The nine exercises](https://img.shields.io/badge/9%20exercises-2A2A3A?style=flat-square)](#-9-games)
@@ -34,7 +35,7 @@ one free, open-source suite for macOS, Windows and Linux.
 
 <br>
 
-[![▶ Try three real rounds in your browser](https://img.shields.io/badge/%E2%96%B6%20TRY%20IT%20NOW-no%20install%2C%20ten%20seconds-4FA3C7?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
+[![▶ Try the trainer in your browser](https://img.shields.io/badge/%E2%96%B6%20TRY%20IT%20NOW-no%20install%2C%20ten%20seconds-4FA3C7?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
 
 </div>
 
@@ -42,10 +43,12 @@ one free, open-source suite for macOS, Windows and Linux.
 
 ## ▶ Try it, don't look at it
 
-**[bogggare567.github.io/abcTrain](https://bogggare567.github.io/abcTrain/)** — three
-real rounds in your browser: frequency, level and pan. Same pink noise, same
-log axis, same accept band the plugin grades you against, read straight out
-of the plugin's own source so the two cannot drift apart.
+**[bogggare567.github.io/abcTrain](https://bogggare567.github.io/abcTrain/)** — the
+trainer itself in your browser, not a page about it: the same home screen,
+all nine exercises, the same two screens in the same order with the same
+controls. Same pink noise, same log axes, the same accept bands and the same
+two-alternative rule the plugin grades you against — the numbers are read
+straight out of the plugin's own source so the two cannot drift apart.
 
 Screenshots used to live here. A picture of an ear trainer is the one thing
 that cannot show what an ear trainer does — you have to hear it get something
@@ -70,7 +73,7 @@ what changed. It tells you immediately whether you were right, and by how
 much you missed.
 
 **Then apply it.** Three companion plugins process your *own* audio — a
-real 4-band EQ, a real compressor, a real reverb — with plain-language
+real graphical EQ, a real compressor, a real reverb — with plain-language
 explanations on every control and step-by-step lessons built in. The
 thing you just trained on is the thing you're now using.
 
