@@ -21,12 +21,14 @@ on:
       - 'docs/**'
       - '.github/ISSUE_TEMPLATE/**'
       - 'LICENSE'
+      - 'website/**'
   pull_request:
     paths-ignore:
       - '**.md'
       - 'docs/**'
       - '.github/ISSUE_TEMPLATE/**'
       - 'LICENSE'
+      - 'website/**'
 
 # Action versions are pinned to the *lowest* major that runs on Node 24,
 # not the newest available. Node 20 is deprecated and every run was
