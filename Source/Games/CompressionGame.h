@@ -4,6 +4,8 @@
 #include <atomic>
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
+#include <vector>
+#include "../../shared/PresetFamily.h"
 
 // "Guess the compression" exercise: plays a repeating percussive noise
 // burst through juce::dsp::Compressor at one of three fixed weak/medium/
@@ -70,25 +72,49 @@ public:
     int getScore() const override { return correctCount; }
     int getRoundsPlayed() const override { return totalCount; }
 
+public:
+    // One way of arriving at this much compression.
+    //
+    // "Medium" was a single threshold-and-ratio pair, which is one
+    // recording of medium compression rather than the thing itself. What
+    // separates two compressors both doing a medium job is almost never
+    // the ratio - it is the attack and release: 30 ms of attack lets the
+    // transient through and reads as punch, 3 ms catches it and reads as
+    // control, at the same amount of gain reduction. That is the axis a
+    // family here has to vary, and it is also the one worth learning.
+    //
+    // `archetypal` is 1 for the textbook example of its category and 0 for
+    // the one sitting against a neighbour - see shared/PresetFamily.h.
+    struct Variant
+    {
+        float thresholdOffsetDb = 0.0f;
+        float ratioScale = 1.0f;
+        float attackMs = 10.0f;
+        float releaseMs = 150.0f;
+        float archetypal = 1.0f;
+    };
+
+    static const std::vector<Variant>& familyFor (int level);
+
+    // Test seam: the level compensation measured for one voicing, so a
+    // test can assert loudness never answers the question.
+    float measureMakeupForTest (int level, const Variant& variant) const;
+
 private:
     struct Preset
     {
         const char* label = "";
         float thresholdDb;
         float ratio;
-        // Fixed compensation tuned by ear so the three presets sit at
-        // roughly equal perceived loudness; not computed from measured
-        // gain reduction.
-        float makeupGainDb;
     };
 
     // Computed in setDifficulty from one ramped spread value - see there
     // for why this replaced three fixed tier tables. Medium is the anchor
     // and never moves; the other two close in on it as the level rises.
     std::array<Preset, numLevels> presets {{
-        { "Weak",   -12.0f, 2.0f, 2.0f  },
-        { "Medium", -18.0f, 4.0f, 6.0f  },
-        { "Strong", -24.0f, 8.0f, 10.0f }
+        { "Weak",   -12.0f, 2.0f },
+        { "Medium", -18.0f, 4.0f },
+        { "Strong", -24.0f, 8.0f }
     }};
 
     void updateCompressor();
@@ -108,6 +134,12 @@ private:
     // exactly as written.
     float roundThresholdJitterDb = 0.0f;
     float roundRatioJitter = 0.0f;
+
+    // Which voicing is playing, and the compensation measured for it -
+    // both settled on the message thread in newRound(), so the audio
+    // thread reads two plain values and never runs the measurement.
+    Variant roundVariant;
+    float roundMakeupGain = 1.0f;
 
     // The two amounts on offer this round, as indices into `presets`.
     std::array<int, 2> pairLevels { { 0, 2 } };

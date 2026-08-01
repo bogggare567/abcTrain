@@ -140,6 +140,125 @@ public:
                         + juce::String (hard) + " vs " + juce::String (easy));
             expect (hard > 0.95f, "level 10 should have dropped the giveaway pair entirely");
         }
+
+        beginTest ("every setting has a family, textbook through borderline");
+        {
+            for (int level = 0; level < CompressionGame::numLevels; ++level)
+            {
+                const auto& family = CompressionGame::familyFor (level);
+
+                expect (family.size() >= 3,
+                         "level " + juce::String (level) + " has fewer than three voicings");
+
+                auto highest = 0.0f, lowest = 1.0f;
+                auto slowestAttack = 0.0f, fastestAttack = 1.0e9f;
+
+                for (const auto& variant : family)
+                {
+                    highest = juce::jmax (highest, variant.archetypal);
+                    lowest  = juce::jmin (lowest, variant.archetypal);
+                    slowestAttack = juce::jmax (slowestAttack, variant.attackMs);
+                    fastestAttack = juce::jmin (fastestAttack, variant.attackMs);
+                }
+
+                expect (highest > 0.9f, "no clear example at level " + juce::String (level));
+                expect (lowest < 0.35f, "no borderline example at level " + juce::String (level));
+
+                // The whole claim of the family: what separates two
+                // compressors doing the same job is the attack, so a
+                // family whose members share one is not a family.
+                expect (slowestAttack > fastestAttack * 2.0f,
+                         "level " + juce::String (level) + " varies the ratio but not the attack");
+            }
+        }
+
+        beginTest ("every voicing lands at the same loudness, so level is never the tell");
+        {
+            // A family that varies threshold, ratio *and* attack varies how
+            // much gain reduction actually happens. If that reached the
+            // output, the round would be winnable by hearing which one is
+            // quieter - a different and much easier exercise.
+            CompressionGame game;
+            game.prepare ({ 44100.0, 512, 1 });
+
+            for (const auto tier : { 1, 5, 10 })
+            {
+                game.setDifficulty (tier);
+
+                for (int level = 0; level < CompressionGame::numLevels; ++level)
+                {
+                    for (const auto& variant : CompressionGame::familyFor (level))
+                    {
+                        const auto makeup = game.measureMakeupForTest (level, variant);
+
+                        expect (makeup > 0.05f && makeup < 20.0f,
+                                 "implausible compensation " + juce::String (makeup, 3));
+                    }
+                }
+            }
+        }
+
+        beginTest ("no setting is systematically louder than another");
+        {
+            // The end-to-end version: run real rounds and compare the mean
+            // output level of each setting against the others.
+            //
+            // The *mean*, not the min-to-max spread. Every round draws fresh
+            // noise and starts at a different point in the burst cycle, so
+            // any single round is a couple of dB either side of its own
+            // setting's average - scatter that is identical for all three
+            // and therefore says nothing about which one is playing. What
+            // would be a tell is a setting that sits consistently louder,
+            // and that is what this measures.
+            CompressionGame game;
+            game.prepare ({ 44100.0, 512, 1 });
+            game.setDifficulty (5);
+
+            std::array<double, CompressionGame::numLevels> total {};
+            std::array<int, CompressionGame::numLevels> count {};
+
+            for (int round = 0; round < 90; ++round)
+            {
+                game.newRound();
+
+                // Five seconds: the burst repeats about once a second, so
+                // a shorter window lands sometimes on a hit and sometimes
+                // on a decay tail.
+                juce::AudioBuffer<float> buffer (1, 44100 * 5);
+                buffer.clear();
+                game.process (buffer);
+
+                auto sum = 0.0;
+                for (int i = 0; i < buffer.getNumSamples(); ++i)
+                {
+                    const auto v = (double) buffer.getSample (0, i);
+                    sum += v * v;
+                }
+
+                const auto rms = std::sqrt (sum / (double) buffer.getNumSamples());
+                expect (rms > 0.0, "a round produced silence");
+
+                const auto label = game.getChoiceLabel (game.getCorrectChoiceIndex());
+                const auto slot = label == "Weak" ? 0 : label == "Medium" ? 1 : 2;
+                total[(size_t) slot] += rms;
+                count[(size_t) slot] += 1;
+            }
+
+            auto quietest = 1.0e9, loudest = 0.0;
+
+            for (size_t i = 0; i < total.size(); ++i)
+            {
+                expect (count[i] > 0, "a setting never came up in 90 rounds");
+                const auto mean = total[i] / juce::jmax (1, count[i]);
+                quietest = juce::jmin (quietest, mean);
+                loudest = juce::jmax (loudest, mean);
+            }
+
+            const auto biasDb = juce::Decibels::gainToDecibels ((float) (loudest / quietest));
+            expect (biasDb < 1.0f,
+                     "one setting averages " + juce::String (biasDb, 2)
+                         + " dB louder than another - enough to answer the round with");
+        }
     }
 };
 
