@@ -1,4 +1,5 @@
 #include "AudioSliceAnalyzer.h"
+#include <algorithm>
 #include <cmath>
 
 namespace AudioSliceAnalyzer
@@ -315,6 +316,181 @@ namespace AudioSliceAnalyzer
 
             return bestStart;
         }
+
+        // ---- tempo ------------------------------------------------------
+        //
+        // Three steps, each the cheap standard one:
+        //
+        //   1. an onset envelope - spectral flux per frame, rises only,
+        //      because energy falling away is a note ending
+        //   2. autocorrelation of that envelope over the plausible beat
+        //      periods; music repeats at its beat, so the period that
+        //      correlates best with itself is the beat
+        //   3. the phase of the grid, by testing every offset within one
+        //      beat and keeping the one where the pulses land on the most
+        //      onset energy
+        //
+        // Deliberately not a beat tracker: no tempo changes, no downbeat
+        // detection, no swing. Those need a model and would be wrong
+        // confidently. This answers one question - "is there a steady pulse
+        // here, and where is it" - and says so honestly when the answer is
+        // no, which is the case for a pad, a spoken word recording or a
+        // rubato piano piece.
+        std::vector<float> onsetEnvelope (const juce::AudioBuffer<float>& audio, int& hopOut)
+        {
+            std::vector<float> envelope;
+            hopOut = hopSize;
+
+            const auto numSamples = audio.getNumSamples();
+
+            if (numSamples < fftSize)
+                return envelope;
+
+            juce::dsp::FFT fft (fftOrder);
+            juce::dsp::WindowingFunction<float> window ((size_t) fftSize,
+                                                         juce::dsp::WindowingFunction<float>::hann);
+
+            std::vector<float> scratch ((size_t) fftSize * 2, 0.0f);
+            std::vector<float> previous ((size_t) fftSize / 2, 0.0f);
+
+            for (int start = 0; start + fftSize <= numSamples; start += hopSize)
+            {
+                std::fill (scratch.begin(), scratch.end(), 0.0f);
+
+                // Mono sum, in place, so this walks the file once rather
+                // than building a copy of it - an album track is tens of
+                // millions of samples.
+                for (int i = 0; i < fftSize; ++i)
+                {
+                    auto sum = 0.0f;
+
+                    for (int channel = 0; channel < audio.getNumChannels(); ++channel)
+                        sum += audio.getReadPointer (channel)[start + i];
+
+                    scratch[(size_t) i] = sum / (float) audio.getNumChannels();
+                }
+
+                window.multiplyWithWindowingTable (scratch.data(), (size_t) fftSize);
+                fft.performFrequencyOnlyForwardTransform (scratch.data());
+
+                auto flux = 0.0f;
+
+                for (int bin = 1; bin < fftSize / 2; ++bin)
+                {
+                    const auto magnitude = scratch[(size_t) bin];
+                    flux += juce::jmax (0.0f, magnitude - previous[(size_t) bin]);
+                    previous[(size_t) bin] = magnitude;
+                }
+
+                envelope.push_back (flux);
+            }
+
+            // Mean-removed and clipped at zero: autocorrelation of a signal
+            // with a large DC term correlates with its own average at every
+            // lag, which buries the peak that matters.
+            if (! envelope.empty())
+            {
+                auto mean = 0.0;
+                for (const auto value : envelope)
+                    mean += value;
+                mean /= (double) envelope.size();
+
+                for (auto& value : envelope)
+                    value = juce::jmax (0.0f, value - (float) mean);
+            }
+
+            return envelope;
+        }
+    }
+
+    Tempo detectTempo (const juce::AudioBuffer<float>& audio, double sampleRate, const Options& options)
+    {
+        Tempo tempo;
+
+        if (sampleRate <= 0.0 || audio.getNumSamples() <= 0 || audio.getNumChannels() <= 0)
+            return tempo;
+
+        auto hop = hopSize;
+        const auto envelope = onsetEnvelope (audio, hop);
+
+        if (envelope.size() < 16)
+            return tempo;
+
+        const auto framesPerSecond = sampleRate / (double) hop;
+        const auto shortestLag = (int) std::floor (framesPerSecond * 60.0 / options.maximumBpm);
+        const auto longestLag  = (int) std::ceil  (framesPerSecond * 60.0 / options.minimumBpm);
+
+        if (shortestLag < 1 || longestLag >= (int) envelope.size())
+            return tempo;
+
+        auto energy = 0.0;
+        for (const auto value : envelope)
+            energy += (double) value * (double) value;
+
+        if (energy <= 0.0)
+            return tempo;
+
+        auto bestLag = 0;
+        auto bestScore = 0.0;
+
+        for (auto lag = shortestLag; lag <= longestLag; ++lag)
+        {
+            auto sum = 0.0;
+
+            for (size_t i = (size_t) lag; i < envelope.size(); ++i)
+                sum += (double) envelope[i] * (double) envelope[i - (size_t) lag];
+
+            // Normalised by the overlap, or long lags are penalised purely
+            // for having fewer terms and the search always picks the
+            // fastest tempo in range.
+            const auto score = sum / (double) (envelope.size() - (size_t) lag);
+
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestLag = lag;
+            }
+        }
+
+        if (bestLag <= 0)
+            return tempo;
+
+        // Confidence: how much of the envelope's own energy the winning
+        // period accounts for. A steady loop scores high; a pad, where the
+        // flux is near-flat, scores near zero and is refused below.
+        const auto reference = energy / (double) envelope.size();
+        tempo.confidence = (float) juce::jlimit (0.0, 1.0, bestScore / juce::jmax (1.0e-12, reference));
+
+        if (tempo.confidence < options.minimumTempoConfidence)
+            return tempo;
+
+        tempo.bpm = 60.0 * framesPerSecond / (double) bestLag;
+
+        // Phase: slide a pulse train one beat's worth of frames and keep
+        // the offset that collects the most onset energy. Without this the
+        // grid has the right spacing and the wrong origin, which cuts every
+        // loop the same distance *into* the bar.
+        auto bestOffset = 0;
+        auto bestPulse = -1.0;
+
+        for (auto offset = 0; offset < bestLag; ++offset)
+        {
+            auto sum = 0.0;
+
+            for (size_t i = (size_t) offset; i < envelope.size(); i += (size_t) bestLag)
+                sum += (double) envelope[i];
+
+            if (sum > bestPulse)
+            {
+                bestPulse = sum;
+                bestOffset = offset;
+            }
+        }
+
+        tempo.firstBeatSample = bestOffset * hop;
+        tempo.detected = true;
+
+        return tempo;
     }
 
     std::vector<Slice> analyse (const juce::AudioBuffer<float>& audio,
@@ -331,10 +507,67 @@ namespace AudioSliceAnalyzer
         if (sliceSamples < fftSize || audio.getNumSamples() < sliceSamples)
             return slices;
 
-        const auto searchRadius = (int) (options.snapWindow * (double) sliceSamples);
+        // The grid, if this audio has one.
+        //
+        // With a tempo, cuts land on bar lines and the clip is a whole
+        // number of bars long - so the loop restarts where the music
+        // restarts, and the seam stops being audible however the edges are
+        // faded. Without one, nothing here pretends: fixed lengths, snapped
+        // to the quietest nearby point, exactly as before.
+        const auto tempo = detectTempo (audio, sampleRate, options);
 
-        for (auto position = 0; position + sliceSamples <= audio.getNumSamples(); position += sliceSamples)
+        auto stepSamples = sliceSamples;
+        auto gridOrigin = 0;
+        auto clipSamples = sliceSamples;
+
+        if (tempo.detected)
         {
+            const auto beatSamples = 60.0 / tempo.bpm * sampleRate;
+            const auto barSamples = beatSamples * (double) juce::jmax (1, options.beatsPerBar);
+
+            // Bars per clip is chosen to land nearest the requested length
+            // rather than fixed, so a slow track does not produce a
+            // twenty-second loop and a fast one a three-second one.
+            const auto wanted = juce::jmax (1.0, options.sliceSeconds * sampleRate / barSamples);
+            const auto bars = juce::jlimit (1, options.barsPerSlice * 2,
+                                             (int) std::lround (wanted));
+
+            clipSamples = (int) std::lround (barSamples * (double) bars);
+            stepSamples = clipSamples;
+            gridOrigin = tempo.firstBeatSample;
+        }
+
+        if (clipSamples < fftSize || audio.getNumSamples() < clipSamples)
+            return slices;
+
+        const auto searchRadius = tempo.detected
+                                    ? 0   // the grid *is* the answer; nudging it off the bar undoes it
+                                    : (int) (options.snapWindow * (double) sliceSamples);
+
+        // How loud each passage is against the rest of this track, for the
+        // density label - collected first because it is a comparison, and
+        // a comparison needs all the members before any of them can be
+        // labelled.
+        std::vector<float> passageRms;
+
+        for (auto position = gridOrigin; position + clipSamples <= audio.getNumSamples(); position += stepSamples)
+            passageRms.push_back (rmsOf (monoSum (audio, position, clipSamples)));
+
+        auto quietThreshold = 0.0f, loudThreshold = 0.0f;
+
+        if (! passageRms.empty())
+        {
+            auto sorted = passageRms;
+            std::sort (sorted.begin(), sorted.end());
+            quietThreshold = sorted[sorted.size() / 3];
+            loudThreshold = sorted[juce::jmin (sorted.size() - 1, sorted.size() * 2 / 3)];
+        }
+
+        auto passageIndex = size_t (0);
+
+        for (auto position = gridOrigin; position + clipSamples <= audio.getNumSamples(); position += stepSamples, ++passageIndex)
+        {
+            const auto sliceSamples = clipSamples;
             const auto start = snapToQuietPoint (audio, position, searchRadius, sliceSamples);
 
             if (start + sliceSamples > audio.getNumSamples())
@@ -356,6 +589,16 @@ namespace AudioSliceAnalyzer
             slice.spectralCentroidHz = summary.centroidHz;
             slice.stereoCorrelation = correlationOf (audio, start, sliceSamples);
             slice.character = classify (summary, slice.stereoCorrelation);
+
+            // Loudness against this track's own distribution, not against
+            // an absolute figure: a quiet mix's densest passage is still
+            // its densest passage, and an absolute threshold would label
+            // every clip of it sparse.
+            slice.density = passageIndex < passageRms.size()
+                              ? (passageRms[passageIndex] <= quietThreshold ? Density::sparse
+                                 : passageRms[passageIndex] >= loudThreshold ? Density::dense
+                                                                             : Density::moderate)
+                              : Density::moderate;
 
             slices.push_back (slice);
         }

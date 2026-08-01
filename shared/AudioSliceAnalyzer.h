@@ -55,12 +55,45 @@ namespace AudioSliceAnalyzer
         fullRange
     };
 
+    // How loud a passage is against the rest of its own track.
+    //
+    // Not a claim about song structure - nothing here knows what a chorus
+    // is, and a heuristic that said so would be wrong on half of all music
+    // in the same confident way stem separation would be. It is a
+    // *relative loudness* label, which is the part that can actually be
+    // measured, and it happens to be what decides whether a clip is worth
+    // practising on: a sparse passage leaves room to hear a change, a
+    // dense one is the hard realistic case.
+    enum class Density
+    {
+        sparse,     // quiet against this track - intros, breakdowns
+        moderate,
+        dense       // the loudest passages of this track
+    };
+
+    // What the tempo analysis found, if anything.
+    struct Tempo
+    {
+        bool detected = false;
+        double bpm = 0.0;
+
+        // Where the first beat lands, in samples. Cuts are aligned to this
+        // grid rather than to arbitrary multiples of the slice length.
+        int firstBeatSample = 0;
+
+        // How strongly the onset envelope agreed with this period, 0..1.
+        // Below `Options::minimumTempoConfidence` the grid is not trusted
+        // and slicing falls back to fixed lengths.
+        float confidence = 0.0f;
+    };
+
     // A cut, in samples, plus what it turned out to be.
     struct Slice
     {
         int startSample = 0;
         int numSamples = 0;
         Character character = Character::fullRange;
+        Density density = Density::moderate;
 
         // The measurements the character was decided from - exposed so a
         // UI can show *why* a clip was sorted where it was, and so a test
@@ -73,10 +106,37 @@ namespace AudioSliceAnalyzer
 
     struct Options
     {
-        // Loop length. Eight seconds is long enough to contain a musical
-        // phrase and short enough that a player is not waiting through it
-        // to answer.
+        // Loop length *when there is no usable tempo*. With one, the slice
+        // is `barsPerSlice` bars long instead and this is only the target
+        // the bar count is chosen to sit near.
+        //
+        // Eight seconds is long enough to contain a musical phrase and
+        // short enough that a player is not waiting through it to answer.
         double sliceSeconds = 8.0;
+
+        // Cut on the bar line, not at an arbitrary multiple of eight
+        // seconds.
+        //
+        // A fixed-length cut lands wherever it lands - mid-phrase, mid-note
+        // - so the loop restarts in the middle of something and the seam is
+        // audible however carefully the edges are faded. Four bars is the
+        // shortest unit that reads as a whole phrase in most popular music,
+        // which is what makes the repeat stop sounding like a repeat.
+        int barsPerSlice = 4;
+        int beatsPerBar = 4;
+
+        // The tempo range worth searching. Outside it a detection is more
+        // likely to be a harmonic of the real tempo than the tempo, and a
+        // grid built on the wrong period is worse than no grid.
+        double minimumBpm = 70.0;
+        double maximumBpm = 180.0;
+
+        // How strongly the onset envelope has to agree with a period before
+        // its grid is used. Below this the audio is treated as having no
+        // usable pulse - ambient, spoken word, a solo pad - and slicing
+        // falls back to fixed lengths, which is the right answer for that
+        // material rather than a failure.
+        float minimumTempoConfidence = 0.18f;
 
         // Slices quieter than this are dropped: intros, fades and gaps
         // make useless training material, and a silent "clip" in the
@@ -106,6 +166,14 @@ namespace AudioSliceAnalyzer
     std::vector<Slice> analyse (const juce::AudioBuffer<float>& audio,
                                 double sampleRate,
                                 const Options& options = {});
+
+    // The tempo and grid, on its own. Exposed because "did it find the
+    // beat, and was it right" is a claim worth testing directly against
+    // audio built at a known BPM, rather than inferred from where the cuts
+    // happened to land.
+    Tempo detectTempo (const juce::AudioBuffer<float>& audio,
+                       double sampleRate,
+                       const Options& options = {});
 
     // The folder name a slice of this character belongs in. Stable across
     // releases - ReferenceAudioLibrary scans by folder name, so renaming

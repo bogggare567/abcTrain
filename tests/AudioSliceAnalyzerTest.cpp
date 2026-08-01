@@ -196,9 +196,174 @@ public:
                 keys.add (key);
             }
         }
+
+        beginTest ("finds the tempo of audio built at a known one");
+        {
+            // Built at a tempo this test chose, so "did it find the beat"
+            // has a right answer rather than a plausible-looking one.
+            for (const auto bpm : { 90.0, 120.0, 128.0, 174.0 })
+            {
+                const auto audio = clickTrackAt (bpm, 24.0);
+                const auto tempo = AudioSliceAnalyzer::detectTempo (audio, 44100.0);
+
+                expect (tempo.detected,
+                         "no pulse found in a click track at " + juce::String (bpm, 0) + " BPM");
+
+                if (! tempo.detected)
+                    continue;
+
+                // Half and double time are the classic confusion and both
+                // are musically defensible, so they count as found: the
+                // grid lines still land on beats either way, which is all
+                // the slicer needs from this.
+                const auto ratio = tempo.bpm / bpm;
+                const auto onGrid = std::abs (ratio - 1.0) < 0.05
+                                 || std::abs (ratio - 2.0) < 0.10
+                                 || std::abs (ratio - 0.5) < 0.03;
+
+                expect (onGrid,
+                         "read " + juce::String (tempo.bpm, 1) + " BPM from audio at "
+                             + juce::String (bpm, 0));
+            }
+        }
+
+        beginTest ("says no rather than inventing a tempo for material with no pulse");
+        {
+            // A held tone has no beat. A detector that returned one anyway
+            // would build a grid on noise and cut every loop at a
+            // meaningless place - worse than the fixed lengths it replaced.
+            juce::AudioBuffer<float> pad (2, (int) (44100.0 * 12.0));
+            pad.clear();
+
+            for (int i = 0; i < pad.getNumSamples(); ++i)
+            {
+                const auto value = 0.3f * std::sin (2.0f * juce::MathConstants<float>::pi
+                                                     * 220.0f * (float) i / 44100.0f);
+                pad.setSample (0, i, value);
+                pad.setSample (1, i, value);
+            }
+
+            const auto tempo = AudioSliceAnalyzer::detectTempo (pad, 44100.0);
+            expect (! tempo.detected, "invented a tempo for a sustained tone");
+        }
+
+        beginTest ("cuts land on the bar line when there is a bar line");
+        {
+            // The whole point of the tempo work: a loop that starts where
+            // the music starts. Measured as the distance from each cut to
+            // the nearest beat, which is what "on the grid" means.
+            const auto audio = clickTrackAt (120.0, 40.0);
+            const auto tempo = AudioSliceAnalyzer::detectTempo (audio, 44100.0);
+
+            expect (tempo.detected);
+
+            if (tempo.detected)
+            {
+                const auto slices = AudioSliceAnalyzer::analyse (audio, 44100.0);
+                expect (! slices.empty(), "no slices from a 40-second click track");
+
+                const auto beatSamples = 60.0 / tempo.bpm * 44100.0;
+
+                for (const auto& slice : slices)
+                {
+                    const auto fromOrigin = (double) (slice.startSample - tempo.firstBeatSample);
+                    const auto beats = fromOrigin / beatSamples;
+
+                    expect (std::abs (beats - std::round (beats)) < 0.02,
+                             "a cut sits off the beat grid");
+
+                    // ...and each clip is a whole number of bars, or
+                    // looping it would drift against the music it came from.
+                    const auto bars = (double) slice.numSamples / (beatSamples * 4.0);
+                    expect (std::abs (bars - std::round (bars)) < 0.02,
+                             "a clip is " + juce::String (bars, 2) + " bars long");
+                }
+            }
+        }
+
+        beginTest ("density is measured against the track, not an absolute level");
+        {
+            // A quiet track's loudest passage is still its loudest passage.
+            // An absolute threshold would call every clip of it sparse,
+            // which tells a player nothing about where to practise.
+            for (const auto peak : { 0.08f, 0.80f })
+            {
+                const auto audio = rampingTrack (peak * 0.25f, peak);
+                const auto slices = AudioSliceAnalyzer::analyse (audio, 44100.0);
+
+                if (slices.size() < 3)
+                    continue;
+
+                auto sawSparse = false, sawDense = false;
+
+                for (const auto& slice : slices)
+                {
+                    sawSparse |= slice.density == AudioSliceAnalyzer::Density::sparse;
+                    sawDense  |= slice.density == AudioSliceAnalyzer::Density::dense;
+                }
+
+                expect (sawSparse && sawDense,
+                         "a track that gets steadily louder produced one density only, at peak "
+                             + juce::String (peak, 2));
+            }
+        }
     }
 
 private:
+    // A click track: a short percussive tick on every beat over silence.
+    // Deliberately trivial - the question is whether the detector finds a
+    // period that is really there, and burying it in music would be
+    // testing the music instead.
+    static juce::AudioBuffer<float> clickTrackAt (double bpm, double seconds)
+    {
+        constexpr double rate = 44100.0;
+        juce::AudioBuffer<float> audio (2, (int) (rate * seconds));
+        audio.clear();
+
+        const auto beatSamples = 60.0 / bpm * rate;
+        const auto tick = (int) (rate * 0.03);
+
+        juce::Random random (0xB347);
+
+        for (double position = 0.0; position + tick < (double) audio.getNumSamples(); position += beatSamples)
+        {
+            const auto start = (int) position;
+
+            for (int i = 0; i < tick; ++i)
+            {
+                const auto envelope = std::exp (-9.0f * (float) i / (float) tick);
+                const auto value = (random.nextFloat() * 2.0f - 1.0f) * envelope * 0.7f;
+
+                audio.setSample (0, start + i, value);
+                audio.setSample (1, start + i, value);
+            }
+        }
+
+        return audio;
+    }
+
+    // Noise that gets steadily louder, so every density label has to be
+    // earned against this track's own range rather than a fixed number.
+    static juce::AudioBuffer<float> rampingTrack (float fromAmplitude, float toAmplitude)
+    {
+        constexpr double rate = 44100.0;
+        juce::AudioBuffer<float> audio (2, (int) (rate * 60.0));
+
+        juce::Random random (0x51CE);
+
+        for (int i = 0; i < audio.getNumSamples(); ++i)
+        {
+            const auto t = (float) i / (float) audio.getNumSamples();
+            const auto amplitude = fromAmplitude + (toAmplitude - fromAmplitude) * t;
+            const auto value = (random.nextFloat() * 2.0f - 1.0f) * amplitude;
+
+            audio.setSample (0, i, value);
+            audio.setSample (1, i, value);
+        }
+
+        return audio;
+    }
+
     static juce::AudioBuffer<float> makeSine (double sampleRate, double seconds, float frequency)
     {
         const auto numSamples = (int) (sampleRate * seconds);
