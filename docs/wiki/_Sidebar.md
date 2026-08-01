@@ -17,3 +17,16 @@
 * [Roadmap](https://github.com/bogggare567/abcTrain/blob/main/docs/roadmap.md)
 * [Why it is shaped this way](https://github.com/bogggare567/abcTrain/blob/main/docs/user-journey.md)
 * [Discussions](https://github.com/bogggare567/abcTrain/discussions)
+
+---
+
+**По-русски**
+* [Главная](ru-Home)
+* [Установка](ru-Installation)
+* [Первые десять минут](ru-Your-first-ten-minutes)
+* [Девять упражнений](ru-The-nine-exercises)
+* [Обучающие плагины](ru-The-teaching-plugins)
+* [Тренировка на своей музыке](ru-Training-on-your-own-audio)
+* [Уровни, серии и достижения](ru-Levels-streaks-and-achievements)
+* [Решение проблем](ru-Troubleshooting)
+* [Частые вопросы](ru-FAQ)

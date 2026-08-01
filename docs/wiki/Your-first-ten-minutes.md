@@ -1,5 +1,7 @@
 # Your first ten minutes
 
+*[По-русски](ru-Your-first-ten-minutes)*
+
 ## The welcome screen
 
 Opens every launch. It says what the name means - *ambiance · balance ·

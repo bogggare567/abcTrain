@@ -1,5 +1,7 @@
 # FAQ
 
+*[По-русски](ru-FAQ)*
+
 **Is it really free?**
 Yes, and staying that way. No paid tier, no subscription, nothing behind
 anything. The licence is all-rights-reserved (see `LICENSE`) - the source is

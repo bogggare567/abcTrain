@@ -1,5 +1,7 @@
 # Levels, streaks and achievements
 
+*[По-русски](ru-Levels-streaks-and-achievements)*
+
 ## Levels are per exercise
 
 There is no global level. Each of the nine exercises has its own, 1 to 10,

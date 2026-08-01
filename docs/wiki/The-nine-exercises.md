@@ -1,5 +1,7 @@
 # The nine exercises
 
+*[По-русски](ru-The-nine-exercises)*
+
 Grouped by the skill they build rather than by name. Each has its own level
 (1-10), which rises from accurate answers rather than from volume.
 

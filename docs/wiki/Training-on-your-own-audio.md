@@ -1,5 +1,7 @@
 # Training on your own audio
 
+*[По-русски](ru-Training-on-your-own-audio)*
+
 Pink noise teaches you to hear pink noise. The point of importing your own
 music is that the exercises then hide their changes inside the records you
 actually mix against.
