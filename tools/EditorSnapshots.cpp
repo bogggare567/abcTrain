@@ -2,7 +2,7 @@
 // no window server involvement beyond what JUCE needs to lay out fonts.
 //
 // Why this exists: this project has a documented history (ADR 014, 015,
-// 016, 019, 022) of UI bugs that compiled, passed all 172 test groups, and
+// 016, 019, 022, 031) of UI bugs that compiled, passed every test group, and
 // were obvious within ten seconds of *looking* at the thing - a slider
 // groove the same colour as its panel, text clipped by its own container,
 // a layout computed from a 1px-high rectangle. The test suite structurally
@@ -254,6 +254,18 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Home", -1, Extra::home);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Training", 0);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Answered", 0, Extra::answered);
+
+            // Game 2 is Guess the Reverb - a zoned exercise, so the answer
+            // panel is two regions rather than a ruler. Both mechanics now
+            // need a shot: the pair-of-zones layout is where "always two"
+            // is most likely to look wrong.
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Zoned", 2);
+
+            // The zoned panel *after* an answer. Worth its own shot: the
+            // verdict used to be carried by the tick line down each zone,
+            // and once that went the only things left saying right from
+            // wrong are the zone tint and the readout's colour.
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-ZonedAnswered", 2, Extra::answered);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);

@@ -172,7 +172,13 @@ juce::Rectangle<int> ChoiceSliderComponent::getScaleArea() const
 {
     auto bounds = getLocalBounds();
     bounds.removeFromTop (bigLabelHeight);       // the large value readout
-    bounds.removeFromBottom (captionHeight);     // the axis caption
+
+    // Only reserved when there is actually a caption to put there. It was
+    // taken unconditionally, which cost every scale 18px of height for a
+    // strip that has been empty since the names moved into the zones.
+    if (axisCaption.isNotEmpty())
+        bounds.removeFromBottom (captionHeight);
+
     return bounds;
 }
 
@@ -324,14 +330,14 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         const auto zone = zoneForIndex (i, scaleArea);
         const auto isHighlighted = (i == highlighted);
 
-        // Alternating zone shading. Without it a row of ticks reads as one
-        // undifferentiated strip; with it, each choice is visibly its own
-        // region, which is what makes a wide scale scannable. The step
-        // between the two shades has to be bigger than it looks like it
-        // should be on paper - at 0.045/0.015 (the first attempt, checked
-        // in the running app) the bands were indistinguishable.
-        const auto zoneFill = (i % 2 == 0) ? theme.displayBackground.brighter (0.11f)
-                                           : theme.displayBackground.brighter (0.02f);
+        // Alternating zone shading, for a row long enough that the eye
+        // needs help counting it. With exactly two it does the opposite:
+        // one lighter half beside one darker half reads as "the left one
+        // is already selected", which is a lie the moment the panel opens.
+        // Two identical halves and the hairline between them is all a
+        // pair needs.
+        const auto zoneFill = (n > 2 && i % 2 == 0) ? theme.displayBackground.brighter (0.11f)
+                                                    : theme.displayBackground.brighter (0.02f);
 
         g.setColour (zoneFill);
         g.fillRect (zone);
@@ -363,43 +369,41 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         }
     }
 
-    // ---- tick marks and staggered labels ----
-    // Labels alternate between two rows: at eight or nine choices, one row
-    // of labels across this width collides. Staggering is what the
-    // reference scales do for exactly the same reason.
-    g.setFont (AbcTrainLookAndFeel::captionFont());
-
-    const auto labelRowHeight = 15.0f;
-    const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 2.0f;
-    const auto upperRowY = lowerRowY - labelRowHeight + 2.0f;
+    // ---- the choice names ----
+    // No tick marks. A tick is a slider's way of saying "the value is
+    // *here* on a continuum", and these zones are not a continuum - they
+    // are two named things you pick between. The line down the middle of
+    // each one was inherited from the ruler this widget started as, and
+    // it only ever pointed at its own label. The zone already has its own
+    // shading and its own hairline edges; what it needed was for the name
+    // to be the thing you see, centred in the region you click.
+    const auto scale = AbcTrainLookAndFeel::getTextScale();
 
     for (int i = 0; i < n; ++i)
     {
         const auto zone = zoneForIndex (i, scaleArea);
-        const auto centreX = zone.getCentreX();
         const auto isHighlighted = (i == highlighted);
 
-        auto tickColour = theme.textDim.withAlpha (0.5f);
+        auto textColour = theme.text;
         if (answered && i == correctIndex)
-            tickColour = theme.positive;
+            textColour = theme.textBright;
         else if (answered && i == chosenIndex && ! lastCorrect)
-            tickColour = theme.negative;
+            textColour = theme.textBright;
         else if (isHighlighted)
-            tickColour = theme.accent;
+            textColour = theme.textBright;
 
-        // Tall thin tick spanning most of the panel, stopping above the
-        // label rows.
-        g.setColour (tickColour);
-        g.drawLine (centreX, scaleArea.getY() + 8.0f, centreX, upperRowY - 3.0f,
-                    isHighlighted ? 2.0f : 1.0f);
+        // Sized against the zone, floored so a narrow one stays legible
+        // and capped so two zones across a stretched window don't turn
+        // into a billboard. drawFittedText does the rest: a long
+        // translated name shrinks and wraps rather than running out of
+        // its own region.
+        const auto height = juce::jlimit (16.0f, 34.0f, zone.getWidth() * 0.075f) * scale;
 
-        const auto rowY = (i % 2 == 0) ? lowerRowY : upperRowY;
-        const auto labelWidth = juce::jmax (zone.getWidth(), 54.0f);
-
-        g.setColour (isHighlighted ? theme.textBright : theme.textDim);
-        g.drawText (choiceLabels[i],
-                     juce::Rectangle<float> (centreX - labelWidth * 0.5f, rowY, labelWidth, labelRowHeight),
-                     juce::Justification::centred, false);
+        g.setColour (textColour);
+        g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (height));
+        g.drawFittedText (choiceLabels[i],
+                           zone.reduced (14.0f, 12.0f).toNearestInt(),
+                           juce::Justification::centred, 2, 1.0f);
     }
 
     // ---- correct-answer glow, drawn over the chosen zone ----

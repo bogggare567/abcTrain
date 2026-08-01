@@ -3,6 +3,8 @@
 #include "Game.h"
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
+#include <vector>
+#include "../../shared/PresetFamily.h"
 
 // "Name the range" exercise: plays pink noise through a peak filter
 // boosting or cutting a random frequency inside one of 7 standard named
@@ -43,7 +45,11 @@ public:
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
 
-    int getNumChoices() const override { return numRanges; }
+    // **Always two** - see ReverbGame for why. More buttons is more
+    // reading and more luck, not finer hearing; two alternatives makes the
+    // question "which of these", and difficulty becomes how close together
+    // they are.
+    int getNumChoices() const override { return 2; }
     juce::String getChoiceLabel (int choiceIndex) const override;
 
     bool hasAnswered() const override { return answered; }
@@ -78,8 +84,28 @@ private:
     juce::Random random;
     TestSignalGenerator noise;
 
+    // The two categories on offer this round. correctRangeIndex is 0 or 1 into
+    // this, not an index into the full list.
+    std::array<int, 2> pairIndices { { 0, 1 } };
+    int difficultyLevel = 1;
+
+    // Spectral order. Neighbouring ranges share a boundary and really are
+    // confusable; sub-bass against air is not a listening question.
+    static const std::vector<float>& axisPositions();
+
     int correctRangeIndex = 0;
     float correctFreqHz = 100.0f;
+
+public:
+    // Test seams: which frequency this round actually boosted, and how
+    // wide a bump it was. Both are claims worth checking - a frequency
+    // that wanders outside its own named range would be scoring a correct
+    // answer as wrong.
+    float getCorrectFrequencyHzForTest() const { return correctFreqHz; }
+    float getFilterQForTest() const { return filterQ; }
+    int getCorrectRangeForTest() const { return pairIndices[(size_t) correctRangeIndex]; }
+
+private:
     int chosenRangeIndex = -1;
     bool isBoost = true;
     bool answered = false;
@@ -92,5 +118,7 @@ private:
     // same "fixed labels, scaled gain" shape as EQGame, its closest
     // precedent.
     float gainDb = 9.0f;
-    static constexpr float filterQ = 2.0f;
+    // Redrawn each round rather than fixed - see newRound. A broad bump
+    // lifts a whole named range; a narrow one is one tone inside it.
+    float filterQ = 2.0f;
 };

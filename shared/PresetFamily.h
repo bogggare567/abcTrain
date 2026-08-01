@@ -2,6 +2,9 @@
 
 #include <juce_core/juce_core.h>
 #include <vector>
+#include <array>
+#include <algorithm>
+#include <cmath>
 
 // A category with several members, and a way to pick a harder one.
 //
@@ -76,5 +79,74 @@ namespace PresetFamily
             (int) std::ceil (breadth * (float) sorted.size()));
 
         return sorted[(size_t) random.nextInt (available)].index;
+    }
+
+    // Draws the two categories a round asks about.
+    //
+    // `positions` places every category on one axis of character - how
+    // bright a space is, how hard a clipper bites, where a band sits in
+    // the spectrum - so "close together" means something a listener would
+    // recognise rather than "adjacent in the array". Each game writes its
+    // own axis down, which is where the claim about what is confusable
+    // with what actually lives.
+    //
+    // A level admits pairs no further apart than its ceiling and no
+    // closer than its floor, both sliding down together: level 1 offers
+    // the two extremes, level 10 offers neighbours. The floor is what
+    // stops a hard tier still handing out the giveaway pair.
+    //
+    // Returned in random order, or the answer would drift to one side of
+    // the scale.
+    inline std::array<int, 2> drawPair (const std::vector<float>& positions,
+                                         int level, juce::Random& random)
+    {
+        const auto count = (int) positions.size();
+
+        if (count < 2)
+            return { { 0, 0 } };
+
+        struct Candidate { int a, b; float distance; };
+        std::vector<Candidate> all;
+
+        auto widest = 0.0f;
+
+        for (int a = 0; a < count; ++a)
+        {
+            for (int b = a + 1; b < count; ++b)
+            {
+                const auto distance = std::abs (positions[(size_t) a] - positions[(size_t) b]);
+                all.push_back ({ a, b, distance });
+                widest = juce::jmax (widest, distance);
+            }
+        }
+
+        // Normalised against the widest pair, so a game whose axis happens
+        // to span 0.6 gets the same difficulty curve as one spanning 1.0.
+        const auto scale = widest > 0.0f ? 1.0f / widest : 1.0f;
+        const auto clamped = (float) juce::jlimit (1, 10, level);
+
+        const auto ceiling = juce::jmap (clamped, 1.0f, 10.0f, 1.01f, 0.34f);
+        const auto floor   = juce::jmap (clamped, 1.0f, 10.0f, 0.55f, 0.0f);
+
+        std::vector<Candidate> allowed;
+
+        for (const auto& candidate : all)
+        {
+            const auto normalised = candidate.distance * scale;
+
+            if (normalised <= ceiling && normalised >= floor)
+                allowed.push_back (candidate);
+        }
+
+        // A window admitting nothing would be a round that cannot happen.
+        // Falling back to the whole set keeps the failure boring rather
+        // than repetitive - a fixed pair would be worse than a random one.
+        if (allowed.empty())
+            allowed = all;
+
+        const auto& picked = allowed[(size_t) random.nextInt ((int) allowed.size())];
+
+        return random.nextBool() ? std::array<int, 2> { { picked.a, picked.b } }
+                                 : std::array<int, 2> { { picked.b, picked.a } };
     }
 }

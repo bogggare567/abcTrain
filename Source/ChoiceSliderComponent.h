@@ -29,6 +29,11 @@ public:
     void setChoices (const juce::StringArray& labels);
     int getNumChoices() const noexcept { return choiceLabels.size(); }
 
+    // What the panel is currently showing, so a caller can tell whether it
+    // still matches the round. Counting alone is not enough once a game
+    // draws a fresh pair of names each round out of a fixed-size set.
+    const juce::StringArray& getChoiceLabels() const noexcept { return choiceLabels; }
+
     // Caption under the scale, e.g. "< 100 Hz - 12.8k Hz >". The editor
     // derives it from the first and last choice labels, so it's correct
     // for every game without any per-game code.

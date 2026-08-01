@@ -207,27 +207,46 @@ full rationale.
   slack is the same ratio at 200 Hz as at 8 kHz. The eight octave
   frequencies survive as the emphasised grid marks, which is also what
   keeps the legacy `submitAnswer(int)` path working unchanged.
+- **Every categorical exercise offers exactly two alternatives, always** —
+  reverb, compression, distortion, stereo width and named range. The
+  level chooses *which* two (how close together on that game's own axis
+  of character) and how archetypal an example of its category the correct
+  one is; it never changes the count. Adding a button makes a round
+  harder by asking you to read more and lowering the odds of a lucky
+  guess, not by asking more of the ear. Both halves live in
+  `shared/PresetFamily.h` — see
+  [decisions/031](docs/decisions/031-two-alternatives-and-preset-families.md).
+- `shared/PresetFamily.h` — `drawPair (positions, level, random)` (each
+  game writes down where its categories sit on one axis of character; a
+  level admits pairs no further apart than a ceiling and **no closer than
+  a floor**, both sliding down together) and `choose (family, level,
+  random)` (every family member carries how `archetypal` it is; a level
+  sees a widening *window* from the top of that ordering, so the
+  textbook examples never stop appearing). The two are drawn
+  independently — conflating them makes a hard pair always arrive with a
+  hard example. Header-only and dependency-free, so
+  `tests/DistortionGameTest` can drive the selection rule directly.
 - `Source/Games/CompressionGame.{h,cpp}` — "guess the compression":
-  repeating percussive noise burst through `juce::dsp::Compressor` at one
-  of 3 threshold/ratio presets (weak/medium/strong), with a fixed
-  makeup-gain compensation per preset (tuned by ear, not measured) so
-  loudness alone isn't a tell. `setDifficulty` swaps between 3 whole
-  preset tables (`easyPresets`/`mediumPresets`/`hardPresets`) — same 3
-  labels throughout, but the threshold/ratio values converge at higher
-  tiers so "Weak" vs. "Strong" gets subtler. Choice count never changes.
+  repeating percussive noise burst through `juce::dsp::Compressor`, two of
+  3 threshold/ratio presets (weak/medium/strong) offered per round, with a
+  fixed makeup-gain compensation per preset (tuned by ear, not measured)
+  so loudness alone isn't a tell. `setDifficulty` swaps between 3 whole
+  preset tables (`easyPresets`/`mediumPresets`/`hardPresets`) whose values
+  converge at higher tiers, *and* raises the chance the pair drawn is two
+  neighbours rather than the two extremes.
 - `Source/Games/ReverbGame.{h,cpp}` — "guess the reverb type": repeating
   percussive noise burst (period long enough for tails to decay audibly)
-  through one of up to 4 types. Room/Hall/Plate are `juce::dsp::Reverb`
-  (Freeverb-derived) with different roomSize/damping/width presets — an
-  approximation tuned by ear, not physically modeled per type, same
-  approach as `CompressionGame`'s presets. Spring is built separately as a
-  cascade of 4 resonant allpass `IIR` filters, since Freeverb-style
-  algorithms don't produce the metallic comb/allpass "boing" character a
-  spring tank has. `setDifficulty` changes `getNumChoices()` itself: 2
-  (Room/Hall only) at levels 1-3, 3 (+Plate) at 4-6, all 4 (+Spring) at
-  7-10 — the only game where difficulty changes the choice count, which
-  is why `PluginEditor::refreshFromGameState()` has to handle a
-  mid-session choice-count change (see ADR 002).
+  through one of 5 types. Room/Chamber/Hall/Plate are `juce::dsp::Reverb`
+  (Freeverb-derived) — an approximation tuned by ear, not physically
+  modeled per type, same approach as `CompressionGame`'s presets. Spring
+  is built separately as a cascade of 4 resonant allpass `IIR` filters,
+  since Freeverb-style algorithms don't produce the metallic comb/allpass
+  "boing" character a spring tank has. Each type has a **family** of 3-4
+  `Variant`s (roomSize/damping/width/wet + how archetypal): a tiled booth
+  and a big live room are both rooms, and the least archetypal room is one
+  large enough to nearly be a chamber. `confusabilityOf()` places the
+  types on a character axis for `drawPair`, with Spring held apart from
+  everything (its character is a mechanism, not a size).
 - `Source/Games/PanGame.{h,cpp}` — "guess the pan position": pink noise
   panned with an equal-power law (`gainL=cos(theta)`, `gainR=sin(theta)`,
   which is loudness-equalized for free) to one of 5 positions (Hard
@@ -248,20 +267,34 @@ full rationale.
   (1.4s → 0.9s → 0.6s). The four original times (50/150/300/500 ms)
   remain as grid marks and drive the legacy discrete path.
 - `Source/Games/DistortionGame.{h,cpp}` — "guess the distortion type": a
-  waveshaper applied to pink noise, one of 4 types (Soft Clip = `tanh`,
-  Hard Clip = `jlimit`, Tape Saturation = `tanh` + a post-clip lowpass,
-  Overdrive = asymmetric `tanh` for an even-harmonic character), each
-  with its own makeup gain so loudness isn't a tell. `setDifficulty`
-  scales the pre-shaping drive amount (6.0 → 3.0 → 1.5) rather than
-  swapping types — same "fixed labels, scaled parameter" shape as
-  `DelayGame`.
+  waveshaper applied to pink noise, two of 4 types offered per round (Soft
+  Clip = symmetric `tanh`, Hard Clip = `jlimit`, Tape Saturation = `tanh`
+  + a post-shaping lowpass, Overdrive = asymmetric `tanh` for an
+  even-harmonic character). Each type has a **family** of 4 `Variant`s
+  (drive scale, post-shaping rolloff, knee asymmetry): the borderline tape
+  is bright enough to nearly be a soft clip, the borderline overdrive
+  symmetric enough to nearly be one too. `setDifficulty` still ramps the
+  base drive (6.0 → 1.2) so the character is bolder at easy levels.
+  **The makeup gain is measured, not tuned by ear** — `measureMakeupFor`
+  runs a fixed seeded signal through that exact voicing on the message
+  thread in `newRound()` and scales it to a fixed RMS. The old per-type
+  hand-tuned constants were near enough while each type had one voicing
+  at one drive; a family that varies the drive varies the loudness, and
+  then the round is winnable by hearing which is louder. See ADR 031.
 - `Source/Games/StereoWidthGame.{h,cpp}` — "guess the stereo width": mid/
   side processing (`side *= width`) on **two independent**
   `PinkNoiseGenerator`s (see below — a single mono source duplicated to
-  both channels would have zero side signal, making width meaningless) to
-  one of 4 named widths (Narrow/Normal/Wide/Extra Wide, no numbers
-  shown). `setDifficulty` converges the underlying width multipliers
-  toward 1.0 at higher tiers, same shape as `PanGame`.
+  both channels would have zero side signal, making width meaningless),
+  two of 4 named widths offered per round (Narrow/Normal/Wide/Extra Wide,
+  no numbers shown). `setDifficulty` converges the underlying width
+  multipliers toward 1.0 at higher tiers, same shape as `PanGame`. Width
+  is a single number, so its **family** can't be four settings of it —
+  that would just be the neighbouring category. What varies instead is
+  how the width is *arrived at*: `monoBelowHz` keeps the side signal below
+  a crossover centred (0/90/150/300 Hz), which is what real mixes do and
+  makes the same nominal width read narrower. The one-pole split is
+  deliberate — a steeper filter here would be a phase problem, which is a
+  different lesson.
 - `Source/Games/DBGame.{h,cpp}` — "guess the gain change": a dB offset
   (`Decibels::decibelsToGain`) applied to pink noise. Now **continuous**:
   any value in -9..+9 dB, quantised to 0.5 dB, on a linear axis since dB
@@ -274,12 +307,16 @@ full rationale.
   filter boosts or cuts a frequency chosen log-uniformly *within* one of
   7 standard named ranges (Sub-bass/Bass/Low-mids/Mids/High-mids/
   Presence/Air — the same names `LearnerEQ`'s `FrequencyGuide` and
-  `docs/knowledge_base.md` use), applied to pink noise. Closest relative
-  is `EQGame` — `setDifficulty` follows the exact same shape (9/6/3 dB by
-  tier, 7 choices never change) — but the boosted frequency itself moves
-  around inside the chosen range each round rather than landing on one
-  of 8 fixed band centers, so the player has to learn the range's actual
-  boundaries instead of memorizing fixed points.
+  `docs/knowledge_base.md` use), applied to pink noise, two of the seven
+  offered per round. Closest relative is `EQGame` — `setDifficulty` ramps
+  the boost/cut the same way (10 → 2.5 dB) — but the boosted frequency
+  moves around inside the chosen range rather than landing on a fixed
+  band centre, so the player has to learn the range's actual boundaries.
+  Its **family is a continuum**, so what the level moves is the *breadth
+  of the draw* (`PresetFamily::breadthForLevel`): an easy round boosts the
+  middle of Bass, a hard one boosts the boundary with Low-mids. Filter Q
+  is the second axis (0.7 → 2.4) — a broad lift is what a named range
+  sounds like, a narrow one is a single tone that happens to live there.
 - `shared/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
   economy algorithm) used by `StereoWidthGame`'s two channels directly;
   each instance owns its own `juce::Random`, which is what lets that game
@@ -419,10 +456,21 @@ full rationale.
   the top of its sound phase whenever a round begins. Owns
   `GameManager` then `ProgressManager` in that declaration order (matters
   — `ProgressManager`'s constructor registers listeners on every game).
-- `Source/ChoiceSliderComponent.{h,cpp}` — the answer-selection widget:
-  one horizontal track with an evenly-spaced tick per choice, a big label
-  showing whichever choice is currently highlighted, and a draggable
-  thumb that snaps to the nearest tick on release. Needs nothing from a
+- `Source/ChoiceSliderComponent.{h,cpp}` — the answer-selection widget, in
+  two modes. **Categorical**: the panel is divided into one clickable
+  zone per choice — now always two — with the name written large and
+  centred in each and a single hairline between them. **No tick marks**:
+  a tick is a slider's way of saying "the value is *here* on a
+  continuum", and two named alternatives aren't one; the line down each
+  zone was inherited from the ruler this widget started as and only ever
+  pointed at its own label. The two-row label stagger (built for 8-9
+  choices) and the `< first · last >` axis caption went with it, and the
+  alternating zone shading is suppressed at two choices, where one
+  lighter half beside one darker half reads as "the left one is already
+  selected". **Continuous**: a ruler with grid marks, where the vertical
+  lines *are* the scale and stay. See
+  [decisions/031](docs/decisions/031-two-alternatives-and-preset-families.md).
+  Needs nothing from a
   `Game` beyond `getNumChoices()`/`getChoiceLabel(int)`, so it's identical
   across all 9 games whether the labels are numbers or names. Replaced
   the old row of separate `TextButton`s — see
@@ -493,9 +541,16 @@ full rationale.
 - `Source/PluginEditor.{h,cpp}` — fully generic: two screens (Home ⇄
   Training, exactly one visible at a time),
   a single `ChoiceSliderComponent` rebuilt via `setChoices()` on switch
-  *or* whenever a fresh round's choice count no longer matches (needed
-  once `ReverbGame`'s choice count became difficulty-dependent), no
-  per-game editor code. Being one persistent component (not destroyed/
+  *or* whenever a fresh round's **labels** no longer match
+  (`choiceSliderMatchesGame`), no
+  per-game editor code. That comparison used to be on the choice *count*,
+  which silently stopped working the moment every categorical game
+  settled on exactly two names redrawn per round from its family: the
+  count never changed again, so the panel kept the previous round's names
+  beside the current round's verdict. Found by rendering an answered
+  round, not by a test — see
+  [decisions/031](docs/decisions/031-two-alternatives-and-preset-families.md).
+  Being one persistent component (not destroyed/
   recreated per round like the old buttons) means the fadeIn-collapse bug
   class from [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)
   can't recur here. Also shows level/progress-bar/streak/daily-challenge
@@ -1253,7 +1308,11 @@ look at. Its first run found six bugs that compiled and passed all 172
 test groups — amber value arcs on a blue plugin, a gain-reduction meter
 silently clamped to 32px, a blank lesson dropdown, a light-theme display
 well brighter than its own panel, 132px of dead window, and three
-unlabelled knobs per EQ band. EarTrainer's editor is deliberately
+unlabelled knobs per EQ band. It has kept earning its place since: the
+`EarTrainer-ZonedAnswered` shot is what caught the answer panel showing
+one round's two names beside the next round's verdict, which no test
+could see because the game and the widget were each individually correct
+(ADR 031). EarTrainer's editor is deliberately
 covered by copying the real per-user settings file aside first and putting
 it back after (skipping EarTrainer entirely if that copy fails, rather
 than risking a player's saved progress for a screenshot). The same tool
@@ -1280,14 +1339,21 @@ pictures there can never drift from the code. See
   discrete "type" to force through every value of.
   `StereoWidthGameTest` additionally checks left and right samples
   actually differ, verifying the two independent `PinkNoiseGenerator`s
-  really decorrelate. `DBGameTest` checks the choice labels themselves at
-  three difficulty levels, since `DBGame`'s legacy discrete labels are
-  recomputed per tier. `FrequencyRangeGameTest` checks the 7 choice
-  labels match the standard range names exactly. Note `ReverbGame` now
-  defaults to the easy tier (2 choices) *before* `setDifficulty` is ever
-  called, matching the other games' easy-tier defaults — tests that want
-  all 4 types must call `setDifficulty(10)` first. `GameManagerTest`
-  asserts 9 registered games. Note these all exercise the **discrete**
+  really decorrelate — and now drives *every* member of its width family,
+  since keeping the low end mono is exactly the thing that could collapse
+  the side signal (see ADR 031). `DBGameTest` checks the choice labels
+  themselves at three difficulty levels, since `DBGame`'s legacy discrete
+  labels are recomputed per tier. The five **two-alternative** games share
+  one `checkTwoAlternative` shape: the pair is always two different real
+  names at every level, and harder levels really do draw closer pairs
+  (measured over many rounds, since it is a claim about a distribution).
+  `DistortionGameTest` additionally re-measures the *compensated* output
+  of every voicing at three drive amounts and asserts it lands within
+  0.005 of the target RMS — the check that keeps loudness from answering
+  the question. `FrequencyRangeGameTest` asserts the drawn frequency
+  never leaves its own named range at any level, that level 10 gets
+  closer to a range boundary than level 1, and that Q rises with level.
+  `GameManagerTest` asserts 9 registered games. Note these all exercise the **discrete**
   `submitAnswer(int)` path, which the four continuous games deliberately
   kept verbatim (ADR 020) — which is why every one of them passed
   unedited through that change.
