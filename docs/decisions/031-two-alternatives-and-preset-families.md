@@ -39,14 +39,30 @@ archetypal an example of its category the correct one is.
 
 `shared/PresetFamily.h` holds both halves and nothing else:
 
-- `drawPair (positions, level, random)` — each game writes down where its
-  categories sit on one axis of *character*: how bright a space is, how
-  hard a clipper bites, where a band lives in the spectrum. A level
-  admits pairs no further apart than a ceiling and no closer than a
-  floor, both sliding down together. Level 1 offers the two extremes;
-  level 10 offers neighbours. The floor matters as much as the ceiling —
-  without it a hard tier still hands out the giveaway pair now and then,
-  which reads as the difficulty being broken rather than as variety.
+- `drawPair (positions, level, random, distance)` — each game writes down
+  where its categories sit on one axis of *character*: how bright a space
+  is, how hard a clipper bites, where a band lives in the spectrum. The
+  pairs are ranked by how far apart they are, and a level sees a
+  **window over that ranking**, sliding from the far end to the near end.
+  Level 1 draws from the most obviously different pairs; level 10 from
+  the closest. `distance` lets a game override what "far apart" means
+  where one axis can't carry it.
+
+  **The first version of this was threshold-based and it was wrong.** It
+  admitted every pair whose distance fell between a sliding ceiling and
+  floor, which reads well on paper. Measured on `ReverbGame`'s five types
+  it produced: exactly **one** pair at level 10, the same one forever;
+  levels 3 through 7 **identical to each other**; Spring in **80%** of
+  level-1 rounds and then absent from every level above it. All four
+  compiled, and every test at the time passed — the tests asserted that
+  average distance falls with level, which it did.
+
+  A window over the ranking cannot do any of that, because its size does
+  not depend on how the distances happen to cluster. `tests/ReverbGameTest`
+  now checks the actual thing that went wrong: no level offers fewer than
+  three distinct pairs, no more than two consecutive levels are
+  indistinguishable, level 1 and level 10 differ, and Spring is reachable
+  at both ends.
 - `choose (family, level, random)` — every member of a family carries how
   *archetypal* it is: 1 is the textbook example, 0 is the one sitting
   right against the neighbouring category. A level sees a **window** from
@@ -66,7 +82,12 @@ It is not the same thing in each, and that is the point.
 - **Reverb** — several genuinely different spaces per type. A tiled booth
   and a big live room are both rooms, and someone who can only recognise
   one of them has not learned what a room sounds like. The least
-  archetypal room is one large enough to nearly be a chamber.
+  archetypal room is one large enough to nearly be a chamber. Spring sits
+  off the size axis entirely: its character is a *mechanism*, so it is
+  unmistakable against a room, a chamber or a hall, and a real question
+  against a plate — two pieces of metal being excited rather than air in
+  a space. Writing that as "Spring is far from everything" was what made
+  it a level-1-only type.
 - **Compression** — threshold/ratio pairs that converge on the
   neighbouring setting.
 - **Distortion** — four voicings per shaper, varying drive, post-shaping
@@ -135,6 +156,15 @@ which is a lie the moment the panel opens.
 
 What is left is what was asked for — two halves, one hairline, the name
 of each written large and centred in the region you click.
+
+## The web demo moves with it
+
+`website/src/trainer/` is meant to be the trainer, not a page about it, so
+the same rule is ported there rather than reinvented: the same ranked
+window, the same axis positions, the same Spring-is-a-mechanism distance,
+the same two zones with the name written large in each and no alternating
+shade. A demo that answered a different question would be worse than no
+demo.
 
 ## Consequences
 

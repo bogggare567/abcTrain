@@ -109,6 +109,49 @@ function impulse(ctx, seconds, decay, damping) {
 const continuous = (o) => ({ kind: 'continuous', ...o });
 const zoned = (o) => ({ kind: 'zoned', ...o });
 
+// Two alternatives, always - and the level decides which two.
+//
+// This is shared/PresetFamily.h's drawPair, ported rather than reinvented.
+// Each zoned exercise writes down where its categories sit on one axis of
+// *character*: how bright a space is, how hard a clipper bites, where a
+// band lives in the spectrum. A level then sees a **window over the pairs
+// ranked by distance**, sliding from the far end to the near end: level 1
+// draws from the most obviously different pairs, level 10 from the
+// closest ones.
+//
+// Ranked rather than measured against a sliding threshold, for the reason
+// ADR 031 records: on a small, unevenly-spaced set a threshold leaves one
+// level with a single question and several levels identical to each other.
+// A window over the ranking cannot, because its size does not depend on
+// how the distances happen to cluster.
+export function drawPair(positions, level, distance) {
+  const count = positions.length;
+  if (count < 2) return [0, 0];
+
+  const gap = distance || ((a, b) => Math.abs(positions[a] - positions[b]));
+
+  const all = [];
+  for (let a = 0; a < count; a += 1) {
+    for (let b = a + 1; b < count; b += 1) all.push({ a, b, d: gap(a, b) });
+  }
+
+  // Furthest apart first, so index 0 is the easiest question.
+  all.sort((x, y) => y.d - x.d);
+
+  const total = all.length;
+  const window = Math.max(2, Math.ceil(0.45 * total));
+  const clamped = Math.min(10, Math.max(1, level));
+  const start = Math.min(
+    Math.max(0, total - window),
+    Math.round(((clamped - 1) / 9) * (total - window)),
+  );
+
+  const picked = all[start + Math.floor(Math.random() * Math.min(window, total - start))];
+
+  // Returned in random order, or the answer would drift to one side.
+  return Math.random() < 0.5 ? [picked.a, picked.b] : [picked.b, picked.a];
+}
+
 export const EXERCISES = [
   continuous({
     key: 'band',
@@ -146,6 +189,9 @@ export const EXERCISES = [
       'A repeating hit through a compressor. Listen to how much the loud part is ' +
       'held back, then pick how hard it is being squeezed.',
     choices: ['Weak', 'Medium', 'Strong'],
+    // Evenly spaced: the three presets really are three steps of one
+    // thing, so there is nothing to interpret and nothing is invented.
+    axis: [0, 0.5, 1],
     before: 'Comp Off',
     after: 'Comp On',
     source: (ctx) => ({ buffer: burstBuffer(ctx), loop: true }),
@@ -180,13 +226,31 @@ export const EXERCISES = [
     instructions:
       'A hit in a space. Listen to the tail - how long it lasts, how bright it ' +
       'stays - and name the kind of room it is.',
-    choices: ['Room', 'Hall', 'Plate', 'Spring'],
+    choices: ['Room', 'Chamber', 'Hall', 'Plate', 'Spring'],
+    // Where each space sits on a "how big does it read" axis, matching
+    // ReverbGame::confusabilityOf. Spring is held apart from everything
+    // by `distance` below - its character is a mechanism, not a size, so
+    // placing it on the size axis would claim it is confusable with
+    // whatever happens to sit near it.
+    axis: [0.15, 0.5, 0.9, 0.55, 0.35],
+    // Spring is not on that axis at all: its character is a mechanism,
+    // not a size. Against a room, a chamber or a hall it is unmistakable;
+    // against a plate it is a real question, since both are metal being
+    // excited rather than air in a space.
+    distance: (a, b, axis) => {
+      const SPRING = 4;
+      const PLATE = 3;
+      if (a !== SPRING && b !== SPRING) return Math.abs(axis[a] - axis[b]);
+      const other = a === SPRING ? b : a;
+      return other === PLATE ? 0.3 : 0.85;
+    },
     before: 'Dry',
     after: 'With Reverb',
     source: (ctx) => ({ buffer: burstBuffer(ctx, 2.2, 3), loop: true }),
     build(ctx, index) {
       const settings = [
         { seconds: 0.7, decay: 2.2, damping: 0.55 },   // room
+        { seconds: 1.4, decay: 1.9, damping: 0.45 },   // chamber: between the two
         { seconds: 2.6, decay: 1.6, damping: 0.35 },   // hall
         { seconds: 1.6, decay: 1.1, damping: 0.12 },   // plate: brighter, denser
         { seconds: 1.2, decay: 1.4, damping: 0.05 },   // spring: metallic
@@ -274,9 +338,14 @@ export const EXERCISES = [
     name: 'Guess the Distortion',
     family: 'char',
     instructions:
-      'Four kinds of clipping on the same noise. Listen to the character of the ' +
+      'Two kinds of clipping on the same noise. Listen to the character of the ' +
       'edge - soft and round, hard and buzzy, dulled, or asymmetric.',
-    choices: ['Soft Clip', 'Hard Clip', 'Tape', 'Overdrive'],
+    choices: ['Soft Clipping', 'Hard Clipping', 'Tape Saturation', 'Overdrive'],
+    // How hard each one bites. Soft clip and tape sit close because both
+    // round the peak instead of squaring it, and tape separates only by
+    // its dulled top - that really is the pair people confuse. Hard clip
+    // is the outlier at the far end.
+    axis: [0.28, 0.95, 0.14, 0.55],
     before: 'Clean',
     after: 'Driven',
     source: (ctx) => ({ buffer: pinkBuffer(ctx), loop: true }),
@@ -312,6 +381,9 @@ export const EXERCISES = [
       'Two independent noise sources, so there is a real side signal to widen. ' +
       'Listen to how far the sound spreads past the speakers.',
     choices: ['Narrow', 'Normal', 'Wide', 'Extra Wide'],
+    // Width is already one axis, so these are its four steps evenly
+    // placed. No interpretation is needed and none is invented.
+    axis: [0, 0.33, 0.66, 1],
     before: 'Mono',
     after: 'Widened',
     stereoSource: true,
@@ -378,6 +450,11 @@ export const EXERCISES = [
       'A boost somewhere inside one named range - the frequency moves each round, ' +
       'so you learn the range rather than one point in it.',
     choices: ['Sub-bass', 'Bass', 'Low-mids', 'Mids', 'High-mids', 'Presence', 'Air'],
+    // Spectral order, evenly spaced. Neighbouring ranges share a boundary
+    // and really are confusable; sub-bass against air is not a question.
+    // Evenly spaced rather than placed by actual hertz, because the names
+    // are already perceptual steps rather than equal intervals.
+    axis: [0, 1 / 6, 2 / 6, 0.5, 4 / 6, 5 / 6, 1],
     before: 'EQ off',
     after: 'EQ on',
     source: (ctx) => ({ buffer: pinkBuffer(ctx), loop: true }),

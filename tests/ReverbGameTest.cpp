@@ -80,6 +80,92 @@ public:
                         + juce::String (hard) + " vs " + juce::String (easy));
         }
 
+        beginTest ("no level collapses to one question, and no two levels are the same");
+        {
+            // The four things the first version of the pair rule actually
+            // did, all of which compiled and passed every test there was:
+            // level 10 offered one pair forever, levels 3 to 7 were
+            // identical to each other, Spring filled 80% of level 1, and
+            // Spring never appeared above level 1 at all. Measured here so
+            // none of them can come back quietly.
+            ReverbGame game;
+
+            const auto pairsSeenAt = [&game] (int level)
+            {
+                game.setDifficulty (level);
+
+                juce::StringArray seen;
+                for (int i = 0; i < 600; ++i)
+                {
+                    game.newRound();
+
+                    juce::StringArray both { game.getChoiceLabel (0), game.getChoiceLabel (1) };
+                    both.sort (true);
+                    seen.addIfNotAlreadyThere (both.joinIntoString ("/"));
+                }
+
+                seen.sort (true);
+                return seen;
+            };
+
+            juce::String previous;
+            auto runLength = 1;
+
+            for (int level = 1; level <= 10; ++level)
+            {
+                const auto seen = pairsSeenAt (level);
+                const auto asText = seen.joinIntoString (",");
+
+                expect (seen.size() >= 3,
+                         "level " + juce::String (level) + " only ever offers "
+                             + juce::String (seen.size()) + " pair(s)");
+
+                // Ten levels sliding across six window positions means two
+                // *adjacent* levels sometimes share a pool, and that is
+                // fine - the family draw still differs between them. What
+                // must not happen is a plateau: five levels in a row that
+                // were indistinguishable is what the old rule produced.
+                runLength = (asText == previous) ? runLength + 1 : 1;
+
+                expect (runLength <= 2,
+                         "levels " + juce::String (level - runLength + 1) + " to "
+                             + juce::String (level) + " all offer exactly the same pairs");
+
+                previous = asText;
+            }
+
+            expect (pairsSeenAt (1).joinIntoString (",") != pairsSeenAt (10).joinIntoString (","),
+                     "level 10 asks the same questions as level 1");
+        }
+
+        beginTest ("Spring is available at both ends of the difficulty range");
+        {
+            // Spring is the one type whose character is a mechanism rather
+            // than a size. It belongs at the easy end (against a hall,
+            // unmistakable) *and* at the hard end (against a plate, two
+            // pieces of metal) - and the blanket "always far from
+            // everything" rule it used to have gave it only the first.
+            ReverbGame game;
+
+            const auto springAppearsAt = [&game] (int level)
+            {
+                game.setDifficulty (level);
+
+                for (int i = 0; i < 600; ++i)
+                {
+                    game.newRound();
+
+                    if (game.getChoiceLabel (0) == "Spring" || game.getChoiceLabel (1) == "Spring")
+                        return true;
+                }
+
+                return false;
+            };
+
+            expect (springAppearsAt (1), "Spring never appears at level 1");
+            expect (springAppearsAt (10), "Spring never appears at level 10");
+        }
+
         beginTest ("produces a non-silent buffer after newRound()");
         {
             ReverbGame game;

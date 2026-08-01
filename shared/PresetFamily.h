@@ -4,6 +4,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <functional>
 #include <cmath>
 
 // A category with several members, and a way to pick a harder one.
@@ -90,15 +91,28 @@ namespace PresetFamily
     // own axis down, which is where the claim about what is confusable
     // with what actually lives.
     //
-    // A level admits pairs no further apart than its ceiling and no
-    // closer than its floor, both sliding down together: level 1 offers
-    // the two extremes, level 10 offers neighbours. The floor is what
-    // stops a hard tier still handing out the giveaway pair.
+    // A level sees a **window over the pairs ranked by distance**, sliding
+    // from the far end to the near end: level 1 draws from the most
+    // obviously different pairs, level 10 from the closest ones.
     //
-    // Returned in random order, or the answer would drift to one side of
-    // the scale.
+    // Ranked, not measured against a threshold. The first version of this
+    // admitted every pair whose distance fell between a sliding ceiling
+    // and floor, which reads well on paper and falls apart on a small,
+    // unevenly-spaced set - the exact case every game here is. Measured on
+    // ReverbGame's five types it gave: one pair, forever, at level 10;
+    // four levels (3 to 7) that were *identical* to each other; Spring in
+    // 80% of level-1 rounds and then never again at any higher level. A
+    // window over the ranking cannot do any of that: its size does not
+    // depend on how the distances happen to cluster, so every level has
+    // the same number of candidates and consecutive levels always differ.
+    //
+    // `distance` lets a game override what "far apart" means where a
+    // single axis can't carry it - ReverbGame's Spring is a mechanism
+    // rather than a size, so its distance to a room is not the gap
+    // between two numbers. Pass nullptr for the plain axis distance.
     inline std::array<int, 2> drawPair (const std::vector<float>& positions,
-                                         int level, juce::Random& random)
+                                         int level, juce::Random& random,
+                                         const std::function<float (int, int)>& distance = {})
     {
         const auto count = (int) positions.size();
 
@@ -108,44 +122,34 @@ namespace PresetFamily
         struct Candidate { int a, b; float distance; };
         std::vector<Candidate> all;
 
-        auto widest = 0.0f;
-
         for (int a = 0; a < count; ++a)
         {
             for (int b = a + 1; b < count; ++b)
             {
-                const auto distance = std::abs (positions[(size_t) a] - positions[(size_t) b]);
-                all.push_back ({ a, b, distance });
-                widest = juce::jmax (widest, distance);
+                const auto gap = distance ? distance (a, b)
+                                          : std::abs (positions[(size_t) a] - positions[(size_t) b]);
+                all.push_back ({ a, b, gap });
             }
         }
 
-        // Normalised against the widest pair, so a game whose axis happens
-        // to span 0.6 gets the same difficulty curve as one spanning 1.0.
-        const auto scale = widest > 0.0f ? 1.0f / widest : 1.0f;
+        // Furthest apart first, so index 0 is the easiest question.
+        std::sort (all.begin(), all.end(),
+                    [] (const Candidate& x, const Candidate& y) { return x.distance > y.distance; });
+
+        const auto total = (int) all.size();
+
+        // Wide enough that a level is not one memorised question, narrow
+        // enough that a level means something. Two is the floor: a game
+        // with three categories has only three pairs to begin with.
+        const auto window = juce::jmax (2, (int) std::ceil (0.45f * (float) total));
         const auto clamped = (float) juce::jlimit (1, 10, level);
+        const auto start = juce::jlimit (0, juce::jmax (0, total - window),
+            juce::roundToInt (juce::jmap (clamped, 1.0f, 10.0f, 0.0f, (float) (total - window))));
 
-        const auto ceiling = juce::jmap (clamped, 1.0f, 10.0f, 1.01f, 0.34f);
-        const auto floor   = juce::jmap (clamped, 1.0f, 10.0f, 0.55f, 0.0f);
+        const auto& picked = all[(size_t) (start + random.nextInt (juce::jmin (window, total - start)))];
 
-        std::vector<Candidate> allowed;
-
-        for (const auto& candidate : all)
-        {
-            const auto normalised = candidate.distance * scale;
-
-            if (normalised <= ceiling && normalised >= floor)
-                allowed.push_back (candidate);
-        }
-
-        // A window admitting nothing would be a round that cannot happen.
-        // Falling back to the whole set keeps the failure boring rather
-        // than repetitive - a fixed pair would be worse than a random one.
-        if (allowed.empty())
-            allowed = all;
-
-        const auto& picked = allowed[(size_t) random.nextInt ((int) allowed.size())];
-
+        // Returned in random order, or the answer would drift to one side
+        // of the panel.
         return random.nextBool() ? std::array<int, 2> { { picked.a, picked.b } }
                                  : std::array<int, 2> { { picked.b, picked.a } };
     }

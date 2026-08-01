@@ -216,10 +216,15 @@ full rationale.
   guess, not by asking more of the ear. Both halves live in
   `shared/PresetFamily.h` — see
   [decisions/031](docs/decisions/031-two-alternatives-and-preset-families.md).
-- `shared/PresetFamily.h` — `drawPair (positions, level, random)` (each
-  game writes down where its categories sit on one axis of character; a
-  level admits pairs no further apart than a ceiling and **no closer than
-  a floor**, both sliding down together) and `choose (family, level,
+- `shared/PresetFamily.h` — `drawPair (positions, level, random, distance)`
+  (each game writes down where its categories sit on one axis of
+  character; the pairs are **ranked** by distance and a level sees a
+  sliding window over that ranking, far end to near end — ranked rather
+  than thresholded because on a small unevenly-spaced set a threshold
+  leaves one level with a single question and several levels identical,
+  which is exactly what the first version did; `distance` overrides what
+  "far apart" means where one axis can't carry it, as ReverbGame's Spring
+  needs) and `choose (family, level,
   random)` (every family member carries how `archetypal` it is; a level
   sees a widening *window* from the top of that ordering, so the
   textbook examples never stop appearing). The two are drawn

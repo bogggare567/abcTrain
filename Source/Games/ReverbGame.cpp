@@ -84,61 +84,53 @@ std::vector<PresetFamily::Weighted> ReverbGame::weightsFor (const std::vector<Va
 float ReverbGame::confusabilityOf (int typeA, int typeB)
 {
     // Where each type sits on a rough "how much like a big natural room"
-    // axis. Plate and Spring are off it - they are characters rather than
-    // geometries - so they are placed by how easily they are mistaken for
-    // something rather than by size.
+    // axis.
     //
-    //   Room 0.15 · Chamber 0.5 · Hall 0.9 · Plate 0.55 · Spring 0.35
+    //   Room 0.15 · Chamber 0.5 · Hall 0.9 · Plate 0.55
     //
     // Chamber and Plate landing close together is not an accident: a
     // damped plate and a bright chamber really are the pair people get
     // wrong, and this is where that fact is written down.
     static const std::array<float, numTypes> position { { 0.15f, 0.5f, 0.9f, 0.55f, 0.35f } };
 
-    const auto a = position[(size_t) juce::jlimit (0, numTypes - 1, typeA)];
-    const auto b = position[(size_t) juce::jlimit (0, numTypes - 1, typeB)];
+    const auto a = juce::jlimit (0, numTypes - 1, typeA);
+    const auto b = juce::jlimit (0, numTypes - 1, typeB);
 
-    // Spring's clang is unmistakable however close its position sits, so
-    // any pair containing it is easier than the distance suggests.
-    const auto involvesSpring = typeA == springTypeIndex || typeB == springTypeIndex;
-    const auto distance = std::abs (a - b);
+    // Spring is not on that axis at all: its character is a *mechanism*,
+    // not a size, so the gap between two position numbers does not
+    // describe it. Against a room, a chamber or a hall it is unmistakable.
+    // Against a plate it is a genuine question - both are metal being
+    // excited rather than air in a space, and telling a tank from a sheet
+    // is one of the few reverb distinctions worth real practice.
+    //
+    // This used to be a blanket "any pair with Spring in it is at least
+    // 0.75 apart", which made Spring maximally far from *everything*
+    // including Plate - so it filled the easy levels and then vanished
+    // from every hard one. See ADR 031.
+    if (a == springTypeIndex || b == springTypeIndex)
+    {
+        const auto other = (a == springTypeIndex) ? b : a;
 
-    return juce::jlimit (0.0f, 1.0f, involvesSpring ? juce::jmax (0.75f, distance) : distance);
+        if (other == springTypeIndex)
+            return 0.0f;
+
+        return other == plateTypeIndex ? 0.30f : 0.85f;
+    }
+
+    return juce::jlimit (0.0f, 1.0f,
+                          std::abs (position[(size_t) a] - position[(size_t) b]));
 }
 
 std::array<int, 2> ReverbGame::drawPair()
 {
-    // Every unordered pair, with how far apart it is.
-    struct Candidate { int a, b; float distance; };
-    std::vector<Candidate> candidates;
+    // The shared rule, with this game's own idea of what "far apart"
+    // means passed in - see confusabilityOf. Keeping a private copy of
+    // the selection logic here was how the two drifted apart the first
+    // time; there is one implementation now.
+    static const std::vector<float> positions { 0.15f, 0.5f, 0.9f, 0.55f, 0.35f };
 
-    for (int a = 0; a < numTypes; ++a)
-        for (int b = a + 1; b < numTypes; ++b)
-            candidates.push_back ({ a, b, confusabilityOf (a, b) });
-
-    // A level admits pairs no *easier* than its floor - so the hard tiers
-    // stop offering cathedral-against-booth - and never harder than its
-    // ceiling. Both move down together as the level rises.
-    const auto ceiling = juce::jmap ((float) difficultyLevel, 1.0f, 10.0f, 1.0f, 0.30f);
-    const auto floor = juce::jmap ((float) difficultyLevel, 1.0f, 10.0f, 0.55f, 0.0f);
-
-    std::vector<Candidate> allowed;
-    for (const auto& candidate : candidates)
-        if (candidate.distance <= ceiling && candidate.distance >= floor)
-            allowed.push_back (candidate);
-
-    // A window that admits nothing would be a round that cannot happen;
-    // fall back to the whole set rather than to a fixed pair, so the
-    // failure is boring rather than repetitive.
-    if (allowed.empty())
-        allowed = candidates;
-
-    const auto& picked = allowed[(size_t) random.nextInt ((int) allowed.size())];
-
-    // Which of the two is offered first is itself random, or the answer
-    // would drift towards one side of the scale.
-    return random.nextBool() ? std::array<int, 2> { { picked.a, picked.b } }
-                             : std::array<int, 2> { { picked.b, picked.a } };
+    return PresetFamily::drawPair (positions, difficultyLevel, random,
+                                    [] (int a, int b) { return confusabilityOf (a, b); });
 }
 
 void ReverbGame::newRound()
