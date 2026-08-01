@@ -73,6 +73,24 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
             for (int i = 0; i < numSamples; ++i)
                 analyzer->pushNextSampleIntoFifo (0.5f * (left[i] + right[i]));
     }
+
+    if (auto* display = waveform.load())
+    {
+        const auto* left = numChannels > 0 ? buffer.getReadPointer (0) : nullptr;
+        const auto* right = numChannels > 1 ? buffer.getReadPointer (1) : left;
+
+        // Both traces get the same signal. WaveformDisplay was built for
+        // the Learner plugins, where the two are dry and wet - here there
+        // is only one signal and the point is its *shape over time*, so
+        // feeding one trace and leaving the other silent would draw a flat
+        // line beside the answer for no reason.
+        if (left != nullptr)
+            for (int i = 0; i < numSamples; ++i)
+            {
+                const auto mono = 0.5f * (left[i] + right[i]);
+                display->pushSample (mono, mono);
+            }
+    }
 }
 
 juce::AudioProcessorEditor* EarTrainerProcessor::createEditor()

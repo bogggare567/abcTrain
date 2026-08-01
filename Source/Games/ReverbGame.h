@@ -75,6 +75,9 @@ public:
     bool wasLastAnswerCorrect() const override { return lastAnswerCorrect; }
     juce::String getFeedbackText() const override;
 
+    // See Game::getHintView.
+    HintView getHintView() const override { return HintView::envelope; }
+
     // How far apart two type *names* are on the character axis, for
     // tests/ReverbGameTest - which needs to check that harder levels
     // really do offer closer pairs, and has only the labels to go on.

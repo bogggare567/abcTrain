@@ -207,6 +207,7 @@ target_sources(EarTrainer
         Source/AchievementsScreenComponent.cpp
         shared/Vectorscope.cpp
         shared/SpectrumAnalyzer.cpp
+        shared/WaveformDisplay.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp

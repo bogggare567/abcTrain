@@ -447,8 +447,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     processor.setVectorscope (&vectorscope);
     processor.setSpectrumAnalyzer (&hintSpectrum);
+    processor.setWaveformDisplay (&hintWaveform);
     addChildComponent (vectorscope);
     addChildComponent (hintSpectrum);
+    addChildComponent (hintWaveform);
 
     // Three pills, always all visible. setClickingTogglesState makes JUCE
     // draw the active one with buttonOnColourId, which the shared theme
@@ -1073,9 +1075,29 @@ void EarTrainerEditor::resized()
         inner.removeFromTop (Spacing::large);   // clear the section heading
 
         auto hintRow = inner.removeFromTop (hintRowHeight).reduced (Spacing::small, 0);
-        vectorscope.setBounds (hintRow.removeFromLeft (hintRow.getHeight()));
-        hintRow.removeFromLeft (Spacing::small);
-        hintSpectrum.setBounds (hintRow);
+
+        // Whichever view this exercise's question is actually visible in
+        // gets the whole row - see Game::getHintView. A stereo exercise
+        // keeps the square vectorscope beside its spectrum, because
+        // "where is it" and "what is it made of" are both worth seeing
+        // there; the other two views stand alone.
+        switch (activeHintView())
+        {
+            case Game::HintView::stereo:
+                vectorscope.setBounds (hintRow.removeFromLeft (hintRow.getHeight()));
+                hintRow.removeFromLeft (Spacing::small);
+                hintSpectrum.setBounds (hintRow);
+                break;
+
+            case Game::HintView::envelope:
+                hintWaveform.setBounds (hintRow);
+                break;
+
+            case Game::HintView::spectrum:
+            default:
+                hintSpectrum.setBounds (hintRow);
+                break;
+        }
 
         area.removeFromTop (Spacing::large);
     }
@@ -1084,8 +1106,14 @@ void EarTrainerEditor::resized()
         hintSection = {};
     }
 
-    vectorscope.setVisible (hintRevealed && currentScreen == Screen::training);
-    hintSpectrum.setVisible (hintRevealed && currentScreen == Screen::training);
+    {
+        const auto showing = hintRevealed && currentScreen == Screen::training;
+        const auto view = activeHintView();
+
+        vectorscope.setVisible (showing && view == Game::HintView::stereo);
+        hintSpectrum.setVisible (showing && view != Game::HintView::envelope);
+        hintWaveform.setVisible (showing && view == Game::HintView::envelope);
+    }
 
     // --- answer section: feedback, the slider itself, score/new round ---
     // 20 heading + 24 feedback + 4 + 186 scale + 12 + 30 A/B + 8 + 34 row.
@@ -1627,6 +1655,7 @@ void EarTrainerEditor::clearHint()
     hintRevealed = false;
     vectorscope.setVisible (false);
     hintSpectrum.setVisible (false);
+    hintWaveform.setVisible (false);
     vectorscope.reset();
     refreshHintButton();
 
@@ -2078,6 +2107,7 @@ void EarTrainerEditor::requestHint()
 
     hintRevealed = true;
     vectorscope.reset();
+    hintWaveform.reset();
     hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
 
     refreshRunStatus();
@@ -2174,6 +2204,11 @@ void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster* source)
 
     refreshFromGameState();
     refreshFromProgressState();
+}
+
+Game::HintView EarTrainerEditor::activeHintView() const
+{
+    return processor.getGameManager().getActiveGame().getHintView();
 }
 
 void EarTrainerEditor::refreshFromGameState()

@@ -168,6 +168,23 @@ public:
     virtual juce::String getBeforeLabel() const { return "A"; }
     virtual juce::String getAfterLabel() const { return "B"; }
 
+    // Which picture actually shows what this exercise is asking about.
+    //
+    // Every game used to get the same pair - a vectorscope beside a
+    // spectrum - which is right for two of the nine and decoration for
+    // the rest. Neither one reveals compression: a spectrum shows where
+    // the energy is, not whether the loud part was held back, and a
+    // vectorscope shows the stereo field, which compression does not
+    // touch. A hint the player *pays points for* has to be able to show
+    // the thing.
+    //
+    //   spectrum - where the energy sits (frequency, range, distortion)
+    //   stereo   - the field (pan, width)
+    //   envelope - level against time (compression, gain, reverb, delay)
+    enum class HintView { spectrum, stereo, envelope };
+
+    virtual HintView getHintView() const { return HintView::spectrum; }
+
     // The two pieces of an answer the *editor* cannot derive on its own,
     // so it can compose the feedback sentence in the player's language
     // instead of showing getFeedbackText()'s English. Everything else it

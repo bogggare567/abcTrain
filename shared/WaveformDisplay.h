@@ -50,6 +50,19 @@ public:
     // transparent means "just use the palette's accent".
     void setAccentColour (juce::Colour newAccent) { accentOverride = newAccent; repaint(); }
 
+    // Wipe the scroll history. The trainer buys its hint per round, and a
+    // display still holding the previous round's shape would be showing
+    // the answer to a question already scored.
+    void reset() noexcept
+    {
+        inputHistory.fill (0.0f);
+        outputHistory.fill (0.0f);
+        highlightHistory.fill (0.0f);
+        columnInputPeak = columnOutputPeak = columnMaxHighlight = 0.0f;
+        lastInputPeak = lastOutputPeak = lastHighlight = 0.0f;
+        repaint();
+    }
+
     void paint (juce::Graphics&) override;
 
 private:

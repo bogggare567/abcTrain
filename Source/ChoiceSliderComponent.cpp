@@ -550,7 +550,15 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     }
 
     // ---- ruler ----
-    const auto labelRowHeight = 15.0f;
+    // Row height measured from the font rather than written down as 15.
+    // The font already scales with the accessibility text-size setting -
+    // the comment further down says as much - but the box it is drawn
+    // into did not, so at any scale above 1 the glyphs grew past their
+    // own row and the lower series was sliced in half by the panel edge.
+    // The same literal-versus-scaled mismatch the note below describes,
+    // one level up.
+    const auto markFont = AbcTrainLookAndFeel::microFont();
+    const auto labelRowHeight = std::ceil (markFont.getHeight() * 1.05f) + 5.0f;
     const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 3.0f;
     const auto upperRowY = lowerRowY - labelRowHeight + 1.0f;
 
@@ -579,7 +587,6 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         // the typeface choice reach these labels too - they were raw
         // literals, which is why they stayed put while every other string
         // in the window scaled.
-        const auto markFont = AbcTrainLookAndFeel::microFont();
         g.setFont (markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f)));
         g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.85f : 0.5f));
         g.drawText (mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),

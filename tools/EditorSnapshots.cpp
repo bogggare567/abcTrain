@@ -83,7 +83,7 @@ namespace
 
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
-                       answered, survivalRun, home };
+                       answered, survivalRun, home, homeWithRecords, hint };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -131,6 +131,9 @@ namespace
 
                 if (extra == Extra::home)
                     editor.openHomeForSnapshot();
+
+                if (extra == Extra::hint)
+                    editor.revealHintForSnapshot();
 
                 if (extra == Extra::answered)
                     editor.answerForSnapshot();
@@ -278,6 +281,12 @@ int main (int argc, char* argv[])
             // and once that went the only things left saying right from
             // wrong are the zone tint and the readout's colour.
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-ZonedAnswered", 2, Extra::answered);
+            // One shot per hint view, since the whole point is that the
+            // three are different pictures: 0 is the frequency exercise
+            // (spectrum), 3 is pan (stereo), 1 is compression (envelope).
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintSpectrum", 0, Extra::hint);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintStereo", 3, Extra::hint);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintEnvelope", 1, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);

@@ -5,6 +5,7 @@
 #include "ProgressManager.h"
 #include "../shared/Vectorscope.h"
 #include "../shared/SpectrumAnalyzer.h"
+#include "../shared/WaveformDisplay.h"
 #include <atomic>
 
 class EarTrainerProcessor : public juce::AudioProcessor
@@ -59,6 +60,11 @@ public:
     void setVectorscope (Vectorscope* scope) noexcept { vectorscope.store (scope); }
     void setSpectrumAnalyzer (SpectrumAnalyzerComponent* analyzer) noexcept { spectrum.store (analyzer); }
 
+    // Level against time - the third hint view. Compression is invisible
+    // on the other two: a spectrum shows where the energy is, not whether
+    // the loud part got held back. See Game::getHintView.
+    void setWaveformDisplay (WaveformDisplay* display) noexcept { waveform.store (display); }
+
 private:
     // Declaration order matters: gameManager must be constructed before
     // progressManager, since ProgressManager's constructor registers
@@ -79,6 +85,7 @@ private:
 
     std::atomic<Vectorscope*> vectorscope { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };
+    std::atomic<WaveformDisplay*> waveform { nullptr };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EarTrainerProcessor)
 };

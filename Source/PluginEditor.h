@@ -20,6 +20,7 @@
 #include "../shared/CompactSelector.h"
 #include "../shared/AppIcons.h"
 #include "../shared/Vectorscope.h"
+#include "../shared/WaveformDisplay.h"
 #include "../shared/SpectrumAnalyzer.h"
 #include "../shared/i18n/LocalisationManager.h"
 #include <cmath>
@@ -106,6 +107,22 @@ public:
         trainingSounds.setVisible (true);
         trainingSounds.refresh();
         trainingSounds.toFront (false);
+    }
+
+    // Snapshot seam: the hint costs points, so there is no way to
+    // photograph it from outside - and "the hint now matches the
+    // exercise" is a claim about three different pictures.
+    void revealHintForSnapshot()
+    {
+        hintRevealed = true;
+
+        // Through the same window-growth path the real one uses, not a
+        // bare resized(). The hint panel does not exist in the layout
+        // until it is bought and the window grows to make room for it -
+        // skipping that step laid the panel out inside the old height and
+        // pushed the mode pills straight onto the bottom tool bar, which
+        // is a bug in the snapshot seam rather than in the product.
+        applyWindowSize();
     }
 
     void openTrainingForSnapshot (int gameIndex)
@@ -929,7 +946,13 @@ private:
     static constexpr int modeRadioGroup = 8201;
     Vectorscope vectorscope;
     SpectrumAnalyzerComponent hintSpectrum;
+    WaveformDisplay hintWaveform;
     bool hintRevealed = false;
+
+    // Which of the three the active exercise wants. One place, because
+    // resized() and the visibility pass both need the same answer and two
+    // copies of that switch would eventually disagree.
+    Game::HintView activeHintView() const;
 
     // The hint panel does not exist until it is bought, and the window
     // grows to make room for it.

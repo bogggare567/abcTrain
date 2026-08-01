@@ -73,6 +73,9 @@ public:
     bool wasLastAnswerCorrect() const override { return lastAnswerCorrect; }
     juce::String getFeedbackText() const override;
 
+    // See Game::getHintView.
+    HintView getHintView() const override { return HintView::envelope; }
+
     int getScore() const override { return correctCount; }
     int getRoundsPlayed() const override { return totalCount; }
 
