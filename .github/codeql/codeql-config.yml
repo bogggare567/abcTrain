@@ -18,17 +18,25 @@ queries:
   # finding, when it eventually arrives, arrives on page four.
   - uses: security-extended
 
+# These apply to the **JavaScript** analysis only.
+#
+# GitHub's own documentation is explicit about the limit: path filters
+# work "when you run the CodeQL actions on an interpreted language ... or
+# when you analyze a compiled language *without building the code*". This
+# repository builds its C++, so nothing here reaches the C++ analysis.
+#
+# An earlier version of this file claimed the opposite - that the filter
+# trimmed the results rather than the extraction - and it was simply
+# wrong. The C++ scan reports ~45 findings, every one of them inside
+# build/_deps: JUCE itself and the libraries it vendors (harfbuzz, zlib,
+# libvorbis, jpeglib). Zero are in abcTrain's own code.
+#
+# The documented way to exclude a directory from a *built* analysis is to
+# stop building it, which is not an option when the framework is the
+# thing being built against. So those findings are triaged in the
+# Security tab instead - dismissed as third-party - rather than pretended
+# away here.
 paths-ignore:
-  # JUCE, fetched into the build tree by CMake FetchContent at configure
-  # time. Not ours, pinned to a tag, and larger than this whole repository
-  # put together.
-  #
-  # This filters the *results*, not the extraction: for a compiled
-  # language CodeQL sees whatever the compiler compiled, and JUCE really
-  # is compiled here. So the analysis still costs what it costs - what
-  # this buys is a Security tab about abcTrain's own code rather than
-  # about a pinned upstream framework.
-  - build/**
   # The Vite output: minified duplicates of website/src, which is scanned.
   - website/dist/**
   - website/node_modules/**
