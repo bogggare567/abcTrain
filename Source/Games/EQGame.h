@@ -22,7 +22,7 @@
 class EQGame : public Game
 {
 public:
-    static constexpr int numBands = 8;
+    static constexpr int numBands = 10;
     static const std::array<float, numBands> bandFrequenciesHz;
 
     juce::String getName() const override { return "Guess the Band"; }
@@ -68,12 +68,21 @@ public:
     // eye something to interpolate against between the round numbers.
     std::vector<GridMark> getGridMarks() const override;
 
-    // The axis extends half an octave past the outermost centres, so the
-    // 100 Hz and 12.8 kHz marks sit inside the scale rather than on its
-    // edges where half their label would clip.
-    static constexpr float axisLowHz = 70.71f;    // 100 / sqrt(2)
-    static constexpr float axisHighHz = 18101.9f; // 12800 * sqrt(2)
-    static constexpr float axisOctaves = 8.0f;
+    // The whole audible spectrum, 20 Hz to 20 kHz. It used to run 100 Hz
+    // to 12.8 kHz, which is the range this exercise's eight octave centres
+    // happened to span - so the ruler quietly told the player that music
+    // stops above 13 kHz and starts at 100 Hz. Both ends carry real
+    // information: sub weight below 100 and air above 13k are two of the
+    // things people most need to learn to hear.
+    //
+    // The grid marks are the ISO octave centres that fall inside it, so
+    // the outermost ones sit comfortably in from the edges and no label
+    // clips.
+    static constexpr float axisLowHz = 20.0f;
+    static constexpr float axisHighHz = 20000.0f;
+
+    // log2(20000 / 20).
+    static constexpr float axisOctaves = 9.9658f;
 
     int getNumChoices() const override { return numBands; }
     juce::String getChoiceLabel (int choiceIndex) const override;

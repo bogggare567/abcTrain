@@ -60,6 +60,7 @@ const familyColour = (family) =>
 
 // --- level-1 accept bands, from each game's setDifficulty ---------------
 const eq = read('Source/Games/EQGame.cpp');
+const eqHeader = read('Source/Games/EQGame.h');
 const db = read('Source/Games/DBGame.cpp');
 const pan = read('Source/Games/PanGame.cpp');
 
@@ -100,13 +101,32 @@ const facts = {
     pan: rampStart(pan, "PanGame's level-1 tolerance", 'tolerancePan'),
   },
 
-  // The eight octave centres the trainer marks its axis with.
+  // The ISO octave centres the trainer marks its axis with.
   bandTicks: grab(
     eq,
     "EQGame's grid frequencies",
-    /100\.0f, 200\.0f, 400\.0f, 800\.0f, 1600\.0f, 3200\.0f, 6400\.0f, 12800\.0f/,
-    () => [100, 200, 400, 800, 1600, 3200, 6400, 12800],
+    /31\.5f, 63\.0f, 125\.0f, 250\.0f, 500\.0f, 1000\.0f, 2000\.0f, 4000\.0f,\s*8000\.0f, 16000\.0f/,
+    () => [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000],
   ),
+
+  // The ends of the frequency axis, read out rather than written down
+  // twice - the demo had them as `100 / SQRT2` and `12800 * SQRT2`, which
+  // silently became a different exercise the moment the plugin's range
+  // changed.
+  bandAxis: {
+    lowHz: grab(
+      eqHeader,
+      "EQGame's axis low bound",
+      /axisLowHz = ([0-9.]+)f/,
+      (m) => Number(m[1]),
+    ),
+    highHz: grab(
+      eqHeader,
+      "EQGame's axis high bound",
+      /axisHighHz = ([0-9.]+)f/,
+      (m) => Number(m[1]),
+    ),
+  },
 };
 
 const json = `${JSON.stringify(facts, null, 2)}\n`;

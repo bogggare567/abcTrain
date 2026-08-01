@@ -160,8 +160,12 @@ export const EXERCISES = [
     instructions:
       'Listen, then drag along the scale to where you think the boost or cut is. ' +
       "You don't have to be exact - land inside the tolerance band and it counts.",
-    axisMin: 100 / Math.SQRT2,
-    axisMax: 12800 * Math.SQRT2,
+    // Read out of the plugin, not written down again - see
+    // tools/sync-from-plugin.mjs. These were `100 / SQRT2` and
+    // `12800 * SQRT2`, which quietly became a different exercise from the
+    // plugin's the moment its range changed.
+    axisMin: facts.bandAxis.lowHz,
+    axisMax: facts.bandAxis.highHz,
     log: true,
     tolerance: facts.tolerances.band,
     ticks: facts.bandTicks,

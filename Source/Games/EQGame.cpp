@@ -32,19 +32,24 @@ std::vector<Game::GridMark> EQGame::getGridMarks() const
     {
         const auto centre = bandFrequenciesHz[(size_t) i];
 
-        // Boundary below this centre - half an octave down.
+        // Boundary below this centre - half an octave down. Skipped when
+        // it would fall off the axis, which is what stops a label being
+        // drawn half outside the panel at either end.
         const auto boundary = centre * 0.70710678f;
-        marks.push_back ({ frequencyToNormalised (boundary),
-                           formatFrequency (boundary) + "Hz", false });
+        if (boundary > axisLowHz)
+            marks.push_back ({ frequencyToNormalised (boundary),
+                               formatFrequency (boundary) + "Hz", false });
 
         marks.push_back ({ frequencyToNormalised (centre),
                            formatFrequency (centre) + "Hz", true });
     }
 
-    // The boundary past the topmost centre closes the ruler off.
+    // The boundary past the topmost centre closes the ruler off, when
+    // there is room for it.
     const auto topBoundary = bandFrequenciesHz.back() * 1.41421356f;
-    marks.push_back ({ frequencyToNormalised (topBoundary),
-                       formatFrequency (topBoundary) + "Hz", false });
+    if (topBoundary < axisHighHz)
+        marks.push_back ({ frequencyToNormalised (topBoundary),
+                           formatFrequency (topBoundary) + "Hz", false });
 
     return marks;
 }
@@ -69,7 +74,10 @@ juce::String EQGame::formatNormalisedValue (float normalised) const
 }
 
 const std::array<float, EQGame::numBands> EQGame::bandFrequenciesHz {
-    100.0f, 200.0f, 400.0f, 800.0f, 1600.0f, 3200.0f, 6400.0f, 12800.0f
+    // ISO octave centres, the ones every analyser and graphic EQ is
+    // ruled in.
+    31.5f, 63.0f, 125.0f, 250.0f, 500.0f, 1000.0f, 2000.0f, 4000.0f,
+    8000.0f, 16000.0f
 };
 
 void EQGame::prepare (const juce::dsp::ProcessSpec& spec)
@@ -120,11 +128,11 @@ void EQGame::newRound()
     // Log-uniform across the whole range: uniform in *octaves*, so every
     // part of the spectrum comes up equally often. Drawing uniformly in
     // Hz instead would put nearly every target above 6 kHz.
-    // Drawn across the labelled 100 Hz - 12.8 kHz range rather than the
-    // full axis, so a target never lands in the half-octave margin at
-    // either end where there'd be no room to answer past it.
-    targetHz = bandFrequenciesHz.front()
-                   * std::pow (bandFrequenciesHz.back() / bandFrequenciesHz.front(), random.nextFloat());
+    // Across the whole axis now, not just between the outermost grid
+    // marks: the marks are a ruler, not the set of answers, and confining
+    // targets to 31.5 Hz - 16 kHz would leave both ends of the scale
+    // permanently empty.
+    targetHz = axisLowHz * std::pow (axisHighHz / axisLowHz, random.nextFloat());
 
     // Nearest grid mark, for the legacy discrete path only.
     correctBandIndex = 0;
