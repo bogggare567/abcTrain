@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "AmbientInstruments.h"
 #include <functional>
 
 // The DVD screensaver, with soundkorb.ru where the logo used to be.
@@ -53,6 +54,31 @@ private:
     juce::Rectangle<float> markBounds() const;
 
     juce::String text { "soundkorb.ru" };
+
+    // The same instruments the welcome screen drifts, on its own clock.
+    // Sharing the *drawing* rather than the phase: two screens showing the
+    // identical frame would read as one being a copy of the other.
+    //
+    // Not started at zero. At phase 0 the first scene's bell has zero gain
+    // - sin(0) - so the screensaver would open on a flat horizontal line
+    // and take a second to become anything. This lands mid-way through the
+    // fader bank instead, which has shape from the first frame.
+    double ambientPhase = 11.5;
+
+    // A click that lands on the mark opens the site instead of just
+    // dismissing. Everything else about the screensaver is deliberately
+    // purposeless; this is the one thing on it worth being able to reach,
+    // and a moving target you can catch is a better invitation than a
+    // link in a corner.
+    static constexpr const char* siteUrl = "https://soundkorb.ru";
+
+    // True while the pointer is on the mark. It freezes there and lights
+    // up, which is what makes "catch it" a thing you can actually do -
+    // any mouse move used to dismiss the screensaver outright, so the
+    // link was unclickable by construction.
+    bool pointerOnMark = false;
+
+    juce::Rectangle<float> markHitArea() const;
 
     juce::Point<float> position { 40.0f, 40.0f };
     juce::Point<float> velocity { 62.0f, 43.0f };   // px/sec, deliberately not a round ratio

@@ -44,6 +44,9 @@ void IdleScreensaver::noteActivity()
 
 void IdleScreensaver::dismiss()
 {
+    pointerOnMark = false;
+    setMouseCursor (juce::MouseCursor::NormalCursor);
+
     setVisible (false);
     untouchedFor = 0.0;
 
@@ -98,6 +101,19 @@ void IdleScreensaver::timerCallback()
         return;
     }
 
+    // The background's own clock, advanced only while visible - the
+    // scenes should start where they left off rather than be however far
+    // along the app has been open.
+    ambientPhase += step;
+
+    // Held still while the pointer is on it. The background keeps moving,
+    // so the screen never looks frozen - only the thing being aimed at.
+    if (pointerOnMark)
+    {
+        repaint();
+        return;
+    }
+
     const auto mark = markBounds();
     const auto maxX = juce::jmax (0.0f, (float) getWidth() - mark.getWidth());
     const auto maxY = juce::jmax (0.0f, (float) getHeight() - mark.getHeight());
@@ -124,8 +140,41 @@ void IdleScreensaver::timerCallback()
     repaint();
 }
 
-void IdleScreensaver::mouseMove (const juce::MouseEvent&)   { dismiss(); }
-void IdleScreensaver::mouseDown (const juce::MouseEvent&)   { dismiss(); }
+juce::Rectangle<float> IdleScreensaver::markHitArea() const
+{
+    // Grown past the glyphs. Asking somebody to hit a travelling word to
+    // the pixel would be a game nobody wins.
+    return markBounds().expanded (22.0f, 16.0f);
+}
+
+void IdleScreensaver::mouseMove (const juce::MouseEvent& e)
+{
+    // Moving the pointer onto the mark catches it rather than dismissing:
+    // it stops, brightens, and can be clicked. Everywhere else, a mouse
+    // move means somebody is back and the screensaver gets out of the way.
+    const auto onMark = markHitArea().contains (e.position);
+
+    if (onMark != pointerOnMark)
+    {
+        pointerOnMark = onMark;
+        setMouseCursor (onMark ? juce::MouseCursor::PointingHandCursor
+                               : juce::MouseCursor::NormalCursor);
+        repaint();
+    }
+
+    if (! onMark)
+        dismiss();
+}
+void IdleScreensaver::mouseDown (const juce::MouseEvent& e)
+{
+    // Caught it. The mark is small and moving, so the hit area is grown a
+    // little past the glyphs - asking somebody to click a travelling word
+    // to the pixel would make it a game nobody wins.
+    if (markHitArea().contains (e.position))
+        juce::URL (siteUrl).launchInDefaultBrowser();
+
+    dismiss();
+}
 
 bool IdleScreensaver::keyPressed (const juce::KeyPress&)
 {
@@ -142,10 +191,29 @@ void IdleScreensaver::paint (juce::Graphics& g)
     // tiles is just a dimmed app.
     g.fillAll (theme.windowBackground.darker (0.85f));
 
+    // The same drifting instruments the welcome screen has behind it. A
+    // black rectangle with one word on it was the whole screen; the
+    // figures give it something to be, and they are already written and
+    // already tuned to sit far enough back not to compete.
+    AmbientInstruments::paint (g, getLocalBounds().toFloat(), ambientPhase);
+
     // No plate, no glow, no border. Text on black, and nothing else - the
     // plate made it a badge sliding around, and a badge is a thing with a
     // purpose. This has none, which is the point.
-    AbcTrainLookAndFeel::drawTrackedText (g, text, markBounds(),
+    // Brighter and underlined once it is caught, because at that moment
+    // it stops being decoration and becomes a link - and nothing else on
+    // this screen does anything when clicked.
+    const auto mark = markBounds();
+    const auto colour = bounceColour (colourIndex)
+                            .withAlpha (pointerOnMark ? 1.0f : 0.72f);
+
+    AbcTrainLookAndFeel::drawTrackedText (g, text, mark,
                                            AbcTrainLookAndFeel::titleFont(),
-                                           bounceColour (colourIndex).withAlpha (0.72f), 2.6f);
+                                           colour, 2.6f);
+
+    if (pointerOnMark)
+    {
+        g.setColour (colour);
+        g.fillRect (mark.getX(), mark.getBottom() - 2.0f, mark.getWidth(), 1.5f);
+    }
 }
