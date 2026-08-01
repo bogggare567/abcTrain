@@ -140,7 +140,7 @@ namespace
     // back to its raw English, so adding one is never a crash.
     juce::String translateAbLabel (const juce::String& englishLabel, const LocalisationManager& loc)
     {
-        static const std::array<std::pair<const char*, const char*>, 14> table {{
+        static const std::array<std::pair<const char*, const char*>, 17> table {{
             { "A",            "ab.a" },
             { "B",            "ab.b" },
             { "EQ Off",       "ab.eqOff" },
@@ -149,6 +149,9 @@ namespace
             { "Comp On",      "ab.compOn" },
             { "Dry",          "ab.dry" },
             { "With Echo",    "ab.withEcho" },
+            { "With Reverb",  "ab.withReverb" },
+            { "Mono",         "ab.mono" },
+            { "In Stereo",    "ab.inStereo" },
             { "Clean",        "ab.clean" },
             { "Driven",       "ab.driven" },
             { "Centred",      "ab.centred" },
@@ -165,6 +168,77 @@ namespace
         if (englishLabel == "Filtered") return loc.getText ("ab.filtered");
 
         return englishLabel;
+    }
+
+    // The names a categorical game offers as answers. Kept editor-side
+    // like translateGameName's table, so all nine Game classes stay
+    // untranslated English internally and persistence/tests never see a
+    // localised string. An unknown label falls through unchanged - a new
+    // game's choices simply arrive in English until someone adds keys.
+    juce::String translateChoiceLabel (const juce::String& englishLabel, const LocalisationManager& loc)
+    {
+        static const std::array<std::pair<const char*, const char*>, 23> table {{
+            { "Room",            "choice.room" },
+            { "Chamber",         "choice.chamber" },
+            { "Hall",            "choice.hall" },
+            { "Plate",           "choice.plate" },
+            { "Spring",          "choice.spring" },
+            { "Weak",            "choice.weak" },
+            { "Medium",          "choice.medium" },
+            { "Strong",          "choice.strong" },
+            { "Soft Clipping",   "choice.softClip" },
+            { "Hard Clipping",   "choice.hardClip" },
+            { "Tape Saturation", "choice.tapeSat" },
+            { "Overdrive",       "choice.overdrive" },
+            { "Narrow",          "choice.narrow" },
+            { "Normal",          "choice.normal" },
+            { "Wide",            "choice.wide" },
+            { "Extra Wide",      "choice.extraWide" },
+            { "Sub-bass",        "choice.subBass" },
+            { "Bass",            "choice.bass" },
+            { "Low-mids",        "choice.lowMids" },
+            { "Mids",            "choice.mids" },
+            { "High-mids",       "choice.highMids" },
+            { "Presence",        "choice.presence" },
+            { "Air",             "choice.air" }
+        }};
+
+        for (const auto& entry : table)
+            if (englishLabel == entry.first)
+                return loc.getText (entry.second);
+
+        return englishLabel;
+    }
+
+    // The verdict line, composed here from localised parts instead of
+    // shown as the game's own English getFeedbackText(). The game
+    // supplies only what the editor cannot derive - a boost/cut
+    // direction and a numbers-only detail (Game::getAnswerDirection/
+    // getAnswerDetail); the winning name or value comes off the same
+    // interface everything else already uses.
+    juce::String localisedFeedback (Game& game, const LocalisationManager& loc)
+    {
+        const auto prefix = loc.getText (game.wasLastAnswerCorrect() ? "ui.fbCorrect" : "ui.fbWrong");
+
+        auto answer = game.usesContinuousScale()
+                        ? game.formatNormalisedValue (game.getCorrectNormalised())
+                        : translateChoiceLabel (game.getChoiceLabel (game.getCorrectChoiceIndex()), loc);
+
+        const auto detail = game.getAnswerDetail();
+        const auto direction = game.getAnswerDirection();
+
+        // With a direction, the number is the subject and the name is the
+        // aside - "Boosted at 412 Hz (Bass)". Without one, the name leads
+        // - "It was Strong (5:1 · -20 dB)".
+        if (detail.isNotEmpty())
+            answer = direction != 0 ? detail + " (" + answer + ")"
+                                    : answer + " (" + detail + ")";
+
+        const auto sentenceKey = direction > 0 ? "ui.fbItWasBoosted"
+                               : direction < 0 ? "ui.fbItWasCut"
+                                               : "ui.fbItWas";
+
+        return prefix + " " + loc.getText (sentenceKey, { { "answer", answer } });
     }
 
     juce::String translateGameName (const juce::String& englishName, const LocalisationManager& loc)
@@ -1883,7 +1957,7 @@ bool EarTrainerEditor::choiceSliderMatchesGame (Game& game) const
         return false;
 
     for (int i = 0; i < shown.size(); ++i)
-        if (shown[i] != game.getChoiceLabel (i))
+        if (shown[i] != translateChoiceLabel (game.getChoiceLabel (i), localisation))
             return false;
 
     return true;
@@ -1895,7 +1969,7 @@ void EarTrainerEditor::rebuildChoiceSlider()
 
     juce::StringArray labels;
     for (int i = 0; i < game.getNumChoices(); ++i)
-        labels.add (game.getChoiceLabel (i));
+        labels.add (translateChoiceLabel (game.getChoiceLabel (i), localisation));
 
     // setChoices() itself resets to an unanswered/no-preview state - unlike
     // the old per-choice TextButtons (see decisions/014's fadeIn-collapse
@@ -2206,7 +2280,7 @@ void EarTrainerEditor::refreshFromGameState()
         else
             choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
-        feedbackLabel.setText (game.getFeedbackText(), juce::dontSendNotification);
+        feedbackLabel.setText (localisedFeedback (game, localisation), juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().negative);
     }
     else

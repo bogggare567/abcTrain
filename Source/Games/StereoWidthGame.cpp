@@ -51,6 +51,7 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
     // exercise playing mono. Caught by the test that checks left and right
     // actually differ.
     const auto width = juce::jmax (0.05f, widths[(size_t) pairIndices[(size_t) correctWidthIndex]] + roundWidthJitter);
+    const auto processed = playProcessed.load();
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
@@ -59,6 +60,16 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
 
         const auto mid = (left + right) * 0.5f;
         auto side = (left - right) * 0.5f;
+
+        // A/B's "Mono": kill the side entirely and put the same mid in
+        // both channels. Computed inside the loop from the same sources,
+        // so flipping states never restarts or reseeds the noise.
+        if (! processed)
+        {
+            for (int ch = 0; ch < numChannels; ++ch)
+                buffer.setSample (ch, sample, mid);
+            continue;
+        }
 
         // Split the side signal and widen only the part above the
         // crossover, leaving the low half centred. A one-pole is plenty:

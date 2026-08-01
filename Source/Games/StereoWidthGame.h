@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "../../shared/PinkNoiseGenerator.h"
 #include <array>
+#include <atomic>
 #include <vector>
 #include "../../shared/PresetFamily.h"
 
@@ -36,6 +37,17 @@ public:
     void prepare (const juce::dsp::ProcessSpec&) override;
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
+
+    // A/B - see Game::supportsBeforeAfter. "Before" collapses the side
+    // signal to nothing, so the comparison is against genuine mono: width
+    // is the one quantity whose natural reference point is its absence,
+    // and hearing the same noise snap between mono and the round's width
+    // is what makes "Narrow" mean something.
+    bool supportsBeforeAfter() const override { return true; }
+    void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
+    bool isPlayingProcessed() const override { return playProcessed.load(); }
+    juce::String getBeforeLabel() const override { return "Mono"; }
+    juce::String getAfterLabel() const override { return "In Stereo"; }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -82,6 +94,9 @@ private:
     PinkNoiseGenerator noiseL, noiseR;
 
     juce::Random random;
+
+    // Read on the audio thread every block, written from the UI.
+    std::atomic<bool> playProcessed { true };
 
     float roundWidthJitter = 0.0f;
 

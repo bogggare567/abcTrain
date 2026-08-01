@@ -3,6 +3,7 @@
 #include "Game.h"
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
+#include <atomic>
 #include <vector>
 #include "../../shared/PresetFamily.h"
 
@@ -37,6 +38,18 @@ public:
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
+
+    // A/B - the same hooks the other seven games wire up (see
+    // Game::supportsBeforeAfter). This game and StereoWidthGame were the
+    // two skipped when A/B first landed, which read on the training
+    // screen as "every exercise can compare except these" - and naming a
+    // reverb without ever hearing the dry hit is the harder version of
+    // the exercise for no reason.
+    bool supportsBeforeAfter() const override { return true; }
+    void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
+    bool isPlayingProcessed() const override { return playProcessed.load(); }
+    juce::String getBeforeLabel() const override { return "Dry"; }
+    juce::String getAfterLabel() const override { return "With Reverb"; }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
@@ -143,6 +156,9 @@ private:
     int burstPeriodSamples = 1;
 
     juce::Random random;
+
+    // Read on the audio thread every block, written from the UI.
+    std::atomic<bool> playProcessed { true };
 
 
     int correctTypeIndex = 0;

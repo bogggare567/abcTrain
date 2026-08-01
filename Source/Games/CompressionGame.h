@@ -49,6 +49,17 @@ public:
 
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctLevelIndex; }
+
+    // Numbers and units only, so it survives every language untouched -
+    // see Game::getAnswerDetail. The teaching value of the old English
+    // feedback was exactly these two figures; the words around them are
+    // now the editor's to localise.
+    juce::String getAnswerDetail() const override
+    {
+        const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
+        return juce::String (preset.ratio, 0) + ":1 · "
+                 + juce::String (preset.thresholdDb, 0) + " dB";
+    }
     int getChosenChoiceIndex() const override { return chosenLevelIndex; }
     bool wasLastAnswerCorrect() const override { return lastAnswerCorrect; }
     juce::String getFeedbackText() const override;

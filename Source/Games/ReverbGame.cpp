@@ -47,17 +47,25 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
         ++samplesSinceBurstStart;
     }
 
-    juce::dsp::AudioBlock<float> block (buffer);
-    juce::dsp::ProcessContextReplacing<float> context (block);
+    // A/B: "Dry" is the same burst with the space taken away, not a
+    // different signal. The dry path skips the effect entirely rather
+    // than feeding it silently - the moment you flip back you want the
+    // reverb to start from the hit you are hearing, not to dump a tail
+    // it accumulated while supposedly off.
+    if (playProcessed.load())
+    {
+        juce::dsp::AudioBlock<float> block (buffer);
+        juce::dsp::ProcessContextReplacing<float> context (block);
 
-    if (pairTypes[(size_t) correctTypeIndex] == springTypeIndex)
-    {
-        for (auto& allpass : springAllpass)
-            allpass.process (context);
-    }
-    else
-    {
-        reverb.process (context);
+        if (pairTypes[(size_t) correctTypeIndex] == springTypeIndex)
+        {
+            for (auto& allpass : springAllpass)
+                allpass.process (context);
+        }
+        else
+        {
+            reverb.process (context);
+        }
     }
 
     buffer.applyGain (0.7f);

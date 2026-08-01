@@ -40,6 +40,13 @@
 
 namespace
 {
+    // Second CLI argument; "en" when absent. See the language note below.
+    juce::String& snapshotLanguage()
+    {
+        static juce::String language { "en" };
+        return language;
+    }
+
     // An editor sizes itself in its constructor (setSize) but only lays
     // its children out once resized() runs, which normally happens when a
     // peer is attached. There is no peer here, so call it directly.
@@ -94,10 +101,12 @@ namespace
                 juce::PropertiesFile properties (LocalisationManager::makeDefaultOptions());
                 properties.setValue ("themeMode", mode == AbcTrainTheme::Mode::light ? "light" : "dark");
 
-                // English, so the shots are readable to whoever finds the
-                // repo. The player's own language is put back with
-                // everything else in main().
-                properties.setValue ("language", "en");
+                // English by default, so the committed shots are readable
+                // to whoever finds the repo - but overridable, because
+                // "the zones are translated now" is a claim only a
+                // non-English render can check. The player's own language
+                // is put back with everything else in main().
+                properties.setValue ("language", snapshotLanguage());
                 properties.saveIfNeeded();
             }
 
@@ -202,6 +211,9 @@ int main (int argc, char* argv[])
     const auto outputDir = argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile (argv[1])
                                     : juce::File::getCurrentWorkingDirectory().getChildFile ("editor-snapshots");
     outputDir.createDirectory();
+
+    if (argc > 2)
+        snapshotLanguage() = argv[2];
 
     std::cout << "Rendering editors to " << outputDir.getFullPathName() << "\n";
 

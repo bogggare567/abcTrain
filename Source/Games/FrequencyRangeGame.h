@@ -108,6 +108,21 @@ public:
 private:
     int chosenRangeIndex = -1;
     bool isBoost = true;
+
+public:
+    // See Game::getAnswerDirection/getAnswerDetail. The detail is the
+    // exact frequency - numbers and units only, so it needs no
+    // translation; the range's *name* is the winning choice label, which
+    // the editor translates like any other.
+    int getAnswerDirection() const override { return isBoost ? 1 : -1; }
+    juce::String getAnswerDetail() const override
+    {
+        return correctFreqHz >= 1000.0f
+                 ? juce::String (correctFreqHz / 1000.0f, 1) + " kHz"
+                 : juce::String (juce::roundToInt (correctFreqHz)) + " Hz";
+    }
+
+private:
     bool answered = false;
     bool lastAnswerCorrect = false;
 

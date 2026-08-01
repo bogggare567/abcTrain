@@ -107,6 +107,13 @@ private:
     int correctBandIndex = 0;
     int chosenBandIndex = -1;
     bool isBoost = true;
+
+public:
+    // +1/-1 so the editor can say "boosted at" / "cut at" in the player's
+    // language - see Game::getAnswerDirection.
+    int getAnswerDirection() const override { return isBoost ? 1 : -1; }
+
+private:
     bool answered = false;
     bool lastAnswerCorrect = false;
 

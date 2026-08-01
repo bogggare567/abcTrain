@@ -168,6 +168,21 @@ public:
     virtual juce::String getBeforeLabel() const { return "A"; }
     virtual juce::String getAfterLabel() const { return "B"; }
 
+    // The two pieces of an answer the *editor* cannot derive on its own,
+    // so it can compose the feedback sentence in the player's language
+    // instead of showing getFeedbackText()'s English. Everything else it
+    // needs is already on the interface: the winning label (categorical)
+    // or the formatted value (continuous).
+    //
+    // Direction: +1 when this round's change was a boost, -1 a cut, 0 for
+    // games where the question has no direction. Detail: a strictly
+    // language-neutral suffix - numbers and units only, "412 Hz",
+    // "-20 dB · 5:1" - or empty. Inert defaults, same pattern as every
+    // optional hook on this interface; getFeedbackText() stays as the
+    // English fallback for anything not wired up.
+    virtual int getAnswerDirection() const { return 0; }
+    virtual juce::String getAnswerDetail() const { return {}; }
+
     // A labelled tick on the scale. `emphasised` marks the primary series
     // (e.g. the octave centres) so the UI can draw the secondary series
     // (the boundaries between them) more quietly and on its own label row.
