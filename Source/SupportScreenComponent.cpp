@@ -237,8 +237,11 @@ void SupportScreenComponent::paint (juce::Graphics& g)
     // This screen used to have exactly one moving thing - three hopping
     // letters - which put the whole weight of "this is alive" on a gag.
     // The motion lives here now and the wordmark is still.
-    AmbientInstruments::paint (g, getLocalBounds().toFloat().reduced ((float) AbcTrainTheme::Spacing::large),
-                                ambientPhase);
+    // Full bounds, no inset: the figures are supposed to run to the
+    // edges and past them, the way a backdrop does. The inset version
+    // read as a small animated panel - "a microscope", per the report -
+    // which is a widget, not weather.
+    AmbientInstruments::paint (g, getLocalBounds().toFloat(), ambientPhase);
 
     auto area = getLocalBounds().reduced (AbcTrainTheme::Spacing::large * 2);
 

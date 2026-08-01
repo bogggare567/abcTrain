@@ -36,21 +36,28 @@ public:
 
         const auto& theme = AbcTrainTheme::current();
 
-        // Four scenes, ~7s each, with a 1.4s cross-fade between them so
-        // nothing ever pops.
-        constexpr double hold = 7.0;
-        constexpr double fade = 1.4;
+        // Four scenes, held then dissolved into each other. One overlap
+        // per boundary and nothing else: the first version also ramped a
+        // scene up from zero at its *own* start, which meant the incoming
+        // figure arrived at full strength through the overlap and then
+        // snapped to black to fade in a second time - a visible dip at
+        // every boundary, and exactly the "ugly transition" it read as.
+        //
+        // The ramp is smoothstepped. A linear alpha ramp spends half its
+        // time looking finished; the eased one moves slowest exactly at
+        // the ends, which is what a dissolve is.
+        constexpr double hold = 8.0;
+        constexpr double fade = 2.6;
 
         const auto cycle = std::fmod (phase, hold * 4.0);
         const auto scene = (int) (cycle / hold);
         const auto within = cycle - scene * hold;
 
-        auto strength = 1.0f;
-        if (within < fade)              strength = (float) (within / fade);
-        else if (within > hold - fade)  strength = (float) ((hold - within) / fade);
+        const auto linear = within > hold - fade ? (float) ((hold - within) / fade) : 1.0f;
+        const auto strength = linear * linear * (3.0f - 2.0f * linear);
+        const auto incoming = 1.0f - strength;
 
         const auto next = (scene + 1) % 4;
-        const auto incoming = within > hold - fade ? 1.0f - strength : 0.0f;
 
         juce::Graphics::ScopedSaveState saved (g);
         g.reduceClipRegion (bounds.toNearestInt());
@@ -96,13 +103,15 @@ private:
     }
 
     // A bell moving slowly across the spectrum, the way somebody sweeps
-    // for a resonance.
+    // for a resonance. Sized to the window, not to a safe little middle:
+    // this is the backdrop, and a backdrop that stops short of the edges
+    // reads as a widget.
     static void drawEqCurve (juce::Graphics& g, juce::Rectangle<float> b, double phase,
                              juce::Colour colour, juce::Colour faint)
     {
         const auto centre = 0.35f + 0.30f * (float) std::sin (phase * 0.31);
         const auto width = 0.12f + 0.05f * (float) std::sin (phase * 0.19);
-        const auto gain = 0.28f * (float) std::sin (phase * 0.23);
+        const auto gain = 0.40f * (float) std::sin (phase * 0.23);
 
         juce::Path path;
         constexpr int points = 160;
@@ -133,6 +142,16 @@ private:
     {
         constexpr int count = 12;
         const auto slot = b.getWidth() / count;
+        const auto top = b.getY() + b.getHeight() * 0.06f;
+        const auto bottom = b.getBottom() - b.getHeight() * 0.06f;
+
+        // Wide enough to read as a fader rather than as a dash. The first
+        // version drew a 10px cap on a barely-visible hairline, which at
+        // full-window size scattered a dozen little rectangles across the
+        // screen with nothing joining them - debris, not a console.
+        const auto capWidth = slot * 0.52f;
+        const auto capHeight = juce::jlimit (8.0f, 16.0f, b.getHeight() * 0.018f);
+        const auto trackWidth = juce::jmax (3.0f, slot * 0.10f);
 
         for (int i = 0; i < count; ++i)
         {
@@ -140,18 +159,26 @@ private:
             // moves as one block - which is what would make it read as a
             // graphic rather than as faders.
             const auto speed = 0.16 + 0.05 * (i % 5);
-            const auto value = 0.5 + 0.34 * std::sin (phase * speed + i * 1.7);
+            const auto value = 0.5 + 0.38 * std::sin (phase * speed + i * 1.7);
 
             const auto x = b.getX() + slot * (i + 0.5f);
-            const auto top = b.getY() + b.getHeight() * 0.18f;
-            const auto bottom = b.getBottom() - b.getHeight() * 0.18f;
             const auto y = (float) (bottom - (bottom - top) * value);
 
+            // Track, then the travelled part of it, then the cap. The
+            // filled portion is what ties a cap to its slot: without it
+            // the eye has no reason to connect the two, which is why the
+            // bank read as floating marks.
             g.setColour (faint);
-            g.drawLine (x, top, x, bottom, 1.0f);
+            g.fillRoundedRectangle (x - trackWidth * 0.5f, top, trackWidth, bottom - top,
+                                     trackWidth * 0.5f);
+
+            g.setColour (colour.withMultipliedAlpha (0.55f));
+            g.fillRoundedRectangle (x - trackWidth * 0.5f, y, trackWidth, bottom - y,
+                                     trackWidth * 0.5f);
 
             g.setColour (colour);
-            g.fillRoundedRectangle (x - slot * 0.22f, y - 5.0f, slot * 0.44f, 10.0f, 3.0f);
+            g.fillRoundedRectangle (x - capWidth * 0.5f, y - capHeight * 0.5f,
+                                     capWidth, capHeight, capHeight * 0.35f);
         }
     }
 
@@ -160,7 +187,7 @@ private:
     static void drawScope (juce::Graphics& g, juce::Rectangle<float> b, double phase,
                            juce::Colour colour)
     {
-        const auto radius = juce::jmin (b.getWidth(), b.getHeight()) * 0.28f;
+        const auto radius = juce::jmin (b.getWidth(), b.getHeight()) * 0.42f;
         const auto centre = b.getCentre();
         const auto width = 0.35f + 0.5f * (float) (0.5 + 0.5 * std::sin (phase * 0.21));
 
@@ -186,30 +213,57 @@ private:
         g.strokePath (path, juce::PathStrokeType (1.6f));
     }
 
-    // Bars falling at different rates, as a spectrum does.
+    // A spectrum as a **curve**, not a row of bars.
+    //
+    // Bars were the first version and they read as a cheap equaliser
+    // graphic - a wall of rectangles is the tell of a fake spectrum, and
+    // it is not what a real analyser looks like either once any smoothing
+    // is on. This is one flowing shape, filled under the line, with the
+    // envelope sampled at far more points than it has peaks so the curve
+    // itself stays smooth however wide the window gets.
     static void drawSpectrum (juce::Graphics& g, juce::Rectangle<float> b, double phase,
                               juce::Colour colour, juce::Colour faint)
     {
-        constexpr int bars = 34;
-        const auto slot = b.getWidth() / bars;
-        const auto floorY = b.getBottom() - b.getHeight() * 0.2f;
-        const auto span = b.getHeight() * 0.5f;
+        const auto floorY = b.getBottom() - b.getHeight() * 0.06f;
+        const auto span = b.getHeight() * 0.72f;
 
-        for (int i = 0; i < bars; ++i)
+        constexpr int points = 220;
+
+        juce::Path curve;
+        curve.startNewSubPath (b.getX(), floorY);
+
+        for (int i = 0; i < points; ++i)
         {
-            const auto t = (float) i / bars;
+            const auto t = (float) i / (points - 1);
 
             // Tilted down towards the top end, which is what pink-ish
-            // material actually looks like - a flat wall of bars is the
-            // tell of a fake spectrum.
+            // material actually looks like - a level shelf across the
+            // whole width is the other tell of a fake spectrum.
             const auto tilt = std::pow (1.0f - t, 0.7f);
-            const auto wobble = 0.5 + 0.5 * std::sin (phase * (0.7 + t * 1.6) + i * 0.9);
-            const auto height = span * tilt * (float) (0.25 + 0.75 * wobble);
 
-            const auto x = b.getX() + slot * i;
+            // Three slow ripples of different rate and wavelength summed
+            // into one envelope. A single sine would read as a wave; three
+            // incommensurate ones never repeat a shape long enough to look
+            // periodic, which is what makes it read as material.
+            const auto ripple = 0.45 * std::sin (phase * 0.55 + t * 11.0)
+                              + 0.32 * std::sin (phase * 0.37 - t * 19.0 + 1.7)
+                              + 0.23 * std::sin (phase * 0.81 + t * 6.0 + 3.1);
 
-            g.setColour (i % 2 == 0 ? colour : faint);
-            g.fillRect (x + slot * 0.15f, floorY - height, slot * 0.7f, height);
+            const auto height = span * tilt * (float) (0.30 + 0.42 * (0.5 + 0.5 * ripple));
+
+            curve.lineTo (b.getX() + b.getWidth() * t, floorY - height);
         }
+
+        curve.lineTo (b.getRight(), floorY);
+        curve.closeSubPath();
+
+        // Filled body plus a brighter edge: the fill is what makes it a
+        // spectrum rather than a line drawing, the edge is what keeps it
+        // legible where the fill is thin.
+        g.setColour (faint);
+        g.fillPath (curve);
+
+        g.setColour (colour);
+        g.strokePath (curve, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved));
     }
 };
