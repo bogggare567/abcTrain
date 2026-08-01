@@ -261,6 +261,14 @@
   white-space: nowrap;
 }
 
+/* Two rows once there are enough marks to collide - see the note beside
+   data-row in Trainer.jsx. The lower row keeps the brighter ink, so the
+   pair still reads as one ruler rather than two. */
+.tr-scale__label[data-row="1"] {
+  bottom: 22px;
+  opacity: 0.65;
+}
+
 /* The zoned answer, for the five categorical exercises: regions you pick
    between rather than a value to land on. */
 .tr-zones {
@@ -377,3 +385,20 @@
 
 .tr-toolbar__link { color: var(--accent); text-decoration: none; }
 .tr-toolbar__link:hover { text-decoration: underline; }
+
+/* The hint panel: one display, the size of the answer scale, so buying it
+   grows the page the way the plugin grows its window rather than squeezing
+   something else. */
+.tr-hint {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-well);
+  overflow: hidden;
+  background: var(--well);
+  height: 150px;
+}
+
+.tr-hint__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import HintCanvas from './HintCanvas.jsx';
 import {
   EXERCISES, FAMILY_LABEL, toNorm, fromNorm, drawTarget, bandWidth, drawPair,
 } from './exercises.js';
@@ -101,11 +102,37 @@ export default function Trainer() {
   const [playing, setPlaying] = useState(false);
   const [session, setSession] = useState({ correct: 0, played: 0 });
 
+  // The hint is bought per round and forgotten at the next one, exactly as
+  // in the plugin - a display still showing the previous round's picture
+  // would be answering a question already scored.
+  const [hintShown, setHintShown] = useState(false);
+  const [analysers, setAnalysers] = useState(null);
+
   const ctxRef = useRef(null);
   const nodesRef = useRef(null);
+
+  // Auto-advance needs newRound, which is declared further down; a ref
+  // keeps the effect above from having to be reordered around it.
+  const newRoundRef = useRef(null);
   const scaleRef = useRef(null);
 
   const revealed = guess !== null;
+
+  // Rounds advance on their own, as they do in the plugin: about a second
+  // after a correct answer and about two after a wrong one, so there is
+  // time to hear what the right answer sounded like before the next
+  // question starts. The same numbers as SessionManager's.
+  //
+  // The timer is cleared on every change of round or exercise, or leaving
+  // an exercise mid-reveal would drag the next round in behind you.
+  useEffect(() => {
+    if (guess === null) return undefined;
+
+    const delay = guess.correct ? 900 : 1900;
+    const id = setTimeout(() => newRoundRef.current?.(), delay);
+
+    return () => clearTimeout(id);
+  }, [guess]);
 
   const stop = useCallback(() => {
     const nodes = nodesRef.current;
@@ -153,6 +180,37 @@ export default function Trainer() {
       source.connect(gain);
     }
 
+    // Analysers tapped off the same gain node the speakers get, so the
+    // hint shows what is actually being heard rather than a re-render of
+    // what was meant to be heard.
+    const mono = ctx.createAnalyser();
+    mono.fftSize = 2048;
+    mono.smoothingTimeConstant = 0.75;
+    gain.connect(mono);
+
+    // Stereo needs the two channels apart, and it needs there to *be*
+    // two. A mono source's gain node still has one output channel, so the
+    // splitter fed channel 1 nothing and the scope drew a 45-degree line -
+    // which reads as hard-panned when the signal is dead centre. This tap
+    // is explicitly two channels, so mono up-mixes into both and centred
+    // draws the vertical line it should.
+    const stereoTap = ctx.createGain();
+    stereoTap.channelCount = 2;
+    stereoTap.channelCountMode = 'explicit';
+    stereoTap.channelInterpretation = 'speakers';
+    gain.connect(stereoTap);
+
+    const splitter = ctx.createChannelSplitter(2);
+    const leftAnalyser = ctx.createAnalyser();
+    const rightAnalyser = ctx.createAnalyser();
+    leftAnalyser.fftSize = 1024;
+    rightAnalyser.fftSize = 1024;
+    stereoTap.connect(splitter);
+    splitter.connect(leftAnalyser, 0);
+    splitter.connect(rightAnalyser, 1);
+
+    setAnalysers({ mono, split: [leftAnalyser, rightAnalyser] });
+
     gain.connect(ctx.destination);
     source.start();
 
@@ -178,6 +236,7 @@ export default function Trainer() {
 
     setPair(drawn);
     setTarget(value);
+    setHintShown(false);
     setGuess(null);
     setHover(null);
     // Each round starts *unprocessed*: you hear the clean reference first,
@@ -186,6 +245,12 @@ export default function Trainer() {
     setProcessed(false);
     play(ex, value, false);
   }, [exercise, play]);
+
+  // The level is read here rather than reusing the one computed further
+  // down for rendering: that one is declared below this point, and a const
+  // referenced before its declaration is a ReferenceError, not a warning.
+  newRoundRef.current = () =>
+    newRound(exercise, levelForPoints(progress[exercise.key]?.points ?? 0));
 
   const openExercise = useCallback((i) => {
     stop();
@@ -344,6 +409,21 @@ export default function Trainer() {
 
       <p className="tr-instructions">{exercise.instructions}</p>
 
+      {hintShown && (
+        <>
+          <div className="tr-section">
+            <span className="tr-section__label">What the sound looks like</span>
+          </div>
+          <div className="tr-hint">
+            <HintCanvas
+              view={exercise.hintView}
+              analyser={analysers?.mono}
+              splitAnalysers={analysers?.split}
+            />
+          </div>
+        </>
+      )}
+
       <div className="tr-section">
         <span className="tr-section__label">Your answer</span>
       </div>
@@ -406,10 +486,16 @@ export default function Trainer() {
               />
             )}
 
-            {exercise.ticks.map((t) => (
+            {exercise.ticks.map((t, i) => (
               <span
                 key={`l${t}`}
                 className="tr-scale__label"
+                // Alternating rows, the same answer the plugin's ruler
+                // reached: ten octave marks across this width collide into
+                // one another, and a label you cannot read is worse than a
+                // label that is not there. Staggered, each series is
+                // legible and neither ever overlaps the other.
+                data-row={exercise.ticks.length > 6 ? i % 2 : 0}
                 style={{ left: `clamp(28px, ${toNorm(exercise, t) * 100}%, calc(100% - 28px))` }}
               >
                 {exercise.format(t)}
@@ -467,6 +553,22 @@ export default function Trainer() {
             {exercise.after}
           </button>
         </div>
+
+        {!hintShown && !revealed && (
+          <button
+            type="button"
+            className="tr-btn"
+            onClick={() => {
+              setHintShown(true);
+              // Nothing to analyse if nothing is playing, so buying the
+              // hint starts the sound too - in the plugin the signal is
+              // already running by the time you can press it.
+              if (!playing) play(exercise, target, processed);
+            }}
+          >
+            Show the sound
+          </button>
+        )}
 
         {revealed ? (
           <button type="button" className="tr-btn tr-btn--primary" onClick={() => newRound(exercise, level)}>

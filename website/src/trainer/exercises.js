@@ -155,6 +155,7 @@ export function drawPair(positions, level, distance) {
 export const EXERCISES = [
   continuous({
     key: 'band',
+    hintView: 'spectrum',
     name: 'Guess the Band',
     family: 'freq',
     instructions:
@@ -189,6 +190,7 @@ export const EXERCISES = [
 
   zoned({
     key: 'compression',
+    hintView: 'envelope',
     name: 'Guess the Compression',
     family: 'dyn',
     instructions:
@@ -227,6 +229,7 @@ export const EXERCISES = [
 
   zoned({
     key: 'reverb',
+    hintView: 'envelope',
     name: 'Guess the Reverb',
     family: 'space',
     instructions:
@@ -251,7 +254,7 @@ export const EXERCISES = [
       return other === PLATE ? 0.3 : 0.85;
     },
     before: 'Dry',
-    after: 'With Reverb',
+    after: 'Wet',
     source: (ctx) => ({ buffer: burstBuffer(ctx, 2.2, 3), loop: true }),
     build(ctx, index) {
       const settings = [
@@ -280,6 +283,7 @@ export const EXERCISES = [
 
   continuous({
     key: 'pan',
+    hintView: 'stereo',
     name: 'Guess the Pan Position',
     family: 'space',
     instructions:
@@ -308,6 +312,7 @@ export const EXERCISES = [
 
   continuous({
     key: 'delay',
+    hintView: 'envelope',
     name: 'Guess the Delay Time',
     family: 'space',
     instructions:
@@ -321,7 +326,7 @@ export const EXERCISES = [
     ticks: [20, 50, 100, 200, 400, 640],
     format: ms,
     before: 'Dry',
-    after: 'With Echo',
+    after: 'Wet',
     error: (g, t) => Math.abs(Math.log(g / t)),
     miss: (g, t) => `${Math.round(Math.abs(g - t))} ms too ${g > t ? 'long' : 'short'}`,
     source: (ctx) => ({ buffer: burstBuffer(ctx, 1.4, 4), loop: true }),
@@ -341,6 +346,7 @@ export const EXERCISES = [
 
   zoned({
     key: 'distortion',
+    hintView: 'spectrum',
     name: 'Guess the Distortion',
     family: 'char',
     instructions:
@@ -381,6 +387,7 @@ export const EXERCISES = [
 
   zoned({
     key: 'width',
+    hintView: 'stereo',
     name: 'Guess the Stereo Width',
     family: 'space',
     instructions:
@@ -391,7 +398,7 @@ export const EXERCISES = [
     // placed. No interpretation is needed and none is invented.
     axis: [0, 0.33, 0.66, 1],
     before: 'Mono',
-    after: 'Widened',
+    after: 'Stereo',
     stereoSource: true,
     source: (ctx) => ({ buffer: pinkBuffer(ctx, 2.4, 2), loop: true }),
     build(ctx, index) {
@@ -425,6 +432,7 @@ export const EXERCISES = [
 
   continuous({
     key: 'gain',
+    hintView: 'envelope',
     name: 'Guess the Gain Change',
     family: 'dyn',
     instructions:
@@ -450,6 +458,7 @@ export const EXERCISES = [
 
   zoned({
     key: 'range',
+    hintView: 'spectrum',
     name: 'Name the Range',
     family: 'freq',
     instructions:
