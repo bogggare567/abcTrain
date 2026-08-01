@@ -64,6 +64,8 @@ void FrequencyRangeGame::process (juce::AudioBuffer<float>& buffer)
 
 void FrequencyRangeGame::setDifficulty (int level)
 {
+    difficultyLevel = juce::jlimit (1, 10, level);
+
     // Ramped across all ten levels rather than stepping twice: an
     // unmissable 10 dB at level 1 down to 2.5 dB at level 10, where the
     // range has to be recognised by colour rather than by how loud the
@@ -73,14 +75,34 @@ void FrequencyRangeGame::setDifficulty (int level)
 
 void FrequencyRangeGame::newRound()
 {
-    correctRangeIndex = random.nextInt (numRanges);
-    const auto& range = ranges[(size_t) correctRangeIndex];
+    pairIndices = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
+    correctRangeIndex = random.nextInt (2);
+    const auto& range = ranges[(size_t) pairIndices[(size_t) correctRangeIndex]];
     // Log-uniform pick within the range, matching how frequency is
     // perceived - a linear random pick would bias heavily toward the
     // top of each (especially the wide Bass/Air) range.
+    //
+    // *How much* of the range it may land in is the level's business, and
+    // this is the same idea PresetFamily::breadthForLevel writes down for
+    // the games whose categories are discrete presets. A frequency in the
+    // middle of Bass is the archetypal example of Bass; one sitting on the
+    // boundary with Low-mids is the hard case. Drawing uniformly across
+    // the whole range at every level meant level 1 could hand out that
+    // hard case and level 10 could hand out the giveaway - noise on the
+    // difficulty curve rather than difficulty.
     const auto logLow = std::log (range.lowHz);
     const auto logHigh = std::log (range.highHz);
-    correctFreqHz = std::exp (logLow + random.nextFloat() * (logHigh - logLow));
+    const auto logCentre = 0.5f * (logLow + logHigh);
+    const auto breadth = PresetFamily::breadthForLevel (difficultyLevel);
+    const auto halfSpan = 0.5f * (logHigh - logLow) * breadth;
+
+    correctFreqHz = std::exp (logCentre + (random.nextFloat() * 2.0f - 1.0f) * halfSpan);
+
+    // Q is the second family axis. A broad bump lifts the whole range and
+    // is what "Bass" sounds like; a narrow one is a single tone that
+    // happens to live there, which is a genuinely harder question and the
+    // one an engineer hunting a resonance actually faces.
+    filterQ = juce::jmap (breadth, 0.34f, 1.0f, 0.7f, 2.4f);
 
     isBoost = random.nextBool();
     chosenRangeIndex = -1;
@@ -106,7 +128,7 @@ void FrequencyRangeGame::submitAnswer (int choiceIndex)
 
 juce::String FrequencyRangeGame::getChoiceLabel (int choiceIndex) const
 {
-    return ranges[(size_t) choiceIndex].label;
+    return ranges[(size_t) pairIndices[(size_t) juce::jlimit (0, 1, choiceIndex)]].label;
 }
 
 juce::String FrequencyRangeGame::getFeedbackText() const
@@ -117,11 +139,24 @@ juce::String FrequencyRangeGame::getFeedbackText() const
     const juce::String direction = isBoost ? "boosted" : "cut";
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + direction + " at " + formatFrequency (correctFreqHz) + " Hz ("
-           + ranges[(size_t) correctRangeIndex].label + ").";
+           + ranges[(size_t) pairIndices[(size_t) correctRangeIndex]].label + ").";
 }
 
 void FrequencyRangeGame::updateFilter()
 {
     const auto gain = juce::Decibels::decibelsToGain (isBoost ? gainDb : -gainDb);
     *peakFilter.state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (sampleRate, correctFreqHz, filterQ, gain);
+}
+
+const std::vector<float>& FrequencyRangeGame::axisPositions()
+{
+    // Spectral order, evenly spaced. Neighbouring ranges share a boundary
+    // and really are confusable - low-mids against mids is a genuine
+    // question, sub-bass against air is not. Evenly spaced rather than
+    // placed by actual frequency, because the ranges are already named in
+    // perceptual steps rather than in equal hertz.
+    static const std::vector<float> positions {
+        0.0f, 1.0f / 6.0f, 2.0f / 6.0f, 0.5f, 4.0f / 6.0f, 5.0f / 6.0f, 1.0f
+    };
+    return positions;
 }

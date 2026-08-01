@@ -3,6 +3,8 @@
 #include "Game.h"
 #include "../../shared/PinkNoiseGenerator.h"
 #include <array>
+#include <vector>
+#include "../../shared/PresetFamily.h"
 
 // "Guess the stereo width" exercise: two independent PinkNoiseGenerator
 // instances (naturally decorrelated - each owns its own juce::Random
@@ -38,7 +40,11 @@ public:
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
 
-    int getNumChoices() const override { return numWidths; }
+    // **Always two** - see ReverbGame for why. More buttons is more
+    // reading and more luck, not finer hearing; two alternatives makes the
+    // question "which of these", and difficulty becomes how close together
+    // they are.
+    int getNumChoices() const override { return 2; }
     juce::String getChoiceLabel (int choiceIndex) const override;
 
     bool hasAnswered() const override { return answered; }
@@ -49,6 +55,23 @@ public:
 
     int getScore() const override { return correctCount; }
     int getRoundsPlayed() const override { return totalCount; }
+
+public:
+    // Width is one number, so a "family" here can't mean four different
+    // settings of it - that would just be the neighbouring category. What
+    // it means instead is four ways of *arriving* at the same width, and
+    // the one that matters in real work is how much of the low end is
+    // left in mono. Two mixes at the same nominal width sound
+    // meaningfully different when one of them keeps everything under
+    // 150 Hz centred, and learning to hear past that is the point: the
+    // width you notice is mostly the width above the bass.
+    struct Variant
+    {
+        float monoBelowHz = 0.0f;   // 0 = the side signal is widened whole
+        float archetypal = 1.0f;
+    };
+
+    static const std::vector<Variant>& family();
 
 private:
     static const std::array<const char*, numWidths> widthLabels;
@@ -61,6 +84,22 @@ private:
     juce::Random random;
 
     float roundWidthJitter = 0.0f;
+
+    // Settled in newRound on the message thread; the audio thread reads
+    // the coefficient and the running state only.
+    Variant roundVariant;
+    float monoSplitCoeff = 0.0f;    // 0 = no split, side widened whole
+    float sideLowStateL = 0.0f;
+    double sampleRate = 44100.0;
+
+    // The two categories on offer this round. correctWidthIndex is 0 or 1 into
+    // this, not an index into the full list.
+    std::array<int, 2> pairIndices { { 0, 1 } };
+    int difficultyLevel = 1;
+
+    // Width is already one axis, so the positions are the widths
+    // themselves, normalised - no interpretation needed.
+    static const std::vector<float>& axisPositions();
 
     int correctWidthIndex = 0;
     int chosenWidthIndex = -1;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  EXERCISES, FAMILY_LABEL, toNorm, fromNorm, drawTarget, bandWidth,
+  EXERCISES, FAMILY_LABEL, toNorm, fromNorm, drawTarget, bandWidth, drawPair,
 } from './exercises.js';
 
 // ABC Ear Trainer, in a browser tab.
@@ -90,6 +90,11 @@ export default function Trainer() {
   const exercise = EXERCISES[index];
 
   const [target, setTarget] = useState(null);
+  // The two alternatives this round is asking about, as indices into the
+  // exercise's own list. Categorical exercises always offer exactly two -
+  // what the level picks is *which* two. Null on the continuous ones,
+  // whose answer is a value on a ruler rather than a choice at all.
+  const [pair, setPair] = useState(null);
   const [guess, setGuess] = useState(null);
   const [hover, setHover] = useState(null);
   const [processed, setProcessed] = useState(true);
@@ -155,11 +160,23 @@ export default function Trainer() {
     setPlaying(true);
   }, [stop]);
 
-  const newRound = useCallback((ex = exercise) => {
-    const value = ex.kind === 'zoned'
-      ? Math.floor(Math.random() * ex.choices.length)
-      : drawTarget(ex);
+  const newRound = useCallback((ex = exercise, atLevel = 1) => {
+    let value;
+    let drawn = null;
 
+    if (ex.kind === 'zoned') {
+      // Two alternatives, and the level decides how close together they
+      // are - the plugin's shared/PresetFamily.h rule, not a web variant
+      // of it. The correct one is then either of the two, so the answer
+      // never drifts to one side of the panel.
+      drawn = drawPair(ex.axis, atLevel,
+        ex.distance ? (a, b) => ex.distance(a, b, ex.axis) : null);
+      value = drawn[Math.random() < 0.5 ? 0 : 1];
+    } else {
+      value = drawTarget(ex);
+    }
+
+    setPair(drawn);
     setTarget(value);
     setGuess(null);
     setHover(null);
@@ -175,8 +192,8 @@ export default function Trainer() {
     setIndex(i);
     setScreen('training');
     setSession({ correct: 0, played: 0 });
-    newRound(EXERCISES[i]);
-  }, [stop, newRound]);
+    newRound(EXERCISES[i], levelForPoints(progress[EXERCISES[i].key]?.points ?? 0));
+  }, [stop, newRound, progress]);
 
   const goHome = useCallback(() => {
     stop();
@@ -401,21 +418,21 @@ export default function Trainer() {
           </div>
         ) : (
           <div className="tr-zones">
-            {exercise.choices.map((choice, i) => {
+            {(pair ?? []).map((choiceIndex) => {
               let state = 'idle';
-              if (revealed && i === target) state = 'good';
-              else if (revealed && i === guess.value) state = 'bad';
+              if (revealed && choiceIndex === target) state = 'good';
+              else if (revealed && choiceIndex === guess.value) state = 'bad';
 
               return (
                 <button
-                  key={choice}
+                  key={exercise.choices[choiceIndex]}
                   type="button"
                   className="tr-zone"
                   data-state={state}
                   disabled={revealed}
-                  onClick={() => answerZoned(i)}
+                  onClick={() => answerZoned(choiceIndex)}
                 >
-                  {choice}
+                  {exercise.choices[choiceIndex]}
                 </button>
               );
             })}
@@ -452,7 +469,7 @@ export default function Trainer() {
         </div>
 
         {revealed ? (
-          <button type="button" className="tr-btn tr-btn--primary" onClick={() => newRound()}>
+          <button type="button" className="tr-btn tr-btn--primary" onClick={() => newRound(exercise, level)}>
             Next round
           </button>
         ) : (

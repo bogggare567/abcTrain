@@ -1,5 +1,7 @@
 # Troubleshooting
 
+*[По-русски](ru-Troubleshooting)*
+
 ## My system says the developer is unverified
 
 Expected. The builds are not code-signed. See

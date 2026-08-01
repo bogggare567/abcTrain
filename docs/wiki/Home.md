@@ -1,5 +1,7 @@
 # abcTrain
 
+*[По-русски](ru-Home)*
+
 Four audio plugins: one ear trainer and three effects that teach you what
 their controls do while processing real audio. In your host they appear as
 **ABC Ear Trainer**, **ABC Learner EQ**, **ABC Learner Comp** and
@@ -31,23 +33,9 @@ if you want to know which button to press, you are in the right place.
 | understand levels and badges | [Levels, streaks and achievements](Levels-streaks-and-achievements) |
 | fix something | [Troubleshooting](Troubleshooting) |
 | ask a question | [Discussions → Q&A](https://github.com/bogggare567/abcTrain/discussions) |
+| читать всё это по-русски | [Русская версия](ru-Home) |
 | hear about new versions | [Telegram → @vstabc](https://t.me/vstabc) |
 | report a crash | [Issues](https://github.com/bogggare567/abcTrain/issues/new/choose) |
-
-## Быстрый старт (RU)
-
-Скачайте установщик для вашей системы. Он **не подписан**, поэтому система
-предупредит: на macOS — правый клик по `.pkg` → «Открыть», на Windows —
-«Подробнее» → «Выполнить в любом случае». Это говорит «издатель не
-проверен», а не «файл плохой» — [подробнее](Installation).
-
-Откройте **ABC Ear Trainer** (standalone или как плагин в DAW). На первом
-запуске предложат тридцатисекундную экскурсию — она показывает пальцем,
-что на что отвечает. Дальше выберите упражнение, слушайте, переключайте
-A/B пробелом и отвечайте шкалой.
-
-Интерфейс есть на 12 языках, включая русский: он определяется по системе, а
-сменить можно в нижней панели.
 
 ## What it is not
 

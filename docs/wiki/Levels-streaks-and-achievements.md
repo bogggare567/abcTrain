@@ -1,5 +1,7 @@
 # Levels, streaks and achievements
 
+*[По-русски](ru-Levels-streaks-and-achievements)*
+
 ## Levels are per exercise
 
 There is no global level. Each of the nine exercises has its own, 1 to 10,
@@ -14,8 +16,10 @@ lucky day. Together they say *you have put the hours in, now show me.*
 The tile always reads either "20 / 100 to level 2" or "3 of 5 in a row", so
 there is always a next thing and it is always small.
 
-**A level changes the tolerance, not the labels.** Higher levels narrow the
-accept band - and for the reverb exercise, add types. Nothing is unlocked by
+**A level changes the question, never the number of answers.** On the four
+scale exercises it narrows the accept band. On the five naming exercises
+you always get exactly two alternatives - what moves is how close together
+they are and how textbook an example you hear. Nothing is unlocked by
 level except difficulty; there is no content behind a gate.
 
 ## Points

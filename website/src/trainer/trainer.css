@@ -280,13 +280,20 @@
   border: none;
   color: var(--text);
   font-family: var(--mono);
-  font-size: var(--t-small);
+  /* The name of the thing you are picking, not a legend beside it - the
+     same call the plugin's answer panel makes. Two zones across this
+     width have room for it, and at two the name *is* the answer. */
+  font-size: var(--t-head);
+  font-weight: 700;
+  letter-spacing: 0.01em;
   padding: var(--s-4) var(--s-2);
   cursor: pointer;
   transition: background var(--d-hover) var(--ease), color var(--d-hover) var(--ease);
 }
 
-.tr-zone:nth-child(even) { background: color-mix(in srgb, var(--well) 88%, var(--text)); }
+/* No alternating shade. It helps the eye count a long row; with exactly
+   two it says "the left one is already selected", which is a lie the
+   moment the panel opens. The 1px gap is all a pair needs. */
 .tr-zone:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 22%, var(--well)); }
 .tr-zone:disabled { cursor: default; }
 

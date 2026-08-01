@@ -98,6 +98,7 @@ private:
     // Index into typeLabels, not a slot. Chamber was inserted at index 1,
     // so Spring moved from 3 to 4 - the kind of silent shift a named
     // constant exists to make loud.
+    static constexpr int plateTypeIndex = 3;
     static constexpr int springTypeIndex = 4;
     static constexpr float springQ = 4.0f;
     static const std::array<float, 4> springFrequenciesHz;

@@ -2,6 +2,10 @@
 
 #include <juce_core/juce_core.h>
 #include <vector>
+#include <array>
+#include <algorithm>
+#include <functional>
+#include <cmath>
 
 // A category with several members, and a way to pick a harder one.
 //
@@ -76,5 +80,77 @@ namespace PresetFamily
             (int) std::ceil (breadth * (float) sorted.size()));
 
         return sorted[(size_t) random.nextInt (available)].index;
+    }
+
+    // Draws the two categories a round asks about.
+    //
+    // `positions` places every category on one axis of character - how
+    // bright a space is, how hard a clipper bites, where a band sits in
+    // the spectrum - so "close together" means something a listener would
+    // recognise rather than "adjacent in the array". Each game writes its
+    // own axis down, which is where the claim about what is confusable
+    // with what actually lives.
+    //
+    // A level sees a **window over the pairs ranked by distance**, sliding
+    // from the far end to the near end: level 1 draws from the most
+    // obviously different pairs, level 10 from the closest ones.
+    //
+    // Ranked, not measured against a threshold. The first version of this
+    // admitted every pair whose distance fell between a sliding ceiling
+    // and floor, which reads well on paper and falls apart on a small,
+    // unevenly-spaced set - the exact case every game here is. Measured on
+    // ReverbGame's five types it gave: one pair, forever, at level 10;
+    // four levels (3 to 7) that were *identical* to each other; Spring in
+    // 80% of level-1 rounds and then never again at any higher level. A
+    // window over the ranking cannot do any of that: its size does not
+    // depend on how the distances happen to cluster, so every level has
+    // the same number of candidates and consecutive levels always differ.
+    //
+    // `distance` lets a game override what "far apart" means where a
+    // single axis can't carry it - ReverbGame's Spring is a mechanism
+    // rather than a size, so its distance to a room is not the gap
+    // between two numbers. Pass nullptr for the plain axis distance.
+    inline std::array<int, 2> drawPair (const std::vector<float>& positions,
+                                         int level, juce::Random& random,
+                                         const std::function<float (int, int)>& distance = {})
+    {
+        const auto count = (int) positions.size();
+
+        if (count < 2)
+            return { { 0, 0 } };
+
+        struct Candidate { int a, b; float distance; };
+        std::vector<Candidate> all;
+
+        for (int a = 0; a < count; ++a)
+        {
+            for (int b = a + 1; b < count; ++b)
+            {
+                const auto gap = distance ? distance (a, b)
+                                          : std::abs (positions[(size_t) a] - positions[(size_t) b]);
+                all.push_back ({ a, b, gap });
+            }
+        }
+
+        // Furthest apart first, so index 0 is the easiest question.
+        std::sort (all.begin(), all.end(),
+                    [] (const Candidate& x, const Candidate& y) { return x.distance > y.distance; });
+
+        const auto total = (int) all.size();
+
+        // Wide enough that a level is not one memorised question, narrow
+        // enough that a level means something. Two is the floor: a game
+        // with three categories has only three pairs to begin with.
+        const auto window = juce::jmax (2, (int) std::ceil (0.45f * (float) total));
+        const auto clamped = (float) juce::jlimit (1, 10, level);
+        const auto start = juce::jlimit (0, juce::jmax (0, total - window),
+            juce::roundToInt (juce::jmap (clamped, 1.0f, 10.0f, 0.0f, (float) (total - window))));
+
+        const auto& picked = all[(size_t) (start + random.nextInt (juce::jmin (window, total - start)))];
+
+        // Returned in random order, or the answer would drift to one side
+        // of the panel.
+        return random.nextBool() ? std::array<int, 2> { { picked.a, picked.b } }
+                                 : std::array<int, 2> { { picked.b, picked.a } };
     }
 }

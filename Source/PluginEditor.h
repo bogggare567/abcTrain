@@ -113,6 +113,12 @@ public:
         processor.getGameManager().setActiveGameIndex (gameIndex);
         showScreen (Screen::training);
         refreshFromGameState();
+
+        // The A/B captions belong to the *game*, and this seam skipped
+        // them - so the contact sheet showed "EQ off / EQ on" over a
+        // reverb exercise. The real app refreshes them inside
+        // startNewRun(); a snapshot never starts a run.
+        refreshBeforeAfter();
     }
 
     // Snapshot seam for the answered state - the moment stage 2 of ADR
@@ -125,6 +131,14 @@ public:
     {
         auto& game = processor.getGameManager().getActiveGame();
         game.newRound();
+
+        // Refresh *before* answering. In the real app a new round arrives
+        // through the async ChangeBroadcaster, so the panel has already
+        // been rebuilt by the time anyone can click; here the two ran back
+        // to back and refreshFromGameState() deliberately skips a rebuild
+        // once the round has been answered, so the shot showed the
+        // previous round's two names beside this round's verdict.
+        refreshFromGameState();
 
         if (game.usesContinuousScale())
             game.submitNormalisedAnswer (juce::jlimit (0.0f, 1.0f, game.getCorrectNormalised() + 0.18f));
@@ -818,6 +832,7 @@ private:
     enum class Screen { support, home, training };
     void showScreen (Screen);
     void rebuildHomeSections();
+    bool choiceSliderMatchesGame (Game& game) const;
     void rebuildChoiceSlider();
     void choiceButtonClicked (int choiceIndex);
 

@@ -4,8 +4,40 @@ const std::array<const char*, StereoWidthGame::numWidths> StereoWidthGame::width
     "Narrow", "Normal", "Wide", "Extra Wide"
 };
 
-void StereoWidthGame::prepare (const juce::dsp::ProcessSpec&)
+const std::vector<StereoWidthGame::Variant>& StereoWidthGame::family()
 {
+    // Ordered by how textbook the result is. The plain one is the clearest
+    // example of its width; the ones keeping more and more of the bottom
+    // in mono sound progressively narrower than their own number says, so
+    // they sit toward the neighbouring category - which is what makes them
+    // the harder members and why the higher levels see them.
+    static const std::vector<Variant> variants {
+        { 0.0f,   1.00f },   // widened whole - the width you were told
+        { 90.0f,  0.75f },   // sub kept centred, as most masters are
+        { 150.0f, 0.50f },   // the usual working crossover
+        { 300.0f, 0.22f }    // most of the body centred - reads narrower
+    };
+
+    return variants;
+}
+
+namespace
+{
+    std::vector<PresetFamily::Weighted> weightsFor (const std::vector<StereoWidthGame::Variant>& family)
+    {
+        std::vector<PresetFamily::Weighted> weights;
+        weights.reserve (family.size());
+
+        for (size_t i = 0; i < family.size(); ++i)
+            weights.push_back ({ (int) i, family[i].archetypal });
+
+        return weights;
+    }
+}
+
+void StereoWidthGame::prepare (const juce::dsp::ProcessSpec& spec)
+{
+    sampleRate = spec.sampleRate;
     newRound();
 }
 
@@ -18,7 +50,7 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
     // entirely and makes the two channels identical - a stereo-width
     // exercise playing mono. Caught by the test that checks left and right
     // actually differ.
-    const auto width = juce::jmax (0.05f, widths[(size_t) correctWidthIndex] + roundWidthJitter);
+    const auto width = juce::jmax (0.05f, widths[(size_t) pairIndices[(size_t) correctWidthIndex]] + roundWidthJitter);
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
@@ -26,7 +58,22 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
         const auto right = noiseR.nextSample() * 0.5f;
 
         const auto mid = (left + right) * 0.5f;
-        const auto side = (left - right) * 0.5f * width;
+        auto side = (left - right) * 0.5f;
+
+        // Split the side signal and widen only the part above the
+        // crossover, leaving the low half centred. A one-pole is plenty:
+        // the point is that the bottom stays put, not that the transition
+        // is surgical - and a steeper filter here would be a phase
+        // problem, which is a different lesson.
+        if (monoSplitCoeff > 0.0f)
+        {
+            sideLowStateL += monoSplitCoeff * (side - sideLowStateL);
+            side = (side - sideLowStateL) * width;
+        }
+        else
+        {
+            side *= width;
+        }
 
         const auto outL = mid + side;
         const auto outR = mid - side;
@@ -40,6 +87,8 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
 
 void StereoWidthGame::setDifficulty (int level)
 {
+    difficultyLevel = juce::jlimit (1, 10, level);
+
     // The four named widths are computed from one spread value rather than
     // picked from three hard-coded tables, so every level is a real step.
     // At level 1 they are 0.10 / 0.60 / 1.00 / 1.60 - unmistakable. At
@@ -60,13 +109,26 @@ void StereoWidthGame::setDifficulty (int level)
 
 void StereoWidthGame::newRound()
 {
-    correctWidthIndex = random.nextInt (numWidths);
+    pairIndices = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
+    correctWidthIndex = random.nextInt (2);
 
     // Same reasoning as CompressionGame::newRound: four fixed widths
     // become four memorised recordings. Scaled by the current spread, so
     // the nudge shrinks along with the gaps it has to stay inside.
     roundWidthJitter = (random.nextFloat() * 0.16f - 0.08f)
                            * (widths[numWidths - 1] - widths[0]);
+
+    // How the width is *arrived at*, drawn separately from which pair the
+    // round asks about - the same three-independent-draws split as
+    // ReverbGame::newRound, for the same reason.
+    roundVariant = family()[(size_t) PresetFamily::choose (weightsFor (family()), difficultyLevel, random)];
+
+    monoSplitCoeff = roundVariant.monoBelowHz > 0.0f && sampleRate > 0.0
+                       ? 1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi
+                                              * roundVariant.monoBelowHz / (float) sampleRate)
+                       : 0.0f;
+    sideLowStateL = 0.0f;
+
     chosenWidthIndex = -1;
     answered = false;
     sendChangeMessage();
@@ -89,7 +151,7 @@ void StereoWidthGame::submitAnswer (int choiceIndex)
 
 juce::String StereoWidthGame::getChoiceLabel (int choiceIndex) const
 {
-    return widthLabels[(size_t) choiceIndex];
+    return widthLabels[(size_t) pairIndices[(size_t) juce::jlimit (0, 1, choiceIndex)]];
 }
 
 juce::String StereoWidthGame::getFeedbackText() const
@@ -98,5 +160,13 @@ juce::String StereoWidthGame::getFeedbackText() const
         return {};
 
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-           + "It was " + widthLabels[(size_t) correctWidthIndex] + ".";
+           + "It was " + widthLabels[(size_t) pairIndices[(size_t) correctWidthIndex]] + ".";
+}
+
+const std::vector<float>& StereoWidthGame::axisPositions()
+{
+    // Width is already a single axis, so these are just the four steps
+    // evenly placed. No interpretation is needed and none is invented.
+    static const std::vector<float> positions { 0.0f, 0.33f, 0.66f, 1.0f };
+    return positions;
 }

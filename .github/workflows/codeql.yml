@@ -1,0 +1,124 @@
+name: CodeQL
+
+# GitHub's "Set up code scanning" default workflow is not usable here as
+# generated: its autobuild step has no idea this project needs a dozen X11
+# and audio dev packages before JUCE will compile, and no idea that an
+# uncapped parallel build OOM-kills the Ubuntu runner (see
+# build_and_test.yml for the history of that one). So the C++ build below
+# is `build-mode: manual` running the same three commands, with the same
+# apt list and the same `--parallel 2` cap, as the real CI job.
+#
+# Two languages, because there are two bodies of code: the four plugins in
+# C++ and the browser demo in JavaScript. They are split into separate
+# matrix entries rather than one, since only one of them needs a
+# forty-minute compile.
+#
+# Action versions follow the same rule as build_and_test.yml - pin to the
+# *lowest* major that actually declares node24, verified by reading the
+# action's own `runs.using` rather than its release notes. codeql-action
+# v3 declares node20 and would print a deprecation warning on every run;
+# v4 declares node24.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
+  schedule:
+    # Weekly. A vulnerability can appear in a file nobody has touched -
+    # CodeQL's own query packs get updated - so a scan that only runs on
+    # pushes goes stale on a quiet repository.
+    - cron: '0 6 * * 1'
+
+# Cancel a superseded run rather than letting two full JUCE builds queue
+# up behind each other on the same branch.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      # The whole point: without this the analysis runs and then cannot
+      # publish anything.
+      security-events: write
+      contents: read
+      packages: read
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: c-cpp
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config-file: ./.github/codeql/codeql-config.yml
+
+      # JUCE's GUI modules need X11/GL headers to compile on Linux even
+      # though nothing here opens a window; libcurl is needed for the
+      # update checker's HTTPS call (NEEDS_CURL, see decisions/007).
+      # Kept identical to build_and_test.yml deliberately - two lists that
+      # drift are two builds that stop being the same build, and then a
+      # finding here would not mean anything about the shipped binary.
+      - name: Install Linux dependencies
+        if: matrix.language == 'c-cpp'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            libfreetype6-dev \
+            libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev \
+            libxinerama-dev libxrandr-dev libxrender-dev \
+            libglu1-mesa-dev mesa-common-dev \
+            libcurl4-openssl-dev
+
+      - name: Cache JUCE (FetchContent)
+        if: matrix.language == 'c-cpp'
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-juce-${{ hashFiles('CMakeLists.txt') }}
+
+      # CodeQL for a compiled language works by watching a real
+      # compilation, so this has to build everything that should be
+      # analysed - all four plugins plus the test and snapshot tools.
+      # `--parallel 2` is not tidiness: an uncapped `--parallel` on the
+      # Unix Makefiles generator means `make -j` with no limit, which
+      # OOM-killed this exact build once already.
+      - name: Build
+        if: matrix.language == 'c-cpp'
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --parallel 2
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}

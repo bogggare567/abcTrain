@@ -1,5 +1,7 @@
 # Installation
 
+*[По-русски](ru-Installation)*
+
 ## Download
 
 Every release has an installer per platform, built by CI from the exact

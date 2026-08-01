@@ -1869,6 +1869,26 @@ void EarTrainerEditor::refreshLocalisedText()
     repaint();
 }
 
+bool EarTrainerEditor::choiceSliderMatchesGame (Game& game) const
+{
+    // A continuous game has no named choices at all - its ruler is the
+    // grid marks, which don't move between rounds - so comparing labels
+    // there would rebuild the scale every single round for nothing.
+    if (game.usesContinuousScale())
+        return choiceSlider.getNumChoices() == game.getNumChoices();
+
+    const auto& shown = choiceSlider.getChoiceLabels();
+
+    if (shown.size() != game.getNumChoices())
+        return false;
+
+    for (int i = 0; i < shown.size(); ++i)
+        if (shown[i] != game.getChoiceLabel (i))
+            return false;
+
+    return true;
+}
+
 void EarTrainerEditor::rebuildChoiceSlider()
 {
     auto& game = processor.getGameManager().getActiveGame();
@@ -1897,21 +1917,14 @@ void EarTrainerEditor::rebuildChoiceSlider()
         choiceSlider.setDiscreteScale();
     }
 
-    // "< first - last >" tells the player which way the scale runs, which
-    // matters most on the games whose labels aren't self-evidently ordered
-    // (pan, width). Derived from the labels themselves, so it needs no
-    // per-game table and can't go stale when a game's choices change.
-    // A continuous scale labels its own axis densely, so the "< first -
-    // last >" caption underneath would just repeat the two end marks.
-    if (game.usesContinuousScale())
-        choiceSlider.setAxisCaption ({});
-    else if (labels.size() >= 2)
-        choiceSlider.setAxisCaption (juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xb9 "))
-                                          + labels[0] + juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  "))
-                                          + labels[labels.size() - 1]
-                                          + juce::String (juce::CharPointer_UTF8 (" \xe2\x80\xba")));
-    else
-        choiceSlider.setAxisCaption ({});
+    // No axis caption on either scale. It used to read "< first - last >"
+    // to say which way the scale ran, which earned its place back when a
+    // discrete game showed up to nine small labels in two staggered rows.
+    // Now every categorical game offers exactly two, each written large
+    // across its own half of the panel, so the caption was repeating the
+    // only two words already on screen - and doing it in the strip the
+    // panel had grown into.
+    choiceSlider.setAxisCaption ({});
 
     choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
 }
@@ -2093,12 +2106,19 @@ void EarTrainerEditor::refreshFromGameState()
 {
     auto& game = processor.getGameManager().getActiveGame();
 
-    // A difficulty change (via ProgressManager, on level-up) can change
-    // the active game's choice count at runtime - currently only
-    // ReverbGame does this. Only rebuild at the start of a fresh round,
-    // not mid-reveal, so the button layout doesn't shift while showing
-    // an answer.
-    if (! game.hasAnswered() && choiceSlider.getNumChoices() != game.getNumChoices())
+    // The choices a round offers can change without the *count* changing.
+    // This used to compare counts alone, which was true enough when a
+    // game's labels were a fixed table and only ReverbGame's length moved
+    // (on level-up). Now every categorical exercise offers exactly two,
+    // redrawn each round from its family - so the count is permanently 2
+    // and comparing it meant the panel kept last round's two names while
+    // the verdict came from this round's. Caught by rendering an answered
+    // zoned round: it read "It was Chamber reverb" over zones labelled
+    // Hall and Room.
+    //
+    // Still only at the start of a fresh round, never mid-reveal, so the
+    // names don't change out from under an answer being shown.
+    if (! game.hasAnswered() && ! choiceSliderMatchesGame (game))
         rebuildChoiceSlider();
 
     gameIcon.setIcon (AppIcons::iconForGameName (game.getName()));

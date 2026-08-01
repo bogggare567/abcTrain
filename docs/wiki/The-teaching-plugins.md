@@ -1,5 +1,7 @@
 # The teaching plugins
 
+*[По-русски](ru-The-teaching-plugins)*
+
 > In a plugin browser they are **ABC Learner EQ**, **ABC Learner Comp** and
 > **ABC Learner Verb**, by *soundkorb*. Everything sorts under ABC so the
 > four arrive together rather than scattered across the alphabet. This page
@@ -11,7 +13,7 @@ session, like any other plugin.
 
 | | What it is |
 |---|---|
-| **ABC Learner EQ** | Four bands - low shelf, two bells, high shelf - over a live spectrum with the response curve drawn on it. Guide text appears while you turn a frequency knob. |
+| **ABC Learner EQ** | A graphical EQ: up to eight bands of any type - bell, low/high shelf, high-pass, low-pass, notch - added and removed on the curve itself. Double-click empty space to add a node, double-click a node to remove it, drag to move, scroll for Q. The spectrum is labelled in *sensations* as well as numbers - Sub, Bass, Boom, Body, Honk, Presence, Sibilance, Air - with a line under the pointer saying what too much of that zone does. |
 | **ABC Learner Comp** | A soft-knee compressor with a gain-reduction meter that fills **downward**, because that is the direction the sound goes. |
 | **ABC Learner Verb** | Room, hall, plate and spring, with decay, pre-delay, size, damping, mix and width. |
 
@@ -66,14 +68,16 @@ and a drive, each drawn fresh per hit.
 
 ## Walkthroughs
 
-Under the modules, past a divider, are the two multi-knob lessons each
-plugin has always had - a whole workflow rather than one control.
+Under the modules, past a divider, are each plugin's four lessons: two that
+walk a whole workflow rather than one control, and two that explain a
+single idea - high-pass and low-pass in the EQ, attack and release in the
+compressor, pre-delay and size-versus-damping in the reverb.
 
 ## Why Learner EQ has no modules
 
-Deliberately. Graphical EQs with many bands, dynamic processing and better
-analysis already exist and are excellent; teaching someone to turn *these*
-four knobs competes with them and loses. What a beginner is actually
+Deliberately. Graphical EQs with dynamic processing and far better analysis
+already exist and are excellent; a module teaching you to turn a frequency
+knob competes with them and loses. What a beginner is actually
 missing is **where things live** - a kick's fundamental against its beater
 click, where a voice's body ends and its harshness begins. That is a map,
 not a knob drill, and it is not built yet. See
