@@ -23,8 +23,8 @@ Two requests arrived together:
    permission to adopt `gin`/`foleys_gui_magic`/`juce_animate` "if they
    genuinely improve the visual".
 2. A request to replace `PinkNoiseGenerator` with real audio samples in
-   all 9 games, pointed at a local folder
-   (`/Users/bogdankorablev/Desktop/abcTrain/audio/`) to read samples from.
+   all 9 games, pointed at a local folder outside the repository to read
+   samples from.
 
 **Neither request was implemented literally as asked, for two different, both important, reasons - documented here rather than silently narrowed.**
 
@@ -80,11 +80,10 @@ effect, not attempted here).
 
 ### Why the sample pipeline uses synthesized audio, not the pointed-at folder
 
-`/Users/bogdankorablev/Desktop/abcTrain/audio/` turned out to contain
-three complete "name your price" commercial album downloads (Dub Store
-Records, Rain Sword, Thanatos - real labels/artists, full tracks, cover
-art). "Name your price" is a personal-purchase payment model, not a
-redistribution licence - reading, copying, or embedding that material
+That folder turned out to contain complete "name your price" commercial
+album downloads - real labels and artists, full tracks, cover art. "Name
+your price" is a personal-purchase payment model, not a redistribution
+licence - reading, copying, or embedding that material
 into this repository (which is what "replace the noise generator with
 these files" would have meant) would mean shipping someone else's
 copyrighted commercial music inside a piece of software distributed to
