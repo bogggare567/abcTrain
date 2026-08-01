@@ -276,6 +276,11 @@ int main (int argc, char* argv[])
             // is most likely to look wrong.
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Zoned", 2);
 
+            // Reported missing their mode pills: delay, distortion, range.
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Delay", 4);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Distortion", 5);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Range", 8);
+
             // The zoned panel *after* an answer. Worth its own shot: the
             // verdict used to be carried by the tick line down each zone,
             // and once that went the only things left saying right from

@@ -283,5 +283,7 @@
   "choice.narrow": "좁게",
   "choice.normal": "보통",
   "choice.wide": "넓게",
-  "choice.extraWide": "아주 넓게"
+  "choice.extraWide": "아주 넓게",
+  "ui.modesLockedTitle": "서바이벌과 블리츠",
+  "ui.modesLockedCaption": "이 연습에서 {{count}}번 연속 맞히면 열립니다"
 }

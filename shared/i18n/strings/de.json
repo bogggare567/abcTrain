@@ -283,5 +283,7 @@
   "choice.narrow": "Schmal",
   "choice.normal": "Normal",
   "choice.wide": "Breit",
-  "choice.extraWide": "Extra breit"
+  "choice.extraWide": "Extra breit",
+  "ui.modesLockedTitle": "Survival und Blitz",
+  "ui.modesLockedCaption": "{{count}} richtige in Folge hier schalten sie frei"
 }

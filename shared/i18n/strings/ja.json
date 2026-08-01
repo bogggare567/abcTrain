@@ -283,5 +283,7 @@
   "choice.narrow": "狭い",
   "choice.normal": "標準",
   "choice.wide": "広い",
-  "choice.extraWide": "かなり広い"
+  "choice.extraWide": "かなり広い",
+  "ui.modesLockedTitle": "サバイバルとブリッツ",
+  "ui.modesLockedCaption": "この練習で {{count}} 連続正解すると解放されます"
 }

@@ -283,5 +283,7 @@
   "choice.narrow": "Estreito",
   "choice.normal": "Normal",
   "choice.wide": "Largo",
-  "choice.extraWide": "Muito largo"
+  "choice.extraWide": "Muito largo",
+  "ui.modesLockedTitle": "Sobrevivência e Blitz",
+  "ui.modesLockedCaption": "Acerte {{count}} seguidas aqui para desbloquear"
 }

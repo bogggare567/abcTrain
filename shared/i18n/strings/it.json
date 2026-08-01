@@ -283,5 +283,7 @@
   "choice.narrow": "Stretto",
   "choice.normal": "Normale",
   "choice.wide": "Largo",
-  "choice.extraWide": "Molto largo"
+  "choice.extraWide": "Molto largo",
+  "ui.modesLockedTitle": "Sopravvivenza e Blitz",
+  "ui.modesLockedCaption": "Indovina {{count}} di fila qui per sbloccarli"
 }

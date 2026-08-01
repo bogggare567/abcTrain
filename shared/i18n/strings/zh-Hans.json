@@ -283,5 +283,7 @@
   "choice.narrow": "窄",
   "choice.normal": "正常",
   "choice.wide": "宽",
-  "choice.extraWide": "超宽"
+  "choice.extraWide": "超宽",
+  "ui.modesLockedTitle": "生存与闪电",
+  "ui.modesLockedCaption": "在本练习中连对 {{count}} 次即可解锁"
 }

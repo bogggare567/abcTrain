@@ -283,5 +283,7 @@
   "choice.narrow": "Вузько",
   "choice.normal": "Нормально",
   "choice.wide": "Широко",
-  "choice.extraWide": "Дуже широко"
+  "choice.extraWide": "Дуже широко",
+  "ui.modesLockedTitle": "Виживання і Бліц",
+  "ui.modesLockedCaption": "Дайте {{count}} правильних поспіль тут, щоб відкрити"
 }

@@ -283,5 +283,7 @@
   "choice.narrow": "Narrow",
   "choice.normal": "Normal",
   "choice.wide": "Wide",
-  "choice.extraWide": "Extra Wide"
+  "choice.extraWide": "Extra Wide",
+  "ui.modesLockedTitle": "Survival and Blitz",
+  "ui.modesLockedCaption": "Get {{count}} right in a row here to open them"
 }

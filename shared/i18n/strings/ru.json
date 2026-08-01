@@ -283,5 +283,7 @@
   "choice.narrow": "Узко",
   "choice.normal": "Нормально",
   "choice.wide": "Широко",
-  "choice.extraWide": "Очень широко"
+  "choice.extraWide": "Очень широко",
+  "ui.modesLockedTitle": "Выживание и Блиц",
+  "ui.modesLockedCaption": "Ответьте {{count}} подряд в этом упражнении, чтобы открыть"
 }

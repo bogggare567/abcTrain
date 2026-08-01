@@ -283,5 +283,7 @@
   "choice.narrow": "Étroit",
   "choice.normal": "Normal",
   "choice.wide": "Large",
-  "choice.extraWide": "Très large"
+  "choice.extraWide": "Très large",
+  "ui.modesLockedTitle": "Survie et Blitz",
+  "ui.modesLockedCaption": "{{count}} bonnes réponses d'affilée ici pour les ouvrir"
 }

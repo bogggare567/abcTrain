@@ -283,5 +283,7 @@
   "choice.narrow": "Wąsko",
   "choice.normal": "Normalnie",
   "choice.wide": "Szeroko",
-  "choice.extraWide": "Bardzo szeroko"
+  "choice.extraWide": "Bardzo szeroko",
+  "ui.modesLockedTitle": "Przetrwanie i Blitz",
+  "ui.modesLockedCaption": "Trafisz {{count}} pod rząd tutaj, aby odblokować"
 }

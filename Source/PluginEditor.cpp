@@ -856,13 +856,25 @@ void EarTrainerEditor::toggleTheme()
 
 EarTrainerEditor::~EarTrainerEditor()
 {
-    // Deregister the scope feeds *first*: the audio thread writes into
-    // them every block, and they are members of this editor. Leaving them
-    // registered through teardown is a use-after-free waiting for the
-    // next processBlock.
-    processor.setSignalEnabled (true);
+    // Silence, then deregister.
+    //
+    // This said `true`, which is the opposite of what closing a window
+    // should do: shutting the editor in a host - or just minimising it -
+    // destroys the editor, and the trainer was left generating noise into
+    // the session with nothing left on screen to stop it. Reported as
+    // "I minimise it in the DAW and it starts making noise", which is
+    // precisely what it did.
+    //
+    // The deregistrations have to follow, and have to happen at all: the
+    // audio thread writes into these every block and every one of them is
+    // a member of this editor, so leaving one registered through teardown
+    // is a use-after-free waiting for the next processBlock. The waveform
+    // display was added for the per-exercise hint and missed here, which
+    // was the same bug the comment above it already warned about.
+    processor.setSignalEnabled (false);
     processor.setVectorscope (nullptr);
     processor.setSpectrumAnalyzer (nullptr);
+    processor.setWaveformDisplay (nullptr);
 
     processor.getGameManager().getActiveGame().removeChangeListener (this);
     processor.getProgressManager().removeChangeListener (this);
@@ -1531,11 +1543,30 @@ void EarTrainerEditor::timerCallback()
 
 void EarTrainerEditor::modeSelected()
 {
+    const auto wanted = survivalButton.getToggleState() ? SessionManager::Mode::survival
+                        : blitzButton.getToggleState()   ? SessionManager::Mode::blitz
+                                                         : SessionManager::Mode::practice;
+
+    // A timed mode this exercise has not opened yet: say what opens it and
+    // put the selection back. Silently ignoring the press would leave a
+    // button that looks pressable and does nothing, which is the same
+    // failure as hiding it - just quieter.
+    if (wanted != SessionManager::Mode::practice
+        && ! processor.getProgressManager()
+                 .areModesUnlockedForGame (processor.getGameManager().getActiveGameIndex()))
+    {
+        achievementToast.show (
+            localisation.getText ("ui.modesLockedCaption",
+                                   { { "count", juce::String (ProgressManager::streakToUnlockModes) } }),
+            localisation.getText ("ui.modesLockedTitle"));
+
+        practiceButton.setToggleState (true, juce::dontSendNotification);
+        return;
+    }
+
     // setMode() starts a fresh run itself, so this is one call, not two.
     // The price changes with the mode, so the button's label must too.
-    session.setMode (survivalButton.getToggleState() ? SessionManager::Mode::survival
-                     : blitzButton.getToggleState()   ? SessionManager::Mode::blitz
-                                                      : SessionManager::Mode::practice);
+    session.setMode (wanted);
 
     beginRunWithCountdown();
 }
@@ -1675,9 +1706,24 @@ void EarTrainerEditor::refreshRunStatus()
                                   .areModesUnlockedForGame (processor.getGameManager().getActiveGameIndex());
 
         practiceButton.setVisible (onTraining && ! hudNow);
-        survivalButton.setVisible (onTraining && ! hudNow && unlocked);
-        blitzButton.setVisible (onTraining && ! hudNow && unlocked);
         scoreLabel.setVisible (onTraining && ! hudNow);
+
+        // Locked modes are *shown*, dimmed - not hidden.
+        //
+        // Hiding them was worse than the problem it solved. A control that
+        // is simply absent is indistinguishable from one that is broken:
+        // it was reported as "the mode buttons are missing in delay,
+        // distortion and range", which is exactly what it looks like when
+        // three exercises have the row and three do not. And an unlock
+        // nobody can see is not a goal, it is a surprise - so it was also
+        // failing at the one job it had.
+        //
+        // Dimmed and still clickable: pressing one says what earns it.
+        for (auto* pill : { &survivalButton, &blitzButton })
+        {
+            pill->setVisible (onTraining && ! hudNow);
+            pill->setAlpha (unlocked ? 1.0f : 0.45f);
+        }
 
         if (hudNow)
             runHud.set (session.getMode(), session.getLivesRemaining(),
