@@ -1,15 +1,60 @@
-Copyright (c) 2026 bogggare567. All rights reserved.
+Copyright (c) 2026 bogggare567 (soundkorb). All rights reserved.
 
-This software and associated documentation files (the "Software") are
-proprietary and confidential. No license, express or implied, is granted
-to any person to use, copy, modify, merge, publish, distribute, sublicense,
-or sell copies of the Software, in whole or in part, without the prior
-written permission of the copyright holder.
+abcTrain, comprising ABC Ear Trainer, ABC Learner EQ, ABC Learner Comp and
+ABC Learner Verb, together with this repository's source code, assets and
+documentation (the "Software"), is the property of the copyright holder.
 
-This is a pre-release build provided for private testing only. It is not
-licensed for public distribution or production use.
 
-Third-party components (JUCE, fetched via CMake FetchContent, and libcurl
-on Linux builds) remain licensed under their own respective terms; see
-https://juce.com/legal/juce-8-licence/ and your distribution's libcurl
-license for details. Nothing in this file affects those licenses.
+WHAT YOU MAY DO
+
+  1. Use it. You may install and use official builds of the Software on any
+     computer you control, for any purpose, including work you are paid
+     for. There is no fee, no licence key and no limit on the number of
+     machines.
+
+  2. Read the source, and build it for yourself. You may clone this
+     repository, read it, compile it and run the result on your own
+     machines.
+
+  3. Contribute. You may submit changes as a pull request. By doing so you
+     grant the copyright holder the right to use those changes in the
+     Software.
+
+
+WHAT YOU MAY NOT DO WITHOUT PRIOR WRITTEN PERMISSION
+
+  1. Distribute it. You may not publish, share, upload, bundle, mirror or
+     otherwise pass on the Software or any build of it, whether for a fee
+     or free of charge. Link to the official releases instead.
+
+  2. Sell it. You may not sell, resell, rent, lease, sublicense or
+     otherwise commercially exploit the Software or any part of it.
+
+  3. Reuse the source commercially. You may not use the source code, in
+     whole or in part, in any product, service or work that is sold,
+     licensed or otherwise commercially distributed.
+
+  4. Remove or obscure copyright, licence or attribution notices.
+
+Nothing above restricts what you do with the *audio you make* using the
+Software. Your music is yours.
+
+
+THIRD-PARTY COMPONENTS
+
+JUCE (fetched by CMake FetchContent) and libcurl (on Linux builds) remain
+licensed under their own terms. See https://juce.com/legal/juce-8-licence/
+and your distribution's libcurl licence. Nothing in this file affects them.
+
+
+NO WARRANTY
+
+The Software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and non-infringement. In no event shall
+the copyright holder be liable for any claim, damages or other liability,
+whether in an action of contract, tort or otherwise, arising from, out of
+or in connection with the Software or its use.
+
+Permission for anything not granted above can be asked for at
+https://github.com/bogggare567/abcTrain/discussions

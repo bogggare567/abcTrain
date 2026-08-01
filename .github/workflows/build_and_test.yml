@@ -1,8 +1,32 @@
 name: Build and Test
 
+# Two things this deliberately does *not* do.
+#
+# It does not run on documentation. A README, a wiki page or an ADR cannot
+# change what the compiler produces, and spending forty minutes of three
+# runners to prove that is a waste of everybody's time - including the
+# person waiting to merge a typo fix.
+#
+# And it does not run twice for the same commit. `push:` with no branch
+# filter plus `pull_request:` means a branch pushed and then opened as a PR
+# builds the whole matrix twice over, on identical code. The push trigger
+# is now scoped to the branches that actually need a build of their own -
+# main and tags - and everything else is covered by the PR trigger.
 on:
   push:
+    branches: [main]
+    tags: ['v*']
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
 
 # Action versions are pinned to the *lowest* major that runs on Node 24,
 # not the newest available. Node 20 is deprecated and every run was

@@ -36,61 +36,25 @@ Linux, as VST3 · AU · Standalone.
 
 ## Why this exists
 
-The first time somebody tells you a mix is muddy, you nod. Then you open
-the session at home and hear… a mix. Not mud. So you look it up, learn that
-mud lives somewhere around 250–400 Hz, sweep a filter through there — and
-you still cannot hear the thing you are meant to be removing. You can only
-hear that *something* changed.
+Somebody tells you a mix is muddy. You go home, learn that mud lives around
+250–400 Hz, sweep a filter through there — and you still cannot hear the
+thing you are meant to be removing. Only that *something* changed.
 
-That is not a knowledge problem. Everything you need to know is written
-down, free, a hundred times over, by people who explain it well. It is a
-**hearing** problem, and hearing is a physical skill. It comes from doing
-one small thing a few hundred times with something telling you immediately
-whether you got it right.
+That is not a knowledge problem. Everything worth knowing is already
+written down, free, a hundred times over. It is a **hearing** problem, and
+hearing is a physical skill: it comes from doing one small thing a few
+hundred times with something telling you immediately whether you got it
+right. Almost nobody gets that, because building the exercise is harder
+than doing it.
 
-Almost nobody gets that, because building the exercise is harder than doing
-it. You would have to generate a sound, hide a change inside it, make sure
-that change is the *only* difference, and then grade yourself honestly
-without peeking. By the time you have set it up you have lost the evening
-and trained nothing.
+abcTrain is the exercise, already built — and then the same vocabulary
+again in three plugins you can put on a real track, so what you practised
+is what you are now doing.
 
-abcTrain is that exercise, already built. And then — the part most ear
-trainers leave out — the same vocabulary again in three plugins you can put
-on a real track, so the thing you just practised is the thing you are now
-doing.
-
-## Who it is for
-
-**You mix your own music and you can follow a tutorial, but you cannot hear
-what it is about.** You are copying moves. This is the fastest way out of
-that, and ten minutes a day is enough.
-
-**You have been mixing a while and you are tired of guessing.** You know
-what a compressor does. You want to stop reaching for −6 dB because it
-worked last time and start hearing what the track is asking for.
-
-**You teach, or you are learning alongside someone.** Every exercise
-reports a number, so "getting better" stops being a feeling.
-
-It is probably **not** for you if you want a course with a syllabus and a
-certificate at the end. There isn't one, on purpose.
-
-## What it actually does
-
-**Train.** Nine exercises. Each hides a change inside a sound and asks what
-it was. You answer, and it tells you straight away whether you were right —
-and by how much you missed, in the unit that matters: octaves for
-frequency, decibels for level, a ratio for delay time.
-
-**Then apply it.** Three companion plugins process your *own* audio — a
-graphical EQ, a compressor and a reverb — each with plain-language
-explanations on every control and step-by-step lessons built in. They are
-real effects with host-automatable parameters that save with the session;
-the teaching is added on top, not a mode you switch out of.
-
-Nothing is locked. No account, no subscription, no telemetry. The only
-network call in the entire suite is the update check, and only when you
-press the button.
+**Who it is for:** you mix your own music and can follow a tutorial but
+cannot hear what it is about; or you have mixed for years and want to stop
+reaching for −6 dB because it worked last time. **Not** for you if you want
+a syllabus and a certificate — there isn't one, on purpose.
 
 ## The nine exercises
 
@@ -99,46 +63,38 @@ have to be exact — landing inside the tolerance band counts, and landing
 closer counts for more. The level narrows that band, so harder means *more
 precise*, not *quieter*.
 
-| Exercise | What you are hearing |
-|---|---|
-| Find the frequency | Which frequency got boosted or cut, anywhere in 100 Hz – 12.8 kHz |
-| Guess the pan position | Where it sits across the stereo field |
-| Guess the gain change | How far the level moved, −9 … +9 dB |
-| Guess the delay time | How long the echo is, 20 – 640 ms |
+| | Exercise | What you are hearing |
+|:---:|---|---|
+| 🎚️ | Find the frequency | Which frequency got boosted or cut, anywhere in 100 Hz – 12.8 kHz |
+| ↔️ | Guess the pan position | Where it sits across the stereo field |
+| 🔊 | Guess the gain change | How far the level moved, −9 … +9 dB |
+| ⏱️ | Guess the delay time | How long the echo is, 20 – 640 ms |
 
 The other five ask you to **name** a thing, and always give you exactly two
 alternatives — at every level, from your first round to your last.
 
-| Exercise | What you are choosing between |
-|---|---|
-| Guess the compression | Two of: weak · medium · strong |
-| Guess the reverb | Two of: room · chamber · hall · plate · spring |
-| Guess the distortion | Two of: soft clipping · hard clipping · tape · overdrive |
-| Guess the stereo width | Two of: narrow · normal · wide · extra wide |
-| Name the range | Two of the seven standard ranges: sub-bass … air |
+| | Exercise | What you are choosing between |
+|:---:|---|---|
+| 🥁 | Guess the compression | Two of: weak · medium · strong |
+| 🏛️ | Guess the reverb | Two of: room · chamber · hall · plate · spring |
+| 🔥 | Guess the distortion | Two of: soft clipping · hard clipping · tape · overdrive |
+| 📐 | Guess the stereo width | Two of: narrow · normal · wide · extra wide |
+| 🎯 | Name the range | Two of the seven standard ranges: sub-bass … air |
 
-**Why never a third button.** It would make the round harder by giving you
-more to read and improving your odds of a lucky guess, and neither of those
-is your ear getting better. What the level changes instead is *which* two
-you are asked about: level 1 offers a cathedral against a broom cupboard,
-level 10 offers two things that genuinely take work to separate. A fixed
-50/50 also means a streak of six says the same thing at level 9 as it did
-at level 2.
+**Never a third button.** It would only give you more to read and better
+odds of a lucky guess. The level changes *which* two instead: level 1 is a
+cathedral against a broom cupboard, level 10 is two things that genuinely
+take work to separate.
 
-**Every answer is a family, not a preset.** "Hall" is not one recording with
-a wobble on it. A tiled booth and a big live room are both rooms, and
-someone who can only recognise one of them has not learned what a room
-sounds like — so the harder the level, the closer to the boundary the
-example sits.
+**Every answer is a family, not a preset.** A tiled booth and a big live
+room are both rooms, and someone who recognises only one of them has not
+learned what a room sounds like.
 
-Runs have a shape: **Practice** is unlimited, **Survival** gives you three
-lives, **Blitz** is a ninety-second clock where a wrong answer costs five
-seconds. Each exercise keeps its own level and its own record, because
-being good at panning says nothing about hearing 400 Hz.
-
-You can train on pink noise, on the built-in synthesized clips, or on **your
-own music** — imported, cut into loops and sorted by what each loop
-measurably is.
+**Practice** is unlimited, **Survival** gives three lives, **Blitz** is
+ninety seconds where a wrong answer costs five of them. Every exercise
+keeps its own level, because being good at panning says nothing about
+hearing 400 Hz. Train on pink noise, on the built-in clips, or on **your
+own music**.
 
 ## The three teaching plugins
 
@@ -148,11 +104,9 @@ measurably is.
 | **Learner Comp** | A compressor with a soft-knee engine and a gain-reduction meter that fills **downward**, because that is the direction the sound goes. Seven training modules, one per control. |
 | **Learner Verb** | Room, hall, plate and spring, with decay, pre-delay, size, damping, mix and width. Seven modules of its own. |
 
-A module is not just a lesson. After the explanation, the plugin sets the
-control to a value it does **not show you**, plays it, and you turn its own
-knob until it matches by ear. The accept band differs per control on
-purpose: being 5 ms out on a 3 ms attack and on a 300 ms attack are
-completely different mistakes.
+A module is not just a lesson: afterwards the plugin sets the control to a
+value it does **not show you**, plays it, and you turn its own knob until
+it matches by ear.
 
 ## What it is not
 
@@ -244,16 +198,40 @@ are shaped here, and there are issue templates for
 [bugs](.github/ISSUE_TEMPLATE/bug_report.md) and
 [features](.github/ISSUE_TEMPLATE/feature_request.md).
 
+## Licence and rights
+
+**Copyright © 2026 bogggare567 (soundkorb). All rights reserved.**
+
+The source is open to **read**, and to **build for yourself**. It is not
+open to redistribute or to commercialise. Without prior written permission
+from the copyright holder you may not:
+
+- distribute the software or any build of it, **for a fee or otherwise**;
+- use the source, in whole or in part, in a **commercial** product;
+- sell, sublicense, rent or resell it.
+
+Using it, on your own machine, on your own music, including work you are
+paid for, is fine and always will be. Full text in [LICENSE](LICENSE).
+
+Third-party components — JUCE, and libcurl on Linux builds — stay under
+their own licences.
+
 ## Supporting it
 
-Free, open source, and staying that way — no paid tier, no subscription,
-nothing locked behind anything.
-
-If it is useful to you, a **[star](https://github.com/bogggare567/abcTrain)**
-helps other people find it and a
-**[donation](https://www.donationalerts.com/r/bogdankorablev)** keeps it
-moving. Both are optional and neither unlocks anything, because gating a
+Free for you to use, and staying that way: no paid tier, no subscription,
+nothing locked behind anything. A star helps other people find it; a
+donation keeps it moving. Neither unlocks anything, because gating a
 learning tool behind a favour is the opposite of the point.
+
+<div align="center">
+
+[![Support this project](https://img.shields.io/badge/%E2%99%A5%20SUPPORT%20THIS%20PROJECT-DonationAlerts-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://www.donationalerts.com/r/bogdankorablev)
+&nbsp;
+[![Telegram](https://img.shields.io/badge/TELEGRAM-@vstabc-4FA3C7?style=for-the-badge&logo=telegram&logoColor=white&labelColor=1E1E2E)](https://t.me/vstabc)
+
+</div>
+
+The rest of this work lives at [soundkorb.ru](https://soundkorb.ru).
 
 <div align="center">
 <br>
