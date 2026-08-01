@@ -88,11 +88,20 @@ when you press the button.
 | ↔️ | Guess the Pan Position | Where it sits across the stereo field | scale |
 | 🔊 | Guess the Gain Change | How much the level moved, −9…+9 dB | scale |
 | ⏱️ | Guess the Delay Time | How long the echo is, 20–640 ms | scale |
-| 🥁 | Guess the Compression | How strong the compression is (weak/medium/strong) | choice |
-| 🏛️ | Guess the Reverb | Room / Hall / Plate / Spring | choice |
-| 🔥 | Guess the Distortion | Soft Clip / Hard Clip / Tape Saturation / Overdrive | choice |
-| 📐 | Guess the Stereo Width | Narrow – Normal – Wide – Extra Wide | choice |
-| 🎯 | Name the Range | Sub-bass / Bass / Low-mids / Mids / High-mids / Presence / Air | choice |
+| 🥁 | Guess the Compression | How strong the compression is — two of weak/medium/strong | two |
+| 🏛️ | Guess the Reverb | Two of Room / Chamber / Hall / Plate / Spring | two |
+| 🔥 | Guess the Distortion | Two of Soft Clipping / Hard Clipping / Tape Saturation / Overdrive | two |
+| 📐 | Guess the Stereo Width | Two of Narrow / Normal / Wide / Extra Wide | two |
+| 🎯 | Name the Range | Two of Sub-bass … Air, the standard seven | two |
+
+The five naming exercises always offer **exactly two** alternatives, at
+every level. What the level picks is *which* two — how close together they
+sit on that exercise's own axis of character — and how archetypal an
+example of its category you hear, since every answer is a *family* of
+genuinely different settings rather than one preset with a wobble on it. A
+third button makes a round harder by giving you more to read and improving
+your odds of a lucky guess, neither of which is your ear getting better.
+See [docs/decisions/031](docs/decisions/031-two-alternatives-and-preset-families.md).
 
 Every game shares one `Game` interface, one generic UI, adaptive
 difficulty (level 1–10), a daily login streak, and a daily challenge — see
@@ -367,15 +376,14 @@ you to discover.
 
 ## Status
 
-**Ear Trainer:** 9 exercises implemented — "guess the boosted/cut band"
-(8 octave bands, 100 Hz–12.8 kHz), "guess the compression strength"
-(weak/medium/strong), "guess the reverb type" (room/hall/plate/spring),
-"guess the pan position" (5 positions, Hard Left–Hard Right), "guess the
-delay time" (50/150/300/500 ms), "guess the distortion" (Soft Clip/Hard
-Clip/Tape Saturation/Overdrive), "guess the stereo width" (Narrow–Extra
-Wide), "guess the gain change" (±dB, the one game whose choice labels
-themselves change with difficulty), and "name the frequency range"
-(Sub-bass through Air, the standard 7-range naming) — sharing a common `Game` interface
+**Ear Trainer:** 9 exercises implemented. Four answer on a scale — "find
+the frequency" (anywhere in 100 Hz–12.8 kHz), "guess the pan position",
+"guess the delay time" (20–640 ms), "guess the gain change" (±9 dB) — with
+the level narrowing the accept band. Five answer by naming, always between
+exactly two alternatives — "guess the compression strength", "guess the
+reverb type" (room/chamber/hall/plate/spring), "guess the distortion",
+"guess the stereo width", "name the frequency range" — with the level
+choosing which two and how textbook the example is. All nine share a common `Game` interface
 driving one generic UI, plus a `ProgressManager` (points, level 1-10 that
 scales each game's difficulty, daily login streak, one daily challenge)
 — see [docs/architecture.md](docs/architecture.md),

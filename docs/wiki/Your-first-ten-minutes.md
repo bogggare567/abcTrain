@@ -30,8 +30,10 @@ updates, window size and language.
    and that is the fastest way to work.
 3. **Answer.** Four exercises answer on a *scale* - drag to where you think
    the value is. You do not have to be exact: landing inside the tolerance
-   band counts, and landing closer counts for more. The other five offer
-   named choices.
+   band counts, and landing closer counts for more. The other five give you
+   **two named alternatives**, always two, at every level - click the half
+   of the panel you believe. What the level changes there is which two you
+   are asked about, not how many.
 4. **The next round starts by itself** - about a second after a correct
    answer, about two after a wrong one, so there is time to hear what the
    right answer sounded like.
