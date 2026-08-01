@@ -166,6 +166,8 @@ export const EXERCISES = [
     // plugin's the moment its range changed.
     axisMin: facts.bandAxis.lowHz,
     axisMax: facts.bandAxis.highHz,
+    targetMin: facts.bandTargets.lowHz,
+    targetMax: facts.bandTargets.highHz,
     log: true,
     tolerance: facts.tolerances.band,
     ticks: facts.bandTicks,
@@ -501,7 +503,21 @@ export const fromNorm = (ex, t) => {
     : ex.axisMin + (ex.axisMax - ex.axisMin) * c;
 };
 
-export const drawTarget = (ex) => fromNorm(ex, Math.random() * 0.84 + 0.08);
+// Where a round's answer may land. Most exercises keep clear of the very
+// ends of their own scale, so the accept band always has room either side.
+// The frequency exercise says it explicitly instead, because its ruler is
+// deliberately wider than its questions: it shows everything you can hear,
+// but a boost at 25 Hz is inaudible on laptop speakers and one at 19 kHz to
+// most adults, and a round nobody can hear is a round answered by guessing.
+export const drawTarget = (ex) => {
+  if (ex.targetMin != null && ex.targetMax != null) {
+    const low = toNorm(ex, ex.targetMin);
+    const high = toNorm(ex, ex.targetMax);
+    return fromNorm(ex, low + Math.random() * (high - low));
+  }
+
+  return fromNorm(ex, Math.random() * 0.84 + 0.08);
+};
 
 // The accept band as a width on the 0..1 axis, which is the only form the
 // display can draw. On a log axis a tolerance in octaves (or a ratio) is a

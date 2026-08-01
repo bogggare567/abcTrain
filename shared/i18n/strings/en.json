@@ -138,6 +138,7 @@
   "ui.support": "Support the project",
   "ui.star": "Star on GitHub",
   "ui.continue": "Continue",
+  "ui.headphoneNote": "Headphones or monitors recommended — laptop speakers hide the low and high ends.",
   "ui.supportBody": "Ear training for mixing engineers, and three teaching plugins that process your own audio.\n\nFree and open source, and always will be. Neither of the two buttons below is required — nothing here is locked.",
   "ui.levelWord": "Level",
   "ui.tileStats": "{{accuracy}}% correct  ·  {{rounds}} rounds",

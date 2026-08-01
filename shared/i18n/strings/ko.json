@@ -51,6 +51,7 @@
   "ui.support": "프로젝트 후원",
   "ui.star": "GitHub에 별 주기",
   "ui.continue": "계속",
+  "ui.headphoneNote": "헤드폰이나 모니터를 권장합니다 — 노트북 스피커는 저역과 고역이 나오지 않습니다.",
   "ui.supportBody": "믹싱을 위한 청음 훈련과, 당신의 오디오를 직접 처리하는 세 개의 학습용 플러그인.\n\n무료이며 오픈 소스, 앞으로도 계속. 아래 두 버튼 모두 필수가 아닙니다 — 여기에 잠긴 것은 없습니다.",
   "achv.firstHundred.name": "백 번 정답",
   "achv.firstHundred.desc": "누적 100회 정답",

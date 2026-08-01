@@ -94,6 +94,11 @@ SupportScreenComponent::SupportScreenComponent (LocalisationManager& localisatio
     };
     addChildComponent (noTourButton);
 
+    headphoneNote.setJustificationType (juce::Justification::centred);
+    headphoneNote.setFont (AbcTrainLookAndFeel::labelFont());
+    headphoneNote.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (headphoneNote);
+
     addAndMakeVisible (repoLink);
 
     refresh();
@@ -110,6 +115,9 @@ void SupportScreenComponent::refresh()
     donateButton.setButtonText (localisation.getText ("ui.support"));
     starButton.setButtonText (localisation.getText ("ui.star"));
     continueButton.setButtonText (localisation.getText ("ui.continue"));
+    headphoneNote.setText (localisation.getText ("ui.headphoneNote"), juce::dontSendNotification);
+    headphoneNote.setColour (juce::Label::textColourId,
+                              AbcTrainTheme::current().textDim.withAlpha (0.75f));
 
     // Restart the reveal: a language switch changes the three words, and
     // showing new text already faded in would look like a glitch.
@@ -397,6 +405,8 @@ void SupportScreenComponent::resized()
     row.removeFromLeft (8);
     starButton.setBounds (row);
 
-    repoLink.setBounds (getLocalBounds().removeFromBottom (34)
-                            .reduced (AbcTrainTheme::Spacing::large, 8));
+    auto footer = getLocalBounds().removeFromBottom (56);
+    headphoneNote.setBounds (footer.removeFromTop (22)
+                                 .reduced (AbcTrainTheme::Spacing::large, 0));
+    repoLink.setBounds (footer.reduced (AbcTrainTheme::Spacing::large, 6));
 }

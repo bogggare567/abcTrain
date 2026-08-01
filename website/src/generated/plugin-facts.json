@@ -27,5 +27,9 @@
   "bandAxis": {
     "lowHz": 20,
     "highHz": 20000
+  },
+  "bandTargets": {
+    "lowHz": 100,
+    "highHz": 16000
   }
 }

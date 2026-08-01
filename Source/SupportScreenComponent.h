@@ -112,6 +112,13 @@ private:
     // emptiness the background exists to fix, arriving at the worst
     // possible moment.
     double ambientPhase = 3.2;
+    // One quiet line, every launch. Everything here is a listening test
+    // against a small difference, and laptop speakers simply do not
+    // reproduce the bottom two octaves or the top one - on those, several
+    // exercises are answerable only by guessing. Better to say so once
+    // than to let somebody conclude their ears are the problem.
+    juce::Label headphoneNote;
+
     juce::HyperlinkButton repoLink { "github.com/bogggare567/abcTrain",
                                       juce::URL ("https://github.com/bogggare567/abcTrain") };
 

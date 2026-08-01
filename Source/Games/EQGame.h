@@ -84,6 +84,22 @@ public:
     // log2(20000 / 20).
     static constexpr float axisOctaves = 9.9658f;
 
+    // Where targets are actually drawn from, which is narrower than the
+    // axis on purpose.
+    //
+    // The ruler shows the whole audible spectrum because that is what a
+    // spectrum *is*, and cutting it off at 12.8 kHz taught that music
+    // stops there. But a boost centred at 25 Hz is inaudible on laptop
+    // speakers and most monitors, and one at 19 kHz is inaudible to most
+    // adults on anything - a round nobody can hear is a round answered by
+    // guessing, which is the one thing this exercise must never be.
+    //
+    // So: the scale runs 20 Hz to 20 kHz, the questions live between 100
+    // and 16 k. The ends stay on screen as context you can answer *past*,
+    // which is also why the tolerance band never runs out of room.
+    static constexpr float targetLowHz = 100.0f;
+    static constexpr float targetHighHz = 16000.0f;
+
     int getNumChoices() const override { return numBands; }
     juce::String getChoiceLabel (int choiceIndex) const override;
 

@@ -127,6 +127,24 @@ const facts = {
       (m) => Number(m[1]),
     ),
   },
+
+  // Narrower than the axis on purpose: the ruler shows everything you can
+  // hear, the questions stay where a filter is actually audible. See
+  // EQGame's targetLowHz/targetHighHz.
+  bandTargets: {
+    lowHz: grab(
+      eqHeader,
+      "EQGame's target low bound",
+      /targetLowHz = ([0-9.]+)f/,
+      (m) => Number(m[1]),
+    ),
+    highHz: grab(
+      eqHeader,
+      "EQGame's target high bound",
+      /targetHighHz = ([0-9.]+)f/,
+      (m) => Number(m[1]),
+    ),
+  },
 };
 
 const json = `${JSON.stringify(facts, null, 2)}\n`;

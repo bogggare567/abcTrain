@@ -128,11 +128,10 @@ void EQGame::newRound()
     // Log-uniform across the whole range: uniform in *octaves*, so every
     // part of the spectrum comes up equally often. Drawing uniformly in
     // Hz instead would put nearly every target above 6 kHz.
-    // Across the whole axis now, not just between the outermost grid
-    // marks: the marks are a ruler, not the set of answers, and confining
-    // targets to 31.5 Hz - 16 kHz would leave both ends of the scale
-    // permanently empty.
-    targetHz = axisLowHz * std::pow (axisHighHz / axisLowHz, random.nextFloat());
+    // Drawn from the audible middle of the axis, not its full span - see
+    // targetLowHz/targetHighHz for why the ruler is wider than the
+    // question.
+    targetHz = targetLowHz * std::pow (targetHighHz / targetLowHz, random.nextFloat());
 
     // Nearest grid mark, for the legacy discrete path only.
     correctBandIndex = 0;

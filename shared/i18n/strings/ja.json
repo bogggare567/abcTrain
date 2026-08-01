@@ -51,6 +51,7 @@
   "ui.support": "プロジェクトを支援",
   "ui.star": "GitHub でスター",
   "ui.continue": "続ける",
+  "ui.headphoneNote": "ヘッドホンかモニターを推奨 — ノートPCのスピーカーでは低域と高域が出ません。",
   "ui.supportBody": "ミックスのための耳のトレーニングと、自分の音声を処理する3つの学習用プラグイン。\n\n無料でオープンソース、これからもずっと。下の2つのボタンはどちらも必須ではありません — ここに鍵のかかったものはありません。",
   "achv.firstHundred.name": "百問正解",
   "achv.firstHundred.desc": "累計100問正解",
