@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include "../../shared/GainMatch.h"
 #include "../../shared/PinkNoiseGenerator.h"
 #include <array>
 #include <atomic>
@@ -100,6 +101,13 @@ private:
 
     // Read on the audio thread every block, written from the UI.
     std::atomic<bool> playProcessed { true };
+
+    // Levels the widened signal against mono. Widening scales the side
+    // signal, which raises the sum of the two channels - so "Stereo" is
+    // louder than "Mono" by construction, and wider settings are louder
+    // than narrow ones. Both would be answerable by volume alone.
+    float matchGain = 1.0f;
+    void updateMatchGain();
 
     float roundWidthJitter = 0.0f;
 

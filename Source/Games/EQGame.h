@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include "../../shared/GainMatch.h"
 #include <atomic>
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
@@ -120,6 +121,12 @@ private:
     double sampleRate = 44100.0;
 
     juce::Random random;
+
+    // Levels the filtered signal against the unfiltered one, measured per
+    // round - a 10 dB peak boost raises the total, and an A/B where one
+    // side is louder is a loudness test wearing an EQ test's clothes.
+    float matchGain = 1.0f;
+    void updateMatchGain();
     TestSignalGenerator noise;
 
     // The real answer, anywhere in the range - not one of numBands.

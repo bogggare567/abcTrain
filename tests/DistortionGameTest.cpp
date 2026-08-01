@@ -3,6 +3,7 @@
 #include <functional>
 #include <cmath>
 #include "../Source/Games/DistortionGame.h"
+#include "../shared/PinkNoiseGenerator.h"
 #include <cmath>
 
 class DistortionGameTest : public juce::UnitTest
@@ -60,7 +61,12 @@ public:
                         // Recovering it from the helper itself - measure a
                         // unity variant, then check the ratio - would only
                         // prove the function is self-consistent.
-                        juce::Random signal (0x5EED);
+                        // Pink, matching what the game plays and what the
+                        // compensation is measured on - a waveshaper is
+                        // level-dependent, so white noise here would be
+                        // checking a different device.
+                        PinkNoiseGenerator signal { 0x5EED };
+                        auto sum = 0.0;
                         auto sumOfSquares = 0.0;
                         auto toneState = 0.0f;
                         const auto toneCoeff = variant.toneCutoffHz > 0.0f
@@ -68,9 +74,16 @@ public:
                                                    * variant.toneCutoffHz / 44100.0f)
                             : 1.0f;
 
-                        for (int i = 0; i < 4096; ++i)
+                        // A long window on purpose. Pink noise carries
+                        // most of its energy at the low end, so a short
+                        // one has several per cent of genuine RMS scatter
+                        // - which is the signal's own variance, not the
+                        // compensation being wrong.
+                        constexpr int measuredSamples = 65536;
+
+                        for (int i = 0; i < measuredSamples; ++i)
                         {
-                            const auto raw = signal.nextFloat() * 2.0f - 1.0f;
+                            const auto raw = signal.nextSample();
                             auto shaped = DistortionGame::shape (shaperType, raw * scaledDrive, variant.negativeScale);
 
                             if (variant.toneCutoffHz > 0.0f)
@@ -80,11 +93,18 @@ public:
                             }
 
                             const auto out = shaped * makeup;
+                            sum += (double) out;
                             sumOfSquares += (double) out * (double) out;
                         }
 
-                        const auto rms = (float) std::sqrt (sumOfSquares / 4096.0);
-                        expect (std::abs (rms - 0.20f) < 0.005f,
+                        // Variance, matching what the compensation
+                        // targets: an asymmetric curve makes DC, and DC is
+                        // not loudness.
+                        const auto mean = sum / (double) measuredSamples;
+                        const auto variance = juce::jmax (0.0,
+                            sumOfSquares / (double) measuredSamples - mean * mean);
+                        const auto rms = (float) std::sqrt (variance);
+                        expect (std::abs (rms - 0.20f) < 0.012f,
                                  "voicing landed at RMS " + juce::String (rms, 4)
                                      + " instead of 0.20 (type " + juce::String (type)
                                      + ", drive " + juce::String (drive, 2) + ")");

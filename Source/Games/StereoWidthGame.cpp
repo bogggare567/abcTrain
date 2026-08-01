@@ -86,8 +86,8 @@ void StereoWidthGame::process (juce::AudioBuffer<float>& buffer)
             side *= width;
         }
 
-        const auto outL = mid + side;
-        const auto outR = mid - side;
+        const auto outL = (mid + side) * matchGain;
+        const auto outR = (mid - side) * matchGain;
 
         if (numChannels > 0) buffer.setSample (0, sample, outL);
         if (numChannels > 1) buffer.setSample (1, sample, outR);
@@ -140,9 +140,64 @@ void StereoWidthGame::newRound()
                        : 0.0f;
     sideLowStateL = 0.0f;
 
+    updateMatchGain();
+
     chosenWidthIndex = -1;
     answered = false;
     sendChangeMessage();
+}
+
+void StereoWidthGame::updateMatchGain()
+{
+    // Mono against this round's width, measured on two fresh decorrelated
+    // noise sources - the same shape the game plays, on its own
+    // generators so the live ones keep their streams.
+    //
+    // Measured on the *sum* of the two channels, because that is what
+    // loudness is here: widening pushes the two apart, which raises the
+    // total even though the mid is untouched.
+    const auto rate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    const auto numSamples = (int) rate;
+    const auto width = juce::jmax (0.05f, widths[(size_t) pairIndices[(size_t) correctWidthIndex]]
+                                              + roundWidthJitter);
+    const auto splitCoeff = monoSplitCoeff;
+
+    PinkNoiseGenerator leftNoise { 0x5EED }, rightNoise { 0xBEEF };
+
+    juce::AudioBuffer<float> mono (1, numSamples);
+    juce::AudioBuffer<float> wide (1, numSamples);
+
+    auto lowState = 0.0f;
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const auto left = leftNoise.nextSample() * 0.5f;
+        const auto right = rightNoise.nextSample() * 0.5f;
+
+        const auto midValue = (left + right) * 0.5f;
+        auto side = (left - right) * 0.5f;
+
+        if (splitCoeff > 0.0f)
+        {
+            lowState += splitCoeff * (side - lowState);
+            side = (side - lowState) * width;
+        }
+        else
+        {
+            side *= width;
+        }
+
+        // The two channels folded into one sample whose square is their
+        // mean square, so a single RMS over the buffer is the RMS of the
+        // pair. Summing them instead would measure the mid twice and the
+        // side not at all, which is exactly the quantity that must not be
+        // used here.
+        mono.setSample (0, i, midValue);
+        wide.setSample (0, i, std::sqrt (0.5f * ((midValue + side) * (midValue + side)
+                                                  + (midValue - side) * (midValue - side))));
+    }
+
+    matchGain = GainMatch::from (GainMatch::rms (mono), GainMatch::rms (wide));
 }
 
 void StereoWidthGame::submitAnswer (int choiceIndex)

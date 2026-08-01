@@ -1,4 +1,5 @@
 #include "EQGame.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include <cmath>
 #include <limits>
 
@@ -107,9 +108,41 @@ void EQGame::process (juce::AudioBuffer<float>& buffer)
         juce::dsp::AudioBlock<float> block (buffer);
         juce::dsp::ProcessContextReplacing<float> context (block);
         peakFilter.process (context);
+
+        // Back to the level it came in at - see updateMatchGain.
+        buffer.applyGain (matchGain);
     }
 
     buffer.applyGain (0.25f);
+}
+
+void EQGame::updateMatchGain()
+{
+    // Pink noise through this round's filter, offline, on the message
+    // thread. Its own filter instance so the live one's state is never
+    // disturbed mid-round, and a fixed seed so the same round always
+    // gets the same compensation.
+    const auto numSamples = (int) (sampleRate > 0.0 ? sampleRate : 44100.0);
+
+    juce::dsp::IIR::Filter<float> measuring;
+    measuring.coefficients = peakFilter.state;
+    measuring.reset();
+
+    PinkNoiseGenerator measuringNoise { 0x5EED };
+
+    matchGain = GainMatch::measure (numSamples,
+        [&measuringNoise] (juce::AudioBuffer<float>& buffer)
+        {
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                buffer.setSample (0, i, measuringNoise.nextSample());
+        },
+        [&measuring] (juce::AudioBuffer<float>& buffer)
+        {
+            auto* data = buffer.getWritePointer (0);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                data[i] = measuring.processSample (data[i]);
+        });
 }
 
 void EQGame::setDifficulty (int level)
@@ -151,6 +184,7 @@ void EQGame::newRound()
     chosenNormalised = -1.0f;
     answered = false;
     updateFilter();
+    updateMatchGain();
     sendChangeMessage();
 }
 

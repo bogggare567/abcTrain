@@ -6,6 +6,15 @@
 class PinkNoiseGenerator
 {
 public:
+    PinkNoiseGenerator() = default;
+
+    // Seeded, for the offline measurements that level one round's
+    // processing against its own untreated signal. Those have to give the
+    // same answer every time they are asked about the same setting -
+    // otherwise the compensation wanders from round to round, which is a
+    // level difference of its own.
+    explicit PinkNoiseGenerator (juce::int64 seed) { random.setSeed (seed); }
+
     float nextSample()
     {
         const float white = random.nextFloat() * 2.0f - 1.0f;

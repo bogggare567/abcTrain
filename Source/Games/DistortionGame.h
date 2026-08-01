@@ -113,6 +113,15 @@ private:
     Variant roundVariant;
     float roundMakeup = 1.0f;
 
+    // The clean path's own gain to the same target level.
+    //
+    // Both sides used to share roundMakeup, which is measured to bring the
+    // *shaped* signal to the target - so the untreated side arrived at
+    // whatever the raw noise happened to be, around 10 dB quieter. A/B on
+    // this exercise was therefore a volume switch, which is the one thing
+    // it must not be.
+    float roundCleanGain = 1.0f;
+
     juce::Random random;
 
     // The two categories on offer this round. correctTypeIndex is 0 or 1 into

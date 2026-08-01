@@ -1,4 +1,5 @@
 #include "DelayGame.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include <cmath>
 #include <limits>
 #include <cmath>
@@ -104,7 +105,7 @@ void DelayGame::process (juce::AudioBuffer<float>& buffer)
         delayLine.pushSample (0, dry);
         const auto wet = delayLine.popSample (0);
         const auto value = playProcessed.load()
-                               ? dryWetFraction * wet + (1.0f - dryWetFraction) * dry
+                               ? (dryWetFraction * wet + (1.0f - dryWetFraction) * dry) * matchGain
                                : dry;
 
         for (int ch = 0; ch < numChannels; ++ch)
@@ -155,7 +156,59 @@ void DelayGame::newRound()
     chosenDelayIndex = -1;
     answered = false;
     updateDelayTime();
+    updateMatchGain();
     sendChangeMessage();
+}
+
+void DelayGame::updateMatchGain()
+{
+    // A dry burst against the same burst with this round's echo mixed in,
+    // measured offline on its own delay line so the live one keeps the
+    // tail it is holding. Long enough to contain several repeats, since
+    // the repeats are the added energy being compensated for.
+    const auto rate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    const auto numSamples = juce::jmax (1, burstPeriodSamples * 5);
+
+    // Two periods of warm-up, unmeasured: the delay line starts empty
+    // while the live one is holding whatever the round has already put
+    // into it. See GainMatch::measure.
+    const auto warmUp = juce::jmax (1, burstPeriodSamples * 2);
+
+    juce::dsp::DelayLine<float> measuringLine { (int) (rate * 1.0) };
+    juce::dsp::ProcessSpec spec { rate, (juce::uint32) numSamples, 1 };
+    measuringLine.prepare (spec);
+    measuringLine.setDelay ((float) (targetMs * 0.001 * rate));
+
+    PinkNoiseGenerator measuringNoise { 0x5EED };
+    const auto attack = juce::jmax (1, attackSamples);
+    const auto decay = juce::jmax (1, decayTauSamples);
+    const auto period = juce::jmax (1, burstPeriodSamples);
+    const auto mix = dryWetFraction;
+
+    matchGain = GainMatch::measure (1, numSamples, warmUp,
+        [&measuringNoise, attack, decay, period] (juce::AudioBuffer<float>& buffer)
+        {
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                const auto position = i % period;
+                const auto envelope = position < attack
+                                        ? (float) position / (float) attack
+                                        : std::exp ((float) -(position - attack) / (float) decay);
+
+                buffer.setSample (0, i, measuringNoise.nextSample() * envelope);
+            }
+        },
+        [&measuringLine, mix] (juce::AudioBuffer<float>& buffer)
+        {
+            auto* data = buffer.getWritePointer (0);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                measuringLine.pushSample (0, data[i]);
+                const auto echo = measuringLine.popSample (0);
+                data[i] = mix * echo + (1.0f - mix) * data[i];
+            }
+        });
 }
 
 void DelayGame::updateDelayTime()

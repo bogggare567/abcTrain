@@ -1,4 +1,5 @@
 #include "ReverbGame.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include "../../shared/PresetFamily.h"
 #include <cmath>
 
@@ -66,6 +67,8 @@ void ReverbGame::process (juce::AudioBuffer<float>& buffer)
         {
             reverb.process (context);
         }
+
+        buffer.applyGain (matchGain);
     }
 
     buffer.applyGain (0.7f);
@@ -163,7 +166,76 @@ void ReverbGame::newRound()
         allpass.reset();
 
     updateReverbForType();
+    updateMatchGain();
     sendChangeMessage();
+}
+
+void ReverbGame::updateMatchGain()
+{
+    // This round's space, run offline over the game's own burst shape on
+    // separate DSP instances so the live tail is never disturbed. Three
+    // burst periods, so the measurement sees the tails rather than only
+    // the hits that cause them.
+    const auto rate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    const auto numSamples = juce::jmax (1, burstPeriodSamples * 5);
+
+    // The first two periods are processed but not measured. This reverb
+    // starts from silence while the live one has been running for as long
+    // as the round has, and measuring through the build-up reports the wet
+    // path as several dB quieter than it really is.
+    const auto warmUp = juce::jmax (1, burstPeriodSamples * 2);
+    const auto isSpring = pairTypes[(size_t) correctTypeIndex] == springTypeIndex;
+
+    // Two channels, matching what process() hands the reverb.
+    juce::dsp::ProcessSpec spec { rate, (juce::uint32) numSamples, 2 };
+
+    juce::dsp::Reverb measuringReverb;
+    measuringReverb.prepare (spec);
+    measuringReverb.setParameters (reverb.getParameters());
+
+    std::array<juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
+                                               juce::dsp::IIR::Coefficients<float>>, 4> measuringSpring;
+
+    for (size_t i = 0; i < measuringSpring.size(); ++i)
+    {
+        measuringSpring[i].prepare (spec);
+        *measuringSpring[i].state = *springAllpass[i].state;
+    }
+
+    PinkNoiseGenerator measuringNoise { 0x5EED };
+    const auto attack = juce::jmax (1, attackSamples);
+    const auto decay = juce::jmax (1, decayTauSamples);
+    const auto period = juce::jmax (1, burstPeriodSamples);
+
+    matchGain = GainMatch::measure (2, numSamples, warmUp,
+        [&measuringNoise, attack, decay, period] (juce::AudioBuffer<float>& buffer)
+        {
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                const auto position = i % period;
+                const auto envelope = position < attack
+                                        ? (float) position / (float) attack
+                                        : std::exp ((float) -(position - attack) / (float) decay);
+
+                // The same value in both channels, exactly as the game
+                // renders it.
+                const auto value = measuringNoise.nextSample() * envelope;
+
+                for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                    buffer.setSample (ch, i, value);
+            }
+        },
+        [&measuringReverb, &measuringSpring, isSpring] (juce::AudioBuffer<float>& buffer)
+        {
+            juce::dsp::AudioBlock<float> block (buffer);
+            juce::dsp::ProcessContextReplacing<float> context (block);
+
+            if (isSpring)
+                for (auto& allpass : measuringSpring)
+                    allpass.process (context);
+            else
+                measuringReverb.process (context);
+        });
 }
 
 void ReverbGame::submitAnswer (int choiceIndex)

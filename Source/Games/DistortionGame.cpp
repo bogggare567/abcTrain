@@ -1,4 +1,5 @@
 #include "DistortionGame.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include <cmath>
 
 const std::array<DistortionGame::TypeInfo, DistortionGame::numTypes> DistortionGame::types {{
@@ -122,21 +123,28 @@ float DistortionGame::measureMakeupFor (Type type, const Variant& variant, float
     // character - the one thing every one of these exercises is built to
     // avoid.
     //
-    // So: run a fixed, reproducible signal through this exact voicing and
-    // scale it to a fixed RMS. Same seed every time, so a variant always
-    // gets the same compensation and nothing here is a source of drift.
-    constexpr int numSamples = 4096;
+    // So: run a reproducible signal through this exact voicing and scale
+    // it to a fixed RMS.
+    //
+    // **Pink** noise, because that is what the game plays. The first
+    // version measured full-scale white noise - some 15 dB hotter than the
+    // real signal - so it compensated for an amount of clipping that never
+    // happens and left the treated side several dB off. A waveshaper is a
+    // level-dependent device; measuring it at the wrong level measures a
+    // different device.
+    constexpr int numSamples = 65536;
     constexpr float targetRms = 0.20f;
 
-    juce::Random measuringRandom (0x5EED);
+    PinkNoiseGenerator measuringNoise { 0x5EED };
     const auto toneCoeff = onePoleCoeff (variant.toneCutoffHz, sampleRate);
 
     auto toneState = 0.0f;
+    auto sum = 0.0;
     auto sumOfSquares = 0.0;
 
     for (int i = 0; i < numSamples; ++i)
     {
-        const auto raw = measuringRandom.nextFloat() * 2.0f - 1.0f;
+        const auto raw = measuringNoise.nextSample();
         auto shaped = shape (type, raw * drive, variant.negativeScale);
 
         if (variant.toneCutoffHz > 0.0f)
@@ -145,10 +153,18 @@ float DistortionGame::measureMakeupFor (Type type, const Variant& variant, float
             shaped = toneState;
         }
 
+        sum += (double) shaped;
         sumOfSquares += (double) shaped * (double) shaped;
     }
 
-    const auto rms = (float) std::sqrt (sumOfSquares / (double) numSamples);
+    // Variance, not raw mean square: an asymmetric curve - which is
+    // exactly what Overdrive is - produces a DC offset, and DC is not
+    // loudness. Counting it made the compensation wander with whatever
+    // offset the noise happened to produce, and left Overdrive the one
+    // type that would not settle.
+    const auto mean = sum / (double) numSamples;
+    const auto variance = juce::jmax (0.0, sumOfSquares / (double) numSamples - mean * mean);
+    const auto rms = (float) std::sqrt (variance);
 
     // A silent result would mean an infinite makeup. Can't happen with a
     // real curve, but the guard costs nothing and a NaN reaching the audio
@@ -183,9 +199,10 @@ void DistortionGame::process (juce::AudioBuffer<float>& buffer)
             shaped = tapeLowpassState;
         }
 
-        // "Clean" keeps the same makeup gain, so switching A/B isolates
-        // the harmonic character rather than the level.
-        const auto value = (processed ? shaped : raw) * makeup * 0.35f;
+        // Each side scaled to the same level, so switching A/B isolates
+        // the harmonic character rather than the volume.
+        const auto value = processed ? shaped * makeup * 0.35f
+                                     : raw * roundCleanGain * 0.35f;
 
         for (int ch = 0; ch < numChannels; ++ch)
             buffer.setSample (ch, sample, value);
@@ -226,6 +243,26 @@ void DistortionGame::newRound()
     // plain floats and never runs the measurement itself.
     const auto drive = juce::jmax (0.2f, driveAmount * roundVariant.driveScale + roundDriveJitter);
     roundMakeup = measureMakeupFor (type, roundVariant, drive, sampleRate);
+
+    // The untreated signal measured on its own and brought to the same
+    // target, rather than borrowing the shaped path's number.
+    {
+        constexpr int numSamples = 4096;
+        constexpr float targetRms = 0.20f;
+
+        PinkNoiseGenerator cleanNoise { 0x5EED };
+        auto sumOfSquares = 0.0;
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto value = cleanNoise.nextSample();
+            sumOfSquares += (double) value * (double) value;
+        }
+
+        const auto cleanRms = (float) std::sqrt (sumOfSquares / (double) numSamples);
+        roundCleanGain = cleanRms > 1.0e-6f ? juce::jlimit (0.05f, 20.0f, targetRms / cleanRms)
+                                            : 1.0f;
+    }
     tapeLowpassCoeff = onePoleCoeff (roundVariant.toneCutoffHz, sampleRate);
 
     chosenTypeIndex = -1;

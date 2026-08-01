@@ -471,6 +471,7 @@ target_sources(EarTrainerTests
         tests/PanGameTest.cpp
         tests/DelayGameTest.cpp
         tests/DistortionGameTest.cpp
+        tests/GainMatchTest.cpp
         tests/StereoWidthGameTest.cpp
         tests/DBGameTest.cpp
         tests/FrequencyRangeGameTest.cpp

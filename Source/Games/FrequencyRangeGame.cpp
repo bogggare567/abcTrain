@@ -1,4 +1,5 @@
 #include "FrequencyRangeGame.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include <cmath>
 
 namespace
@@ -51,6 +52,8 @@ void FrequencyRangeGame::process (juce::AudioBuffer<float>& buffer)
         juce::dsp::AudioBlock<float> block (buffer);
         juce::dsp::ProcessContextReplacing<float> context (block);
         peakFilter.process (context);
+
+        buffer.applyGain (matchGain);
     }
     else
     {
@@ -108,6 +111,7 @@ void FrequencyRangeGame::newRound()
     chosenRangeIndex = -1;
     answered = false;
     updateFilter();
+    updateMatchGain();
     sendChangeMessage();
 }
 
@@ -140,6 +144,33 @@ juce::String FrequencyRangeGame::getFeedbackText() const
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + direction + " at " + formatFrequency (correctFreqHz) + " Hz ("
            + ranges[(size_t) pairIndices[(size_t) correctRangeIndex]].label + ").";
+}
+
+void FrequencyRangeGame::updateMatchGain()
+{
+    // Same approach as EQGame's: this round's filter run offline over
+    // pink noise, on its own instance so the live one is untouched.
+    const auto numSamples = (int) (sampleRate > 0.0 ? sampleRate : 44100.0);
+
+    juce::dsp::IIR::Filter<float> measuring;
+    measuring.coefficients = peakFilter.state;
+    measuring.reset();
+
+    PinkNoiseGenerator measuringNoise { 0x5EED };
+
+    matchGain = GainMatch::measure (numSamples,
+        [&measuringNoise] (juce::AudioBuffer<float>& buffer)
+        {
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                buffer.setSample (0, i, measuringNoise.nextSample());
+        },
+        [&measuring] (juce::AudioBuffer<float>& buffer)
+        {
+            auto* data = buffer.getWritePointer (0);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+                data[i] = measuring.processSample (data[i]);
+        });
 }
 
 void FrequencyRangeGame::updateFilter()

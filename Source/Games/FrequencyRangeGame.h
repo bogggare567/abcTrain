@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include "../../shared/GainMatch.h"
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
 #include <vector>
@@ -82,6 +83,12 @@ private:
     double sampleRate = 44100.0;
 
     juce::Random random;
+
+    // Levels the filtered signal against the flat one - see
+    // updateMatchGain. This exercise cuts as often as it boosts, so
+    // without it the A/B tells you the direction before you have listened.
+    float matchGain = 1.0f;
+    void updateMatchGain();
     TestSignalGenerator noise;
 
     // The two categories on offer this round. correctRangeIndex is 0 or 1 into

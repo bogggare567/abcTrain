@@ -47,12 +47,18 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
         juce::dsp::AudioBlock<float> block (buffer);
         juce::dsp::ProcessContextReplacing<float> context (block);
         compressor.process (context);
+
+        // Only the compressed path gets it. Applying it to both was right
+        // while the makeup was a fixed per-preset constant equalising the
+        // three settings against each other; it is wrong now that it is a
+        // per-round dry-over-wet ratio, because multiplying the *dry* path
+        // by it makes the untreated side louder by exactly the amount the
+        // compressor had taken off. Which is a loudness comparison again,
+        // just pointing the other way.
+        buffer.applyGain (roundMakeupGain);
     }
 
-    // The *same* measured makeup either way, so A/B isolates the dynamics
-    // rather than turning into a loudness comparison - which would be a
-    // different and much easier exercise.
-    buffer.applyGain (roundMakeupGain * 0.6f);
+    buffer.applyGain (0.6f);
 }
 
 void CompressionGame::setDifficulty (int level)
@@ -189,7 +195,7 @@ float CompressionGame::measureMakeupForTest (int level, const Variant& variant) 
     measuring.setRelease (variant.releaseMs);
 
     juce::AudioBuffer<float> scratch (1, numSamples);
-    PinkNoiseGenerator measuringNoise;
+    PinkNoiseGenerator measuringNoise { 0x5EED };
 
     // The same attack-then-exponential-decay burst the game plays, so the
     // measurement sees the transient the compressor is actually working

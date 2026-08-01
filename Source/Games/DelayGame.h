@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include "../../shared/GainMatch.h"
 #include <atomic>
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
@@ -111,6 +112,12 @@ private:
     int burstPeriodSamples = 1;
 
     juce::Random random;
+
+    // Levels the delayed signal against the dry one. Repeats are added
+    // energy on top of the original, so "Wet" is louder by construction
+    // and the A/B would answer itself.
+    float matchGain = 1.0f;
+    void updateMatchGain();
 
     int correctDelayIndex = 0;
     int chosenDelayIndex = -1;

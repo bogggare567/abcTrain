@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include "../../shared/GainMatch.h"
 #include "../../shared/TestSignalGenerator.h"
 #include <array>
 #include <atomic>
@@ -159,6 +160,12 @@ private:
     int burstPeriodSamples = 1;
 
     juce::Random random;
+
+    // Levels the wet signal against the dry hit. A reverb adds its own
+    // energy on top of what went in, so without this "Wet" is simply
+    // louder and the A/B answers itself.
+    float matchGain = 1.0f;
+    void updateMatchGain();
 
     // Read on the audio thread every block, written from the UI.
     std::atomic<bool> playProcessed { true };
