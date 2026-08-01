@@ -140,18 +140,13 @@ namespace
     // back to its raw English, so adding one is never a crash.
     juce::String translateAbLabel (const juce::String& englishLabel, const LocalisationManager& loc)
     {
-        static const std::array<std::pair<const char*, const char*>, 17> table {{
+        static const std::array<std::pair<const char*, const char*>, 12> table {{
             { "A",            "ab.a" },
             { "B",            "ab.b" },
             { "EQ Off",       "ab.eqOff" },
             { "EQ On",        "ab.eqOn" },
             { "Comp Off",     "ab.compOff" },
             { "Comp On",      "ab.compOn" },
-            { "Dry",          "ab.dry" },
-            { "With Echo",    "ab.withEcho" },
-            { "With Reverb",  "ab.withReverb" },
-            { "Mono",         "ab.mono" },
-            { "In Stereo",    "ab.inStereo" },
             { "Clean",        "ab.clean" },
             { "Driven",       "ab.driven" },
             { "Centred",      "ab.centred" },
@@ -170,37 +165,31 @@ namespace
         return englishLabel;
     }
 
-    // The names a categorical game offers as answers. Kept editor-side
-    // like translateGameName's table, so all nine Game classes stay
-    // untranslated English internally and persistence/tests never see a
-    // localised string. An unknown label falls through unchanged - a new
-    // game's choices simply arrive in English until someone adds keys.
+    // The names a categorical game offers as answers.
+    //
+    // **Most of them deliberately have no key.** Room, Chamber, Hall,
+    // Plate, Spring, the four distortion types and the seven frequency
+    // ranges are the words printed on every real plugin and in every
+    // manual - they are the vocabulary this exercise exists to teach.
+    // Rendering "Plate" as "Пластина" teaches a word no plugin will ever
+    // show you, which is the opposite of the point. A Russian engineer
+    // says "поставь plate": the sentence is Russian, the term is not.
+    //
+    // What *is* translated is what this project invented for itself -
+    // compression's Weak/Medium/Strong and the four width names appear on
+    // no real control, so they are descriptions rather than terminology.
+    // A label with no key falls through unchanged, which is also what a
+    // future game gets for free.
     juce::String translateChoiceLabel (const juce::String& englishLabel, const LocalisationManager& loc)
     {
-        static const std::array<std::pair<const char*, const char*>, 23> table {{
-            { "Room",            "choice.room" },
-            { "Chamber",         "choice.chamber" },
-            { "Hall",            "choice.hall" },
-            { "Plate",           "choice.plate" },
-            { "Spring",          "choice.spring" },
-            { "Weak",            "choice.weak" },
-            { "Medium",          "choice.medium" },
-            { "Strong",          "choice.strong" },
-            { "Soft Clipping",   "choice.softClip" },
-            { "Hard Clipping",   "choice.hardClip" },
-            { "Tape Saturation", "choice.tapeSat" },
-            { "Overdrive",       "choice.overdrive" },
-            { "Narrow",          "choice.narrow" },
-            { "Normal",          "choice.normal" },
-            { "Wide",            "choice.wide" },
-            { "Extra Wide",      "choice.extraWide" },
-            { "Sub-bass",        "choice.subBass" },
-            { "Bass",            "choice.bass" },
-            { "Low-mids",        "choice.lowMids" },
-            { "Mids",            "choice.mids" },
-            { "High-mids",       "choice.highMids" },
-            { "Presence",        "choice.presence" },
-            { "Air",             "choice.air" }
+        static const std::array<std::pair<const char*, const char*>, 7> table {{
+            { "Weak",       "choice.weak" },
+            { "Medium",     "choice.medium" },
+            { "Strong",     "choice.strong" },
+            { "Narrow",     "choice.narrow" },
+            { "Normal",     "choice.normal" },
+            { "Wide",       "choice.wide" },
+            { "Extra Wide", "choice.extraWide" }
         }};
 
         for (const auto& entry : table)

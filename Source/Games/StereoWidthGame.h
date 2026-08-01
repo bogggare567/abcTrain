@@ -47,7 +47,7 @@ public:
     void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
     bool isPlayingProcessed() const override { return playProcessed.load(); }
     juce::String getBeforeLabel() const override { return "Mono"; }
-    juce::String getAfterLabel() const override { return "In Stereo"; }
+    juce::String getAfterLabel() const override { return "Stereo"; }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;

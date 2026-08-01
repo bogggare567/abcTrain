@@ -49,7 +49,7 @@ public:
     void setPlayProcessed (bool shouldPlayProcessed) override { playProcessed.store (shouldPlayProcessed); }
     bool isPlayingProcessed() const override { return playProcessed.load(); }
     juce::String getBeforeLabel() const override { return "Dry"; }
-    juce::String getAfterLabel() const override { return "With Reverb"; }
+    juce::String getAfterLabel() const override { return "Wet"; }
 
     void newRound() override;
     void submitAnswer (int choiceIndex) override;
