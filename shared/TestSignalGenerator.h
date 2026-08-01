@@ -21,6 +21,10 @@ class TestSignalGenerator
 public:
     void setLibrary (const ReferenceAudioLibrary* newLibrary) noexcept { library = newLibrary; }
 
+    // Only reaches the fallback noise: a player who has selected their own
+    // audio has already answered the question this setting asks.
+    void setNoiseColour (NoiseColour colour) noexcept { pinkNoise.setColour (colour); }
+
     float nextSample() noexcept
     {
         if (library != nullptr)

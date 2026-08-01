@@ -39,6 +39,14 @@ public:
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
 
+    // Two generators here rather than one TestSignalGenerator - see the
+    // class note - so the colour has to reach both.
+    void setNoiseColour (NoiseColour colour) override
+    {
+        noiseL.setColour (colour);
+        noiseR.setColour (colour);
+    }
+
     // A/B - see Game::supportsBeforeAfter. "Before" collapses the side
     // signal to nothing, so the comparison is against genuine mono: width
     // is the one quantity whose natural reference point is its absence,

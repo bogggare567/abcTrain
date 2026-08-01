@@ -39,6 +39,7 @@ public:
     void process (juce::AudioBuffer<float>&) override;
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
+    void setNoiseColour (NoiseColour colour) override { noise.setNoiseColour (colour); }
 
     // A/B - the same hooks the other seven games wire up (see
     // Game::supportsBeforeAfter). This game and StereoWidthGame were the

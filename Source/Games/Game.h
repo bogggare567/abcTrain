@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../shared/DifficultyRamp.h"
+#include "../../shared/PinkNoiseGenerator.h"
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
 #include <vector>
@@ -33,6 +34,12 @@ public:
     // noise source (StereoWidthGame needs two independently-decorrelated
     // ones, so it deliberately doesn't override this).
     virtual void setReferenceAudioLibrary (const ReferenceAudioLibrary*) {}
+
+    // Which colour the fallback noise is. Same shape and same reasoning as
+    // the hook above: a default no-op, so the games that generate their
+    // own signal in some other way - StereoWidthGame's two decorrelated
+    // sources - are untouched and need no edit to keep working.
+    virtual void setNoiseColour (NoiseColour) {}
 
     // Smoothly interpolates a difficulty value across the whole 1-10
     // range, instead of three flat tiers.
