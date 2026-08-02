@@ -92,6 +92,49 @@ function Families() {
   );
 }
 
+// The real plugin, doing real things.
+//
+// The demo above it is the trainer *rebuilt for the browser*, which is
+// honest about what it is but cannot show the desktop build - the window
+// it opens in your DAW, the theme switch, the language list. This is a
+// recording of that build being used: open an exercise, answer it, switch
+// theme, switch language.
+//
+// Video rather than a GIF: same seconds at a twentieth of the weight and
+// none of the banding a 96-colour palette does to a dark gradient.
+// Autoplaying, muted, looping and inline, so it behaves like the animation
+// it is standing in for and never grabs the page.
+function Desktop() {
+  return (
+    <section className="wrap rack rack--tight" id="desktop">
+      <p className="label">And this is the desktop build</p>
+      <div className="desktop">
+        <video
+          className="desktop__video"
+          src="abctrain-demo.mp4"
+          poster="abctrain-demo-poster.jpg"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+          // Controls as well as autoplay, deliberately. Autoplay is a
+          // request, not a guarantee - it is refused under Low Power Mode,
+          // under reduced-motion settings and by some privacy blockers,
+          // and it did not fire on first load here either. A recording the
+          // visitor cannot start is worse than one with a scrub bar.
+          controls
+          aria-label="Opening an exercise, answering it, switching theme and language in the desktop app"
+        />
+        <p className="desktop__caption">
+          Nine exercises, twelve languages, light and dark - the same build the
+          installers carry. Recorded, not mocked up.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function Plugins() {
   return (
     <section className="wrap rack rack--tight" id="plugins">
@@ -205,6 +248,7 @@ export default function App() {
       <main>
         <Hero />
         <Families />
+        <Desktop />
         <Plugins />
         <Limits />
         <Get />

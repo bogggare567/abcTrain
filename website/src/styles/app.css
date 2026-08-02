@@ -673,3 +673,26 @@ p { margin: 0; }
   border-color: color-mix(in srgb, var(--hue) 45%, transparent);
   background: color-mix(in srgb, var(--hue) 12%, transparent);
 }
+
+/* The desktop-build recording. Framed like the plugin window it shows -
+   a rounded well with the page's own border - so it reads as a screen
+   rather than as an embedded video player. */
+.desktop {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-well);
+  background: var(--well);
+  padding: var(--s-3);
+}
+
+.desktop__video {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius-well) - 4px);
+}
+
+.desktop__caption {
+  margin: var(--s-3) 0 0;
+  font-size: var(--t-small);
+  color: var(--faint);
+}

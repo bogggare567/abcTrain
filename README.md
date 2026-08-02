@@ -20,6 +20,13 @@ Linux, as VST3 · AU · Standalone.
 
 <br>
 
+![Opening an exercise, answering it, switching theme and language](docs/screenshots/abctrain-demo.gif)
+
+<sub>The desktop build, recorded: open an exercise, answer it, switch theme, switch language.<br>
+The <a href="https://bogggare567.github.io/abcTrain/">browser demo</a> is the same trainer, playable.</sub>
+
+<br>
+
 [![Build](https://img.shields.io/github/actions/workflow/status/bogggare567/abcTrain/build_and_test.yml?style=flat-square&labelColor=1E1E2E&color=5B9BD5&label=build)](https://github.com/bogggare567/abcTrain/actions/workflows/build_and_test.yml)
 [![CodeQL](https://img.shields.io/github/actions/workflow/status/bogggare567/abcTrain/codeql.yml?style=flat-square&labelColor=1E1E2E&color=5B9BD5&label=codeql)](https://github.com/bogggare567/abcTrain/actions/workflows/codeql.yml)
 [![Release](https://img.shields.io/github/v/release/bogggare567/abcTrain?style=flat-square&labelColor=1E1E2E&color=5B9BD5&label=release)](https://github.com/bogggare567/abcTrain/releases/latest)

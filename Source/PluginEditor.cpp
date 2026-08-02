@@ -1996,6 +1996,24 @@ void EarTrainerEditor::refreshLocalisedText()
         blitzButton.setButtonText (localisation.getText ("ui.modeBlitz"));
     }
 
+    // Three strings that a language change was leaving in the old
+    // language, caught by recording the switch and watching it happen.
+    //
+    // The A/B captions and the hint's price are written by their own
+    // refreshers, which nothing here was calling; and the answer panel's
+    // placeholder is only written when the panel is *rebuilt*, which a
+    // language change does not trigger for the four scale exercises -
+    // their choice labels are grid marks and do not translate, so
+    // choiceSliderMatchesGame correctly sees no change and correctly does
+    // nothing. Correct, and still the wrong outcome for the one string
+    // that did need writing.
+    refreshBeforeAfter();
+    refreshHintButton();
+    choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
+
+    {
+    }
+
     rebuildGameSelectorItems();
     rebuildHomeSections();
     refreshFromGameState();
