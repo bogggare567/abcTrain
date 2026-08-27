@@ -201,24 +201,19 @@ jobs:
         with:
           path: artifacts
 
-      # Only the raw plugins-* build output gets re-zipped here - the
-      # three real installers (installer-macos/-windows/-linux) are
-      # already packaged appropriately (.dmg/.exe/.tar.gz) and get
-      # attached to the release as-is below.
-      - name: Zip each OS's raw plugin artifacts for release
-        run: |
-          cd artifacts
-          for dir in plugins-*/; do
-            name="${dir%/}"
-            (cd "$name" && zip -r "../${name}.zip" .)
-          done
-
+      # The raw plugins-* build output is deliberately NOT attached. It
+      # stays available as a workflow artifact for anyone debugging a
+      # build, but on the release page it was a trap: named after the CI
+      # runner image rather than the platform, sorted alongside the real
+      # installers, and up to 452 MB against the installer's 17 MB. On
+      # v1.5.1 it took 37 of 175 downloads - one in five people fetched
+      # the wrong thing, and fifteen of them fetched it the slow way.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            artifacts/plugins-*.zip
             artifacts/installer-macos/*.dmg
             artifacts/installer-windows/*.exe
             artifacts/installer-linux/*.tar.gz
           generate_release_notes: true
+          body_path: .github/release-body.md

@@ -74,11 +74,17 @@ fi
 
 copy_maybe_sudo() {
     local src="$1" dest_dir="$2" need_sudo="$3"
+    # Remove any existing copy first. `cp -r dir existing_dir/` copies the
+    # source *inside* the target, so upgrading used to produce
+    # Foo.vst3/Foo.vst3 - a corrupt bundle, reported as "Installed".
+    local dest="$dest_dir/$(basename "$src")"
     if [ "$need_sudo" = "1" ]; then
         sudo mkdir -p "$dest_dir"
+        sudo rm -rf "$dest"
         sudo cp -r "$src" "$dest_dir/"
     else
         mkdir -p "$dest_dir"
+        rm -rf "$dest"
         cp -r "$src" "$dest_dir/"
     fi
 }

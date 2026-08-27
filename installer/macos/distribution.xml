@@ -4,7 +4,12 @@
     <welcome file="Welcome.txt" mime-type="text/plain"/>
     <readme file="ReadMe.txt" mime-type="text/plain"/>
     <license file="LICENSE.txt" mime-type="text/plain"/>
-    <options customize="always" require-scripts="false" rootVolumeOnly="false"/>
+    <!-- Without this the installer's last word is "successful" and nothing
+         else: no install paths, and no mention that a DAW caches its
+         plugin list and has to rescan. For Ableton, Logic and Cubase that
+         silence reads as "the plugin did not install". -->
+    <conclusion file="Conclusion.txt" mime-type="text/plain"/>
+    <options customize="allow" require-scripts="false" rootVolumeOnly="false"/>
 
     <!-- Lets Installer.app offer its native "Install for all users of this
          computer" (system, /Library/...) vs "Install for me only"
@@ -47,7 +52,7 @@
     <choice id="choice_eartrainer_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
         <pkg-ref id="com.earsnap.abctrain.eartrainer.au"/>
     </choice>
-    <choice id="choice_eartrainer_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+    <choice id="choice_eartrainer_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="true">
         <pkg-ref id="com.earsnap.abctrain.eartrainer.app"/>
     </choice>
 
@@ -59,7 +64,7 @@
     <choice id="choice_learnereq_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnereq.au"/>
     </choice>
-    <choice id="choice_learnereq_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+    <choice id="choice_learnereq_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnereq.app"/>
     </choice>
 
@@ -71,7 +76,7 @@
     <choice id="choice_learnercomp_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnercomp.au"/>
     </choice>
-    <choice id="choice_learnercomp_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+    <choice id="choice_learnercomp_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnercomp.app"/>
     </choice>
 
@@ -83,7 +88,7 @@
     <choice id="choice_learnerverb_au" title="Audio Unit (AU)" description="For Logic Pro and GarageBand." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnerverb.au"/>
     </choice>
-    <choice id="choice_learnerverb_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="false">
+    <choice id="choice_learnerverb_app" title="Standalone app" description="Runs on its own in /Applications/abcTrain - no DAW needed." selected="true">
         <pkg-ref id="com.earsnap.abctrain.learnerverb.app"/>
     </choice>
 

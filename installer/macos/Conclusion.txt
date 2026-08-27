@@ -1,0 +1,37 @@
+Installed.
+
+WHERE THINGS WENT
+
+  VST3          /Library/Audio/Plug-Ins/VST3
+  Audio Unit    /Library/Audio/Plug-Ins/Components
+  Applications  /Applications/abcTrain
+
+  (If you chose "Install for me only", the same folders under your own
+  Home folder instead.)
+
+YOUR DAW WILL NOT SEE THE PLUGINS UNTIL IT RESCANS
+
+  Most hosts rescan when they next start, so quitting and reopening your
+  DAW is usually enough. Ableton Live, Cubase and Studio One also have a
+  rescan button in their plugin preferences. Logic scans Audio Units on
+  launch and will validate the new ones the first time.
+
+  If a plugin does not appear, this is almost always why.
+
+NO DAW? OPEN THE APPS
+
+  ABC Ear Trainer, ABC Learner EQ, ABC Learner Comp and ABC Learner Verb
+  are in /Applications/abcTrain and run on their own. Start with ABC Ear
+  Trainer - headphones or monitors, not laptop speakers: they hide both
+  ends of the spectrum, which is most of what the exercises are about.
+
+  The disk image you installed from also carries "Open Plugins Folder",
+  which opens the folders above in the Finder.
+
+HELP
+
+  Manual and troubleshooting:
+  https://github.com/bogggare567/abcTrain/wiki
+
+  Play it in a browser, no install:
+  https://bogggare567.github.io/abcTrain/
