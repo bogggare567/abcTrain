@@ -169,7 +169,7 @@
   "ui.backgroundDim": "Затемнение",
   "ui.chooseImage": "Выбрать картинку…",
   "ui.clearImage": "Убрать",
-  "ui.toNextLevel": "До уровня {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Уровень {{level}} · {{have}} / {{need}} до {{next}}-го",
   "ui.promotionTest": "Повышение: {{done}} из {{needed}} подряд",
   "ui.levelMaxed": "Максимальный уровень",
   "ui.importAndSort": "Добавить музыку…",
@@ -285,5 +285,7 @@
   "choice.wide": "Широко",
   "choice.extraWide": "Очень широко",
   "ui.modesLockedTitle": "Выживание и Блиц",
-  "ui.modesLockedCaption": "Ответьте {{count}} подряд в этом упражнении, чтобы открыть"
+  "ui.modesLockedCaption": "Ответьте {{count}} подряд в этом упражнении, чтобы открыть",
+  "ui.volume": "Громкость",
+  "ui.dragOnScale": "Проведи по шкале, чтобы ответить"
 }

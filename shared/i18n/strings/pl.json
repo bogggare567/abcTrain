@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Usłysz, jak szerokie jest naprawdę źródło — to, co trzyma miks szeroko bez rozrywania środka.",
   "game.db.benefit": "Skalibruj ucho na zmiany poziomu w dB, żeby ruch fadera był świadomy.",
   "game.frequencyrange.benefit": "Poznaj nazwane zakresy — od sub-bassu po air — żeby opisać problem, zanim sięgniesz po gałkę.",
-  "ui.toNextLevel": "Do poziomu {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Poziom {{level}} · {{have}} / {{need}} do poziomu {{next}}",
   "ui.promotionTest": "Awans: {{done}} z {{needed}} z rzędu",
   "ui.levelMaxed": "Najwyższy poziom",
   "ui.importAndSort": "Dodaj muzykę…",
@@ -285,5 +285,7 @@
   "choice.wide": "Szeroko",
   "choice.extraWide": "Bardzo szeroko",
   "ui.modesLockedTitle": "Przetrwanie i Blitz",
-  "ui.modesLockedCaption": "Trafisz {{count}} pod rząd tutaj, aby odblokować"
+  "ui.modesLockedCaption": "Trafisz {{count}} pod rząd tutaj, aby odblokować",
+  "ui.volume": "Głośność",
+  "ui.dragOnScale": "Przeciągnij po skali, aby odpowiedzieć"
 }

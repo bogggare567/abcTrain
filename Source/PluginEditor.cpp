@@ -63,6 +63,7 @@ namespace
     // "abcTrain" PropertiesFile the language preference already uses.
     constexpr const char* themeModeKey = "themeMode";
     constexpr const char* uiScaleKey = "uiScale";
+    constexpr const char* outputGainKey = "outputGainDb";
     // Not "have you seen the welcome screen" any more - that shows every
     // launch now, by request. This only remembers whether the walkthrough
     // has been offered, which is a question worth asking exactly once.
@@ -311,6 +312,26 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         }
     };
     addAndMakeVisible (sizeSelector);
+
+    // Output level. The range stops at +6 rather than 0 because the games
+    // deliberately run well below full scale to leave the treated side
+    // headroom, so a laptop at low volume genuinely needs to go up.
+    volumeSlider.setRange (EarTrainerProcessor::minOutputGainDb,
+                            EarTrainerProcessor::maxOutputGainDb, 0.5);
+    volumeSlider.setSkewFactorFromMidPoint (-12.0);
+    volumeSlider.setDoubleClickReturnValue (true, 0.0);
+    volumeSlider.setTooltip (localisation.getText ("ui.volume"));
+    volumeSlider.onValueChange = [this] { applyVolumeFromSlider(); };
+    addAndMakeVisible (volumeSlider);
+
+    // Not Icon::sound - that is the speaker already used two slots along
+    // for "which sounds you train on", and two identical glyphs meaning
+    // different things is the confusion this control was meant to end.
+    // The level arrow reads as amount, and it is sitting against a
+    // horizontal slider, which is itself the universal shape for volume.
+    volumeIcon.setIcon (AppIcons::Icon::gain);
+    volumeIcon.setIconColour (AbcTrainTheme::current().textDim);
+    addAndMakeVisible (volumeIcon);
 
     for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
         languageSelector.addItem (LocalisationManager::getDisplayName (code),
@@ -776,6 +797,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                       (int) (logicalWidth * 2.0), (int) (logicalBaseHeight * 2.0));
 
     setUiScale (localisationProperties.getDoubleValue (uiScaleKey, 1.0));
+    volumeSlider.setValue (localisationProperties.getDoubleValue (outputGainKey, 0.0),
+                            juce::dontSendNotification);
+    applyVolumeFromSlider();
 
     applyTheme();
     session.startRun();
@@ -1019,6 +1043,16 @@ void EarTrainerEditor::resized()
         themeButton.setBounds (bar.removeFromLeft (iconSize));
         bar.removeFromLeft (Spacing::tight);
         updateButton.setBounds (bar.removeFromLeft (iconSize));
+        bar.removeFromLeft (Spacing::medium);
+
+        // Output level. Sits with the other things that are about *your*
+        // setup rather than about the exercise, and next to the training
+        // sounds button people were already reaching for when they wanted
+        // this (that one is a speaker glyph, which is exactly what "make
+        // it quieter" looks for).
+        volumeIcon.setBounds (bar.removeFromLeft (18).withSizeKeepingCentre (18, 18));
+        bar.removeFromLeft (Spacing::hairline);
+        volumeSlider.setBounds (bar.removeFromLeft (96).withSizeKeepingCentre (96, 22));
         bar.removeFromLeft (Spacing::medium);
 
         // Indicators, not form fields: each asks for exactly the width its
@@ -1634,6 +1668,14 @@ void EarTrainerEditor::startNewRun()
     refreshRunStatus();
 }
 
+void EarTrainerEditor::applyVolumeFromSlider()
+{
+    const auto db = (float) volumeSlider.getValue();
+    processor.setOutputGainDb (db);
+    localisationProperties.setValue (outputGainKey, (double) db);
+    localisationProperties.saveIfNeeded();
+}
+
 void EarTrainerEditor::setUiScale (float newScale)
 {
     uiScale = juce::jlimit (0.8f, 1.4f, newScale);
@@ -2009,7 +2051,12 @@ void EarTrainerEditor::refreshLocalisedText()
     // that did need writing.
     refreshBeforeAfter();
     refreshHintButton();
-    choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
+    // A ruler has no zones to click. One key served both modes, so the
+    // four scale exercises told you to "click a zone to answer" beside a
+    // continuous axis that has none.
+    choiceSlider.setPlaceholderText (localisation.getText (
+        processor.getGameManager().getActiveGame().usesContinuousScale()
+            ? "ui.dragOnScale" : "ui.dragToChoose"));
 
     {
     }
@@ -2030,8 +2077,18 @@ bool EarTrainerEditor::choiceSliderMatchesGame (Game& game) const
     // A continuous game has no named choices at all - its ruler is the
     // grid marks, which don't move between rounds - so comparing labels
     // there would rebuild the scale every single round for nothing.
+    //
+    // The tolerance still has to be compared, though. It is the one thing
+    // on this screen that says out loud what a level *is*, and it only
+    // changes when the player earns a level - at which point the count
+    // this used to compare on its own has not moved, so the band kept the
+    // previous level's width until the player left the exercise and came
+    // back. The reward for passing a five-in-a-row promotion was invisible
+    // in the exact place it should have been most visible.
     if (game.usesContinuousScale())
-        return choiceSlider.getNumChoices() == game.getNumChoices();
+        return choiceSlider.getNumChoices() == game.getNumChoices()
+                && std::abs (choiceSlider.getToleranceNormalised()
+                              - game.getToleranceNormalised()) < 1.0e-6f;
 
     const auto& shown = choiceSlider.getChoiceLabels();
 
@@ -2082,7 +2139,12 @@ void EarTrainerEditor::rebuildChoiceSlider()
     // panel had grown into.
     choiceSlider.setAxisCaption ({});
 
-    choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
+    // A ruler has no zones to click. One key served both modes, so the
+    // four scale exercises told you to "click a zone to answer" beside a
+    // continuous axis that has none.
+    choiceSlider.setPlaceholderText (localisation.getText (
+        processor.getGameManager().getActiveGame().usesContinuousScale()
+            ? "ui.dragOnScale" : "ui.dragToChoose"));
 }
 
 void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
@@ -2324,8 +2386,12 @@ void EarTrainerEditor::refreshFromGameState()
             const auto need = ProgressManager::pointsRequiredForLevel (level + 1)
                                   - ProgressManager::pointsRequiredForLevel (level);
 
+            // Both numbers. "level" is the one you have - which this screen
+            // never showed at all, so the only way to learn your own level
+            // was to go Home - and "next" is the one the points are for.
             levelLine = localisation.getText ("ui.toNextLevel",
-                                               { { "level", juce::String (level + 1) },
+                                               { { "level", juce::String (level) },
+                                                 { "next", juce::String (level + 1) },
                                                  { "have", juce::String (juce::jmax (0, have)) },
                                                  { "need", juce::String (need) } });
         }

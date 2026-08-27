@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Чуй, наскільки широке джерело насправді — те, що тримає мікс великим, не розриваючи центр.",
   "game.db.benefit": "Відкалібруй вухо під зміни гучності в дБ, щоб рухи фейдера стали усвідомленими.",
   "game.frequencyrange.benefit": "Вивчи іменовані діапазони — від сабу до повітря — щоб описати проблему, перш ніж тягнутися до ручки.",
-  "ui.toNextLevel": "До рівня {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Рівень {{level}} · {{have}} / {{need}} до {{next}}",
   "ui.promotionTest": "Підвищення: {{done}} з {{needed}} поспіль",
   "ui.levelMaxed": "Максимальний рівень",
   "ui.importAndSort": "Додати музику…",
@@ -285,5 +285,7 @@
   "choice.wide": "Широко",
   "choice.extraWide": "Дуже широко",
   "ui.modesLockedTitle": "Виживання і Бліц",
-  "ui.modesLockedCaption": "Дайте {{count}} правильних поспіль тут, щоб відкрити"
+  "ui.modesLockedCaption": "Дайте {{count}} правильних поспіль тут, щоб відкрити",
+  "ui.volume": "Гучність",
+  "ui.dragOnScale": "Проведи по шкалі, щоб відповісти"
 }

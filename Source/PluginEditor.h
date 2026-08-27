@@ -1007,6 +1007,16 @@ private:
     float uiScale = 1.0f;
     CompactSelector sizeSelector;
 
+    // Output level. Deliberately a plain slider rather than a
+    // CompactSelector: volume is the one control here you want to nudge
+    // and hear, and a popup menu of fixed steps is the wrong shape for
+    // that. The processor applies it after everything, smoothed - see
+    // EarTrainerProcessor::setOutputGainDb for why "after everything"
+    // matters to the exercises.
+    juce::Slider volumeSlider { juce::Slider::LinearHorizontal, juce::Slider::NoTextBox };
+    AppIconComponent volumeIcon;
+    void applyVolumeFromSlider();
+
     // Practice / Survival / Blitz. A run in the latter two ends on its
     // own terms (lives or clock) and posts a score against the exercise;
     // see SessionManager.

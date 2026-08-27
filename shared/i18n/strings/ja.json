@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "音源が実際どれだけ広いかを聴く —— 真ん中を裂かずにミックスを大きく保つ力です。",
   "game.db.benefit": "dB 単位のレベル変化に耳を較正し、フェーダー操作を手探りから意識的なものへ。",
   "game.frequencyrange.benefit": "名前のついた帯域 —— サブベースからエアまで —— を覚え、つまみに手を伸ばす前に問題を言葉にする。",
-  "ui.toNextLevel": "レベル{{level}}まで: {{have}} / {{need}}",
+  "ui.toNextLevel": "レベル{{level}} · レベル{{next}}まで {{have}} / {{need}}",
   "ui.promotionTest": "昇格: 連続 {{done}} / {{needed}}",
   "ui.levelMaxed": "最高レベル",
   "ui.importAndSort": "音楽を追加…",
@@ -285,5 +285,7 @@
   "choice.wide": "広い",
   "choice.extraWide": "かなり広い",
   "ui.modesLockedTitle": "サバイバルとブリッツ",
-  "ui.modesLockedCaption": "この練習で {{count}} 連続正解すると解放されます"
+  "ui.modesLockedCaption": "この練習で {{count}} 連続正解すると解放されます",
+  "ui.volume": "音量",
+  "ui.dragOnScale": "目盛りをドラッグして回答"
 }

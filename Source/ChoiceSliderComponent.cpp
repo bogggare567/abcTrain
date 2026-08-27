@@ -559,7 +559,14 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     // one level up.
     const auto markFont = AbcTrainLookAndFeel::microFont();
     const auto labelRowHeight = std::ceil (markFont.getHeight() * 1.05f) + 5.0f;
-    const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 3.0f;
+    // 10 rather than 3. Measured on a rendered 918x795 window: the lower
+    // series was sliced at about 60% of its glyph height even though the
+    // arithmetic put its box three pixels clear of the well. I did not
+    // find what eats those last few pixels - the numbers on both sides
+    // agree and still disagree with the picture - so this is clearance,
+    // not a diagnosis. Verified by rendering, which is the only thing
+    // that ever catches this class of bug here.
+    const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 10.0f;
     const auto upperRowY = lowerRowY - labelRowHeight + 1.0f;
 
     for (const auto& mark : gridMarks)

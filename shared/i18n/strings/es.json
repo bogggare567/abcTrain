@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Escucha lo ancha que es realmente una fuente: lo que mantiene grande una mezcla sin romper el centro.",
   "game.db.benefit": "Calibra el oído a los cambios de nivel en dB, para que mover un fader sea consciente y no a tientas.",
   "game.frequencyrange.benefit": "Aprende los rangos con nombre —de sub-bass a air— para describir un problema antes de tocar un mando.",
-  "ui.toNextLevel": "Hasta el nivel {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Nivel {{level}} · {{have}} / {{need}} hasta el {{next}}",
   "ui.promotionTest": "Ascenso: {{done}} de {{needed}} seguidas",
   "ui.levelMaxed": "Nivel máximo",
   "ui.importAndSort": "Añadir música…",
@@ -285,5 +285,7 @@
   "choice.wide": "Ancho",
   "choice.extraWide": "Muy ancho",
   "ui.modesLockedTitle": "Supervivencia y Blitz",
-  "ui.modesLockedCaption": "Acierta {{count}} seguidas aquí para desbloquearlos"
+  "ui.modesLockedCaption": "Acierta {{count}} seguidas aquí para desbloquearlos",
+  "ui.volume": "Volumen",
+  "ui.dragOnScale": "Arrastra por la escala para responder"
 }

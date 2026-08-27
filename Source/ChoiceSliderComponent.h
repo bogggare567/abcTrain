@@ -44,6 +44,10 @@ public:
     // slides along: the readout tracks the cursor, and a tolerance band
     // travels with it showing how much slack the current difficulty gives.
     // `formatter` turns a normalised 0..1 position into real-unit text.
+    // Exposed so the editor can tell a level-up from an ordinary new
+    // round: the band's width is what actually changed.
+    float getToleranceNormalised() const noexcept { return toleranceNormalised; }
+
     void setContinuousScale (std::vector<Game::GridMark> marks,
                              float toleranceNormalised,
                              std::function<juce::String (float)> formatter);
