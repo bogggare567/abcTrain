@@ -90,7 +90,13 @@ private:
     std::atomic<float> checkOverrideValue { 0.0f };
 
     // Audio thread. One atomic pointer compare per parameter read.
-    float valueOf (const juce::String& parameterID) const noexcept
+    //
+    // juce::StringRef, not const juce::String& - every call site passes a
+    // constexpr const char*, and binding that to a String reference builds
+    // a heap-allocated temporary per read, eight or nine times per block.
+    // StringRef wraps the literal without owning it, which is what
+    // getRawParameterValue takes anyway.
+    float valueOf (juce::StringRef parameterID) const noexcept
     {
         auto* raw = apvts.getRawParameterValue (parameterID);
 

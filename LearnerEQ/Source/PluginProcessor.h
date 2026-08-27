@@ -111,6 +111,27 @@ private:
     // thread in updateFilters, read a few lines later - a plain array, not
     // atomics, because both happen on the same thread inside one block.
     std::array<bool, maxBands> bandActive {};
+
+    // Raw-parameter pointers, resolved once. getRawParameterValue looks up
+    // a std::map keyed by string, and every call site above builds that
+    // string fresh - "band3Freq" is a juce::String with no small-string
+    // optimisation, so two or three heap allocations each. updateFilters
+    // ran forty of those per block, i.e. tens of thousands of mallocs per
+    // second on the audio thread, where malloc takes a lock. The pointers
+    // are stable for the processor's lifetime, so looking them up once is
+    // both faster and the only version that is real-time safe.
+    struct BandParams
+    {
+        std::atomic<float>* on = nullptr;
+        std::atomic<float>* type = nullptr;
+        std::atomic<float>* freq = nullptr;
+        std::atomic<float>* gain = nullptr;
+        std::atomic<float>* q = nullptr;
+    };
+
+    std::array<BandParams, maxBands> bandParams {};
+    std::atomic<float>* bypassParam = nullptr;
+    void cacheParameterPointers();
     double sampleRate = 44100.0;
     juce::AudioBuffer<float> dryBuffer;
 

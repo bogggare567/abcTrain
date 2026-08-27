@@ -81,6 +81,11 @@ private:
 
     juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
                                     juce::dsp::IIR::Coefficients<float>> peakFilter;
+
+    // Keeps the filter's state warm while A/B sits on "before" - see the
+    // comment in process(). Sized in prepare() so the setSize there is a
+    // no-op on the audio thread.
+    juce::AudioBuffer<float> scratch;
     double sampleRate = 44100.0;
 
     juce::Random random;
