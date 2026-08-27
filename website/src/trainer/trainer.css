@@ -197,7 +197,10 @@
   border-radius: var(--radius-well);
   cursor: crosshair;
   overflow: hidden;
-  touch-action: none;
+  /* pan-y, not none: a finger that starts a page scroll on this
+     190px-tall block must still scroll the page. Horizontal gestures
+     stay ours, which is the axis the answer is on. */
+  touch-action: pan-y;
 }
 
 .tr-scale__tick {

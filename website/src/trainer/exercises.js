@@ -106,6 +106,67 @@ function impulse(ctx, seconds, decay, damping) {
   return ir;
 }
 
+// Real mid/side width, and the loudness compensation that goes with it.
+//
+// The previous version never formed a mid or a side at all: it took L
+// through one gain and R through another and merged them, which is a
+// balance control wearing mid/side's name. At width 1.0 - the answer
+// labelled "Normal" - the right channel was multiplied by (1 - 1) and
+// went silent; at 1.7 and 2.4 it came back inverted. On a phone, where
+// everything sums to mono, the four answers differed only in level.
+//
+//   mid  = (L + R) / 2      side = (L - R) / 2
+//   out  = mid +/- width * side
+//
+// With two independent noise channels of equal power, mid and side each
+// carry half of it, so the output power goes as (1 + width^2). Scaling by
+// sqrt(2 / (1 + width^2)) puts every width - mono included - at the same
+// loudness, which is what stops "which is louder" from answering "which
+// is wider". Derived rather than dialled in by ear.
+function widthStage(ctx, width) {
+  const input = ctx.createGain();
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+
+  // Explicitly mono, so nothing up-mixes on the way through and quietly
+  // reintroduces the other channel.
+  const monoGain = (value) => {
+    const g = ctx.createGain();
+    g.channelCount = 1;
+    g.channelCountMode = 'explicit';
+    g.channelInterpretation = 'discrete';
+    g.gain.value = value;
+    return g;
+  };
+
+  const mid = monoGain(0.5);           // fed from both -> 0.5(L + R)
+  const sidePlus = monoGain(0.5);      // +0.5 L
+  const sideMinus = monoGain(-0.5);    // -0.5 R
+  const side = monoGain(1);            // their sum -> 0.5(L - R)
+  const sideToL = monoGain(width);
+  const sideToR = monoGain(-width);
+
+  input.connect(splitter);
+  splitter.connect(mid, 0);
+  splitter.connect(mid, 1);
+  splitter.connect(sidePlus, 0);
+  splitter.connect(sideMinus, 1);
+  sidePlus.connect(side);
+  sideMinus.connect(side);
+  side.connect(sideToL);
+  side.connect(sideToR);
+
+  mid.connect(merger, 0, 0);
+  sideToL.connect(merger, 0, 0);
+  mid.connect(merger, 0, 1);
+  sideToR.connect(merger, 0, 1);
+
+  const out = ctx.createGain();
+  out.gain.value = 0.8 * Math.sqrt(2 / (1 + width * width));
+  merger.connect(out);
+  return { input, output: out };
+}
+
 const continuous = (o) => ({ kind: 'continuous', ...o });
 const zoned = (o) => ({ kind: 'zoned', ...o });
 
@@ -402,31 +463,14 @@ export const EXERCISES = [
     stereoSource: true,
     source: (ctx) => ({ buffer: pinkBuffer(ctx, 2.4, 2), loop: true }),
     build(ctx, index) {
-      // Mid/side: side *= width. A single mono source duplicated to both
-      // channels would have no side signal at all, which is why the source
-      // above is two independent noise channels.
-      const width = [0.35, 1.0, 1.7, 2.4][index];
-      const input = ctx.createGain();
-      const splitter = ctx.createChannelSplitter(2);
-      const merger = ctx.createChannelMerger(2);
-
-      const midL = ctx.createGain(); const midR = ctx.createGain();
-      const sideL = ctx.createGain(); const sideR = ctx.createGain();
-
-      midL.gain.value = 0.5; midR.gain.value = 0.5;
-      sideL.gain.value = width * 0.5; sideR.gain.value = -width * 0.5;
-
-      input.connect(splitter);
-      splitter.connect(midL, 0); splitter.connect(midR, 1);
-      splitter.connect(sideL, 0); splitter.connect(sideR, 1);
-
-      midL.connect(merger, 0, 0); sideL.connect(merger, 0, 0);
-      midR.connect(merger, 0, 1); sideR.connect(merger, 0, 1);
-
-      const out = ctx.createGain();
-      out.gain.value = 0.8;
-      merger.connect(out);
-      return { input, output: out };
+      return widthStage(ctx, [0.35, 1.0, 1.7, 2.4][index]);
+    },
+    // "Mono" has to *be* mono. Without this the unprocessed side of the A/B
+    // bypasses build() and plays the raw source - which here is two
+    // independent noise channels, i.e. the widest thing in the exercise.
+    // The button labelled Mono was playing the opposite of mono.
+    buildBypass(ctx) {
+      return widthStage(ctx, 0);
     },
   }),
 
