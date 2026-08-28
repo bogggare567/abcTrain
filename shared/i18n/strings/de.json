@@ -290,5 +290,6 @@
   "ui.dragOnScale": "Zum Antworten über die Skala ziehen",
   "ui.runAbandonedTitle": "Lauf beendet",
   "ui.runAbandonedCaption": "Du hattest {{score}}. Sonst geht nichts verloren - Level und Rekord bleiben.",
-  "ui.runResultsBest": "Dein bisher bestes"
+  "ui.runResultsBest": "Dein bisher bestes",
+  "ui.trainings": "Übungen"
 }

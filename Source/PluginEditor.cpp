@@ -342,6 +342,49 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     languageSelector.onChange = [this] { languageSelected(); };
     addAndMakeVisible (languageSelector);
 
+    // Added before the training children and every overlay, so it sits
+    // behind all of them: the rail is the floor of the window, not a
+    // thing that covers other things.
+    sideRail.onItemChosen = [this] (SideRailComponent::Item item)
+    {
+        switch (item)
+        {
+            case SideRailComponent::Item::achievements:
+                showAchievementsScreen();
+                break;
+
+            case SideRailComponent::Item::sounds:
+                trainingSounds.refresh();
+                trainingSounds.setVisible (true);
+                trainingSounds.toFront (false);
+                break;
+
+            case SideRailComponent::Item::settings:
+                settingsScreen.setVisible (true);
+                settingsScreen.toFront (false);
+                settingsScreen.refresh();
+                break;
+
+            case SideRailComponent::Item::trainings:
+            default:
+                showScreen (Screen::home);
+                break;
+        }
+
+        resized();
+        repaint();
+    };
+    addAndMakeVisible (sideRail);
+
+    // Behind every other child. The rail is added late in this
+    // constructor - after the theme button, the volume slider and the rest
+    // were already added - and a later child paints over an earlier one,
+    // so without this the rail's own background covered the very controls
+    // it is supposed to be holding. Found by rendering it: the update
+    // button was there and the theme toggle beside it was not, because one
+    // was added after the rail and one before.
+    sideRail.toBack();
+
     addAndMakeVisible (gameIcon);
 
     auto& gameManager = processor.getGameManager();
@@ -675,12 +718,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
-    trainingSoundsButton.onClick = [this]
-    {
-        trainingSounds.refresh();
-        trainingSounds.setVisible (true);
-    };
-    addAndMakeVisible (trainingSoundsButton);
 
     soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
                             juce::Justification::centredRight);
@@ -706,13 +743,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // it's shown. A real bug, found by actually running the app: adding
     // this earlier (before choiceSlider) left the slider painting on top
     // of the "closed" overlay instead of the other way around.
-    settingsButton.onClick = [this]
-    {
-        settingsScreen.setVisible (true);
-        settingsScreen.toFront (false);
-        settingsScreen.refresh();
-    };
-    addAndMakeVisible (settingsButton);
 
     settingsScreen.onClosed = [this] { resized(); repaint(); };
     settingsScreen.onSettingsChanged = [this]
@@ -961,9 +991,9 @@ void EarTrainerEditor::paint (juce::Graphics& g)
             g, "ABC " + (currentScreen == Screen::training
                              ? titleLabel.getText()
                              : localisation.getText ("app.eartrainer.name")),
-            juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
+            juce::Rectangle<float> ((float) (contentBounds().getX() + AbcTrainTheme::Spacing::large),
                                      (float) AbcTrainTheme::Spacing::medium,
-                                     (float) getWidth() * 0.6f, 32.0f),
+                                     (float) contentBounds().getWidth() * 0.6f, 32.0f),
             AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
             juce::Justification::centredLeft);
 }
@@ -1014,20 +1044,20 @@ void EarTrainerEditor::resized()
     // challenge. The level lives on each tile now, because that is where
     // it is actually true.
     {
-        auto statusRow = getLocalBounds().reduced (Spacing::large, 0)
+        auto statusRow = contentBounds().reduced (Spacing::large, 0)
                              .withTop (Spacing::large + 32 + Spacing::small)
                              .withHeight (homeStatusHeight);
 
         dailyBanner.setBounds (statusRow);
     }
 
-    homeScreen.setBounds (getLocalBounds()
+    homeScreen.setBounds (contentBounds()
                               .reduced (Spacing::large, 0)
                               .withTop (Spacing::large + 32 + Spacing::small
                                          + homeStatusHeight + Spacing::small)
                               .withTrimmedBottom (Spacing::large + 30 + Spacing::small));
 
-    auto area = getLocalBounds().reduced (Spacing::large);
+    auto area = contentBounds().reduced (Spacing::large);
 
     // --- title row: just the name of where you are ---------------------
     // The app's controls used to live up here, six of them in a row, and
@@ -1039,33 +1069,32 @@ void EarTrainerEditor::resized()
     {
         constexpr int iconSize = 30;
 
-        auto bar = getLocalBounds().reduced (Spacing::large)
-                       .removeFromBottom (iconSize);
+        // The rail is the window's left edge, floor to ceiling. Settings
+        // and Training Sounds became rows in it, so their buttons are gone
+        // rather than hidden - two ways to reach one screen is two things
+        // to keep in step.
+        const auto railWidth = railIsVisible() ? SideRailComponent::preferredWidth : 0;
+        sideRail.setBounds (getLocalBounds().removeFromLeft (railWidth));
 
-        settingsButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::tight);
-        trainingSoundsButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::tight);
-        themeButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::tight);
-        updateButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::medium);
+        // Theme, updates and the output level live *on* the rail but stay
+        // the editor's own widgets - see SideRailComponent for why moving
+        // ownership was not worth it. Their slots come from the rail, so
+        // its painted background and the controls on it cannot drift.
+        const auto railOrigin = sideRail.getPosition();
+        themeButton.setBounds (sideRail.getThemeSlot() + railOrigin);
+        updateButton.setBounds (sideRail.getUpdateSlot() + railOrigin);
+        volumeSlider.setBounds (sideRail.getVolumeSlot() + railOrigin);
+        volumeIcon.setBounds ({});   // the rail captions this itself
 
-        // Output level. Sits with the other things that are about *your*
-        // setup rather than about the exercise, and next to the training
-        // sounds button people were already reaching for when they wanted
-        // this (that one is a speaker glyph, which is exactly what "make
-        // it quieter" looks for).
-        volumeIcon.setBounds (bar.removeFromLeft (18).withSizeKeepingCentre (18, 18));
-        bar.removeFromLeft (Spacing::hairline);
-        volumeSlider.setBounds (bar.removeFromLeft (96).withSizeKeepingCentre (96, 22));
-        bar.removeFromLeft (Spacing::medium);
+        // What is left of the old bottom bar: the two indicators nobody
+        // changes twice a session, and the two links. Four things instead
+        // of ten.
+        auto bar = contentBounds().reduced (Spacing::large)
+                       .removeFromBottom (22);
 
-        // Indicators, not form fields: each asks for exactly the width its
-        // own widest value needs (see CompactSelector).
         sizeSelector.setBounds (bar.removeFromLeft (sizeSelector.getPreferredWidth())
                                     .withSizeKeepingCentre (sizeSelector.getPreferredWidth(), 22));
-        bar.removeFromLeft (Spacing::tight);
+        bar.removeFromLeft (Spacing::small);
         languageSelector.setBounds (bar.removeFromLeft (languageSelector.getPreferredWidth())
                                         .withSizeKeepingCentre (languageSelector.getPreferredWidth(), 22));
 
@@ -1781,6 +1810,19 @@ void EarTrainerEditor::clearHint()
     applyWindowSize();
 }
 
+void EarTrainerEditor::refreshRailStatus()
+{
+    auto& progress = processor.getProgressManager();
+    const auto index = processor.getGameManager().getActiveGameIndex();
+
+    sideRail.setStatus (progress.getLevelForGame (index),
+                         progress.getLevelProgressForGame (index),
+                         progress.getStreakDays());
+
+    sideRail.setActiveItem (SideRailComponent::Item::trainings);
+    sideRail.setVisible (railIsVisible());
+}
+
 void EarTrainerEditor::refreshRunStatus()
 {
     // The HUD replaces the pills, the session score and the status label
@@ -1934,12 +1976,12 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Nothing to listen for outside a training.
     processor.setSignalEnabled (onTraining);
+    sideRail.setVisible (railIsVisible());
 
     // Everything that belongs to the training screen.
     // The title-row controls belong to Home and Training, not the
     // one-time support screen.
     for (auto* c : { (juce::Component*) &themeButton, (juce::Component*) &updateButton,
-                     (juce::Component*) &trainingSoundsButton, (juce::Component*) &settingsButton,
                      (juce::Component*) &sizeSelector,
                      (juce::Component*) &languageSelector, (juce::Component*) &soundkorbLink })
     {
@@ -2068,7 +2110,6 @@ void EarTrainerEditor::refreshLocalisedText()
 {
     supportScreen.refresh();
     settingsScreen.refresh();
-    settingsButton.setTooltip (localisation.getText ("ui.settings"));
     instructionsButton.setTooltip (localisation.getText ("ui.showInstructions"));
     donateLink.setButtonText (localisation.getText ("ui.support"));
     endRunButton.setButtonText (localisation.getText ("ui.endRun"));
@@ -2088,7 +2129,13 @@ void EarTrainerEditor::refreshLocalisedText()
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));
-    trainingSoundsButton.setTooltip (localisation.getText ("ui.trainingSounds"));
+    sideRail.setLabels ({ localisation.getText ("ui.trainings"),
+                           localisation.getText ("ui.achievements"),
+                           localisation.getText ("ui.trainingSounds"),
+                           localisation.getText ("ui.settings") },
+                         localisation.getText ("ui.level").upToFirstOccurrenceOf ("{{", false, false).trim(),
+                         localisation.getText ("ui.streak"));
+
     backButton.setButtonText (localisation.getText ("ui.back"));
 
     {
@@ -2387,6 +2434,8 @@ Game::HintView EarTrainerEditor::activeHintView() const
 
 void EarTrainerEditor::refreshFromGameState()
 {
+    refreshRailStatus();
+
     auto& game = processor.getGameManager().getActiveGame();
 
     // The choices a round offers can change without the *count* changing.

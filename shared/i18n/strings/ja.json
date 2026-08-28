@@ -290,5 +290,6 @@
   "ui.dragOnScale": "目盛りをドラッグして回答",
   "ui.runAbandonedTitle": "ラン終了",
   "ui.runAbandonedCaption": "スコアは{{score}}でした。ほかは失われません — レベルも記録もそのままです。",
-  "ui.runResultsBest": "自己ベスト"
+  "ui.runResultsBest": "自己ベスト",
+  "ui.trainings": "トレーニング"
 }

@@ -290,5 +290,6 @@
   "ui.dragOnScale": "Przeciągnij po skali, aby odpowiedzieć",
   "ui.runAbandonedTitle": "Runda zakończona",
   "ui.runAbandonedCaption": "Miałeś {{score}}. Nic więcej nie przepada - poziom i rekord zostają.",
-  "ui.runResultsBest": "Twój najlepszy wynik"
+  "ui.runResultsBest": "Twój najlepszy wynik",
+  "ui.trainings": "Ćwiczenia"
 }

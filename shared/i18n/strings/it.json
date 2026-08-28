@@ -290,5 +290,6 @@
   "ui.dragOnScale": "Trascina sulla scala per rispondere",
   "ui.runAbandonedTitle": "Sessione conclusa",
   "ui.runAbandonedCaption": "Avevi {{score}}. Nient’altro va perso: livello e record restano.",
-  "ui.runResultsBest": "Il tuo record"
+  "ui.runResultsBest": "Il tuo record",
+  "ui.trainings": "Esercizi"
 }

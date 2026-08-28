@@ -10,6 +10,7 @@
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
 #include "RunResultsComponent.h"
+#include "SideRailComponent.h"
 #include "AchievementsScreenComponent.h"
 #include "../shared/TourOverlay.h"
 #include "../shared/IdleScreensaver.h"
@@ -975,7 +976,7 @@ private:
     // a different question: "this window is small on a 4K display" is
     // answered by scaling the whole design, "I want to see more at once" by
     // dragging the corner.
-    static constexpr int logicalWidth = 680;
+    static constexpr int logicalWidth = 840;
     // Derived from resized(), not guessed: 20 margin + 32 title row + 28
     // section gap + 124 exercise + 20 + 312 answer + 26 + 18 footer + 20.
     // Guessing this is what left LearnerComp with 132px of dead window
@@ -983,6 +984,12 @@ private:
     // 20 margin + 32 title + 28 + 124 exercise + 20 + 318 answer + 20 +
     // 30 tool bar + 20 margin.
     static constexpr int logicalBaseHeight = 612;
+
+    // Wider than it was, because the rail takes 156 from the left and the
+    // training screen's control row genuinely needs about 640: pills,
+    // session tally, the A/B pair and the hint button, side by side. 840
+    // is not an arbitrary bump - it is what LearnerComp already opens at,
+    // so the four plugins now agree about how wide a window of theirs is.
 
     // Grows while a hint is on screen; see hintPanelHeight above.
     int getLogicalHeight() const noexcept
@@ -1016,6 +1023,23 @@ private:
     juce::Slider volumeSlider { juce::Slider::LinearHorizontal, juce::Slider::NoTextBox };
     AppIconComponent volumeIcon;
     void applyVolumeFromSlider();
+
+    // Navigation down the left, permanently. See SideRailComponent for why
+    // the bottom of a window was the wrong place for it.
+    SideRailComponent sideRail;
+    void refreshRailStatus();
+
+    // The rail is on for the two screens you navigate between and off for
+    // the welcome screen, which is a single thing with one button.
+    bool railIsVisible() const noexcept { return currentScreen != Screen::support; }
+
+    // Everything the rail does not occupy. Overlays deliberately keep
+    // using getLocalBounds(): a dialog that stopped short of the left edge
+    // would look like it had failed to load.
+    juce::Rectangle<int> contentBounds() const
+    {
+        return getLocalBounds().withTrimmedLeft (railIsVisible() ? SideRailComponent::preferredWidth : 0);
+    }
 
     // Puts the session and the three pills into whatever mode this
     // exercise was last left in, falling back to Practice when the timed
@@ -1109,7 +1133,6 @@ private:
     // see TrainingSoundsComponent/ReferenceAudioLibrary and decisions/015.
     // Has no default constructor (needs the processor), so it's
     // initialised in the constructor's member-init-list, after `processor`.
-    IconButton trainingSoundsButton { AppIcons::Icon::sound };
     // Declared here, but addChildComponent()'d last in the constructor so
     // it paints over everything - the same z-order rule the lesson and
     // training-sounds overlays already had to learn (decisions/015, 017).
@@ -1170,7 +1193,6 @@ private:
     // Theme, window size, text size, wallpaper - the settings that are set
     // once. Added after trainingSounds so it paints over it, and before
     // the toast, which paints over everything.
-    IconButton settingsButton { AppIcons::Icon::settings };
     SettingsScreenComponent settingsScreen { localisation, localisationProperties };
 
     TrainingSoundsComponent trainingSounds;

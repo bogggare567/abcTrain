@@ -290,5 +290,6 @@
   "ui.dragOnScale": "Drag along the scale to answer",
   "ui.runAbandonedTitle": "Run ended",
   "ui.runAbandonedCaption": "You had {{score}}. Nothing else is lost - your level and record stay.",
-  "ui.runResultsBest": "Your best yet"
+  "ui.runResultsBest": "Your best yet",
+  "ui.trainings": "Trainings"
 }

@@ -290,5 +290,6 @@
   "ui.dragOnScale": "在刻度上拖动作答",
   "ui.runAbandonedTitle": "本轮结束",
   "ui.runAbandonedCaption": "你的成绩是 {{score}}。其他都不会丢失 —— 等级和纪录都在。",
-  "ui.runResultsBest": "你的最好成绩"
+  "ui.runResultsBest": "你的最好成绩",
+  "ui.trainings": "训练"
 }
