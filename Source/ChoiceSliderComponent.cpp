@@ -317,13 +317,16 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
 
     const auto scaleArea = getScaleArea().toFloat();
 
-    // ---- the recessed panel the zones live in ----
-    AbcTrainLookAndFeel::paintDisplayWell (g, scaleArea);
-
-    juce::Graphics::ScopedSaveState clipped (g);
-    juce::Path panelClip;
-    panelClip.addRoundedRectangle (scaleArea, AbcTrainTheme::Radius::well);
-    g.reduceClipRegion (panelClip);
+    // ---- the zones ----
+    //
+    // Separate cards with a gap, not one recessed slab divided by a
+    // hairline. Two named alternatives are two *things you can pick*, and
+    // a single dark rectangle with a line down the middle and a word in
+    // each half is a diagram of a rectangle - which is most of what made
+    // this screen read as boxes. A gap says "these are two"; the hairline
+    // was saying it far too quietly, and only because the slab underneath
+    // was saying "these are one".
+    constexpr float zoneGap = 10.0f;
 
     for (int i = 0; i < n; ++i)
     {
@@ -336,11 +339,22 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         // is already selected", which is a lie the moment the panel opens.
         // Two identical halves and the hairline between them is all a
         // pair needs.
-        const auto zoneFill = (n > 2 && i % 2 == 0) ? theme.displayBackground.brighter (0.11f)
-                                                    : theme.displayBackground.brighter (0.02f);
+        // Inset so neighbours do not touch, but square at the outer edges
+        // so the pair still sits flush in the space it was given.
+        const auto face = zone.withTrimmedLeft (i == 0 ? 0.0f : zoneGap * 0.5f)
+                        .withTrimmedRight (i == n - 1 ? 0.0f : zoneGap * 0.5f);
 
-        g.setColour (zoneFill);
-        g.fillRect (zone);
+        AbcTrainLookAndFeel::paintDisplayWell (g, face);
+
+        // Alternating shading, for a row long enough that the eye needs
+        // help counting it. With exactly two it does the opposite: one
+        // lighter half beside one darker half reads as "the left one is
+        // already selected", which is a lie the moment the panel opens.
+        if (n > 2 && i % 2 == 0)
+        {
+            g.setColour (theme.displayBackground.brighter (0.06f));
+            g.fillRoundedRectangle (face, AbcTrainTheme::Radius::well);
+        }
 
         // Verdict and highlight are overlays on the stripe rather than
         // replacements for it, so the answer colours can fade in on the
@@ -358,14 +372,17 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         if (! overlay.isTransparent())
         {
             g.setColour (overlay);
-            g.fillRect (zone);
+            g.fillRoundedRectangle (face, AbcTrainTheme::Radius::well);
         }
 
-        // Hairline between zones (not after the last one).
-        if (i > 0)
+        // The highlighted card also lifts its border, so hover and
+        // selection are not carried by fill alone.
+        if (isHighlighted || (answered && (i == correctIndex || i == chosenIndex)))
         {
-            g.setColour (theme.outline.withAlpha (0.5f));
-            g.drawLine (zone.getX(), zone.getY(), zone.getX(), zone.getBottom(), 1.0f);
+            const auto edge = answered ? (i == correctIndex ? theme.positive : theme.negative)
+                                       : theme.accent;
+            g.setColour (edge.withAlpha (0.55f));
+            g.drawRoundedRectangle (face.reduced (0.5f), AbcTrainTheme::Radius::well, 1.2f);
         }
     }
 

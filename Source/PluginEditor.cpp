@@ -1211,12 +1211,9 @@ void EarTrainerEditor::resized()
     // reads as space, where a dimmed placeholder box would read as a
     // broken element. Between hearing and answering, which is the order
     // you use it in.
-    {
-        hintSection = area.removeFromTop (hintPanelHeight);
-    }
-
     if (hintRevealed)
     {
+        hintSection = area.removeFromTop (hintPanelHeight);
 
         auto inner = hintSection;
         inner.removeFromTop (Spacing::large);   // clear the section heading
@@ -1250,10 +1247,7 @@ void EarTrainerEditor::resized()
     }
     else
     {
-        // Reserved above; nothing is drawn in it until a hint is bought.
-        vectorscope.setBounds ({});
-        hintSpectrum.setBounds ({});
-        hintWaveform.setBounds ({});
+        hintSection = {};
     }
 
     {
@@ -1345,7 +1339,19 @@ void EarTrainerEditor::resized()
         // made this screen read as boxes. Past the cap the leftover
         // becomes air around the control instead of more control, which
         // is what every interface worth copying does with spare room.
-        constexpr int maxScaleHeight = 210;
+        // Two caps, not one. Without a hint the scale may take the room a
+        // hint would have used; with one, it gives that room back.
+        //
+        // This is the third answer to the same question and the first good
+        // one. Resizing the *window* was wrong - it shoves every other
+        // window in the DAW at the moment somebody is trying to read a
+        // picture. Reserving the space permanently was also wrong: an empty
+        // reserved strip does not read as "the picture goes here", it reads
+        // as something that failed to load, and the render made that
+        // obvious in a way the reasoning had not. Letting one control
+        // reflow inside a window that never moves is the version with no
+        // victim.
+        const auto maxScaleHeight = hintRevealed ? 210 : 210 + hintPanelHeight;
         const auto scaleHeight = juce::jlimit (186, maxScaleHeight, inner.getHeight());
 
         // Anchored to the top of what is left, not centred in it. Centring
