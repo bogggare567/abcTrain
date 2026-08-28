@@ -145,3 +145,47 @@ the host already has.
 
 If it happens, it is a separate product with a separate name, and the
 plugins link to it rather than contain it.
+
+### Pitch training: sing a note, play a chord back
+
+Wanted, discussed at length, and deliberately **not started** - written
+down here so somebody else can pick it up. The licence forbids
+redistributing the software; it explicitly allows contributions, so a
+pull request is the way in.
+
+**Why it is not next.** abcTrain trains the *engineer's* ear - frequency,
+dynamics, space - which is a niche with very little in it. Solfège is a
+niche with twenty years of Functional Ear Trainer, EarMaster, Tenuto,
+musictheory.net and every conservatory's own materials already in it.
+Entering that market as a side feature means being compared with products
+that do only that.
+
+**What would fit anyway.** Not "solfège" as a subject - a curriculum has
+an order and a theory behind it, and this product has neither. What fits
+is the same shape everything else here has: one measurable thing, graded
+against a tolerance band that narrows with level.
+
+- **Play the chord back** (MIDI). The cheapest and most certain of the
+  three by a wide margin. `Source/PluginProcessor.cpp`'s `processBlock`
+  already receives a `MidiBuffer` and currently discards it; a held note
+  is an integer, so there is no detection uncertainty at all, no OS
+  permission, no dependence on the room or on headphones. Grading is a
+  set comparison over pitch classes. **Start here.**
+- **Sing the note** (microphone). The algorithm is settled - YIN or the
+  McLeod pitch method give reliable monophonic f0 in real time. The work
+  is around it: the build has no `NSMicrophoneUsageDescription` (see
+  `CMakeLists.txt` - `MICROPHONE_PERMISSION_ENABLED` is not set on any
+  target), a microphone hears the exercise's own audio unless the player
+  is on headphones, and a low voice needs a ~40 ms analysis window so the
+  response is not instant. A visible tuner is not optional: a detector
+  that silently disagrees with you is worse than none.
+- **Name the interval**. Needs neither input device; it is the existing
+  two-alternative shape with a different subject.
+
+**What it costs structurally.** Almost nothing in the engine: `Game`
+already carries a continuous scale with a tolerance band, and cents map
+onto it directly. A new skill family joins `categoryForGame()` in
+`Source/PluginEditor.cpp` the same way the four existing ones do. The one
+genuinely new thing is the *source of the answer* - every exercise today
+is answered with the mouse, and these are answered by a keyboard or a
+voice, which the `Game` interface has no notion of.

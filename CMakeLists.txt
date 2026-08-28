@@ -664,5 +664,6 @@ target_sources(RoundBench PRIVATE
     shared/ReferenceAudioLibrary.cpp shared/AudioSliceAnalyzer.cpp)
 target_compile_definitions(RoundBench PRIVATE JUCE_STANDALONE_APPLICATION=1)
 target_link_libraries(RoundBench PRIVATE juce::juce_dsp juce::juce_audio_formats
-    juce::juce_audio_basics juce::juce_core juce::juce_events SampleData
+    juce::juce_audio_basics juce::juce_core juce::juce_events
+    juce::juce_data_structures SampleData
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags)
