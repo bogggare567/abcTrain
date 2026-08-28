@@ -209,13 +209,15 @@ void SideRailComponent::paint (juce::Graphics& g)
     }
 
     // --- everything below is pinned to the bottom -------------------------
+    auto indicatorRow = area.removeFromBottom (24);
+    area.removeFromBottom (Spacing::small);
     auto bottom = area.removeFromBottom (controlsHeight);
     area.removeFromBottom (Spacing::small);
     auto volumeRow = area.removeFromBottom (controlsHeight);
     area.removeFromBottom (Spacing::small);
     auto status = area.removeFromBottom (statusHeight);
 
-    juce::ignoreUnused (bottom, volumeRow);
+    juce::ignoreUnused (bottom, volumeRow, indicatorRow);
 
     // --- level and streak, seen rather than read --------------------------
     {
@@ -261,12 +263,31 @@ static juce::Rectangle<int> bottomStrip (juce::Rectangle<int> local, int which)
     using namespace AbcTrainTheme;
 
     auto area = local.reduced (Spacing::medium, Spacing::medium);
+
+    auto indicators = area.removeFromBottom (24);
+    area.removeFromBottom (Spacing::small);
     auto controls = area.removeFromBottom (controlsHeight);
     area.removeFromBottom (Spacing::small);
     auto volume = area.removeFromBottom (controlsHeight);
 
-    if (which == 0)
-        return volume.withSizeKeepingCentre (volume.getWidth(), 22);
+    switch (which)
+    {
+        case 0: return volume.withSizeKeepingCentre (volume.getWidth(), 22);
+
+        case 3:
+        {
+            auto size = indicators.removeFromLeft (34);
+            return size.withSizeKeepingCentre (34, 22);
+        }
+
+        case 4:
+        {
+            indicators.removeFromLeft (34 + Spacing::small);
+            return indicators.withSizeKeepingCentre (indicators.getWidth(), 22);
+        }
+
+        default: break;
+    }
 
     auto theme = controls.removeFromLeft (controlsHeight);
     controls.removeFromLeft (Spacing::tight);
@@ -275,6 +296,8 @@ static juce::Rectangle<int> bottomStrip (juce::Rectangle<int> local, int which)
     return which == 1 ? theme : update;
 }
 
-juce::Rectangle<int> SideRailComponent::getVolumeSlot() const { return bottomStrip (getLocalBounds(), 0); }
-juce::Rectangle<int> SideRailComponent::getThemeSlot()  const { return bottomStrip (getLocalBounds(), 1); }
-juce::Rectangle<int> SideRailComponent::getUpdateSlot() const { return bottomStrip (getLocalBounds(), 2); }
+juce::Rectangle<int> SideRailComponent::getVolumeSlot()   const { return bottomStrip (getLocalBounds(), 0); }
+juce::Rectangle<int> SideRailComponent::getThemeSlot()    const { return bottomStrip (getLocalBounds(), 1); }
+juce::Rectangle<int> SideRailComponent::getUpdateSlot()   const { return bottomStrip (getLocalBounds(), 2); }
+juce::Rectangle<int> SideRailComponent::getSizeSlot()     const { return bottomStrip (getLocalBounds(), 3); }
+juce::Rectangle<int> SideRailComponent::getLanguageSlot() const { return bottomStrip (getLocalBounds(), 4); }

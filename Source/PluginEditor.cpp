@@ -1086,17 +1086,18 @@ void EarTrainerEditor::resized()
         volumeSlider.setBounds (sideRail.getVolumeSlot() + railOrigin);
         volumeIcon.setBounds ({});   // the rail captions this itself
 
-        // What is left of the old bottom bar: the two indicators nobody
-        // changes twice a session, and the two links. Four things instead
-        // of ten.
+        // The two indicators go on the rail with the rest of the app
+        // chrome. Floating under the exercise with nothing holding them,
+        // they read as two loose fragments - which is what they were.
+        sizeSelector.setBounds ((sideRail.getSizeSlot() + railOrigin)
+                                    .withWidth (sizeSelector.getPreferredWidth()));
+        languageSelector.setBounds ((sideRail.getLanguageSlot() + railOrigin)
+                                        .withWidth (languageSelector.getPreferredWidth()));
+
+        // What is left in the content area: the two links, and nothing
+        // else. Ten things became two.
         auto bar = contentBounds().reduced (Spacing::large)
                        .removeFromBottom (22);
-
-        sizeSelector.setBounds (bar.removeFromLeft (sizeSelector.getPreferredWidth())
-                                    .withSizeKeepingCentre (sizeSelector.getPreferredWidth(), 22));
-        bar.removeFromLeft (Spacing::small);
-        languageSelector.setBounds (bar.removeFromLeft (languageSelector.getPreferredWidth())
-                                        .withSizeKeepingCentre (languageSelector.getPreferredWidth(), 22));
 
         soundkorbLink.setBounds (bar.removeFromRight (130).withSizeKeepingCentre (130, 18));
         bar.removeFromRight (Spacing::medium);
@@ -1152,11 +1153,22 @@ void EarTrainerEditor::resized()
 
     area.removeFromTop (Spacing::large);
 
-    // --- the hint, if it has been bought: only then does it exist ---
-    // Between hearing and answering, which is the order you use it in.
-    if (hintRevealed)
+    // --- the hint ---------------------------------------------------------
+    //
+    // The space is reserved whether or not a hint has been bought, because
+    // the window no longer resizes to make room for one. Reserving it here
+    // rather than letting the answer section swallow it is what puts the
+    // empty room *where the picture will appear* instead of leaving a hole
+    // somewhere else on the screen - and an empty stretch of background
+    // reads as space, where a dimmed placeholder box would read as a
+    // broken element. Between hearing and answering, which is the order
+    // you use it in.
     {
         hintSection = area.removeFromTop (hintPanelHeight);
+    }
+
+    if (hintRevealed)
+    {
 
         auto inner = hintSection;
         inner.removeFromTop (Spacing::large);   // clear the section heading
@@ -1190,7 +1202,10 @@ void EarTrainerEditor::resized()
     }
     else
     {
-        hintSection = {};
+        // Reserved above; nothing is drawn in it until a hint is bought.
+        vectorscope.setBounds ({});
+        hintSpectrum.setBounds ({});
+        hintWaveform.setBounds ({});
     }
 
     {
@@ -1218,10 +1233,18 @@ void EarTrainerEditor::resized()
     // so taking the full remaining height here put the mode pills straight
     // on top of it - visible the moment the window was rendered at any size
     // other than the one it was designed at, and invisible before that.
-    constexpr int toolBarReserve = 30 + Spacing::small;
+    // Matches the strip below exactly. It was 30 when that strip held six
+    // icons; the icons went to the rail and the strip is 22 now, and a
+    // reserve that no longer matches what it is reserving for is how the
+    // soundkorb link ended up drawn across the hint button.
+    constexpr int toolBarReserve = 22 + Spacing::medium;
 
+    // 20 heading + 24 verdict + 4 + 210 scale + 12 + 34 controls = 304.
+    // It was 318, written when the scale had no cap and could grow; a
+    // floor larger than the content is a floor that overlaps its
+    // neighbours, since removeFromTop clamps rather than overflowing.
     answerSection = area.removeFromTop (
-        juce::jmax (318, area.getHeight() - toolBarReserve));
+        juce::jmax (304, area.getHeight() - toolBarReserve));
     {
         auto inner = answerSection;
         inner.removeFromTop (Spacing::large);
@@ -1265,7 +1288,24 @@ void EarTrainerEditor::resized()
         // labels. This is the control the screen exists for, so it is the
         // one that should get the room - a taller scale is a more precise
         // scale, and nothing else here improves by being taller.
-        choiceSlider.setBounds (inner.withHeight (juce::jmax (186, inner.getHeight()))
+        // Capped, not merely floored, and centred in whatever is left.
+        //
+        // "Everything left over goes to the scale" is right up to a point
+        // and wrong past it: a ruler is a line with marks on it, and at
+        // 380px tall it stops being an instrument and becomes a large
+        // empty rectangle with some ticks in it - which is most of what
+        // made this screen read as boxes. Past the cap the leftover
+        // becomes air around the control instead of more control, which
+        // is what every interface worth copying does with spare room.
+        constexpr int maxScaleHeight = 210;
+        const auto scaleHeight = juce::jlimit (186, maxScaleHeight, inner.getHeight());
+
+        // Anchored to the top of what is left, not centred in it. Centring
+        // put the spare room between the "Your answer" heading and the
+        // thing it heads, which is the one place a gap reads as something
+        // having failed to load. Below the scale it reads as room above
+        // the controls, which is what it is.
+        choiceSlider.setBounds (inner.withHeight (scaleHeight)
                                      .reduced (Spacing::small, 0));
 
         {
@@ -1774,7 +1814,7 @@ void EarTrainerEditor::setUiScale (float newScale)
     // separate axis from sizing, and resetting the width here would undo a
     // deliberate drag every time somebody changed the text size.
     setSize (juce::jmax (logicalWidth, getWidth()),
-              heightWithoutHint + (hintRevealed ? hintPanelHeight : 0));
+              juce::jmax (logicalBaseHeight, getHeight()));
 
     // Keep the picker in step with the actual scale, including on the
     // restore path - without this it came up blank on launch.
@@ -1786,10 +1826,11 @@ void EarTrainerEditor::setUiScale (float newScale)
 
 void EarTrainerEditor::applyWindowSize()
 {
-    // Grow by exactly the panel, shrink by exactly the panel, and leave
-    // whatever height was chosen underneath alone.
+    // The height a hint is showing and the height it is not are the same
+    // height. Only the width floor and whatever the player has dragged to
+    // are honoured here.
     setSize (juce::jmax (logicalWidth, getWidth()),
-              heightWithoutHint + (hintRevealed ? hintPanelHeight : 0));
+              juce::jmax (logicalBaseHeight, getHeight()));
     resized();
     repaint();
 }

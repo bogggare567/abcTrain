@@ -573,7 +573,11 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     {
         const auto x = xFor (mark.normalised);
 
-        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.42f : 0.22f));
+        // A ruler's lines are scaffolding, not content. At 0.42 they were
+        // as loud as the answer drawn on top of them; every reference
+        // worth copying puts its grid at a few per cent and lets the
+        // signal be the only bright thing in the frame.
+        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.16f : 0.08f));
         g.drawLine (x, scaleArea.getY() + 6.0f, x, upperRowY - 4.0f, 1.0f);
 
         // Emphasised marks (the octave centres) take the lower row, the
@@ -595,7 +599,7 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         // literals, which is why they stayed put while every other string
         // in the window scaled.
         g.setFont (markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f)));
-        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.85f : 0.5f));
+        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.62f : 0.34f));
         g.drawText (mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
                      juce::Justification::centred, false);
     }
@@ -623,7 +627,9 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
 
         // A soft bloom under the line so it reads as lit, and so it stays
         // findable where it crosses a gridline.
-        g.setColour (lineColour.withAlpha (0.22f + 0.10f * touch));
+        // The one bright thing in the frame, and it glows. This is the
+        // whole difference between a chart and an instrument.
+        g.setColour (lineColour.withAlpha (0.30f + 0.16f * touch));
         g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 5.0f);
         g.setColour (lineColour);
         g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 1.8f);

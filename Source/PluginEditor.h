@@ -983,7 +983,7 @@ private:
     // (decisions/023).
     // 20 margin + 32 title + 28 + 124 exercise + 20 + 318 answer + 20 +
     // 30 tool bar + 20 margin.
-    static constexpr int logicalBaseHeight = 612;
+    static constexpr int logicalBaseHeight = 720;
 
     // Wider than it was, because the rail takes 156 from the left and the
     // training screen's control row genuinely needs about 640: pills,
@@ -991,11 +991,17 @@ private:
     // is not an arbitrary bump - it is what LearnerComp already opens at,
     // so the four plugins now agree about how wide a window of theirs is.
 
-    // Grows while a hint is on screen; see hintPanelHeight above.
-    int getLogicalHeight() const noexcept
-    {
-        return logicalBaseHeight + (hintRevealed ? hintPanelHeight : 0);
-    }
+    // Constant. The window does not change size when a hint appears.
+    //
+    // It used to grow by exactly the hint panel and shrink back again,
+    // which is a defensible trade on paper and a bad one in a DAW: a
+    // plugin window that jumps 122px while you are looking at it makes
+    // every other window on the screen move, and it happens at the moment
+    // the player has just spent something and is trying to read a picture.
+    // The height is reserved instead, and the answer section - the only
+    // thing here that genuinely benefits from more room and does not
+    // suffer from less - is what lends it.
+    int getLogicalHeight() const noexcept { return logicalBaseHeight; }
 
     void applyWindowSize();
 

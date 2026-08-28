@@ -834,7 +834,17 @@ void AbcTrainLookAndFeel::paintDisplayWell (juce::Graphics& g, juce::Rectangle<f
     g.setGradientFill (inner);
     g.fillRoundedRectangle (bounds, Radius::well);
 
-    g.setColour (t.outline.withAlpha (0.75f));
+    // A hairline, not a frame.
+    //
+    // At 0.75 this was a drawn box around every display in the product,
+    // and a box around everything is what made the interface read as a
+    // grid of cells rather than as a place. The recess above already says
+    // "this is inset"; the outline only has to keep the shape from
+    // dissolving into the panel, and 0.28 does that. Compare any current
+    // reference - Pro-Q's analyser has no border at all, and its grid sits
+    // at a few per cent, because everything that is not the signal is
+    // supposed to disappear.
+    g.setColour (t.outline.withAlpha (0.28f));
     g.drawRoundedRectangle (bounds, Radius::well, 1.0f);
 }
 

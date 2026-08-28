@@ -62,6 +62,13 @@ public:
     juce::Rectangle<int> getThemeSlot() const;
     juce::Rectangle<int> getUpdateSlot() const;
 
+    // Window size and language. They used to float in the content area
+    // under the exercise, two bare "M v" / "EN v" indicators with nothing
+    // holding them - which is exactly what they looked like. They are app
+    // chrome, so they belong with the rest of it.
+    juce::Rectangle<int> getSizeSlot() const;
+    juce::Rectangle<int> getLanguageSlot() const;
+
     static constexpr int preferredWidth = 156;
 
     void paint (juce::Graphics&) override;
