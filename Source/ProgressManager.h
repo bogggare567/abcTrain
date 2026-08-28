@@ -135,6 +135,16 @@ public:
 
     GameStats getStatsForGame (int gameIndex) const;
 
+    // Which mode this exercise was left in, and setting it.
+    //
+    // Per exercise, because the mode is a property of how you are working
+    // on *that* skill, not a global switch. Leaving a Blitz run, going
+    // home and opening something else used to drop you straight into a
+    // Blitz countdown on an exercise you had only ever practised - the
+    // mode followed you around instead of staying where you set it.
+    int getPreferredModeForGame (int gameIndex) const;
+    void setPreferredModeForGame (int gameIndex, int mode);
+
     // Whether Survival and Blitz are offered for this exercise yet.
     //
     // Practice is the only mode a new exercise starts with, and the timed
@@ -271,6 +281,12 @@ private:
     juce::StringArray earnedAchievements;
     void refreshAchievements();
     std::vector<bool> favouritePerGame;
+
+    // How this exercise was last played. Stored as the SessionManager::Mode
+    // ordinal rather than the enum, so ProgressManager keeps not depending
+    // on SessionManager - the two have never known about each other and a
+    // remembered preference is not a reason to introduce that.
+    std::vector<int> preferredModePerGame;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressManager)
 };

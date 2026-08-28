@@ -365,6 +365,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
             rebuildChoiceSlider();
         }
 
+        // The mode belongs to the exercise, not to the app. Restore what
+        // this one was last left in before starting anything - otherwise a
+        // Blitz you ran somewhere else follows you here and you get a
+        // 3-2-1 into a timed run on a skill you have only ever practised.
+        applyStoredModeForGame (index);
+
         // Picking a training starts it - the home screen's job is to get
         // out of the way, not to make you confirm twice. Through the
         // countdown path, so arriving with Survival or Blitz still armed
@@ -1587,6 +1593,26 @@ void EarTrainerEditor::timerCallback()
     refreshRunStatus();
 }
 
+void EarTrainerEditor::applyStoredModeForGame (int gameIndex)
+{
+    auto& progress = processor.getProgressManager();
+
+    auto wanted = (SessionManager::Mode) juce::jlimit (0, 2, progress.getPreferredModeForGame (gameIndex));
+
+    // A remembered timed mode is not a licence to skip the unlock. The
+    // stats that open Survival and Blitz are per exercise too, so a mode
+    // saved before a reset - or restored onto a fresh profile - has to be
+    // checked rather than trusted.
+    if (wanted != SessionManager::Mode::practice && ! progress.areModesUnlockedForGame (gameIndex))
+        wanted = SessionManager::Mode::practice;
+
+    practiceButton.setToggleState (wanted == SessionManager::Mode::practice, juce::dontSendNotification);
+    survivalButton.setToggleState (wanted == SessionManager::Mode::survival, juce::dontSendNotification);
+    blitzButton.setToggleState (wanted == SessionManager::Mode::blitz, juce::dontSendNotification);
+
+    session.setMode (wanted);
+}
+
 void EarTrainerEditor::modeSelected()
 {
     const auto wanted = survivalButton.getToggleState() ? SessionManager::Mode::survival
@@ -1623,6 +1649,9 @@ void EarTrainerEditor::modeSelected()
     // setMode() starts a fresh run itself, so this is one call, not two.
     // The price changes with the mode, so the button's label must too.
     session.setMode (wanted);
+
+    processor.getProgressManager()
+        .setPreferredModeForGame (processor.getGameManager().getActiveGameIndex(), (int) wanted);
 
     if (abandoned >= 0)
         achievementToast.show (localisation.getText ("ui.runAbandonedCaption",

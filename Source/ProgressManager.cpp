@@ -29,6 +29,7 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
         statsPerGame.push_back ({});
         progressPerGame.push_back ({});
         favouritePerGame.push_back (false);
+        preferredModePerGame.push_back (0);   // practice
     }
 
     loadState();
@@ -369,6 +370,26 @@ int ProgressManager::getMaxLevelReached() const noexcept
     return highest;
 }
 
+int ProgressManager::getPreferredModeForGame (int gameIndex) const
+{
+    if (gameIndex < 0 || gameIndex >= (int) preferredModePerGame.size())
+        return 0;
+
+    return preferredModePerGame[(size_t) gameIndex];
+}
+
+void ProgressManager::setPreferredModeForGame (int gameIndex, int mode)
+{
+    if (gameIndex < 0 || gameIndex >= (int) preferredModePerGame.size())
+        return;
+
+    if (preferredModePerGame[(size_t) gameIndex] == mode)
+        return;
+
+    preferredModePerGame[(size_t) gameIndex] = mode;
+    saveState();
+}
+
 int ProgressManager::pointsRequiredForLevel (int level) noexcept
 {
     // Points needed to go from level L to L+1 is 100*L, so the cumulative
@@ -466,6 +487,9 @@ void ProgressManager::loadState()
 
         if (i < favouritePerGame.size())
             favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);
+
+        if (i < preferredModePerGame.size())
+            preferredModePerGame[i] = properties->getIntValue (prefix + "mode", 0);
     }
 
     earnedAchievements.clear();
@@ -506,6 +530,9 @@ void ProgressManager::saveState()
 
         if (i < favouritePerGame.size())
             properties->setValue (prefix + "favourite", (bool) favouritePerGame[i]);
+
+        if (i < preferredModePerGame.size())
+            properties->setValue (prefix + "mode", preferredModePerGame[i]);
     }
 
     properties->setValue ("achievements", earnedAchievements.joinIntoString (","));

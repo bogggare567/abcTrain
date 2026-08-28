@@ -1017,6 +1017,12 @@ private:
     AppIconComponent volumeIcon;
     void applyVolumeFromSlider();
 
+    // Puts the session and the three pills into whatever mode this
+    // exercise was last left in, falling back to Practice when the timed
+    // modes are not open for it yet. Called on every switch, so a mode set
+    // in one exercise never follows you into another.
+    void applyStoredModeForGame (int gameIndex);
+
     // Practice / Survival / Blitz. A run in the latter two ends on its
     // own terms (lives or clock) and posts a score against the exercise;
     // see SessionManager.
