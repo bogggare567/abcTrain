@@ -896,7 +896,6 @@ private:
     // A labelled button, not a house glyph: "how do I get back" is the
     // question a lost player asks, and an icon they have to decode is the
     // wrong shape for the answer.
-    juce::TextButton backButton;
     juce::Label currentGameLabel;
     juce::Label instructionLabel;
     juce::Label scoreLabel;

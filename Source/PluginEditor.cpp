@@ -381,8 +381,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     currentGameLabel.setFont (AbcTrainLookAndFeel::headingFont());
     addAndMakeVisible (currentGameLabel);
 
-    backButton.onClick = [this] { showScreen (Screen::home); };
-    addAndMakeVisible (backButton);
 
     homeScreen.onGameChosen = [this] (int index)
     {
@@ -987,19 +985,20 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     // backdrop with only whitespace implying the grouping.
     if (currentScreen == Screen::training)
     {
-        // Headings, not boxes: three bordered panels cut one window into
-        // three pieces rather than organising it.
-        AbcTrainLookAndFeel::paintSectionHeading (g, exerciseSection.toFloat(),
-                                                   localisation.getText ("ui.sectionExercise"));
-        AbcTrainLookAndFeel::paintSectionHeading (g, answerSection.toFloat(),
-                                                   localisation.getText ("ui.sectionAnswer"));
-
-
-        // Only drawn when the hint has actually been bought - the panel
-        // does not exist otherwise, and neither does its heading.
-        if (hintRevealed && ! hintSection.isEmpty())
-            AbcTrainLookAndFeel::paintSectionHeading (g, hintSection.toFloat(),
-                                                       localisation.getText ("ui.sectionHint"));
+        // No captioned rules. There were three - "EXERCISE", "YOUR ANSWER",
+        // "WHAT THE SOUND LOOKS LIKE" - each a small-caps label with a
+        // hairline running off to the right, and together they cut the
+        // window into horizontal bands.
+        //
+        // Every reference worth copying groups with a *surface* and never
+        // with a line: Baby Audio puts the group's name inside its own
+        // rounded panel, Soundtoys puts controls on a physical plate,
+        // FabFilter simply leaves space. A rule is what you reach for when
+        // spacing has not been decided; three of them stacked down a
+        // window is a form, not an instrument.
+        //
+        // The sections are still there - they are just separated by room
+        // now, which is what the room was for.
     }
 
     // The title, letter-spaced. Drawn here rather than through a Label
@@ -1146,8 +1145,6 @@ void EarTrainerEditor::resized()
         // one control on this screen a lost player is looking for, and an
         // icon they have to decode is exactly the wrong shape for that.
         auto gameRow = inner.removeFromTop (30);
-        backButton.setBounds (gameRow.removeFromLeft (104).withSizeKeepingCentre (104, 30));
-        gameRow.removeFromLeft (Spacing::large);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
         instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
@@ -1193,7 +1190,7 @@ void EarTrainerEditor::resized()
         hintSection = area.removeFromTop (hintPanelHeight);
 
         auto inner = hintSection;
-        inner.removeFromTop (Spacing::large);   // clear the section heading
+        inner.removeFromTop (Spacing::small);
 
         auto hintRow = inner.removeFromTop (hintRowHeight).reduced (Spacing::small, 0);
 
@@ -1266,7 +1263,12 @@ void EarTrainerEditor::resized()
         juce::jmax (304, area.getHeight() - toolBarReserve));
     {
         auto inner = answerSection;
-        inner.removeFromTop (Spacing::large);
+
+        // Was Spacing::large, clearing a section heading that no longer
+        // exists. A gap reserved for something that was deleted is just a
+        // gap, and this one sat between the instruction and the answer -
+        // the two things a player looks at in sequence.
+        inner.removeFromTop (Spacing::small);
 
         // The pips live beside the verdict line - the promotion test is
         // part of the answer moment, not part of the header. Reserved on
@@ -1328,8 +1330,14 @@ void EarTrainerEditor::resized()
         // obvious in a way the reasoning had not. Letting one control
         // reflow inside a window that never moves is the version with no
         // victim.
-        const auto maxScaleHeight = hintRevealed ? 210 : 210 + hintPanelHeight;
-        const auto scaleHeight = juce::jlimit (186, maxScaleHeight, inner.getHeight());
+        // Named alternatives and a ruler want different amounts of room.
+        // A ruler earns height - it is a value read off a scale, and a
+        // taller scale is a more precise one. Two words do not: past about
+        // 180px the cards stop being buttons and become walls.
+        const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
+        const auto continuousMax = hintRevealed ? 210 : 210 + hintPanelHeight;
+        const auto maxScaleHeight = onRuler ? continuousMax : 190;
+        const auto scaleHeight = juce::jlimit (onRuler ? 186 : 150, maxScaleHeight, inner.getHeight());
 
         // Anchored to the top of what is left, not centred in it. Centring
         // put the spare room between the "Your answer" heading and the
@@ -1439,7 +1447,6 @@ void EarTrainerEditor::startTour()
     tour.addStep (&afterButton,      localisation.getText ("tour.step.ab"));
     tour.addStep (&choiceSlider,     localisation.getText ("tour.step.answer"));
     tour.addStep (&levelProgressLabel, localisation.getText ("tour.step.level"));
-    tour.addStep (&backButton,       localisation.getText ("tour.step.home"));
 
     tour.start();
 }
@@ -2061,7 +2068,7 @@ void EarTrainerEditor::showScreen (Screen screen)
         c->setVisible (! onSupport);
     }
 
-    for (auto* c : { (juce::Component*) &backButton, (juce::Component*) &gameIcon,
+    for (auto* c : { (juce::Component*) &gameIcon,
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
@@ -2209,7 +2216,6 @@ void EarTrainerEditor::refreshLocalisedText()
                          localisation.getText ("ui.level").upToFirstOccurrenceOf ("{{", false, false).trim(),
                          localisation.getText ("ui.streak"));
 
-    backButton.setButtonText (localisation.getText ("ui.back"));
 
     {
         practiceButton.setButtonText (localisation.getText ("ui.modePractice"));

@@ -530,26 +530,50 @@ void AbcTrainLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int
     g.setGradientFill (fillGradient);
     g.fillRoundedRectangle (filled, trackThickness * 0.5f);
 
-    const auto thumbRadius = (6.0f + 1.6f * touch);
+    // A cap, not a dot.
+    //
+    // It was a circle of radius 6 sitting on a 5px track - barely larger
+    // than the groove it rides in, which is a dot marking a position
+    // rather than a handle you take hold of. Every hardware fader and
+    // every plugin that imitates one has a cap that is clearly wider
+    // across the travel than the track is thick, and clearly longer
+    // across the other axis: that shape is what says "grab here", and it
+    // is also what your finger or cursor actually has to hit.
+    const auto capThickness = 13.0f + 2.0f * touch;   // across the travel
+    const auto capLength = 22.0f + 3.0f * touch;      // across the track
     const auto thumbCentre = isHorizontal ? juce::Point<float> (sliderPos, track.getCentreY())
                                           : juce::Point<float> (track.getCentreX(), sliderPos);
-    const auto thumbBounds = juce::Rectangle<float> (thumbRadius * 2.0f, thumbRadius * 2.0f)
-                                  .withCentre (thumbCentre);
+
+    const auto thumbBounds = (isHorizontal
+                                  ? juce::Rectangle<float> (capThickness, capLength)
+                                  : juce::Rectangle<float> (capLength, capThickness))
+                                 .withCentre (thumbCentre);
+
+    const auto capRadius = 3.5f;
 
     if (touch > 0.001f)
     {
-        g.setColour (fillColour.withAlpha (0.22f * touch));
-        g.fillEllipse (thumbBounds.expanded (5.0f));
+        g.setColour (fillColour.withAlpha (0.20f * touch));
+        g.fillRoundedRectangle (thumbBounds.expanded (4.0f), capRadius + 3.0f);
     }
 
     juce::Path thumbPath;
-    thumbPath.addEllipse (thumbBounds);
-    dropShadowForPath (g, thumbPath, 0.35f, 5, { 0, 2 });
+    thumbPath.addRoundedRectangle (thumbBounds, capRadius);
+    dropShadowForPath (g, thumbPath, 0.38f, 6, { 0, 2 });
 
     juce::ColourGradient thumbGradient (t.textBright, thumbBounds.getX(), thumbBounds.getY(),
-                                         t.textBright.darker (0.22f), thumbBounds.getX(), thumbBounds.getBottom(), false);
+                                         t.textBright.darker (0.26f), thumbBounds.getX(), thumbBounds.getBottom(), false);
     g.setGradientFill (thumbGradient);
-    g.fillEllipse (thumbBounds);
+    g.fillRoundedRectangle (thumbBounds, capRadius);
+
+    // One line across the cap, where a fader's grip line goes. It is also
+    // the only thing that tells you which way the cap is oriented.
+    g.setColour (t.displayBackground.withAlpha (0.35f));
+
+    if (isHorizontal)
+        g.fillRect (thumbBounds.getCentreX() - 0.5f, thumbBounds.getY() + 5.0f, 1.0f, thumbBounds.getHeight() - 10.0f);
+    else
+        g.fillRect (thumbBounds.getX() + 5.0f, thumbBounds.getCentreY() - 0.5f, thumbBounds.getWidth() - 10.0f, 1.0f);
 }
 
 // ----------------------------------------------------------- combo/menu
