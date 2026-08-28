@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Survival und Blitz",
   "ui.modesLockedCaption": "{{count}} richtige in Folge hier schalten sie frei",
   "ui.volume": "Lautstärke",
-  "ui.dragOnScale": "Zum Antworten über die Skala ziehen"
+  "ui.dragOnScale": "Zum Antworten über die Skala ziehen",
+  "ui.runAbandonedTitle": "Lauf beendet",
+  "ui.runAbandonedCaption": "Du hattest {{score}}. Sonst geht nichts verloren - Level und Rekord bleiben.",
+  "ui.runResultsBest": "Dein bisher bestes"
 }

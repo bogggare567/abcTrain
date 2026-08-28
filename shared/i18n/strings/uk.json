@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Виживання і Бліц",
   "ui.modesLockedCaption": "Дайте {{count}} правильних поспіль тут, щоб відкрити",
   "ui.volume": "Гучність",
-  "ui.dragOnScale": "Проведи по шкалі, щоб відповісти"
+  "ui.dragOnScale": "Проведи по шкалі, щоб відповісти",
+  "ui.runAbandonedTitle": "Забіг завершено",
+  "ui.runAbandonedCaption": "Було {{score}}. Більше нічого не втрачено — рівень і рекорд на місці.",
+  "ui.runResultsBest": "Твій найкращий результат"
 }

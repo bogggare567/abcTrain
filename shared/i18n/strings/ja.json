@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "サバイバルとブリッツ",
   "ui.modesLockedCaption": "この練習で {{count}} 連続正解すると解放されます",
   "ui.volume": "音量",
-  "ui.dragOnScale": "目盛りをドラッグして回答"
+  "ui.dragOnScale": "目盛りをドラッグして回答",
+  "ui.runAbandonedTitle": "ラン終了",
+  "ui.runAbandonedCaption": "スコアは{{score}}でした。ほかは失われません — レベルも記録もそのままです。",
+  "ui.runResultsBest": "自己ベスト"
 }

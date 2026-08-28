@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Survival and Blitz",
   "ui.modesLockedCaption": "Get {{count}} right in a row here to open them",
   "ui.volume": "Volume",
-  "ui.dragOnScale": "Drag along the scale to answer"
+  "ui.dragOnScale": "Drag along the scale to answer",
+  "ui.runAbandonedTitle": "Run ended",
+  "ui.runAbandonedCaption": "You had {{score}}. Nothing else is lost - your level and record stay.",
+  "ui.runResultsBest": "Your best yet"
 }

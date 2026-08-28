@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Sopravvivenza e Blitz",
   "ui.modesLockedCaption": "Indovina {{count}} di fila qui per sbloccarli",
   "ui.volume": "Volume",
-  "ui.dragOnScale": "Trascina sulla scala per rispondere"
+  "ui.dragOnScale": "Trascina sulla scala per rispondere",
+  "ui.runAbandonedTitle": "Sessione conclusa",
+  "ui.runAbandonedCaption": "Avevi {{score}}. Nient’altro va perso: livello e record restano.",
+  "ui.runResultsBest": "Il tuo record"
 }

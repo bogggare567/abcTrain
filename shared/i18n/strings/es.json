@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Supervivencia y Blitz",
   "ui.modesLockedCaption": "Acierta {{count}} seguidas aquí para desbloquearlos",
   "ui.volume": "Volumen",
-  "ui.dragOnScale": "Arrastra por la escala para responder"
+  "ui.dragOnScale": "Arrastra por la escala para responder",
+  "ui.runAbandonedTitle": "Ronda terminada",
+  "ui.runAbandonedCaption": "Tenías {{score}}. No se pierde nada más: tu nivel y tu récord siguen ahí.",
+  "ui.runResultsBest": "Tu mejor marca"
 }

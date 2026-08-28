@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Przetrwanie i Blitz",
   "ui.modesLockedCaption": "Trafisz {{count}} pod rząd tutaj, aby odblokować",
   "ui.volume": "Głośność",
-  "ui.dragOnScale": "Przeciągnij po skali, aby odpowiedzieć"
+  "ui.dragOnScale": "Przeciągnij po skali, aby odpowiedzieć",
+  "ui.runAbandonedTitle": "Runda zakończona",
+  "ui.runAbandonedCaption": "Miałeś {{score}}. Nic więcej nie przepada - poziom i rekord zostają.",
+  "ui.runResultsBest": "Twój najlepszy wynik"
 }

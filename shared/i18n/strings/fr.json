@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Survie et Blitz",
   "ui.modesLockedCaption": "{{count}} bonnes réponses d'affilée ici pour les ouvrir",
   "ui.volume": "Volume",
-  "ui.dragOnScale": "Faites glisser sur l’échelle pour répondre"
+  "ui.dragOnScale": "Faites glisser sur l’échelle pour répondre",
+  "ui.runAbandonedTitle": "Manche terminée",
+  "ui.runAbandonedCaption": "Vous aviez {{score}}. Rien d’autre n’est perdu : niveau et record restent.",
+  "ui.runResultsBest": "Votre meilleur score"
 }

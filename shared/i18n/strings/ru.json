@@ -287,5 +287,8 @@
   "ui.modesLockedTitle": "Выживание и Блиц",
   "ui.modesLockedCaption": "Ответьте {{count}} подряд в этом упражнении, чтобы открыть",
   "ui.volume": "Громкость",
-  "ui.dragOnScale": "Проведи по шкале, чтобы ответить"
+  "ui.dragOnScale": "Проведи по шкале, чтобы ответить",
+  "ui.runAbandonedTitle": "Забег окончен",
+  "ui.runAbandonedCaption": "Было {{score}}. Больше ничего не потеряно — уровень и рекорд на месте.",
+  "ui.runResultsBest": "Твой лучший результат"
 }

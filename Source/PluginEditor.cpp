@@ -1091,7 +1091,24 @@ void EarTrainerEditor::resized()
         gameRow.removeFromLeft (Spacing::small);
         instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
         gameRow.removeFromRight (Spacing::tight);
-        levelProgressLabel.setBounds (gameRow.removeFromRight (210));
+
+        // Lives and the clock live up here during a run, in the slot the
+        // level readout uses the rest of the time.
+        //
+        // They used to sit in the control row *instead of* the mode pills,
+        // which is what made a run feel like a trap: start Survival and the
+        // three buttons you arrived by vanish, leaving one 74px "End run"
+        // among six other controls. Status belongs beside the question;
+        // the pills are navigation and should never disappear. And during
+        // a run "how many lives are left" genuinely outranks "how far to
+        // the next level".
+        {
+            auto slot = gameRow.removeFromRight (210);
+            const auto running = isRunHudActive();
+            runHud.setBounds (running ? slot.withSizeKeepingCentre (210, 30) : juce::Rectangle<int>());
+            levelProgressLabel.setBounds (running ? juce::Rectangle<int>() : slot);
+        }
+
         currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
@@ -1224,31 +1241,22 @@ void EarTrainerEditor::resized()
             const auto pillWidth = 62;
             const auto modesSlotWidth = pillWidth * 3 + Spacing::medium + 92;
 
-            if (isRunHudActive())
+            // The pills are laid out identically whether a run is live or
+            // not, so nothing in this row moves when one starts or ends.
+            for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+                pill->setBounds (controlRow.removeFromLeft (pillWidth)
+                                     .withSizeKeepingCentre (pillWidth, 28));
+
+            controlRow.removeFromLeft (Spacing::medium);
+
+            // One 92px slot, two tenants: the session tally when nothing is
+            // running, the way out while something is.
             {
-                // The HUD takes exactly the slot the pills + session score
-                // vacate, so A/B never shifts when a run starts or ends -
-                // minus the width of the way out, which shares that slot.
-                constexpr int endWidth = 74;
-
-                endRunButton.setBounds (controlRow.removeFromLeft (endWidth)
-                                            .withSizeKeepingCentre (endWidth, 28));
-                controlRow.removeFromLeft (Spacing::small);
-
-                runHud.setBounds (controlRow.removeFromLeft (modesSlotWidth - endWidth - Spacing::small)
-                                      .withSizeKeepingCentre (modesSlotWidth - endWidth - Spacing::small, 30));
-            }
-            else
-            {
-                for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
-                    pill->setBounds (controlRow.removeFromLeft (pillWidth)
-                                         .withSizeKeepingCentre (pillWidth, 28));
-
-                // Score and the lives/clock readout ride along with the modes:
-                // they say how *this* run is going, which is the same subject
-                // the pills set.
-                controlRow.removeFromLeft (Spacing::medium);
-                scoreLabel.setBounds (controlRow.removeFromLeft (92));
+                auto slot = controlRow.removeFromLeft (92);
+                const auto running = isRunHudActive();
+                endRunButton.setBounds (running ? slot.withSizeKeepingCentre (86, 28)
+                                                : juce::Rectangle<int>());
+                scoreLabel.setBounds (running ? juce::Rectangle<int>() : slot);
             }
 
             // Only reserve width for the lives/clock readout when there is
@@ -1423,7 +1431,11 @@ void EarTrainerEditor::showRunResults (int finalScore)
         summary.skills.push_back (std::move (standing));
     }
 
-    runResults.setStrings (localisation.getText ("ui.runResults"),
+    // "Run over" is the right heading for a run that ran out, and the wrong
+    // one for a run that beat everything before it. Same screen, two
+    // different things to say.
+    runResults.setStrings (localisation.getText (summary.isNewBest ? "ui.runResultsBest"
+                                                                   : "ui.runResults"),
                             localisation.getText ("ui.playAgain"),
                             localisation.getText ("ui.back"),
                             localisation.getText ("ui.score.caption"),
@@ -1598,9 +1610,24 @@ void EarTrainerEditor::modeSelected()
         return;
     }
 
+    // Switching mode while a run is live throws that run away - setMode
+    // calls startRun() and nothing fires onRunEnded. That was invisible
+    // while the pills were hidden mid-run; now that they are the way out,
+    // it has to be said out loud, or a Blitz score just evaporates.
+    //
+    // Deliberately a toast and not the results screen: pressing "Practice"
+    // is a request to leave, not a request to be shown a scoreboard. The
+    // full results are what "End run" is for.
+    const auto abandoned = isRunHudActive() ? session.getRunScore() : -1;
+
     // setMode() starts a fresh run itself, so this is one call, not two.
     // The price changes with the mode, so the button's label must too.
     session.setMode (wanted);
+
+    if (abandoned >= 0)
+        achievementToast.show (localisation.getText ("ui.runAbandonedCaption",
+                                                      { { "score", juce::String (abandoned) } }),
+                                localisation.getText ("ui.runAbandonedTitle"));
 
     beginRunWithCountdown();
 }
@@ -1747,8 +1774,11 @@ void EarTrainerEditor::refreshRunStatus()
         const auto unlocked = processor.getProgressManager()
                                   .areModesUnlockedForGame (processor.getGameManager().getActiveGameIndex());
 
-        practiceButton.setVisible (onTraining && ! hudNow);
+        // Visible throughout, including mid-run. Hiding the way you came in
+        // is what made a timed mode feel like something you were stuck in.
+        practiceButton.setVisible (onTraining);
         scoreLabel.setVisible (onTraining && ! hudNow);
+        levelProgressLabel.setVisible (onTraining && ! hudNow);
 
         // Locked modes are *shown*, dimmed - not hidden.
         //
@@ -1763,7 +1793,7 @@ void EarTrainerEditor::refreshRunStatus()
         // Dimmed and still clickable: pressing one says what earns it.
         for (auto* pill : { &survivalButton, &blitzButton })
         {
-            pill->setVisible (onTraining && ! hudNow);
+            pill->setVisible (onTraining);
             pill->setAlpha (unlocked ? 1.0f : 0.45f);
         }
 
