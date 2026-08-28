@@ -67,6 +67,14 @@ public:
 
     int getStreakDays() const noexcept { return streakDays; }
 
+    // Seconds actually spent inside an exercise, with the signal running.
+    //
+    // Not time with the window open. A plugin left loaded in a project for
+    // a working day has not been used for a working day, and asking it for
+    // anything on that basis would be a lie about what the person got.
+    void addPracticeSecond();
+    int getPracticeSeconds() const noexcept { return practiceSeconds; }
+
     // How many correct in a row on this exercise right now. Already
     // tracked (it is what completes the daily challenge); exposing it is
     // what lets the challenge be shown as progress toward something
@@ -287,6 +295,9 @@ private:
     // on SessionManager - the two have never known about each other and a
     // remembered preference is not a reason to introduce that.
     std::vector<int> preferredModePerGame;
+
+    int practiceSeconds = 0;
+    int unsavedPracticeSeconds = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressManager)
 };

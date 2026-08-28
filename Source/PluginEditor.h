@@ -1035,6 +1035,10 @@ private:
     SideRailComponent sideRail;
     void refreshRailStatus();
 
+    // One second of real practice, and the one place the support ask can
+    // ever be triggered from.
+    void countPracticeSecond();
+
     // The rail is on for the two screens you navigate between and off for
     // the welcome screen, which is a single thing with one button.
     bool railIsVisible() const noexcept { return currentScreen != Screen::support; }

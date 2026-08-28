@@ -69,6 +69,15 @@ namespace
     // has been offered, which is a question worth asking exactly once.
     constexpr const char* tourOfferedKey = "tourOffered";
 
+    // Whether the one support ask has already happened. Not "how many
+    // times" - there is only ever one.
+    constexpr const char* supportAskedKey = "supportAsked";
+
+    // Five hours inside exercises. Chosen because it is long enough that
+    // the product has demonstrably given the person something, which is
+    // the only condition under which asking is reasonable.
+    constexpr int secondsBeforeSupportAsk = 5 * 60 * 60;
+
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
     // without the Game interface itself (or any of the 9 game classes)
@@ -847,13 +856,52 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     // First launch gets the support screen once; after that, straight to
     // Home. Never mid-exercise.
-    // The welcome screen every time, not once: it is the front door, it
-    // says what the four words mean, and it costs one click to pass.
-    if (! localisationProperties.getBoolValue (tourOfferedKey, false))
+    // Once on the first run, and once more after five hours of practice.
+    // Not every launch.
+    //
+    // It used to open every time, on the reasoning that it is the front
+    // door and costs one click to pass. The trouble is what the door is
+    // asking for: the two prominent buttons are "support the project" and
+    // "star it on GitHub", so the first thing anybody meets in a product
+    // about listening is a request. Seen twice it is a request; seen two
+    // hundred times it is furniture, and the genuinely useful line on that
+    // screen - use headphones, laptop speakers hide both ends of the
+    // spectrum - stops being read along with it.
+    //
+    // One ask, after the product has actually given somebody five hours of
+    // something, works better for them and better for the person asking.
+    const auto firstRun = ! localisationProperties.getBoolValue (tourOfferedKey, false);
+
+    if (firstRun)
         supportScreen.setTourOffer (localisation.getText ("tour.offer"),
                                      localisation.getText ("tour.accept"),
                                      localisation.getText ("tour.decline"));
 
+    showScreen (firstRun ? Screen::support : Screen::home);
+}
+
+void EarTrainerEditor::countPracticeSecond()
+{
+    // Only while a round is actually sounding. Time with the window open
+    // is not time spent practising, and a plugin loaded in a project all
+    // day has not earned the right to ask for anything.
+    if (currentScreen != Screen::training || ! processor.isSignalEnabled())
+        return;
+
+    auto& progress = processor.getProgressManager();
+    progress.addPracticeSecond();
+
+    if (progress.getPracticeSeconds() < secondsBeforeSupportAsk
+        || localisationProperties.getBoolValue (supportAskedKey, false))
+        return;
+
+    // Never mid-round. The one moment this must not interrupt is the one
+    // it would otherwise land in.
+    if (session.isRunActive() && isRunHudActive())
+        return;
+
+    localisationProperties.setValue (supportAskedKey, true);
+    localisationProperties.saveIfNeeded();
     showScreen (Screen::support);
 }
 
@@ -1650,6 +1698,8 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 
 void EarTrainerEditor::timerCallback()
 {
+    countPracticeSecond();
+
     if (session.getMode() != SessionManager::Mode::blitz || ! session.isRunActive())
         return;
 

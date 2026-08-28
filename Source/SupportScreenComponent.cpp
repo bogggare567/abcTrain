@@ -95,7 +95,13 @@ SupportScreenComponent::SupportScreenComponent (LocalisationManager& localisatio
     addChildComponent (noTourButton);
 
     headphoneNote.setJustificationType (juce::Justification::centred);
-    headphoneNote.setFont (AbcTrainLookAndFeel::labelFont());
+    // Body size, not label size. This screen is now seen twice in a
+    // lifetime rather than every launch, and this is the only sentence on
+    // it that changes whether the exercises work at all - laptop speakers
+    // hide both ends of the spectrum, which is most of what is being
+    // trained. It was set two steps down the ladder and dimmed, i.e.
+    // whispered, on an ear-training product.
+    headphoneNote.setFont (AbcTrainLookAndFeel::bodyFont());
     headphoneNote.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (headphoneNote);
 
@@ -116,8 +122,7 @@ void SupportScreenComponent::refresh()
     starButton.setButtonText (localisation.getText ("ui.star"));
     continueButton.setButtonText (localisation.getText ("ui.continue"));
     headphoneNote.setText (localisation.getText ("ui.headphoneNote"), juce::dontSendNotification);
-    headphoneNote.setColour (juce::Label::textColourId,
-                              AbcTrainTheme::current().textDim.withAlpha (0.75f));
+    headphoneNote.setColour (juce::Label::textColourId, AbcTrainTheme::current().text);
 
     // Restart the reveal: a language switch changes the three words, and
     // showing new text already faded in would look like a glitch.
@@ -406,7 +411,7 @@ void SupportScreenComponent::resized()
     starButton.setBounds (row);
 
     auto footer = getLocalBounds().removeFromBottom (56);
-    headphoneNote.setBounds (footer.removeFromTop (22)
+    headphoneNote.setBounds (footer.removeFromTop (26)
                                  .reduced (AbcTrainTheme::Spacing::large, 0));
     repoLink.setBounds (footer.reduced (AbcTrainTheme::Spacing::large, 6));
 }

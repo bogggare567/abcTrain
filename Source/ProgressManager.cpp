@@ -370,6 +370,21 @@ int ProgressManager::getMaxLevelReached() const noexcept
     return highest;
 }
 
+void ProgressManager::addPracticeSecond()
+{
+    ++practiceSeconds;
+
+    // Written to disk once a minute rather than once a second. A
+    // PropertiesFile save is a real file write, and doing one per second
+    // for the whole time somebody is practising is exactly the sort of
+    // background churn that gets a plugin blamed for a stuttering session.
+    if (++unsavedPracticeSeconds >= 60)
+    {
+        unsavedPracticeSeconds = 0;
+        saveState();
+    }
+}
+
 int ProgressManager::getPreferredModeForGame (int gameIndex) const
 {
     if (gameIndex < 0 || gameIndex >= (int) preferredModePerGame.size())
@@ -455,6 +470,7 @@ void ProgressManager::generateDailyChallengeForDate (const juce::String& todayIs
 void ProgressManager::loadState()
 {
     streakDays = properties->getIntValue ("streakDays", 0);
+    practiceSeconds = properties->getIntValue ("practiceSeconds", 0);
     lastSessionDate = properties->getValue ("lastSessionDate");
     dailyChallengeDate = properties->getValue ("dailyChallengeDate");
     dailyChallengeGameIndex = juce::jlimit (0, juce::jmax (0, gameManager.getNumGames() - 1),
@@ -507,6 +523,7 @@ void ProgressManager::loadState()
 void ProgressManager::saveState()
 {
     properties->setValue ("streakDays", streakDays);
+    properties->setValue ("practiceSeconds", practiceSeconds);
     properties->setValue ("lastSessionDate", lastSessionDate);
     properties->setValue ("dailyChallengeDate", dailyChallengeDate);
     properties->setValue ("dailyChallengeGameIndex", dailyChallengeGameIndex);
