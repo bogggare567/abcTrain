@@ -9,7 +9,7 @@
 ### Learn to hear what you have been reading about.
 
 Nine ear-training exercises, and three real effects that explain themselves
-while they work on your own audio. Free, open source, macOS · Windows ·
+while they work on your own audio. Free, source available, macOS · Windows ·
 Linux, as VST3 · AU · Standalone.
 
 <br>
@@ -196,7 +196,7 @@ or anything on the [roadmap](docs/roadmap.md).
 
 One thing that will bite you if nobody says it: **the tests cannot see
 layout.** Every visual pass in this project's history has shipped a bug
-that compiled, passed all 217 test groups, and was obvious ten seconds
+that compiled, passed all 234 test groups, and was obvious ten seconds
 after looking at the thing. If you change something visual, render it and
 look at it.
 

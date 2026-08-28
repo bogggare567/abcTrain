@@ -17,8 +17,15 @@
 >
 > **Что это.** Набор из четырёх аудиоплагинов: один тренажёр слуха и три
 > «обучающих» эффекта, которые обрабатывают реальный звук и по ходу
-> объясняют, что делает каждая ручка. Бесплатно, открытый код, macOS /
+> объясняют, что делает каждая ручка. Бесплатно, исходники открыты, macOS /
 > Windows / Linux, форматы VST3 / AU / Standalone.
+>
+> **Не пиши «open source» / «открытый исходный код» как категорию
+> лицензии.** Лицензия — все права защищены: читать и собирать себе
+> можно, распространять нельзя, ни платно, ни бесплатно. Точная
+> формулировка — «исходники открыты», по-английски *source available*.
+> Это не придирка: ближайший бесплатный конкурент, EarQuiz Frequencies,
+> действительно открытый, и сравнение сделают.
 >
 > **Главная мысль, которая должна стоять выше всего остального:** это не
 > ещё один тренажёр слуха в браузере. Это плагины, которые учат тебя
@@ -176,7 +183,7 @@
 > ### Train your ears. Then use plugins that teach you while you mix.
 >
 > Nine ear-training exercises and three real, host-automatable effects —
-> one free, open-source suite for macOS, Windows and Linux. VST3, AU and
+> one free, source-available suite for macOS, Windows and Linux. VST3, AU and
 > Standalone. No account, no subscription, no telemetry.
 
 ### Абзац «зачем», RU
