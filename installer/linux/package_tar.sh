@@ -58,6 +58,10 @@ done
 
 cp "$SCRIPT_DIR/install.sh" "$STAGE_DIR/"
 chmod +x "$STAGE_DIR/install.sh"
+
+# Ships beside the installer, so it is there before anybody needs it.
+cp "$SCRIPT_DIR/uninstall.sh" "$STAGE_DIR/"
+chmod +x "$STAGE_DIR/uninstall.sh"
 cp "$SCRIPT_DIR/README.txt" "$STAGE_DIR/"
 cp "$REPO_ROOT/LICENSE" "$STAGE_DIR/"
 

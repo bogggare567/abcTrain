@@ -111,6 +111,13 @@ cp "$PRODUCT_PKG" "$DMG_STAGING/abcTrain-${VERSION}.pkg"
 cp "$SCRIPT_DIR/Open Plugins Folder.command" "$DMG_STAGING/"
 chmod +x "$DMG_STAGING/Open Plugins Folder.command"
 
+# The uninstaller ships next to the installer, on purpose. macOS has no
+# uninstaller for a .pkg at all, so without this the only way back out is
+# hunting through four folders by hand - and the moment somebody wants it
+# is the moment they are least inclined to go looking for instructions.
+cp "$SCRIPT_DIR/Uninstall abcTrain.command" "$DMG_STAGING/"
+chmod +x "$DMG_STAGING/Uninstall abcTrain.command"
+
 mkdir -p "$(dirname "$OUTPUT_DMG")"
 hdiutil create -volname "abcTrain ${VERSION}" -srcfolder "$DMG_STAGING" -ov -format UDZO "$OUTPUT_DMG" >/dev/null
 
