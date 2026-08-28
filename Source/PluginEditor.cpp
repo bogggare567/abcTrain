@@ -34,27 +34,6 @@ namespace
 
 namespace
 {
-    // Every string the update prompt needs, pulled from this editor's own
-    // LocalisationManager. The dialogue used to be hardcoded English on a
-    // Russian interface, which is exactly the kind of seam that says
-    // "this part was bolted on".
-    UpdatePrompt::Strings updateStrings (const LocalisationManager& loc)
-    {
-        UpdatePrompt::Strings s;
-        s.title        = loc.getText ("update.title");
-        s.body         = loc.getText ("update.body");
-        s.offerInstall = loc.getText ("update.offerInstall");
-        s.noAsset      = loc.getText ("update.noAsset");
-        s.updateNow    = loc.getText ("update.now");
-        s.later        = loc.getText ("update.later");
-        s.openPage     = loc.getText ("update.openPage");
-        s.downloading  = loc.getText ("update.downloading");
-        s.opening      = loc.getText ("update.opening");
-        s.failed       = loc.getText ("update.failed");
-        s.installed    = loc.getText ("update.installed");
-        s.devBuild     = loc.getText ("update.devBuild");
-        return s;
-    }
 }
 
 namespace
@@ -1115,8 +1094,6 @@ void EarTrainerEditor::resized()
 
     // --- the tool bar, bottom left ---------------------------------------
     {
-        constexpr int iconSize = 30;
-
         // The rail is the window's left edge, floor to ceiling. Settings
         // and Training Sounds became rows in it, so their buttons are gone
         // rather than hidden - two ways to reach one screen is two things
@@ -1368,7 +1345,6 @@ void EarTrainerEditor::resized()
             // the middle, directly under the scale it compares - it is the
             // control touched most often, so it gets the centre.
             const auto pillWidth = 62;
-            const auto modesSlotWidth = pillWidth * 3 + Spacing::medium + 92;
 
             // The pills are laid out identically whether a run is live or
             // not, so nothing in this row moves when one starts or ends.
