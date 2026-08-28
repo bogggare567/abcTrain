@@ -1185,7 +1185,7 @@ void EarTrainerEditor::resized()
     // reads as space, where a dimmed placeholder box would read as a
     // broken element. Between hearing and answering, which is the order
     // you use it in.
-    if (hintRevealed)
+    if (hintRevealed && ! hintNarrowsTheScale())
     {
         hintSection = area.removeFromTop (hintPanelHeight);
 
@@ -1225,7 +1225,8 @@ void EarTrainerEditor::resized()
     }
 
     {
-        const auto showing = hintRevealed && currentScreen == Screen::training;
+        const auto showing = hintRevealed && ! hintNarrowsTheScale()
+                                 && currentScreen == Screen::training;
         const auto view = activeHintView();
 
         vectorscope.setVisible (showing && view == Game::HintView::stereo);
@@ -1335,7 +1336,8 @@ void EarTrainerEditor::resized()
         // taller scale is a more precise one. Two words do not: past about
         // 180px the cards stop being buttons and become walls.
         const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
-        const auto continuousMax = hintRevealed ? 210 : 210 + hintPanelHeight;
+        const auto continuousMax = (hintRevealed && ! hintNarrowsTheScale()) ? 210
+                                                                             : 210 + hintPanelHeight;
         const auto maxScaleHeight = onRuler ? continuousMax : 190;
         const auto scaleHeight = juce::jlimit (onRuler ? 186 : 150, maxScaleHeight, inner.getHeight());
 
@@ -1880,6 +1882,7 @@ void EarTrainerEditor::clearHint()
         return;
 
     hintRevealed = false;
+    choiceSlider.clearHintRegion();
     vectorscope.setVisible (false);
     hintSpectrum.setVisible (false);
     hintWaveform.setVisible (false);
@@ -2406,9 +2409,29 @@ void EarTrainerEditor::requestHint()
     }
 
     hintRevealed = true;
-    vectorscope.reset();
-    hintWaveform.reset();
-    hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+
+    auto& game = processor.getGameManager().getActiveGame();
+    const auto halfWidth = game.getHintHalfWidthNormalised();
+
+    if (halfWidth > 0.0f)
+    {
+        // Deliberately not centred on the answer. A region whose middle is
+        // the answer is the answer with extra steps - you would click the
+        // centre without listening and be right every time. Offsetting it
+        // keeps the whole region live: the answer is somewhere in here and
+        // you still have to find it.
+        const auto answer = game.getCorrectNormalised();
+        const auto drift = (hintRandom.nextFloat() * 2.0f - 1.0f) * halfWidth * 0.55f;
+
+        hintCentreForRound = juce::jlimit (halfWidth, 1.0f - halfWidth, answer + drift);
+        choiceSlider.setHintRegion (hintCentreForRound, halfWidth);
+    }
+    else
+    {
+        vectorscope.reset();
+        hintWaveform.reset();
+        hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+    }
 
     refreshRunStatus();
     refreshHintButton();

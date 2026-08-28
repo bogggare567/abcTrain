@@ -192,6 +192,30 @@ public:
 
     virtual HintView getHintView() const { return HintView::spectrum; }
 
+    // What a hint should do on a ruler exercise: narrow the search, not
+    // answer the question.
+    //
+    // Returns the half-width, in normalised axis units, of a region that
+    // contains the answer. The editor shades everything outside it.
+    //
+    // This exists because the old hint was the wrong shape for this
+    // product. It showed a live analyser - so on "find the frequency" the
+    // spectrum drew the boost as a visible bump, and the player read the
+    // answer off a picture. In Survival that cost a life; what they bought
+    // with it was permission not to listen, in an application whose whole
+    // subject is listening.
+    //
+    // Narrowing keeps the ear in the loop. Three times the accept band is
+    // deliberate: enough that the search is genuinely easier, far too wide
+    // to click blindly in the middle and be right. A game returning 0
+    // offers no narrowing at all, which is the honest default for the
+    // categorical ones - with two alternatives, eliminating one *is* the
+    // answer.
+    virtual float getHintHalfWidthNormalised() const
+    {
+        return usesContinuousScale() ? juce::jmin (0.5f, getToleranceNormalised() * 3.0f) : 0.0f;
+    }
+
     // The two pieces of an answer the *editor* cannot derive on its own,
     // so it can compose the feedback sentence in the player's language
     // instead of showing getFeedbackText()'s English. Everything else it

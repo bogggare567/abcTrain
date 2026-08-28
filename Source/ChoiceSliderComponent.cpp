@@ -299,6 +299,13 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
     }
 }
 
+void ChoiceSliderComponent::setHintRegion (float centreNormalised, float halfWidthNormalised)
+{
+    hintCentre = juce::jlimit (0.0f, 1.0f, centreNormalised);
+    hintHalfWidth = juce::jmax (0.0f, halfWidthNormalised);
+    repaint();
+}
+
 void ChoiceSliderComponent::paintScale (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
@@ -585,6 +592,39 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     // that ever catches this class of bug here.
     const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 10.0f;
     const auto upperRowY = lowerRowY - labelRowHeight + 1.0f;
+
+    // The hint, if one was bought: everything outside the region is
+    // dimmed, so what remains is a shorter stretch of the same ruler
+    // rather than a marker pointing at the answer.
+    if (hintHalfWidth > 0.0f)
+    {
+        const auto left = xFor (hintCentre - hintHalfWidth);
+        const auto right = xFor (hintCentre + hintHalfWidth);
+
+        // The shadow colour, not the well's own: filling the well with the
+        // well's colour changes nothing, which is exactly what the first
+        // version did and the render showed. This one is black on the dark
+        // theme and a cool grey on the light one, so the dimming reads on
+        // both.
+        g.setColour (theme.shadow.withAlpha (0.55f * theme.shadowStrength));
+
+        if (left > scaleArea.getX())
+            g.fillRect (scaleArea.withRight (left));
+
+        if (right < scaleArea.getRight())
+            g.fillRect (scaleArea.withLeft (right));
+
+        // And the live stretch lifts very slightly, so the region reads as
+        // the part that is still in play rather than as a hole in a mask.
+        g.setColour (theme.accent.withAlpha (0.05f));
+        g.fillRect (scaleArea.withLeft (left).withRight (right));
+
+        // Two soft edges rather than two hard walls: the boundary is not
+        // information, the region is.
+        g.setColour (theme.accent.withAlpha (0.38f));
+        g.fillRect (left - 1.0f, scaleArea.getY(), 1.5f, scaleArea.getHeight());
+        g.fillRect (right, scaleArea.getY(), 1.5f, scaleArea.getHeight());
+    }
 
     for (const auto& mark : gridMarks)
     {

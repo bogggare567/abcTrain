@@ -115,14 +115,16 @@ public:
     // exercise" is a claim about three different pictures.
     void revealHintForSnapshot()
     {
-        hintRevealed = true;
-
-        // Through the same window-growth path the real one uses, not a
-        // bare resized(). The hint panel does not exist in the layout
-        // until it is bought and the window grows to make room for it -
-        // skipping that step laid the panel out inside the old height and
-        // pushed the mode pills straight onto the bottom tool bar, which
-        // is a bug in the snapshot seam rather than in the product.
+        // Through requestHint(), not by setting the flag.
+        //
+        // It used to set hintRevealed directly, which was fine while a
+        // hint was purely a panel becoming visible. It is not any more -
+        // on a ruler exercise a hint narrows the scale, and that region is
+        // computed where the hint is bought. Setting the flag by hand
+        // produced a contact sheet showing "hint bought" with no hint in
+        // it, which is a bug in the seam pretending to be a bug in the
+        // product. Practice never refuses, so this always succeeds.
+        requestHint();
         applyWindowSize();
     }
 
@@ -1037,6 +1039,16 @@ private:
     // One second of real practice, and the one place the support ask can
     // ever be triggered from.
     void countPracticeSecond();
+
+    // True where a bought hint shades the ruler rather than opening an
+    // analyser - i.e. every exercise answered on a scale.
+    bool hintNarrowsTheScale() const
+    {
+        return processor.getGameManager().getActiveGame().getHintHalfWidthNormalised() > 0.0f;
+    }
+
+    juce::Random hintRandom;
+    float hintCentreForRound = 0.0f;
 
     // The rail is on for the two screens you navigate between and off for
     // the welcome screen, which is a single thing with one button.
