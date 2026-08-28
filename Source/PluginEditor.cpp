@@ -2420,10 +2420,8 @@ void EarTrainerEditor::requestHint()
         // centre without listening and be right every time. Offsetting it
         // keeps the whole region live: the answer is somewhere in here and
         // you still have to find it.
-        const auto answer = game.getCorrectNormalised();
-        const auto drift = (hintRandom.nextFloat() * 2.0f - 1.0f) * halfWidth * 0.55f;
-
-        hintCentreForRound = juce::jlimit (halfWidth, 1.0f - halfWidth, answer + drift);
+        hintCentreForRound = Game::hintCentreFor (game.getCorrectNormalised(), halfWidth,
+                                                   hintRandom.nextFloat());
         choiceSlider.setHintRegion (hintCentreForRound, halfWidth);
     }
     else

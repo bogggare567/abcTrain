@@ -495,6 +495,7 @@ target_sources(EarTrainerTests
         tests/UpdateCheckerTest.cpp
         tests/ReferenceAudioLibraryTest.cpp
         tests/TestSignalGeneratorTest.cpp
+        tests/HintTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
         Source/Achievements.cpp
