@@ -195,7 +195,17 @@ full rationale.
   non-pure-virtual with inert defaults, same shape as
   `setReferenceAudioLibrary`, so the five categorical games and every
   existing `submitAnswer(int)` call site are untouched. See
-  [decisions/020](docs/decisions/020-continuous-answers.md).
+  [decisions/020](docs/decisions/020-continuous-answers.md). And a third
+  optional group, `getNumSkillBuckets`/`getSkillBucketLabel`/
+  `getSkillBucketForRound`, by which an exercise divides **its own
+  subject** into named parts and says which part each answered round
+  belonged to — the seven ranges, the five reverb types, five fifths of
+  the pan field. Same inert-default shape again. `EQGame` answers on a
+  continuous axis but buckets through `FrequencyRangeGame::rangeIndexFor`,
+  one table rather than two that could drift, and the continuous games
+  bucket by where the **answer** was rather than by how far the guess
+  landed: the question is which part of the range you cannot hear. See
+  [decisions/032](docs/decisions/032-the-miss-map.md).
 - `Source/Games/EQGame.{h,cpp}` — "find the frequency": pink noise through
   an `IIR` peak filter at a frequency drawn **log-uniformly across the
   whole 100 Hz–12.8 kHz range**, not snapped to one of eight octave
@@ -444,7 +454,14 @@ full rationale.
   score) and a **favourite flag** per game, both persisted and both
   surfaced on the home screen's cards. Deliberately separate from each
   `Game`'s own `getScore()`/`getRoundsPlayed()`, which stay in-memory
-  session counters. Keyed by game *index*, so new games must be
+  session counters. Also counts **attempts and misses per skill bucket**
+  per exercise (`registerAnswer`'s defaulted trailing argument; a fixed
+  `std::array<BucketStats, maxSkillBuckets>` rather than a vector, since
+  it is `PropertiesFile` state and a cap a test can assert against beats a
+  growth path nobody will check). An impossible bucket index records
+  nothing while the round itself still counts — dropping the round would
+  make the accuracy on the results screen disagree with the map beside it.
+  Keyed by game *index*, so new games must be
   **appended** to `GameManager`'s registration list, never inserted —
   nothing in the code enforces that, see
   [decisions/021](docs/decisions/021-sessions-and-navigation.md).
@@ -521,8 +538,15 @@ full rationale.
   produced, shown when it ends: score, run accuracy, best streak *in that
   run* (`SessionManager::getBestStreakThisRun`, not ProgressManager's
   lifetime figure - reporting last week's record as if it just happened
-  was a real bug here), personal best, and where the four skill families
-  stand so "what next" is answerable without a trip home. **Only the
+  was a real bug here), personal best, and — replacing the four
+  skill-family levels, which only ever told you which exercise to open —
+  **the map of where the misses land**: one bucket per named part of this
+  exercise's own subject, the worst picked out, plus one sentence naming
+  it. An untouched bucket draws empty and that is deliberately not the
+  same picture as a perfect one, which is why the bar has a 6px floor
+  rather than 2. The sentence needs a bucket with at least three attempts
+  and otherwise says nothing: three rounds is not a diagnosis. See
+  [decisions/032](docs/decisions/032-the-miss-map.md). **Only the
   player's own numbers**: no percentiles, for the same reason they were
   refused before - there is no server. `completeAnimation()` is the
   snapshot seam, same shape as `SupportScreenComponent::completeReveal`.
@@ -1362,6 +1386,14 @@ pictures there can never drift from the code. See
   `submitAnswer(int)` path, which the four continuous games deliberately
   kept verbatim (ADR 020) — which is why every one of them passed
   unedited through that change.
+- `tests/SkillBucketTest.cpp` — all nine exercises through all ten levels,
+  twelve rounds each, asserting every answered round lands in a bucket
+  that exists: an out-of-range index would not crash, `registerAnswer`'s
+  guard would silently drop it and the map would just be quietly wrong.
+  Verified by breaking it — one game reporting one past its own end fails
+  with that game's name in the message. Plus the counting contract, the
+  guard, persistence across a reload, and `rangeIndexFor` at both ends of
+  its table.
 - `tests/ProgressManagerTest.cpp` — level/points math, streak, daily
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
