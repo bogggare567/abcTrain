@@ -30,6 +30,30 @@ public:
 
     static const std::array<Range, numRanges> ranges;
 
+    // Which named range a frequency falls in. Shared with EQGame, which
+    // answers on a continuous axis but whose misses are still worth
+    // reading as "you keep missing in the low-mids" - the names are the
+    // vocabulary an engineer actually thinks in, and there is one table
+    // rather than two that could drift.
+    static int rangeIndexFor (float hz) noexcept
+    {
+        for (int i = 0; i < numRanges; ++i)
+            if (hz < ranges[(size_t) i].highHz)
+                return i;
+
+        return numRanges - 1;
+    }
+
+    int getNumSkillBuckets() const override { return numRanges; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        return ranges[(size_t) juce::jlimit (0, numRanges - 1, i)].label;
+    }
+    int getSkillBucketForRound() const override
+    {
+        return hasAnswered() ? pairIndices[(size_t) correctRangeIndex] : -1;
+    }
+
     juce::String getName() const override { return "Name the Range"; }
     juce::String getInstructions() const override
     {

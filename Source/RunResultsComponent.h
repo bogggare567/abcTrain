@@ -56,6 +56,34 @@ public:
         // Where the four skill families stand, so the answer to "what
         // next" is on screen rather than requiring a trip home.
         std::vector<SkillStanding> skills;
+
+        // Where this exercise's misses land, in its own division of its
+        // subject - the seven named ranges for a frequency exercise, the
+        // five reverb types for that one, and so on. See
+        // Game::getNumSkillBuckets.
+        //
+        // This is the only part of a results screen that changes what
+        // somebody does tomorrow. Score and accuracy report a run that is
+        // already over; "almost every miss was between 500 Hz and 4 kHz"
+        // is an instruction. Lifetime rather than this-run, because one
+        // run of a dozen rounds cannot tell a weakness from bad luck.
+        struct MissBucket
+        {
+            juce::String label;
+            int attempts = 0;
+            int misses = 0;
+
+            float missRate() const noexcept
+            {
+                return attempts > 0 ? (float) misses / (float) attempts : 0.0f;
+            }
+        };
+
+        std::vector<MissBucket> buckets;
+
+        // Written by the editor, which has the localised strings; empty
+        // when there is not enough data to say anything honest.
+        juce::String missVerdict;
     };
 
     RunResultsComponent();

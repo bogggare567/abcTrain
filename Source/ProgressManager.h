@@ -120,7 +120,17 @@ public:
     // points awarded, so scraping the edge of the band and hitting the
     // target dead on are no longer worth the same. Defaults to 1 so every
     // existing call site and every categorical game is unaffected.
-    void registerAnswer (int gameIndex, bool wasCorrect, float quality = 1.0f);
+    void registerAnswer (int gameIndex, bool wasCorrect, float quality = 1.0f,
+                          int skillBucket = -1);
+
+    // Where this exercise's misses land. See Game::getNumSkillBuckets -
+    // the buckets are the exercise's own division of its subject, so
+    // "you keep missing in the low-mids" and "you keep missing Plate" come
+    // out of the same two counters.
+    static constexpr int maxSkillBuckets = 8;
+
+    int getBucketAttempts (int gameIndex, int bucket) const;
+    int getBucketMisses (int gameIndex, int bucket) const;
 
     // Lifetime per-exercise record, persisted alongside points/level.
     // Kept separate from each Game's own getScore()/getRoundsPlayed(),
@@ -295,6 +305,9 @@ private:
     // on SessionManager - the two have never known about each other and a
     // remembered preference is not a reason to introduce that.
     std::vector<int> preferredModePerGame;
+
+    struct BucketStats { int attempts = 0; int misses = 0; };
+    std::vector<std::array<BucketStats, maxSkillBuckets>> bucketsPerGame;
 
     int practiceSeconds = 0;
     int unsavedPracticeSeconds = 0;

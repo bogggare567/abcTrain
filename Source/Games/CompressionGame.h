@@ -53,6 +53,16 @@ public:
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctLevelIndex; }
 
+    int getNumSkillBuckets() const override { return numLevels; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        return presets[(size_t) juce::jlimit (0, numLevels - 1, i)].label;
+    }
+    int getSkillBucketForRound() const override
+    {
+        return hasAnswered() ? pairLevels[(size_t) correctLevelIndex] : -1;
+    }
+
     // Numbers and units only, so it survives every language untouched -
     // see Game::getAnswerDetail. The teaching value of the old English
     // feedback was exactly these two figures; the words around them are

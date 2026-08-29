@@ -188,7 +188,7 @@
   "ui.score.caption": "Punkty",
   "ui.personalBest": "Rekord osobisty",
   "ui.newBest": "Nowy rekord!",
-  "ui.whereYouStand": "Gdzie jesteś",
+  "ui.whereYouStand": "Gdzie wypadają pomyłki",
   "tier.bronze": "Brąz",
   "tier.silver": "Srebro",
   "tier.gold": "Złoto",
@@ -291,5 +291,7 @@
   "ui.runAbandonedTitle": "Runda zakończona",
   "ui.runAbandonedCaption": "Miałeś {{score}}. Nic więcej nie przepada - poziom i rekord zostają.",
   "ui.runResultsBest": "Twój najlepszy wynik",
-  "ui.trainings": "Ćwiczenia"
+  "ui.trainings": "Ćwiczenia",
+  "ui.missVerdict": "Najwięcej pomyłek wypada na {{where}}. Warto tu zostać dłużej.",
+  "ui.missJoin": " i "
 }

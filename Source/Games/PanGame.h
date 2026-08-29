@@ -49,6 +49,26 @@ public:
     bool usesContinuousScale() const override { return true; }
     float getToleranceNormalised() const override { return tolerancePan * 0.5f; }
     float getCorrectNormalised() const override { return panToNormalised (targetPan); }
+
+    // Five places across the field. Not the five named positions the
+    // legacy discrete path used - those were the *answers* once, and a map
+    // of where you miss is a different thing from a list of what you could
+    // pick. These are just fifths of the field, which is what "you keep
+    // missing on the right" actually means.
+    int getNumSkillBuckets() const override { return 5; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        static const char* names[] = { "Hard L", "Left", "Centre", "Right", "Hard R" };
+        return names[juce::jlimit (0, 4, i)];
+    }
+    int getSkillBucketForRound() const override
+    {
+        if (! hasAnswered())
+            return -1;
+
+        // -1..+1 into 0..4.
+        return juce::jlimit (0, 4, (int) ((targetPan + 1.0f) * 2.5f));
+    }
     float getChosenNormalised() const override { return chosenNormalised; }
     juce::String formatNormalisedValue (float normalised) const override;
     void submitNormalisedAnswer (float normalised) override;

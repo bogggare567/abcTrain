@@ -73,6 +73,19 @@ public:
 
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctTypeIndex; }
+
+    // The bucket is the *type* that was correct, so the map reads
+    // "you keep missing Plate" - which names the thing to go and listen
+    // to, where "you were wrong 4 times" names nothing.
+    int getNumSkillBuckets() const override { return numTypes; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        return typeLabels[(size_t) juce::jlimit (0, numTypes - 1, i)];
+    }
+    int getSkillBucketForRound() const override
+    {
+        return hasAnswered() ? pairTypes[(size_t) correctTypeIndex] : -1;
+    }
     int getChosenChoiceIndex() const override { return chosenTypeIndex; }
     bool wasLastAnswerCorrect() const override { return lastAnswerCorrect; }
     juce::String getFeedbackText() const override;

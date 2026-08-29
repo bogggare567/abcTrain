@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include <algorithm>
 #include "../shared/UpdatePrompt.h"
 #include "Achievements.h"
 #include "../shared/Version.h"
@@ -1543,6 +1544,57 @@ void EarTrainerEditor::showRunResults (int finalScore)
         }
 
         summary.skills.push_back (std::move (standing));
+    }
+
+    // --- where this exercise's misses land -------------------------------
+    {
+        auto& game = processor.getGameManager().getActiveGame();
+        const auto numBuckets = juce::jmin (game.getNumSkillBuckets(),
+                                             ProgressManager::maxSkillBuckets);
+
+        for (int b = 0; b < numBuckets; ++b)
+        {
+            RunResultsComponent::Summary::MissBucket bucket;
+            bucket.label = translateChoiceLabel (game.getSkillBucketLabel (b), localisation);
+            bucket.attempts = progress.getBucketAttempts (gameIndex, b);
+            bucket.misses = progress.getBucketMisses (gameIndex, b);
+            summary.buckets.push_back (std::move (bucket));
+        }
+
+        // Name the worst one or two, and only from buckets with enough
+        // rounds behind them to be a pattern rather than a bad night.
+        // Saying nothing is a real option here: a sentence invented from
+        // four rounds would be worse than the blank space it fills.
+        std::vector<int> ranked;
+
+        for (int b = 0; b < (int) summary.buckets.size(); ++b)
+            if (summary.buckets[(size_t) b].attempts >= 3
+                && summary.buckets[(size_t) b].misses > 0)
+                ranked.push_back (b);
+
+        std::sort (ranked.begin(), ranked.end(), [&] (int x, int y)
+        {
+            return summary.buckets[(size_t) x].missRate() > summary.buckets[(size_t) y].missRate();
+        });
+
+        if (! ranked.empty())
+        {
+            const auto worstRate = summary.buckets[(size_t) ranked.front()].missRate();
+
+            juce::StringArray named;
+            named.add (summary.buckets[(size_t) ranked.front()].label);
+
+            // A close second gets named too - "Mids and High-mids" is a
+            // place to go and listen, where one bucket on its own can be
+            // an accident of which rounds came up.
+            if (ranked.size() > 1
+                && summary.buckets[(size_t) ranked[1]].missRate() > worstRate * 0.8f)
+                named.add (summary.buckets[(size_t) ranked[1]].label);
+
+            summary.missVerdict = localisation.getText (
+                "ui.missVerdict",
+                { { "where", named.joinIntoString (localisation.getText ("ui.missJoin")) } });
+        }
     }
 
     // "Run over" is the right heading for a run that ran out, and the wrong

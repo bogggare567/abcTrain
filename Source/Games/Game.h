@@ -192,6 +192,29 @@ public:
 
     virtual HintView getHintView() const { return HintView::spectrum; }
 
+    // ---- where your misses land -----------------------------------------
+    //
+    // Every exercise divides its own subject somehow: frequency into named
+    // ranges, panning into positions, reverb into types. This is that
+    // division, so the results screen can say *where* somebody is weak
+    // rather than only how often they were wrong.
+    //
+    // It is the one part of a results screen that changes what a player
+    // does tomorrow. "You scored 27, 73% accurate" is a report on a run
+    // that is already over; "almost every miss was between 500 Hz and
+    // 4 kHz" is an instruction.
+    //
+    // 0 buckets means this exercise offers no map, which is a legitimate
+    // answer and the default. A bucket is only ever recorded for a round
+    // that has actually been answered.
+    virtual int getNumSkillBuckets() const { return 0; }
+    virtual juce::String getSkillBucketLabel (int) const { return {}; }
+
+    // Which bucket the round that just ended belonged to - keyed on the
+    // *correct* answer, not the player's, so the map reads "you miss here"
+    // rather than "you guess here". -1 when there is nothing to record.
+    virtual int getSkillBucketForRound() const { return -1; }
+
     // What a hint should do on a ruler exercise: narrow the search, not
     // answer the question.
     //

@@ -188,7 +188,7 @@
   "ui.score.caption": "Очки",
   "ui.personalBest": "Личный рекорд",
   "ui.newBest": "Новый личный рекорд!",
-  "ui.whereYouStand": "Где ты сейчас",
+  "ui.whereYouStand": "Куда попадали промахи",
   "tier.bronze": "Бронза",
   "tier.silver": "Серебро",
   "tier.gold": "Золото",
@@ -291,5 +291,7 @@
   "ui.runAbandonedTitle": "Забег окончен",
   "ui.runAbandonedCaption": "Было {{score}}. Больше ничего не потеряно — уровень и рекорд на месте.",
   "ui.runResultsBest": "Твой лучший результат",
-  "ui.trainings": "Упражнения"
+  "ui.trainings": "Упражнения",
+  "ui.missVerdict": "Больше всего промахов — {{where}}. Здесь стоит побыть подольше.",
+  "ui.missJoin": " и "
 }

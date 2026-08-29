@@ -103,7 +103,8 @@ juce::Rectangle<int> RunResultsComponent::cardBounds() const
     constexpr int contentHeight = 20 + 26 + 18 + Spacing::large
                                     + 14 + 64 + 26 + Spacing::medium
                                     + 44 + Spacing::large
-                                    + 22 + Spacing::small + 56
+                                    + 22 + Spacing::small + 52
+                                    + Spacing::small + 34
                                     + Spacing::large + 34 + 20;
 
     return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 520),
@@ -245,36 +246,82 @@ void RunResultsComponent::paint (juce::Graphics& g)
     AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (22).toFloat(), whereYouStandText);
     inner.removeFromTop (AbcTrainTheme::Spacing::small);
 
+    // --- where the misses land -------------------------------------------
+    //
+    // Replaces the four family levels that used to sit here. Those said
+    // "you are level 3 at reverb", which the home screen already says on
+    // its own cards; this says which *part* of the subject keeps catching
+    // you out, which nothing anywhere said before.
+    if (! summary.buckets.empty())
     {
-        auto row = inner.removeFromTop (56);
-        const auto columnWidth = row.getWidth() / juce::jmax (1, (int) summary.skills.size());
+        auto row = inner.removeFromTop (52);
+        const auto n = (int) summary.buckets.size();
+        const auto columnWidth = row.getWidth() / juce::jmax (1, n);
 
-        for (const auto& skill : summary.skills)
+        // The worst bucket with enough rounds behind it to mean anything.
+        // Three is not statistics, but it is the difference between a
+        // pattern and a single unlucky round, and this is a nudge rather
+        // than a diagnosis.
+        auto worst = -1;
+        auto worstRate = 0.0f;
+
+        for (int i2 = 0; i2 < n; ++i2)
         {
-            auto column = row.removeFromLeft (columnWidth).reduced (AbcTrainTheme::Spacing::tight, 0);
+            const auto& b = summary.buckets[(size_t) i2];
 
-            AppIcons::drawBadged (g, skill.icon,
-                                   column.removeFromTop (26).withSizeKeepingCentre (26, 26).toFloat(),
-                                   skill.isCurrent ? theme.accent : theme.text,
-                                   skill.isCurrent ? 1.0f : 0.6f);
-
-            column.removeFromTop (2);
-
-            g.setColour (skill.isCurrent ? theme.textBright : theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
-            g.drawText ("L" + juce::String (skill.level), column.removeFromTop (14),
-                         juce::Justification::centred, false);
-
-            auto track = column.removeFromTop (4).reduced (4, 0).toFloat();
-            g.setColour (theme.displayBackground);
-            g.fillRoundedRectangle (track, 2.0f);
-
-            if (skill.levelProgress > 0.001f)
+            if (b.attempts >= 3 && b.missRate() > worstRate)
             {
-                g.setColour ((skill.isCurrent ? theme.accent : theme.textDim).withAlpha (0.8f));
-                g.fillRoundedRectangle (track.withWidth (juce::jmax (4.0f, track.getWidth() * skill.levelProgress)),
-                                         2.0f);
+                worstRate = b.missRate();
+                worst = i2;
             }
+        }
+
+        for (int i2 = 0; i2 < n; ++i2)
+        {
+            const auto& b = summary.buckets[(size_t) i2];
+            auto column = row.removeFromLeft (columnWidth).reduced (3, 0);
+
+            auto bar = column.removeFromTop (30).toFloat();
+            const auto isWorst = (i2 == worst);
+
+            // The trough is drawn whether or not there is data, so an
+            // untouched bucket reads as "not tried yet" rather than as
+            // "perfect".
+            g.setColour (theme.displayBackground);
+            g.fillRoundedRectangle (bar, 3.0f);
+
+            if (b.attempts > 0)
+            {
+                // A floor of 6px, not 2. A bucket you have missed twice in
+                // nine is not "nothing", and at 22% of a 30px trough it
+                // drew a two-pixel line that reads as an empty bucket -
+                // which is the one thing it must not be confused with,
+                // since an untouched bucket is drawn empty on purpose.
+                const auto filled = juce::jmax (6.0f, bar.getHeight() * counted
+                                                          * juce::jlimit (0.08f, 1.0f, b.missRate()));
+                auto fill = bar.withTop (bar.getBottom() - filled);
+
+                g.setColour (isWorst ? theme.negative.withAlpha (0.85f)
+                                     : theme.textDim.withAlpha (0.62f));
+                g.fillRoundedRectangle (fill, 3.0f);
+            }
+
+            column.removeFromTop (4);
+
+            g.setColour (isWorst ? theme.textBright : theme.textDim.withAlpha (0.7f));
+            g.setFont (AbcTrainLookAndFeel::microFont());
+            g.drawFittedText (b.label, column.removeFromTop (13),
+                               juce::Justification::centred, 1, 0.8f);
+        }
+
+        inner.removeFromTop (AbcTrainTheme::Spacing::small);
+
+        if (summary.missVerdict.isNotEmpty())
+        {
+            g.setColour (theme.text);
+            g.setFont (AbcTrainLookAndFeel::bodyFont());
+            g.drawFittedText (summary.missVerdict, inner.removeFromTop (34),
+                               juce::Justification::centredTop, 2, 1.0f);
         }
     }
 }

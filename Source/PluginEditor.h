@@ -60,6 +60,24 @@ public:
         for (int i = 0; i < 14; ++i)
             session.registerAnswer (i % 4 != 3);
 
+        // Seed the miss map through the real counter, not by writing the
+        // summary. An empty map is a legitimate state - it is what a fresh
+        // profile sees - but it is not the state worth looking at on a
+        // contact sheet, and rendering only the empty one is how a feature
+        // ships looking like it does nothing. Weighted so the misses pile
+        // up in the mids, which is both realistic and the case the verdict
+        // sentence exists for.
+        {
+            auto& progress = processor.getProgressManager();
+            const auto index = processor.getGameManager().getActiveGameIndex();
+            const int attempts[] = { 6, 9, 12, 22, 18, 8, 5 };
+            const int misses[]   = { 1, 2,  4, 13,  9, 2, 1 };
+
+            for (int b = 0; b < 7; ++b)
+                for (int i = 0; i < attempts[b]; ++i)
+                    progress.registerAnswer (index, i >= misses[b], 1.0f, b);
+        }
+
         pendingPreviousBest = 9;
         showRunResults (11);
         runResults.completeAnimation();

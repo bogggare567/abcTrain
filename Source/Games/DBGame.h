@@ -54,6 +54,28 @@ public:
     bool usesContinuousScale() const override { return true; }
     float getToleranceNormalised() const override { return toleranceDb / axisSpanDb; }
     float getCorrectNormalised() const override { return dbToNormalised (targetDb); }
+
+    // Split by direction as well as size, because they are different
+    // skills: a level that dropped and a level that rose do not sound like
+    // mirror images of each other, and somebody can be reliably good at
+    // one and blind to the other. 3 dB is the boundary - roughly where a
+    // change stops being "did something happen" and becomes obvious.
+    int getNumSkillBuckets() const override { return 4; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        static const char* names[] = { "Big cut", "Small cut", "Small boost", "Big boost" };
+        return names[juce::jlimit (0, 3, i)];
+    }
+    int getSkillBucketForRound() const override
+    {
+        if (! hasAnswered())
+            return -1;
+
+        if (targetDb <= -3.0f) return 0;
+        if (targetDb <   0.0f) return 1;
+        if (targetDb <=  3.0f) return 2;
+        return 3;
+    }
     float getChosenNormalised() const override { return chosenNormalised; }
     juce::String formatNormalisedValue (float normalised) const override;
     void submitNormalisedAnswer (float normalised) override;

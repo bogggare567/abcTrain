@@ -188,7 +188,7 @@
   "ui.score.caption": "Score",
   "ui.personalBest": "Personal best",
   "ui.newBest": "New personal best!",
-  "ui.whereYouStand": "Where you stand",
+  "ui.whereYouStand": "Where the misses land",
   "tier.bronze": "Bronze",
   "tier.silver": "Silver",
   "tier.gold": "Gold",
@@ -291,5 +291,7 @@
   "ui.runAbandonedTitle": "Run ended",
   "ui.runAbandonedCaption": "You had {{score}}. Nothing else is lost - your level and record stay.",
   "ui.runResultsBest": "Your best yet",
-  "ui.trainings": "Trainings"
+  "ui.trainings": "Trainings",
+  "ui.missVerdict": "Most misses land in {{where}}. Worth spending more rounds there.",
+  "ui.missJoin": " and "
 }

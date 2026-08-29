@@ -30,6 +30,7 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
         progressPerGame.push_back ({});
         favouritePerGame.push_back (false);
         preferredModePerGame.push_back (0);   // practice
+        bucketsPerGame.emplace_back();
     }
 
     loadState();
@@ -66,7 +67,8 @@ void ProgressManager::changeListenerCallback (juce::ChangeBroadcaster* source)
     registerAnswer (gameIndex, game->wasLastAnswerCorrect(), game->getAnswerQuality());
 }
 
-void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float quality)
+void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float quality,
+                                       int skillBucket)
 {
     // Both vectors are filled in lockstep by the one delegating
     // constructor, but this indexes raw memory - checking both is cheaper
@@ -79,6 +81,19 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float qual
 
     auto& stats = statsPerGame[(size_t) gameIndex];
     ++stats.roundsPlayed;
+
+    // Where this round sat in the exercise's own division of its subject.
+    // Counted whether right or wrong: a miss rate needs both halves, and
+    // "3 misses" means nothing without "out of how many".
+    if (skillBucket >= 0 && skillBucket < maxSkillBuckets
+        && gameIndex < (int) bucketsPerGame.size())
+    {
+        auto& bucket = bucketsPerGame[(size_t) gameIndex][(size_t) skillBucket];
+        ++bucket.attempts;
+
+        if (! wasCorrect)
+            ++bucket.misses;
+    }
 
     AnswerOutcome outcome;
     outcome.wasCorrect = wasCorrect;
@@ -385,6 +400,24 @@ void ProgressManager::addPracticeSecond()
     }
 }
 
+int ProgressManager::getBucketAttempts (int gameIndex, int bucket) const
+{
+    if (gameIndex < 0 || gameIndex >= (int) bucketsPerGame.size()
+        || bucket < 0 || bucket >= maxSkillBuckets)
+        return 0;
+
+    return bucketsPerGame[(size_t) gameIndex][(size_t) bucket].attempts;
+}
+
+int ProgressManager::getBucketMisses (int gameIndex, int bucket) const
+{
+    if (gameIndex < 0 || gameIndex >= (int) bucketsPerGame.size()
+        || bucket < 0 || bucket >= maxSkillBuckets)
+        return 0;
+
+    return bucketsPerGame[(size_t) gameIndex][(size_t) bucket].misses;
+}
+
 int ProgressManager::getPreferredModeForGame (int gameIndex) const
 {
     if (gameIndex < 0 || gameIndex >= (int) preferredModePerGame.size())
@@ -506,6 +539,14 @@ void ProgressManager::loadState()
 
         if (i < preferredModePerGame.size())
             preferredModePerGame[i] = properties->getIntValue (prefix + "mode", 0);
+
+        if (i < bucketsPerGame.size())
+            for (int b = 0; b < maxSkillBuckets; ++b)
+            {
+                const auto key = prefix + "bucket" + juce::String (b);
+                bucketsPerGame[i][(size_t) b].attempts = properties->getIntValue (key + ".att", 0);
+                bucketsPerGame[i][(size_t) b].misses = properties->getIntValue (key + ".miss", 0);
+            }
     }
 
     earnedAchievements.clear();
@@ -550,6 +591,23 @@ void ProgressManager::saveState()
 
         if (i < preferredModePerGame.size())
             properties->setValue (prefix + "mode", preferredModePerGame[i]);
+
+        // Only what has been seen. Nine exercises times eight buckets
+        // times two counters is 144 keys, and most stay zero for most
+        // players - writing them all would treble the settings file to
+        // record nothing.
+        if (i < bucketsPerGame.size())
+            for (int b = 0; b < maxSkillBuckets; ++b)
+            {
+                const auto& bucket = bucketsPerGame[i][(size_t) b];
+
+                if (bucket.attempts > 0)
+                {
+                    const auto key = prefix + "bucket" + juce::String (b);
+                    properties->setValue (key + ".att", bucket.attempts);
+                    properties->setValue (key + ".miss", bucket.misses);
+                }
+            }
     }
 
     properties->setValue ("achievements", earnedAchievements.joinIntoString (","));

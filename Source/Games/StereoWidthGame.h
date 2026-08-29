@@ -70,6 +70,16 @@ public:
 
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctWidthIndex; }
+
+    int getNumSkillBuckets() const override { return numWidths; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        return widthLabels[(size_t) juce::jlimit (0, numWidths - 1, i)];
+    }
+    int getSkillBucketForRound() const override
+    {
+        return hasAnswered() ? pairIndices[(size_t) correctWidthIndex] : -1;
+    }
     int getChosenChoiceIndex() const override { return chosenWidthIndex; }
     bool wasLastAnswerCorrect() const override { return lastAnswerCorrect; }
     juce::String getFeedbackText() const override;

@@ -188,7 +188,7 @@
   "ui.score.caption": "スコア",
   "ui.personalBest": "自己ベスト",
   "ui.newBest": "自己ベスト更新！",
-  "ui.whereYouStand": "現在地",
+  "ui.whereYouStand": "外しがどこに集まるか",
   "tier.bronze": "ブロンズ",
   "tier.silver": "シルバー",
   "tier.gold": "ゴールド",
@@ -291,5 +291,7 @@
   "ui.runAbandonedTitle": "ラン終了",
   "ui.runAbandonedCaption": "スコアは{{score}}でした。ほかは失われません — レベルも記録もそのままです。",
   "ui.runResultsBest": "自己ベスト",
-  "ui.trainings": "トレーニング"
+  "ui.trainings": "トレーニング",
+  "ui.missVerdict": "外しの多くは{{where}}。ここをもう少し続ける価値があります。",
+  "ui.missJoin": "と"
 }

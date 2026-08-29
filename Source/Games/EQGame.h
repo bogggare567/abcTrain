@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Game.h"
+#include "FrequencyRangeGame.h"   // the one named-range table
 #include "../../shared/GainMatch.h"
 #include <atomic>
 #include "../../shared/TestSignalGenerator.h"
@@ -55,6 +56,20 @@ public:
     bool usesContinuousScale() const override { return true; }
     float getToleranceNormalised() const override;
     float getCorrectNormalised() const override { return frequencyToNormalised (targetHz); }
+
+    // The misses map onto the same seven named ranges FrequencyRangeGame
+    // uses. This exercise answers on a continuous axis, but "I keep
+    // missing between 500 Hz and 4 kHz" is the sentence worth reading
+    // afterwards, and it is said in range names.
+    int getNumSkillBuckets() const override { return FrequencyRangeGame::numRanges; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        return FrequencyRangeGame::ranges[(size_t) juce::jlimit (0, FrequencyRangeGame::numRanges - 1, i)].label;
+    }
+    int getSkillBucketForRound() const override
+    {
+        return hasAnswered() ? FrequencyRangeGame::rangeIndexFor (targetHz) : -1;
+    }
     float getChosenNormalised() const override { return chosenNormalised; }
     juce::String formatNormalisedValue (float normalised) const override;
     void submitNormalisedAnswer (float normalised) override;

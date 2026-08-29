@@ -54,6 +54,16 @@ public:
 
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctTypeIndex; }
+
+    int getNumSkillBuckets() const override { return numTypes; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        return types[(size_t) juce::jlimit (0, numTypes - 1, i)].label;
+    }
+    int getSkillBucketForRound() const override
+    {
+        return hasAnswered() ? pairIndices[(size_t) correctTypeIndex] : -1;
+    }
     int getChosenChoiceIndex() const override { return chosenTypeIndex; }
     bool wasLastAnswerCorrect() const override { return lastAnswerCorrect; }
     juce::String getFeedbackText() const override;

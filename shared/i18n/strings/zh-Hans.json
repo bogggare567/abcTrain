@@ -188,7 +188,7 @@
   "ui.score.caption": "得分",
   "ui.personalBest": "个人最佳",
   "ui.newBest": "新纪录！",
-  "ui.whereYouStand": "你的位置",
+  "ui.whereYouStand": "失误集中在哪里",
   "tier.bronze": "青铜",
   "tier.silver": "白银",
   "tier.gold": "黄金",
@@ -291,5 +291,7 @@
   "ui.runAbandonedTitle": "本轮结束",
   "ui.runAbandonedCaption": "你的成绩是 {{score}}。其他都不会丢失 —— 等级和纪录都在。",
   "ui.runResultsBest": "你的最好成绩",
-  "ui.trainings": "训练"
+  "ui.trainings": "训练",
+  "ui.missVerdict": "大部分失误集中在 {{where}}。值得在这里多练几轮。",
+  "ui.missJoin": "和"
 }

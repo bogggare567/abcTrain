@@ -55,6 +55,27 @@ public:
     bool usesContinuousScale() const override { return true; }
     float getToleranceNormalised() const override;
     float getCorrectNormalised() const override { return msToNormalised (targetMs); }
+
+    // The four echoes an engineer already has names for. Cut where the
+    // character changes, not at even intervals: slapback stops being
+    // slapback around 80 ms, and past ~400 ms an echo is a repeat rather
+    // than a thickening.
+    int getNumSkillBuckets() const override { return 4; }
+    juce::String getSkillBucketLabel (int i) const override
+    {
+        static const char* names[] = { "Slapback", "Short", "Medium", "Long" };
+        return names[juce::jlimit (0, 3, i)];
+    }
+    int getSkillBucketForRound() const override
+    {
+        if (! hasAnswered())
+            return -1;
+
+        if (targetMs < 80.0f)  return 0;
+        if (targetMs < 200.0f) return 1;
+        if (targetMs < 400.0f) return 2;
+        return 3;
+    }
     float getChosenNormalised() const override { return chosenNormalised; }
     juce::String formatNormalisedValue (float normalised) const override;
     void submitNormalisedAnswer (float normalised) override;

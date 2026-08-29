@@ -188,7 +188,7 @@
   "ui.score.caption": "Puntos",
   "ui.personalBest": "Récord personal",
   "ui.newBest": "¡Nuevo récord!",
-  "ui.whereYouStand": "Dónde estás",
+  "ui.whereYouStand": "Dónde caen los fallos",
   "tier.bronze": "Bronce",
   "tier.silver": "Plata",
   "tier.gold": "Oro",
@@ -291,5 +291,7 @@
   "ui.runAbandonedTitle": "Ronda terminada",
   "ui.runAbandonedCaption": "Tenías {{score}}. No se pierde nada más: tu nivel y tu récord siguen ahí.",
   "ui.runResultsBest": "Tu mejor marca",
-  "ui.trainings": "Ejercicios"
+  "ui.trainings": "Ejercicios",
+  "ui.missVerdict": "La mayoría de los fallos caen en {{where}}. Vale la pena practicar más ahí.",
+  "ui.missJoin": " y "
 }
