@@ -20,3 +20,8 @@ out/
 /test-audio/
 *.wav
 !assets/samples/**/*.wav
+
+# Working notes from an audit pass. Findings live in the commit
+# messages, which cannot drift; a snapshot of "what is broken" goes stale
+# the moment it is acted on.
+/audit/

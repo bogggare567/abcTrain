@@ -9,6 +9,22 @@ LearnerEQProcessor::LearnerEQProcessor()
                            .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    cacheParameterPointers();
+}
+
+void LearnerEQProcessor::cacheParameterPointers()
+{
+    for (int band = 0; band < maxBands; ++band)
+    {
+        auto& p = bandParams[(size_t) band];
+        p.on   = apvts.getRawParameterValue (onParamId (band));
+        p.type = apvts.getRawParameterValue (typeParamId (band));
+        p.freq = apvts.getRawParameterValue (freqParamId (band));
+        p.gain = apvts.getRawParameterValue (gainParamId (band));
+        p.q    = apvts.getRawParameterValue (qParamId (band));
+    }
+
+    bypassParam = apvts.getRawParameterValue (bypassParamId);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout LearnerEQProcessor::createParameterLayout()
@@ -96,17 +112,17 @@ void LearnerEQProcessor::updateFilters()
 {
     for (int band = 0; band < maxBands; ++band)
     {
-        const auto on = apvts.getRawParameterValue (onParamId (band))->load() > 0.5f;
+        const auto& p = bandParams[(size_t) band];
+        const auto on = p.on->load() > 0.5f;
         bandActive[(size_t) band] = on;
 
         if (! on)
             continue;   // a band that is off costs nothing to skip
 
-        const auto type = EQCoefficients::typeFromIndex (
-            (int) apvts.getRawParameterValue (typeParamId (band))->load());
-        const auto freq = apvts.getRawParameterValue (freqParamId (band))->load();
-        const auto gain = apvts.getRawParameterValue (gainParamId (band))->load();
-        const auto q = apvts.getRawParameterValue (qParamId (band))->load();
+        const auto type = EQCoefficients::typeFromIndex ((int) p.type->load());
+        const auto freq = p.freq->load();
+        const auto gain = p.gain->load();
+        const auto q = p.q->load();
 
         *filters[(size_t) band].state = *EQCoefficients::make (type, sampleRate, freq, gain, q);
     }
@@ -187,7 +203,7 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     // untreated input alongside whatever bypass leaves in `buffer`.
     dryBuffer.makeCopyOf (buffer, true);
 
-    const bool bypassed = apvts.getRawParameterValue (bypassParamId)->load() > 0.5f;
+    const bool bypassed = bypassParam->load() > 0.5f;
 
     if (! bypassed)
     {

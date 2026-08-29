@@ -65,6 +65,25 @@ public:
     // the loud part got held back. See Game::getHintView.
     void setWaveformDisplay (WaveformDisplay* display) noexcept { waveform.store (display); }
 
+    // Output level, in dB, applied to the very last thing that leaves this
+    // processor.
+    //
+    // Where it is applied is the whole design. Every exercise levels its
+    // treated signal against its own untreated one offline, so that "which
+    // is louder" cannot answer "which is compressed" - and a volume
+    // control applied inside a game, or to one side of the A/B, would put
+    // that tell straight back. This sits after all of it, moves both sides
+    // by the same number, and so cannot change any answer.
+    static constexpr float minOutputGainDb = -40.0f;   // below this, silent
+    static constexpr float maxOutputGainDb = 6.0f;
+
+    void setOutputGainDb (float db) noexcept
+    {
+        outputGainDb.store (juce::jlimit (minOutputGainDb, maxOutputGainDb, db));
+    }
+
+    float getOutputGainDb() const noexcept { return outputGainDb.load(); }
+
 private:
     // Declaration order matters: gameManager must be constructed before
     // progressManager, since ProgressManager's constructor registers
@@ -82,6 +101,14 @@ private:
     // invisible in every test, because nothing tests "what does it sound
     // like before you have done anything".
     std::atomic<bool> signalEnabled { false };
+
+    std::atomic<float> outputGainDb { 0.0f };
+
+    // Ramped per sample, not applied per block. Nothing else in this
+    // codebase smooths a gain, which is why the A/B button clicks - and a
+    // volume slider is dragged continuously, so an unsmoothed one would
+    // be the loudest zipper in the product.
+    juce::LinearSmoothedValue<float> outputGain { 1.0f };
 
     std::atomic<Vectorscope*> vectorscope { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };

@@ -52,7 +52,7 @@
   "ui.star": "Gwiazdka na GitHub",
   "ui.continue": "Dalej",
   "ui.headphoneNote": "Zalecane słuchawki lub monitory — głośniki laptopa gubią dół i górę pasma.",
-  "ui.supportBody": "Trening słuchu dla realizatorów, plus trzy wtyczki uczące, które przetwarzają twoje własne audio.\n\nDarmowe i otwarte, na zawsze. Żaden z dwóch przycisków nie jest wymagany — nic tu nie jest zablokowane.",
+  "ui.supportBody": "Trening słuchu dla realizatorów, plus trzy wtyczki uczące, które przetwarzają twoje własne audio.\n\nDarmowe, z jawnym kodem źródłowym, na zawsze. Żaden z dwóch przycisków nie jest wymagany — nic tu nie jest zablokowane.",
   "achv.firstHundred.name": "Setka trafień",
   "achv.firstHundred.desc": "100 poprawnych odpowiedzi łącznie",
   "achv.breadthAll.name": "Wszechstronny",
@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Usłysz, jak szerokie jest naprawdę źródło — to, co trzyma miks szeroko bez rozrywania środka.",
   "game.db.benefit": "Skalibruj ucho na zmiany poziomu w dB, żeby ruch fadera był świadomy.",
   "game.frequencyrange.benefit": "Poznaj nazwane zakresy — od sub-bassu po air — żeby opisać problem, zanim sięgniesz po gałkę.",
-  "ui.toNextLevel": "Do poziomu {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Poziom {{level}} · {{have}} / {{need}} do poziomu {{next}}",
   "ui.promotionTest": "Awans: {{done}} z {{needed}} z rzędu",
   "ui.levelMaxed": "Najwyższy poziom",
   "ui.importAndSort": "Dodaj muzykę…",
@@ -285,5 +285,11 @@
   "choice.wide": "Szeroko",
   "choice.extraWide": "Bardzo szeroko",
   "ui.modesLockedTitle": "Przetrwanie i Blitz",
-  "ui.modesLockedCaption": "Trafisz {{count}} pod rząd tutaj, aby odblokować"
+  "ui.modesLockedCaption": "Trafisz {{count}} pod rząd tutaj, aby odblokować",
+  "ui.volume": "Głośność",
+  "ui.dragOnScale": "Przeciągnij po skali, aby odpowiedzieć",
+  "ui.runAbandonedTitle": "Runda zakończona",
+  "ui.runAbandonedCaption": "Miałeś {{score}}. Nic więcej nie przepada - poziom i rekord zostają.",
+  "ui.runResultsBest": "Twój najlepszy wynik",
+  "ui.trainings": "Ćwiczenia"
 }

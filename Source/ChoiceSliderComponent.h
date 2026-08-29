@@ -44,6 +44,17 @@ public:
     // slides along: the readout tracks the cursor, and a tolerance band
     // travels with it showing how much slack the current difficulty gives.
     // `formatter` turns a normalised 0..1 position into real-unit text.
+    // Exposed so the editor can tell a level-up from an ordinary new
+    // round: the band's width is what actually changed.
+    float getToleranceNormalised() const noexcept { return toleranceNormalised; }
+
+    // Shades everything outside a region that contains the answer. Half
+    // width in normalised units; 0 clears it. See
+    // Game::getHintHalfWidthNormalised for why a hint narrows rather than
+    // reveals.
+    void setHintRegion (float centreNormalised, float halfWidthNormalised);
+    void clearHintRegion() { setHintRegion (0.0f, 0.0f); }
+
     void setContinuousScale (std::vector<Game::GridMark> marks,
                              float toleranceNormalised,
                              std::function<juce::String (float)> formatter);
@@ -129,6 +140,8 @@ private:
     bool cursorEngaged = false;
     float cursorNormalised = 0.5f;
     float toleranceNormalised = 0.0f;
+    float hintCentre = 0.0f;
+    float hintHalfWidth = 0.0f;
     float targetNormalised = -1.0f;
     std::vector<Game::GridMark> gridMarks;
     std::function<juce::String (float)> valueFormatter;

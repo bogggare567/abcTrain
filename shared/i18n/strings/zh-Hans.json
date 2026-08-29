@@ -52,7 +52,7 @@
   "ui.star": "在 GitHub 点星",
   "ui.continue": "继续",
   "ui.headphoneNote": "建议使用耳机或监听音箱 — 笔记本扬声器听不到低频和高频。",
-  "ui.supportBody": "为混音而做的听觉训练，外加三个处理你自己音频的教学插件。\n\n免费、开源，永远如此。下面两个按钮都不是必需的 —— 这里没有任何内容被锁住。",
+  "ui.supportBody": "为混音而做的听觉训练，外加三个处理你自己音频的教学插件。\n\n免费，源码公开，永远如此。下面两个按钮都不是必需的 —— 这里没有任何内容被锁住。",
   "achv.firstHundred.name": "一百次正确",
   "achv.firstHundred.desc": "累计 100 次答对",
   "achv.breadthAll.name": "样样都试",
@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "听出一个声源到底有多宽 —— 让混音保持宽阔而不撕裂中间的能力。",
   "game.db.benefit": "把耳朵校准到以 dB 计的电平变化上，让推子动作变得有意识。",
   "game.frequencyrange.benefit": "学会有名字的频段 —— 从超低到空气 —— 这样你能在伸手拧旋钮之前先说清问题。",
-  "ui.toNextLevel": "距 {{level}} 级：{{have}} / {{need}}",
+  "ui.toNextLevel": "{{level}} 级 · 距 {{next}} 级 {{have}} / {{need}}",
   "ui.promotionTest": "升级：连续 {{done}} / {{needed}}",
   "ui.levelMaxed": "已满级",
   "ui.importAndSort": "添加音乐…",
@@ -285,5 +285,11 @@
   "choice.wide": "宽",
   "choice.extraWide": "超宽",
   "ui.modesLockedTitle": "生存与闪电",
-  "ui.modesLockedCaption": "在本练习中连对 {{count}} 次即可解锁"
+  "ui.modesLockedCaption": "在本练习中连对 {{count}} 次即可解锁",
+  "ui.volume": "音量",
+  "ui.dragOnScale": "在刻度上拖动作答",
+  "ui.runAbandonedTitle": "本轮结束",
+  "ui.runAbandonedCaption": "你的成绩是 {{score}}。其他都不会丢失 —— 等级和纪录都在。",
+  "ui.runResultsBest": "你的最好成绩",
+  "ui.trainings": "训练"
 }

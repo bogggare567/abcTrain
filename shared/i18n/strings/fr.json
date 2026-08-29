@@ -52,7 +52,7 @@
   "ui.star": "Étoile sur GitHub",
   "ui.continue": "Continuer",
   "ui.headphoneNote": "Casque ou moniteurs recommandés — les haut-parleurs d'ordinateur masquent le grave et l'aigu.",
-  "ui.supportBody": "Formation de l’oreille pour le mixage, et trois plugins pédagogiques qui traitent votre propre audio.\n\nGratuit et open source, pour toujours. Aucun des deux boutons n’est obligatoire — rien n’est verrouillé ici.",
+  "ui.supportBody": "Formation de l’oreille pour le mixage, et trois plugins pédagogiques qui traitent votre propre audio.\n\nGratuit, code source consultable, pour toujours. Aucun des deux boutons n’est obligatoire — rien n’est verrouillé ici.",
   "achv.firstHundred.name": "Cent bonnes",
   "achv.firstHundred.desc": "100 bonnes réponses au total",
   "achv.breadthAll.name": "Touche-à-tout",
@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Entends la vraie largeur d’une source - ce qui garde un mix grand sans déchirer le centre.",
   "game.db.benefit": "Calibre ton oreille sur les variations de niveau en dB, pour que tes mouvements de fader deviennent conscients.",
   "game.frequencyrange.benefit": "Apprends les plages nommées - du sub-bass à l’air - pour décrire un problème avant de toucher un bouton.",
-  "ui.toNextLevel": "Vers le niveau {{level}} : {{have}} / {{need}}",
+  "ui.toNextLevel": "Niveau {{level}} · {{have}} / {{need}} vers le {{next}}",
   "ui.promotionTest": "Passage : {{done}} sur {{needed}} d’affilée",
   "ui.levelMaxed": "Niveau maximum",
   "ui.importAndSort": "Ajouter de la musique…",
@@ -285,5 +285,11 @@
   "choice.wide": "Large",
   "choice.extraWide": "Très large",
   "ui.modesLockedTitle": "Survie et Blitz",
-  "ui.modesLockedCaption": "{{count}} bonnes réponses d'affilée ici pour les ouvrir"
+  "ui.modesLockedCaption": "{{count}} bonnes réponses d'affilée ici pour les ouvrir",
+  "ui.volume": "Volume",
+  "ui.dragOnScale": "Faites glisser sur l’échelle pour répondre",
+  "ui.runAbandonedTitle": "Manche terminée",
+  "ui.runAbandonedCaption": "Vous aviez {{score}}. Rien d’autre n’est perdu : niveau et record restent.",
+  "ui.runResultsBest": "Votre meilleur score",
+  "ui.trainings": "Exercices"
 }

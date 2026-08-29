@@ -26,6 +26,12 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     spec.numChannels = (juce::uint32) getTotalNumOutputChannels();
 
     gameManager.prepare (spec);
+
+    // 40 ms is long enough that a dragged slider never zippers and short
+    // enough that the control still feels immediate.
+    outputGain.reset (sampleRate, 0.04);
+    outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (outputGainDb.load(),
+                                                                         minOutputGainDb));
 }
 
 void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -90,6 +96,28 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                 const auto mono = 0.5f * (left[i] + right[i]);
                 display->pushSample (mono, mono);
             }
+    }
+
+    // Output level, last of all.
+    //
+    // After the scopes on purpose: the hint views are about what the
+    // processing does to the signal, not about how loud the player has set
+    // their monitoring - a waveform that shrank as you turned the volume
+    // down would be answering a question nobody asked.
+    //
+    // And after the game, which is what keeps it honest: each exercise
+    // levels its treated signal against its untreated one so loudness
+    // cannot be the tell, and one gain applied to everything downstream
+    // moves both sides of every A/B by the same amount.
+    outputGain.setTargetValue (juce::Decibels::decibelsToGain (outputGainDb.load(),
+                                                                minOutputGainDb));
+
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const auto g = outputGain.getNextValue();
+
+        for (int ch = 0; ch < numChannels; ++ch)
+            buffer.getWritePointer (ch)[i] *= g;
     }
 }
 

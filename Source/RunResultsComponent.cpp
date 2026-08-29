@@ -94,8 +94,20 @@ void RunResultsComponent::timerCallback()
 
 juce::Rectangle<int> RunResultsComponent::cardBounds() const
 {
+    // Height follows the content. It was a flat 400, which left about a
+    // hundred and thirty pixels of nothing between the skills row and the
+    // buttons - a card mostly made of gap, which is what a results screen
+    // must never be: this is the one moment the player is looking *at*
+    // rather than through.
+    using namespace AbcTrainTheme;
+    constexpr int contentHeight = 20 + 26 + 18 + Spacing::large
+                                    + 14 + 64 + 26 + Spacing::medium
+                                    + 44 + Spacing::large
+                                    + 22 + Spacing::small + 56
+                                    + Spacing::large + 34 + 20;
+
     return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 520),
-                                  juce::jmin (getHeight() - 40, 400))
+                                  juce::jmin (getHeight() - 40, contentHeight))
                .withCentre (getLocalBounds().getCentre());
 }
 
@@ -153,39 +165,50 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
     inner.removeFromTop (AbcTrainTheme::Spacing::large);
 
-    // --- the four numbers -------------------------------------------------
     const auto counted = AbcTrainTheme::Ease::out (countAmount);
 
+    // --- the number the run was about ------------------------------------
+    //
+    // Four numbers at one size is a table, and a table is what you read
+    // when you are looking something up - not what you want at the end of
+    // ninety seconds of concentrating. The score is the thing that just
+    // happened; accuracy, streak and personal best are how to read it.
+    // So one of them is large and three are small, which is the whole
+    // difference between a result and a receipt.
     {
-        auto row = inner.removeFromTop (46);
-        const auto columnWidth = row.getWidth() / 4;
+        AbcTrainLookAndFeel::drawTrackedText (g, scoreCaption.toUpperCase(),
+                                               inner.removeFromTop (14).toFloat(),
+                                               AbcTrainLookAndFeel::captionFont(),
+                                               theme.textDim.withAlpha (0.75f), 1.4f,
+                                               juce::Justification::centred);
 
-        paintStat (g, row.removeFromLeft (columnWidth), scoreCaption,
-                    juce::String (juce::roundToInt ((float) summary.score * counted)),
-                    summary.isNewBest ? theme.positive : theme.textBright);
+        auto heroRow = inner.removeFromTop (64);
 
-        paintStat (g, row.removeFromLeft (columnWidth), accuracyCaption,
-                    juce::String (juce::roundToInt (summary.runAccuracy * 100.0f * counted)) + "%",
-                    theme.textBright);
-
-        paintStat (g, row.removeFromLeft (columnWidth), streakCaption,
-                    juce::String (juce::roundToInt ((float) summary.bestStreakThisRun * counted)),
-                    theme.textBright);
-
-        paintStat (g, row, bestCaption,
-                    juce::String (juce::jmax (summary.previousBest, summary.score)),
-                    theme.textDim);
+        g.setColour (summary.isNewBest ? theme.positive : theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (
+            58.0f * AbcTrainLookAndFeel::getTextScale()));
+        g.drawText (juce::String (juce::roundToInt ((float) summary.score * counted)),
+                     heroRow, juce::Justification::centred, false);
     }
 
-    inner.removeFromTop (AbcTrainTheme::Spacing::small);
-
-    // A personal best is an event, so it gets a line of its own rather
-    // than being left for the player to work out by comparing two numbers.
+    // A personal best is the one thing here worth a moment. It gets a
+    // pill rather than a line of green text, because a sentence in the
+    // middle of a column of numbers reads as another number.
     if (summary.isNewBest)
     {
+        auto badgeRow = inner.removeFromTop (26);
+        const auto textWidth = AbcTrainLookAndFeel::trackedTextWidth (
+            newBestText, AbcTrainLookAndFeel::headingFont(), 0.0f);
+        auto pill = badgeRow.withSizeKeepingCentre (juce::roundToInt (textWidth) + 34, 24).toFloat();
+
+        g.setColour (theme.positive.withAlpha (0.16f));
+        g.fillRoundedRectangle (pill, pill.getHeight() * 0.5f);
+        g.setColour (theme.positive.withAlpha (0.55f));
+        g.drawRoundedRectangle (pill, pill.getHeight() * 0.5f, 1.0f);
+
         g.setColour (theme.positive);
         g.setFont (AbcTrainLookAndFeel::headingFont());
-        g.drawText (newBestText, inner.removeFromTop (20), juce::Justification::centred, false);
+        g.drawText (newBestText, pill.toNearestInt(), juce::Justification::centred, false);
     }
     else
     {
@@ -193,10 +216,30 @@ void RunResultsComponent::paint (juce::Graphics& g)
         g.setFont (AbcTrainLookAndFeel::captionFont());
         g.drawText (accuracyCaption + ": " + juce::String (juce::roundToInt (summary.lifetimeAccuracy * 100.0f))
                         + "%  (" + juce::String (summary.rounds) + ")",
-                     inner.removeFromTop (20), juce::Justification::centred, false);
+                     inner.removeFromTop (26), juce::Justification::centred, false);
     }
 
     inner.removeFromTop (AbcTrainTheme::Spacing::medium);
+
+    // --- the three that put it in context ---------------------------------
+    {
+        auto row = inner.removeFromTop (44);
+        const auto columnWidth = row.getWidth() / 3;
+
+        paintStat (g, row.removeFromLeft (columnWidth), accuracyCaption,
+                    juce::String (juce::roundToInt (summary.runAccuracy * 100.0f * counted)) + "%",
+                    theme.text);
+
+        paintStat (g, row.removeFromLeft (columnWidth), streakCaption,
+                    juce::String (juce::roundToInt ((float) summary.bestStreakThisRun * counted)),
+                    theme.text);
+
+        paintStat (g, row, bestCaption,
+                    juce::String (juce::jmax (summary.previousBest, summary.score)),
+                    theme.textDim);
+    }
+
+    inner.removeFromTop (AbcTrainTheme::Spacing::large);
 
     // --- where the four skills stand -------------------------------------
     AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (22).toFloat(), whereYouStandText);
@@ -249,10 +292,23 @@ void RunResultsComponent::resized()
     // The other modes sit on the left of the same row, so "again" and
     // "differently" are the same distance from the eye - a run ending is
     // the moment somebody is most willing to change how they play.
-    for (auto* button : modeButtons)
+    //
+    // Width comes from what is left rather than being written down as 128:
+    // two mode buttons at 128 plus a gap need 272px against the ~204 this
+    // row actually has once "Play again" and "Home" have taken their side,
+    // so they used to run underneath them.
+    if (! modeButtons.isEmpty())
     {
-        button->setBounds (footer.removeFromLeft (128).withHeight (34));
-        footer.removeFromLeft (Spacing::small);
+        const auto gaps = Spacing::small * (modeButtons.size() - 1);
+        const auto width = juce::jlimit (72, 128,
+                                          (footer.getWidth() - Spacing::medium - gaps)
+                                              / modeButtons.size());
+
+        for (auto* button : modeButtons)
+        {
+            button->setBounds (footer.removeFromLeft (width).withHeight (34));
+            footer.removeFromLeft (Spacing::small);
+        }
     }
 }
 

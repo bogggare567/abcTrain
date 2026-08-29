@@ -348,6 +348,44 @@ public:
                            ProgressManager::pointsPerCorrectAnswer
                                + ProgressManager::precisionBonusPoints);
         }
+
+        beginTest ("each exercise remembers its own mode, and it survives a reload");
+        {
+            // The mode used to live only in SessionManager, of which there
+            // is one - so leaving a Blitz run, going home and opening a
+            // different exercise dropped you into a Blitz countdown on a
+            // skill you had only ever practised. It is a property of how
+            // you are working on *that* exercise.
+            const auto options = makeTempOptions ("permode");
+
+            {
+                GameManager gameManager;
+                ProgressManager progress (gameManager, options);
+
+                expectEquals (progress.getPreferredModeForGame (0), 0);
+                expectEquals (progress.getPreferredModeForGame (3), 0);
+
+                progress.setPreferredModeForGame (0, 2);   // blitz here
+                progress.setPreferredModeForGame (3, 1);   // survival there
+
+                expectEquals (progress.getPreferredModeForGame (0), 2);
+                expectEquals (progress.getPreferredModeForGame (3), 1);
+
+                // and every other exercise is untouched by both
+                expectEquals (progress.getPreferredModeForGame (1), 0);
+
+                // out of range is a miss, not a crash or a write past the end
+                expectEquals (progress.getPreferredModeForGame (-1), 0);
+                expectEquals (progress.getPreferredModeForGame (999), 0);
+                progress.setPreferredModeForGame (999, 2);
+            }
+
+            GameManager gameManager2;
+            ProgressManager reloaded (gameManager2, options);
+            expectEquals (reloaded.getPreferredModeForGame (0), 2);
+            expectEquals (reloaded.getPreferredModeForGame (3), 1);
+            expectEquals (reloaded.getPreferredModeForGame (1), 0);
+        }
     }
 
 private:

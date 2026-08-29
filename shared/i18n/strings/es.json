@@ -52,7 +52,7 @@
   "ui.star": "Estrella en GitHub",
   "ui.continue": "Continuar",
   "ui.headphoneNote": "Se recomiendan auriculares o monitores — los altavoces del portátil ocultan graves y agudos.",
-  "ui.supportBody": "Entrenamiento auditivo para mezcla, y tres plugins didácticos que procesan tu propio audio.\n\nGratis y de código abierto, siempre. Ninguno de los dos botones es obligatorio: aquí no hay nada bloqueado.",
+  "ui.supportBody": "Entrenamiento auditivo para mezcla, y tres plugins didácticos que procesan tu propio audio.\n\nGratis, con el código fuente a la vista, siempre. Ninguno de los dos botones es obligatorio: aquí no hay nada bloqueado.",
   "achv.firstHundred.name": "Cien aciertos",
   "achv.firstHundred.desc": "100 respuestas correctas en total",
   "achv.breadthAll.name": "Polivalente",
@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Escucha lo ancha que es realmente una fuente: lo que mantiene grande una mezcla sin romper el centro.",
   "game.db.benefit": "Calibra el oído a los cambios de nivel en dB, para que mover un fader sea consciente y no a tientas.",
   "game.frequencyrange.benefit": "Aprende los rangos con nombre —de sub-bass a air— para describir un problema antes de tocar un mando.",
-  "ui.toNextLevel": "Hasta el nivel {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Nivel {{level}} · {{have}} / {{need}} hasta el {{next}}",
   "ui.promotionTest": "Ascenso: {{done}} de {{needed}} seguidas",
   "ui.levelMaxed": "Nivel máximo",
   "ui.importAndSort": "Añadir música…",
@@ -285,5 +285,11 @@
   "choice.wide": "Ancho",
   "choice.extraWide": "Muy ancho",
   "ui.modesLockedTitle": "Supervivencia y Blitz",
-  "ui.modesLockedCaption": "Acierta {{count}} seguidas aquí para desbloquearlos"
+  "ui.modesLockedCaption": "Acierta {{count}} seguidas aquí para desbloquearlos",
+  "ui.volume": "Volumen",
+  "ui.dragOnScale": "Arrastra por la escala para responder",
+  "ui.runAbandonedTitle": "Ronda terminada",
+  "ui.runAbandonedCaption": "Tenías {{score}}. No se pierde nada más: tu nivel y tu récord siguen ahí.",
+  "ui.runResultsBest": "Tu mejor marca",
+  "ui.trainings": "Ejercicios"
 }

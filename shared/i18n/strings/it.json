@@ -52,7 +52,7 @@
   "ui.star": "Stella su GitHub",
   "ui.continue": "Continua",
   "ui.headphoneNote": "Consigliate cuffie o monitor — gli altoparlanti del portatile nascondono bassi e alti.",
-  "ui.supportBody": "Ear training per il mixaggio, e tre plugin didattici che elaborano il tuo audio.\n\nGratuito e open source, per sempre. Nessuno dei due pulsanti è obbligatorio — qui non c’è nulla di bloccato.",
+  "ui.supportBody": "Ear training per il mixaggio, e tre plugin didattici che elaborano il tuo audio.\n\nGratuito, con il sorgente consultabile, per sempre. Nessuno dei due pulsanti è obbligatorio — qui non c’è nulla di bloccato.",
   "achv.firstHundred.name": "Cento giuste",
   "achv.firstHundred.desc": "100 risposte corrette in totale",
   "achv.breadthAll.name": "Tuttofare",
@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "Senti quanto è larga davvero una sorgente: ciò che tiene grande un mix senza spaccare il centro.",
   "game.db.benefit": "Calibra l’orecchio sulle variazioni di livello in dB, così muovere un fader diventa consapevole.",
   "game.frequencyrange.benefit": "Impara le gamme con un nome — dal sub-bass all’air — per descrivere un problema prima di toccare una manopola.",
-  "ui.toNextLevel": "Al livello {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Livello {{level}} · {{have}} / {{need}} al {{next}}",
   "ui.promotionTest": "Promozione: {{done}} su {{needed}} di fila",
   "ui.levelMaxed": "Livello massimo",
   "ui.importAndSort": "Aggiungi musica…",
@@ -285,5 +285,11 @@
   "choice.wide": "Largo",
   "choice.extraWide": "Molto largo",
   "ui.modesLockedTitle": "Sopravvivenza e Blitz",
-  "ui.modesLockedCaption": "Indovina {{count}} di fila qui per sbloccarli"
+  "ui.modesLockedCaption": "Indovina {{count}} di fila qui per sbloccarli",
+  "ui.volume": "Volume",
+  "ui.dragOnScale": "Trascina sulla scala per rispondere",
+  "ui.runAbandonedTitle": "Sessione conclusa",
+  "ui.runAbandonedCaption": "Avevi {{score}}. Nient’altro va perso: livello e record restano.",
+  "ui.runResultsBest": "Il tuo record",
+  "ui.trainings": "Esercizi"
 }

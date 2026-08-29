@@ -34,27 +34,6 @@ namespace
 
 namespace
 {
-    // Every string the update prompt needs, pulled from this editor's own
-    // LocalisationManager. The dialogue used to be hardcoded English on a
-    // Russian interface, which is exactly the kind of seam that says
-    // "this part was bolted on".
-    UpdatePrompt::Strings updateStrings (const LocalisationManager& loc)
-    {
-        UpdatePrompt::Strings s;
-        s.title        = loc.getText ("update.title");
-        s.body         = loc.getText ("update.body");
-        s.offerInstall = loc.getText ("update.offerInstall");
-        s.noAsset      = loc.getText ("update.noAsset");
-        s.updateNow    = loc.getText ("update.now");
-        s.later        = loc.getText ("update.later");
-        s.openPage     = loc.getText ("update.openPage");
-        s.downloading  = loc.getText ("update.downloading");
-        s.opening      = loc.getText ("update.opening");
-        s.failed       = loc.getText ("update.failed");
-        s.installed    = loc.getText ("update.installed");
-        s.devBuild     = loc.getText ("update.devBuild");
-        return s;
-    }
 }
 
 namespace
@@ -63,10 +42,20 @@ namespace
     // "abcTrain" PropertiesFile the language preference already uses.
     constexpr const char* themeModeKey = "themeMode";
     constexpr const char* uiScaleKey = "uiScale";
+    constexpr const char* outputGainKey = "outputGainDb";
     // Not "have you seen the welcome screen" any more - that shows every
     // launch now, by request. This only remembers whether the walkthrough
     // has been offered, which is a question worth asking exactly once.
     constexpr const char* tourOfferedKey = "tourOffered";
+
+    // Whether the one support ask has already happened. Not "how many
+    // times" - there is only ever one.
+    constexpr const char* supportAskedKey = "supportAsked";
+
+    // Five hours inside exercises. Chosen because it is long enough that
+    // the product has demonstrably given the person something, which is
+    // the only condition under which asking is reasonable.
+    constexpr int secondsBeforeSupportAsk = 5 * 60 * 60;
 
     // Maps each game's English getName()/getInstructions() text to its
     // i18n key, so the editor can show a localised name/instructions
@@ -312,6 +301,26 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addAndMakeVisible (sizeSelector);
 
+    // Output level. The range stops at +6 rather than 0 because the games
+    // deliberately run well below full scale to leave the treated side
+    // headroom, so a laptop at low volume genuinely needs to go up.
+    volumeSlider.setRange (EarTrainerProcessor::minOutputGainDb,
+                            EarTrainerProcessor::maxOutputGainDb, 0.5);
+    volumeSlider.setSkewFactorFromMidPoint (-12.0);
+    volumeSlider.setDoubleClickReturnValue (true, 0.0);
+    volumeSlider.setTooltip (localisation.getText ("ui.volume"));
+    volumeSlider.onValueChange = [this] { applyVolumeFromSlider(); };
+    addAndMakeVisible (volumeSlider);
+
+    // Not Icon::sound - that is the speaker already used two slots along
+    // for "which sounds you train on", and two identical glyphs meaning
+    // different things is the confusion this control was meant to end.
+    // The level arrow reads as amount, and it is sitting against a
+    // horizontal slider, which is itself the universal shape for volume.
+    volumeIcon.setIcon (AppIcons::Icon::gain);
+    volumeIcon.setIconColour (AbcTrainTheme::current().textDim);
+    addAndMakeVisible (volumeIcon);
+
     for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
         languageSelector.addItem (LocalisationManager::getDisplayName (code),
                                    LocalisationManager::getSupportedLanguageCodes().indexOf (code) + 1,
@@ -321,6 +330,49 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     languageSelector.onChange = [this] { languageSelected(); };
     addAndMakeVisible (languageSelector);
 
+    // Added before the training children and every overlay, so it sits
+    // behind all of them: the rail is the floor of the window, not a
+    // thing that covers other things.
+    sideRail.onItemChosen = [this] (SideRailComponent::Item item)
+    {
+        switch (item)
+        {
+            case SideRailComponent::Item::achievements:
+                showAchievementsScreen();
+                break;
+
+            case SideRailComponent::Item::sounds:
+                trainingSounds.refresh();
+                trainingSounds.setVisible (true);
+                trainingSounds.toFront (false);
+                break;
+
+            case SideRailComponent::Item::settings:
+                settingsScreen.setVisible (true);
+                settingsScreen.toFront (false);
+                settingsScreen.refresh();
+                break;
+
+            case SideRailComponent::Item::trainings:
+            default:
+                showScreen (Screen::home);
+                break;
+        }
+
+        resized();
+        repaint();
+    };
+    addAndMakeVisible (sideRail);
+
+    // Behind every other child. The rail is added late in this
+    // constructor - after the theme button, the volume slider and the rest
+    // were already added - and a later child paints over an earlier one,
+    // so without this the rail's own background covered the very controls
+    // it is supposed to be holding. Found by rendering it: the update
+    // button was there and the theme toggle beside it was not, because one
+    // was added after the rail and one before.
+    sideRail.toBack();
+
     addAndMakeVisible (gameIcon);
 
     auto& gameManager = processor.getGameManager();
@@ -329,8 +381,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     currentGameLabel.setFont (AbcTrainLookAndFeel::headingFont());
     addAndMakeVisible (currentGameLabel);
 
-    backButton.onClick = [this] { showScreen (Screen::home); };
-    addAndMakeVisible (backButton);
 
     homeScreen.onGameChosen = [this] (int index)
     {
@@ -343,6 +393,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
             gm.getActiveGame().addChangeListener (this);
             rebuildChoiceSlider();
         }
+
+        // The mode belongs to the exercise, not to the app. Restore what
+        // this one was last left in before starting anything - otherwise a
+        // Blitz you ran somewhere else follows you here and you get a
+        // 3-2-1 into a timed run on a skill you have only ever practised.
+        applyStoredModeForGame (index);
 
         // Picking a training starts it - the home screen's job is to get
         // out of the way, not to make you confirm twice. Through the
@@ -648,12 +704,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addAndMakeVisible (updateButton);
 
-    trainingSoundsButton.onClick = [this]
-    {
-        trainingSounds.refresh();
-        trainingSounds.setVisible (true);
-    };
-    addAndMakeVisible (trainingSoundsButton);
 
     soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
                             juce::Justification::centredRight);
@@ -679,13 +729,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // it's shown. A real bug, found by actually running the app: adding
     // this earlier (before choiceSlider) left the slider painting on top
     // of the "closed" overlay instead of the other way around.
-    settingsButton.onClick = [this]
-    {
-        settingsScreen.setVisible (true);
-        settingsScreen.toFront (false);
-        settingsScreen.refresh();
-    };
-    addAndMakeVisible (settingsButton);
 
     settingsScreen.onClosed = [this] { resized(); repaint(); };
     settingsScreen.onSettingsChanged = [this]
@@ -776,6 +819,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                       (int) (logicalWidth * 2.0), (int) (logicalBaseHeight * 2.0));
 
     setUiScale (localisationProperties.getDoubleValue (uiScaleKey, 1.0));
+    volumeSlider.setValue (localisationProperties.getDoubleValue (outputGainKey, 0.0),
+                            juce::dontSendNotification);
+    applyVolumeFromSlider();
 
     applyTheme();
     session.startRun();
@@ -787,13 +833,52 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     // First launch gets the support screen once; after that, straight to
     // Home. Never mid-exercise.
-    // The welcome screen every time, not once: it is the front door, it
-    // says what the four words mean, and it costs one click to pass.
-    if (! localisationProperties.getBoolValue (tourOfferedKey, false))
+    // Once on the first run, and once more after five hours of practice.
+    // Not every launch.
+    //
+    // It used to open every time, on the reasoning that it is the front
+    // door and costs one click to pass. The trouble is what the door is
+    // asking for: the two prominent buttons are "support the project" and
+    // "star it on GitHub", so the first thing anybody meets in a product
+    // about listening is a request. Seen twice it is a request; seen two
+    // hundred times it is furniture, and the genuinely useful line on that
+    // screen - use headphones, laptop speakers hide both ends of the
+    // spectrum - stops being read along with it.
+    //
+    // One ask, after the product has actually given somebody five hours of
+    // something, works better for them and better for the person asking.
+    const auto firstRun = ! localisationProperties.getBoolValue (tourOfferedKey, false);
+
+    if (firstRun)
         supportScreen.setTourOffer (localisation.getText ("tour.offer"),
                                      localisation.getText ("tour.accept"),
                                      localisation.getText ("tour.decline"));
 
+    showScreen (firstRun ? Screen::support : Screen::home);
+}
+
+void EarTrainerEditor::countPracticeSecond()
+{
+    // Only while a round is actually sounding. Time with the window open
+    // is not time spent practising, and a plugin loaded in a project all
+    // day has not earned the right to ask for anything.
+    if (currentScreen != Screen::training || ! processor.isSignalEnabled())
+        return;
+
+    auto& progress = processor.getProgressManager();
+    progress.addPracticeSecond();
+
+    if (progress.getPracticeSeconds() < secondsBeforeSupportAsk
+        || localisationProperties.getBoolValue (supportAskedKey, false))
+        return;
+
+    // Never mid-round. The one moment this must not interrupt is the one
+    // it would otherwise land in.
+    if (session.isRunActive() && isRunHudActive())
+        return;
+
+    localisationProperties.setValue (supportAskedKey, true);
+    localisationProperties.saveIfNeeded();
     showScreen (Screen::support);
 }
 
@@ -900,19 +985,20 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     // backdrop with only whitespace implying the grouping.
     if (currentScreen == Screen::training)
     {
-        // Headings, not boxes: three bordered panels cut one window into
-        // three pieces rather than organising it.
-        AbcTrainLookAndFeel::paintSectionHeading (g, exerciseSection.toFloat(),
-                                                   localisation.getText ("ui.sectionExercise"));
-        AbcTrainLookAndFeel::paintSectionHeading (g, answerSection.toFloat(),
-                                                   localisation.getText ("ui.sectionAnswer"));
-
-
-        // Only drawn when the hint has actually been bought - the panel
-        // does not exist otherwise, and neither does its heading.
-        if (hintRevealed && ! hintSection.isEmpty())
-            AbcTrainLookAndFeel::paintSectionHeading (g, hintSection.toFloat(),
-                                                       localisation.getText ("ui.sectionHint"));
+        // No captioned rules. There were three - "EXERCISE", "YOUR ANSWER",
+        // "WHAT THE SOUND LOOKS LIKE" - each a small-caps label with a
+        // hairline running off to the right, and together they cut the
+        // window into horizontal bands.
+        //
+        // Every reference worth copying groups with a *surface* and never
+        // with a line: Baby Audio puts the group's name inside its own
+        // rounded panel, Soundtoys puts controls on a physical plate,
+        // FabFilter simply leaves space. A rule is what you reach for when
+        // spacing has not been decided; three of them stacked down a
+        // window is a form, not an instrument.
+        //
+        // The sections are still there - they are just separated by room
+        // now, which is what the room was for.
     }
 
     // The title, letter-spaced. Drawn here rather than through a Label
@@ -931,9 +1017,9 @@ void EarTrainerEditor::paint (juce::Graphics& g)
             g, "ABC " + (currentScreen == Screen::training
                              ? titleLabel.getText()
                              : localisation.getText ("app.eartrainer.name")),
-            juce::Rectangle<float> ((float) AbcTrainTheme::Spacing::large,
+            juce::Rectangle<float> ((float) (contentBounds().getX() + AbcTrainTheme::Spacing::large),
                                      (float) AbcTrainTheme::Spacing::medium,
-                                     (float) getWidth() * 0.6f, 32.0f),
+                                     (float) contentBounds().getWidth() * 0.6f, 32.0f),
             AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
             juce::Justification::centredLeft);
 }
@@ -984,20 +1070,20 @@ void EarTrainerEditor::resized()
     // challenge. The level lives on each tile now, because that is where
     // it is actually true.
     {
-        auto statusRow = getLocalBounds().reduced (Spacing::large, 0)
+        auto statusRow = contentBounds().reduced (Spacing::large, 0)
                              .withTop (Spacing::large + 32 + Spacing::small)
                              .withHeight (homeStatusHeight);
 
         dailyBanner.setBounds (statusRow);
     }
 
-    homeScreen.setBounds (getLocalBounds()
+    homeScreen.setBounds (contentBounds()
                               .reduced (Spacing::large, 0)
                               .withTop (Spacing::large + 32 + Spacing::small
                                          + homeStatusHeight + Spacing::small)
                               .withTrimmedBottom (Spacing::large + 30 + Spacing::small));
 
-    auto area = getLocalBounds().reduced (Spacing::large);
+    auto area = contentBounds().reduced (Spacing::large);
 
     // --- title row: just the name of where you are ---------------------
     // The app's controls used to live up here, six of them in a row, and
@@ -1007,27 +1093,35 @@ void EarTrainerEditor::resized()
 
     // --- the tool bar, bottom left ---------------------------------------
     {
-        constexpr int iconSize = 30;
+        // The rail is the window's left edge, floor to ceiling. Settings
+        // and Training Sounds became rows in it, so their buttons are gone
+        // rather than hidden - two ways to reach one screen is two things
+        // to keep in step.
+        const auto railWidth = railIsVisible() ? SideRailComponent::preferredWidth : 0;
+        sideRail.setBounds (getLocalBounds().removeFromLeft (railWidth));
 
-        auto bar = getLocalBounds().reduced (Spacing::large)
-                       .removeFromBottom (iconSize);
+        // Theme, updates and the output level live *on* the rail but stay
+        // the editor's own widgets - see SideRailComponent for why moving
+        // ownership was not worth it. Their slots come from the rail, so
+        // its painted background and the controls on it cannot drift.
+        const auto railOrigin = sideRail.getPosition();
+        themeButton.setBounds (sideRail.getThemeSlot() + railOrigin);
+        updateButton.setBounds (sideRail.getUpdateSlot() + railOrigin);
+        volumeSlider.setBounds (sideRail.getVolumeSlot() + railOrigin);
+        volumeIcon.setBounds ({});   // the rail captions this itself
 
-        settingsButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::tight);
-        trainingSoundsButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::tight);
-        themeButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::tight);
-        updateButton.setBounds (bar.removeFromLeft (iconSize));
-        bar.removeFromLeft (Spacing::medium);
+        // The two indicators go on the rail with the rest of the app
+        // chrome. Floating under the exercise with nothing holding them,
+        // they read as two loose fragments - which is what they were.
+        sizeSelector.setBounds ((sideRail.getSizeSlot() + railOrigin)
+                                    .withWidth (sizeSelector.getPreferredWidth()));
+        languageSelector.setBounds ((sideRail.getLanguageSlot() + railOrigin)
+                                        .withWidth (languageSelector.getPreferredWidth()));
 
-        // Indicators, not form fields: each asks for exactly the width its
-        // own widest value needs (see CompactSelector).
-        sizeSelector.setBounds (bar.removeFromLeft (sizeSelector.getPreferredWidth())
-                                    .withSizeKeepingCentre (sizeSelector.getPreferredWidth(), 22));
-        bar.removeFromLeft (Spacing::tight);
-        languageSelector.setBounds (bar.removeFromLeft (languageSelector.getPreferredWidth())
-                                        .withSizeKeepingCentre (languageSelector.getPreferredWidth(), 22));
+        // What is left in the content area: the two links, and nothing
+        // else. Ten things became two.
+        auto bar = contentBounds().reduced (Spacing::large)
+                       .removeFromBottom (22);
 
         soundkorbLink.setBounds (bar.removeFromRight (130).withSizeKeepingCentre (130, 18));
         bar.removeFromRight (Spacing::medium);
@@ -1051,13 +1145,28 @@ void EarTrainerEditor::resized()
         // one control on this screen a lost player is looking for, and an
         // icon they have to decode is exactly the wrong shape for that.
         auto gameRow = inner.removeFromTop (30);
-        backButton.setBounds (gameRow.removeFromLeft (104).withSizeKeepingCentre (104, 30));
-        gameRow.removeFromLeft (Spacing::large);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
         instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
         gameRow.removeFromRight (Spacing::tight);
-        levelProgressLabel.setBounds (gameRow.removeFromRight (210));
+
+        // Lives and the clock live up here during a run, in the slot the
+        // level readout uses the rest of the time.
+        //
+        // They used to sit in the control row *instead of* the mode pills,
+        // which is what made a run feel like a trap: start Survival and the
+        // three buttons you arrived by vanish, leaving one 74px "End run"
+        // among six other controls. Status belongs beside the question;
+        // the pills are navigation and should never disappear. And during
+        // a run "how many lives are left" genuinely outranks "how far to
+        // the next level".
+        {
+            auto slot = gameRow.removeFromRight (210);
+            const auto running = isRunHudActive();
+            runHud.setBounds (running ? slot.withSizeKeepingCentre (210, 30) : juce::Rectangle<int>());
+            levelProgressLabel.setBounds (running ? juce::Rectangle<int>() : slot);
+        }
+
         currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
@@ -1066,14 +1175,22 @@ void EarTrainerEditor::resized()
 
     area.removeFromTop (Spacing::large);
 
-    // --- the hint, if it has been bought: only then does it exist ---
-    // Between hearing and answering, which is the order you use it in.
-    if (hintRevealed)
+    // --- the hint ---------------------------------------------------------
+    //
+    // The space is reserved whether or not a hint has been bought, because
+    // the window no longer resizes to make room for one. Reserving it here
+    // rather than letting the answer section swallow it is what puts the
+    // empty room *where the picture will appear* instead of leaving a hole
+    // somewhere else on the screen - and an empty stretch of background
+    // reads as space, where a dimmed placeholder box would read as a
+    // broken element. Between hearing and answering, which is the order
+    // you use it in.
+    if (hintRevealed && ! hintNarrowsTheScale())
     {
         hintSection = area.removeFromTop (hintPanelHeight);
 
         auto inner = hintSection;
-        inner.removeFromTop (Spacing::large);   // clear the section heading
+        inner.removeFromTop (Spacing::small);
 
         auto hintRow = inner.removeFromTop (hintRowHeight).reduced (Spacing::small, 0);
 
@@ -1108,7 +1225,8 @@ void EarTrainerEditor::resized()
     }
 
     {
-        const auto showing = hintRevealed && currentScreen == Screen::training;
+        const auto showing = hintRevealed && ! hintNarrowsTheScale()
+                                 && currentScreen == Screen::training;
         const auto view = activeHintView();
 
         vectorscope.setVisible (showing && view == Game::HintView::stereo);
@@ -1132,13 +1250,26 @@ void EarTrainerEditor::resized()
     // so taking the full remaining height here put the mode pills straight
     // on top of it - visible the moment the window was rendered at any size
     // other than the one it was designed at, and invisible before that.
-    constexpr int toolBarReserve = 30 + Spacing::small;
+    // Matches the strip below exactly. It was 30 when that strip held six
+    // icons; the icons went to the rail and the strip is 22 now, and a
+    // reserve that no longer matches what it is reserving for is how the
+    // soundkorb link ended up drawn across the hint button.
+    constexpr int toolBarReserve = 22 + Spacing::medium;
 
+    // 20 heading + 24 verdict + 4 + 210 scale + 12 + 34 controls = 304.
+    // It was 318, written when the scale had no cap and could grow; a
+    // floor larger than the content is a floor that overlaps its
+    // neighbours, since removeFromTop clamps rather than overflowing.
     answerSection = area.removeFromTop (
-        juce::jmax (318, area.getHeight() - toolBarReserve));
+        juce::jmax (304, area.getHeight() - toolBarReserve));
     {
         auto inner = answerSection;
-        inner.removeFromTop (Spacing::large);
+
+        // Was Spacing::large, clearing a section heading that no longer
+        // exists. A gap reserved for something that was deleted is just a
+        // gap, and this one sat between the instruction and the answer -
+        // the two things a player looks at in sequence.
+        inner.removeFromTop (Spacing::small);
 
         // The pips live beside the verdict line - the promotion test is
         // part of the answer moment, not part of the header. Reserved on
@@ -1179,7 +1310,43 @@ void EarTrainerEditor::resized()
         // labels. This is the control the screen exists for, so it is the
         // one that should get the room - a taller scale is a more precise
         // scale, and nothing else here improves by being taller.
-        choiceSlider.setBounds (inner.withHeight (juce::jmax (186, inner.getHeight()))
+        // Capped, not merely floored, and centred in whatever is left.
+        //
+        // "Everything left over goes to the scale" is right up to a point
+        // and wrong past it: a ruler is a line with marks on it, and at
+        // 380px tall it stops being an instrument and becomes a large
+        // empty rectangle with some ticks in it - which is most of what
+        // made this screen read as boxes. Past the cap the leftover
+        // becomes air around the control instead of more control, which
+        // is what every interface worth copying does with spare room.
+        // Two caps, not one. Without a hint the scale may take the room a
+        // hint would have used; with one, it gives that room back.
+        //
+        // This is the third answer to the same question and the first good
+        // one. Resizing the *window* was wrong - it shoves every other
+        // window in the DAW at the moment somebody is trying to read a
+        // picture. Reserving the space permanently was also wrong: an empty
+        // reserved strip does not read as "the picture goes here", it reads
+        // as something that failed to load, and the render made that
+        // obvious in a way the reasoning had not. Letting one control
+        // reflow inside a window that never moves is the version with no
+        // victim.
+        // Named alternatives and a ruler want different amounts of room.
+        // A ruler earns height - it is a value read off a scale, and a
+        // taller scale is a more precise one. Two words do not: past about
+        // 180px the cards stop being buttons and become walls.
+        const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
+        const auto continuousMax = (hintRevealed && ! hintNarrowsTheScale()) ? 210
+                                                                             : 210 + hintPanelHeight;
+        const auto maxScaleHeight = onRuler ? continuousMax : 190;
+        const auto scaleHeight = juce::jlimit (onRuler ? 186 : 150, maxScaleHeight, inner.getHeight());
+
+        // Anchored to the top of what is left, not centred in it. Centring
+        // put the spare room between the "Your answer" heading and the
+        // thing it heads, which is the one place a gap reads as something
+        // having failed to load. Below the scale it reads as room above
+        // the controls, which is what it is.
+        choiceSlider.setBounds (inner.withHeight (scaleHeight)
                                      .reduced (Spacing::small, 0));
 
         {
@@ -1188,33 +1355,23 @@ void EarTrainerEditor::resized()
             // the middle, directly under the scale it compares - it is the
             // control touched most often, so it gets the centre.
             const auto pillWidth = 62;
-            const auto modesSlotWidth = pillWidth * 3 + Spacing::medium + 92;
 
-            if (isRunHudActive())
+            // The pills are laid out identically whether a run is live or
+            // not, so nothing in this row moves when one starts or ends.
+            for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+                pill->setBounds (controlRow.removeFromLeft (pillWidth)
+                                     .withSizeKeepingCentre (pillWidth, 28));
+
+            controlRow.removeFromLeft (Spacing::medium);
+
+            // One 92px slot, two tenants: the session tally when nothing is
+            // running, the way out while something is.
             {
-                // The HUD takes exactly the slot the pills + session score
-                // vacate, so A/B never shifts when a run starts or ends -
-                // minus the width of the way out, which shares that slot.
-                constexpr int endWidth = 74;
-
-                endRunButton.setBounds (controlRow.removeFromLeft (endWidth)
-                                            .withSizeKeepingCentre (endWidth, 28));
-                controlRow.removeFromLeft (Spacing::small);
-
-                runHud.setBounds (controlRow.removeFromLeft (modesSlotWidth - endWidth - Spacing::small)
-                                      .withSizeKeepingCentre (modesSlotWidth - endWidth - Spacing::small, 30));
-            }
-            else
-            {
-                for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
-                    pill->setBounds (controlRow.removeFromLeft (pillWidth)
-                                         .withSizeKeepingCentre (pillWidth, 28));
-
-                // Score and the lives/clock readout ride along with the modes:
-                // they say how *this* run is going, which is the same subject
-                // the pills set.
-                controlRow.removeFromLeft (Spacing::medium);
-                scoreLabel.setBounds (controlRow.removeFromLeft (92));
+                auto slot = controlRow.removeFromLeft (92);
+                const auto running = isRunHudActive();
+                endRunButton.setBounds (running ? slot.withSizeKeepingCentre (86, 28)
+                                                : juce::Rectangle<int>());
+                scoreLabel.setBounds (running ? juce::Rectangle<int>() : slot);
             }
 
             // Only reserve width for the lives/clock readout when there is
@@ -1292,7 +1449,6 @@ void EarTrainerEditor::startTour()
     tour.addStep (&afterButton,      localisation.getText ("tour.step.ab"));
     tour.addStep (&choiceSlider,     localisation.getText ("tour.step.answer"));
     tour.addStep (&levelProgressLabel, localisation.getText ("tour.step.level"));
-    tour.addStep (&backButton,       localisation.getText ("tour.step.home"));
 
     tour.start();
 }
@@ -1389,7 +1545,11 @@ void EarTrainerEditor::showRunResults (int finalScore)
         summary.skills.push_back (std::move (standing));
     }
 
-    runResults.setStrings (localisation.getText ("ui.runResults"),
+    // "Run over" is the right heading for a run that ran out, and the wrong
+    // one for a run that beat everything before it. Same screen, two
+    // different things to say.
+    runResults.setStrings (localisation.getText (summary.isNewBest ? "ui.runResultsBest"
+                                                                   : "ui.runResults"),
                             localisation.getText ("ui.playAgain"),
                             localisation.getText ("ui.back"),
                             localisation.getText ("ui.score.caption"),
@@ -1529,6 +1689,8 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 
 void EarTrainerEditor::timerCallback()
 {
+    countPracticeSecond();
+
     if (session.getMode() != SessionManager::Mode::blitz || ! session.isRunActive())
         return;
 
@@ -1539,6 +1701,26 @@ void EarTrainerEditor::timerCallback()
     }
 
     refreshRunStatus();
+}
+
+void EarTrainerEditor::applyStoredModeForGame (int gameIndex)
+{
+    auto& progress = processor.getProgressManager();
+
+    auto wanted = (SessionManager::Mode) juce::jlimit (0, 2, progress.getPreferredModeForGame (gameIndex));
+
+    // A remembered timed mode is not a licence to skip the unlock. The
+    // stats that open Survival and Blitz are per exercise too, so a mode
+    // saved before a reset - or restored onto a fresh profile - has to be
+    // checked rather than trusted.
+    if (wanted != SessionManager::Mode::practice && ! progress.areModesUnlockedForGame (gameIndex))
+        wanted = SessionManager::Mode::practice;
+
+    practiceButton.setToggleState (wanted == SessionManager::Mode::practice, juce::dontSendNotification);
+    survivalButton.setToggleState (wanted == SessionManager::Mode::survival, juce::dontSendNotification);
+    blitzButton.setToggleState (wanted == SessionManager::Mode::blitz, juce::dontSendNotification);
+
+    session.setMode (wanted);
 }
 
 void EarTrainerEditor::modeSelected()
@@ -1564,9 +1746,27 @@ void EarTrainerEditor::modeSelected()
         return;
     }
 
+    // Switching mode while a run is live throws that run away - setMode
+    // calls startRun() and nothing fires onRunEnded. That was invisible
+    // while the pills were hidden mid-run; now that they are the way out,
+    // it has to be said out loud, or a Blitz score just evaporates.
+    //
+    // Deliberately a toast and not the results screen: pressing "Practice"
+    // is a request to leave, not a request to be shown a scoreboard. The
+    // full results are what "End run" is for.
+    const auto abandoned = isRunHudActive() ? session.getRunScore() : -1;
+
     // setMode() starts a fresh run itself, so this is one call, not two.
     // The price changes with the mode, so the button's label must too.
     session.setMode (wanted);
+
+    processor.getProgressManager()
+        .setPreferredModeForGame (processor.getGameManager().getActiveGameIndex(), (int) wanted);
+
+    if (abandoned >= 0)
+        achievementToast.show (localisation.getText ("ui.runAbandonedCaption",
+                                                      { { "score", juce::String (abandoned) } }),
+                                localisation.getText ("ui.runAbandonedTitle"));
 
     beginRunWithCountdown();
 }
@@ -1634,6 +1834,14 @@ void EarTrainerEditor::startNewRun()
     refreshRunStatus();
 }
 
+void EarTrainerEditor::applyVolumeFromSlider()
+{
+    const auto db = (float) volumeSlider.getValue();
+    processor.setOutputGainDb (db);
+    localisationProperties.setValue (outputGainKey, (double) db);
+    localisationProperties.saveIfNeeded();
+}
+
 void EarTrainerEditor::setUiScale (float newScale)
 {
     uiScale = juce::jlimit (0.8f, 1.4f, newScale);
@@ -1647,7 +1855,7 @@ void EarTrainerEditor::setUiScale (float newScale)
     // separate axis from sizing, and resetting the width here would undo a
     // deliberate drag every time somebody changed the text size.
     setSize (juce::jmax (logicalWidth, getWidth()),
-              heightWithoutHint + (hintRevealed ? hintPanelHeight : 0));
+              juce::jmax (logicalBaseHeight, getHeight()));
 
     // Keep the picker in step with the actual scale, including on the
     // restore path - without this it came up blank on launch.
@@ -1659,10 +1867,11 @@ void EarTrainerEditor::setUiScale (float newScale)
 
 void EarTrainerEditor::applyWindowSize()
 {
-    // Grow by exactly the panel, shrink by exactly the panel, and leave
-    // whatever height was chosen underneath alone.
+    // The height a hint is showing and the height it is not are the same
+    // height. Only the width floor and whatever the player has dragged to
+    // are honoured here.
     setSize (juce::jmax (logicalWidth, getWidth()),
-              heightWithoutHint + (hintRevealed ? hintPanelHeight : 0));
+              juce::jmax (logicalBaseHeight, getHeight()));
     resized();
     repaint();
 }
@@ -1673,6 +1882,7 @@ void EarTrainerEditor::clearHint()
         return;
 
     hintRevealed = false;
+    choiceSlider.clearHintRegion();
     vectorscope.setVisible (false);
     hintSpectrum.setVisible (false);
     hintWaveform.setVisible (false);
@@ -1681,6 +1891,19 @@ void EarTrainerEditor::clearHint()
 
     // The window shrinks back to the training screen's own height.
     applyWindowSize();
+}
+
+void EarTrainerEditor::refreshRailStatus()
+{
+    auto& progress = processor.getProgressManager();
+    const auto index = processor.getGameManager().getActiveGameIndex();
+
+    sideRail.setStatus (progress.getLevelForGame (index),
+                         progress.getLevelProgressForGame (index),
+                         progress.getStreakDays());
+
+    sideRail.setActiveItem (SideRailComponent::Item::trainings);
+    sideRail.setVisible (railIsVisible());
 }
 
 void EarTrainerEditor::refreshRunStatus()
@@ -1705,8 +1928,11 @@ void EarTrainerEditor::refreshRunStatus()
         const auto unlocked = processor.getProgressManager()
                                   .areModesUnlockedForGame (processor.getGameManager().getActiveGameIndex());
 
-        practiceButton.setVisible (onTraining && ! hudNow);
+        // Visible throughout, including mid-run. Hiding the way you came in
+        // is what made a timed mode feel like something you were stuck in.
+        practiceButton.setVisible (onTraining);
         scoreLabel.setVisible (onTraining && ! hudNow);
+        levelProgressLabel.setVisible (onTraining && ! hudNow);
 
         // Locked modes are *shown*, dimmed - not hidden.
         //
@@ -1721,7 +1947,7 @@ void EarTrainerEditor::refreshRunStatus()
         // Dimmed and still clickable: pressing one says what earns it.
         for (auto* pill : { &survivalButton, &blitzButton })
         {
-            pill->setVisible (onTraining && ! hudNow);
+            pill->setVisible (onTraining);
             pill->setAlpha (unlocked ? 1.0f : 0.45f);
         }
 
@@ -1833,19 +2059,19 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Nothing to listen for outside a training.
     processor.setSignalEnabled (onTraining);
+    sideRail.setVisible (railIsVisible());
 
     // Everything that belongs to the training screen.
     // The title-row controls belong to Home and Training, not the
     // one-time support screen.
     for (auto* c : { (juce::Component*) &themeButton, (juce::Component*) &updateButton,
-                     (juce::Component*) &trainingSoundsButton, (juce::Component*) &settingsButton,
                      (juce::Component*) &sizeSelector,
                      (juce::Component*) &languageSelector, (juce::Component*) &soundkorbLink })
     {
         c->setVisible (! onSupport);
     }
 
-    for (auto* c : { (juce::Component*) &backButton, (juce::Component*) &gameIcon,
+    for (auto* c : { (juce::Component*) &gameIcon,
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
@@ -1967,7 +2193,6 @@ void EarTrainerEditor::refreshLocalisedText()
 {
     supportScreen.refresh();
     settingsScreen.refresh();
-    settingsButton.setTooltip (localisation.getText ("ui.settings"));
     instructionsButton.setTooltip (localisation.getText ("ui.showInstructions"));
     donateLink.setButtonText (localisation.getText ("ui.support"));
     endRunButton.setButtonText (localisation.getText ("ui.endRun"));
@@ -1987,8 +2212,13 @@ void EarTrainerEditor::refreshLocalisedText()
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));
-    trainingSoundsButton.setTooltip (localisation.getText ("ui.trainingSounds"));
-    backButton.setButtonText (localisation.getText ("ui.back"));
+    sideRail.setLabels ({ localisation.getText ("ui.trainings"),
+                           localisation.getText ("ui.achievements"),
+                           localisation.getText ("ui.trainingSounds"),
+                           localisation.getText ("ui.settings") },
+                         localisation.getText ("ui.level").upToFirstOccurrenceOf ("{{", false, false).trim(),
+                         localisation.getText ("ui.streak"));
+
 
     {
         practiceButton.setButtonText (localisation.getText ("ui.modePractice"));
@@ -2009,7 +2239,12 @@ void EarTrainerEditor::refreshLocalisedText()
     // that did need writing.
     refreshBeforeAfter();
     refreshHintButton();
-    choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
+    // A ruler has no zones to click. One key served both modes, so the
+    // four scale exercises told you to "click a zone to answer" beside a
+    // continuous axis that has none.
+    choiceSlider.setPlaceholderText (localisation.getText (
+        processor.getGameManager().getActiveGame().usesContinuousScale()
+            ? "ui.dragOnScale" : "ui.dragToChoose"));
 
     {
     }
@@ -2030,8 +2265,18 @@ bool EarTrainerEditor::choiceSliderMatchesGame (Game& game) const
     // A continuous game has no named choices at all - its ruler is the
     // grid marks, which don't move between rounds - so comparing labels
     // there would rebuild the scale every single round for nothing.
+    //
+    // The tolerance still has to be compared, though. It is the one thing
+    // on this screen that says out loud what a level *is*, and it only
+    // changes when the player earns a level - at which point the count
+    // this used to compare on its own has not moved, so the band kept the
+    // previous level's width until the player left the exercise and came
+    // back. The reward for passing a five-in-a-row promotion was invisible
+    // in the exact place it should have been most visible.
     if (game.usesContinuousScale())
-        return choiceSlider.getNumChoices() == game.getNumChoices();
+        return choiceSlider.getNumChoices() == game.getNumChoices()
+                && std::abs (choiceSlider.getToleranceNormalised()
+                              - game.getToleranceNormalised()) < 1.0e-6f;
 
     const auto& shown = choiceSlider.getChoiceLabels();
 
@@ -2082,7 +2327,12 @@ void EarTrainerEditor::rebuildChoiceSlider()
     // panel had grown into.
     choiceSlider.setAxisCaption ({});
 
-    choiceSlider.setPlaceholderText (localisation.getText ("ui.dragToChoose"));
+    // A ruler has no zones to click. One key served both modes, so the
+    // four scale exercises told you to "click a zone to answer" beside a
+    // continuous axis that has none.
+    choiceSlider.setPlaceholderText (localisation.getText (
+        processor.getGameManager().getActiveGame().usesContinuousScale()
+            ? "ui.dragOnScale" : "ui.dragToChoose"));
 }
 
 void EarTrainerEditor::choiceButtonClicked (int choiceIndex)
@@ -2159,9 +2409,27 @@ void EarTrainerEditor::requestHint()
     }
 
     hintRevealed = true;
-    vectorscope.reset();
-    hintWaveform.reset();
-    hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+
+    auto& game = processor.getGameManager().getActiveGame();
+    const auto halfWidth = game.getHintHalfWidthNormalised();
+
+    if (halfWidth > 0.0f)
+    {
+        // Deliberately not centred on the answer. A region whose middle is
+        // the answer is the answer with extra steps - you would click the
+        // centre without listening and be right every time. Offsetting it
+        // keeps the whole region live: the answer is somewhere in here and
+        // you still have to find it.
+        hintCentreForRound = Game::hintCentreFor (game.getCorrectNormalised(), halfWidth,
+                                                   hintRandom.nextFloat());
+        choiceSlider.setHintRegion (hintCentreForRound, halfWidth);
+    }
+    else
+    {
+        vectorscope.reset();
+        hintWaveform.reset();
+        hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+    }
 
     refreshRunStatus();
     refreshHintButton();
@@ -2266,6 +2534,8 @@ Game::HintView EarTrainerEditor::activeHintView() const
 
 void EarTrainerEditor::refreshFromGameState()
 {
+    refreshRailStatus();
+
     auto& game = processor.getGameManager().getActiveGame();
 
     // The choices a round offers can change without the *count* changing.
@@ -2324,8 +2594,12 @@ void EarTrainerEditor::refreshFromGameState()
             const auto need = ProgressManager::pointsRequiredForLevel (level + 1)
                                   - ProgressManager::pointsRequiredForLevel (level);
 
+            // Both numbers. "level" is the one you have - which this screen
+            // never showed at all, so the only way to learn your own level
+            // was to go Home - and "next" is the one the points are for.
             levelLine = localisation.getText ("ui.toNextLevel",
-                                               { { "level", juce::String (level + 1) },
+                                               { { "level", juce::String (level) },
+                                                 { "next", juce::String (level + 1) },
                                                  { "have", juce::String (juce::jmax (0, have)) },
                                                  { "need", juce::String (need) } });
         }

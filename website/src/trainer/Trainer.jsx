@@ -172,8 +172,15 @@ export default function Trainer() {
 
     // A/B is the whole comparison: "before" is the same signal with the
     // processing bypassed, not a different signal.
-    if (withProcessing) {
-      const stage = ex.build(ctx, value);
+    // Most exercises bypass the processing for "before". Stereo width
+    // cannot: its source is two independent noise channels, so bypassing
+    // plays the *widest* signal in the exercise under a button labelled
+    // "Mono". Where an exercise defines buildBypass, that is its honest
+    // untreated state.
+    const stage = withProcessing ? ex.build(ctx, value)
+                                 : (ex.buildBypass ? ex.buildBypass(ctx) : null);
+
+    if (stage) {
       source.connect(stage.input);
       stage.output.connect(gain);
     } else {
@@ -262,6 +269,11 @@ export default function Trainer() {
 
   const goHome = useCallback(() => {
     stop();
+    // Clearing the guess is what actually cancels the pending auto-advance.
+    // The effect above keys on `guess`, so leaving it set meant the cleanup
+    // never ran, the timer fired on the home screen and started playing
+    // noise at someone who had just backed out of the exercise.
+    setGuess(null);
     setScreen('home');
   }, [stop]);
 
@@ -330,6 +342,17 @@ export default function Trainer() {
 
     const onKey = (e) => {
       if (e.code !== 'Space') return;
+
+      // Space is the universal "press the focused button" key. Swallowing
+      // it globally meant a keyboard user could not activate the answer
+      // zones, Play, the hint or Home at all - and with the ruler focused
+      // it both flipped A/B and submitted a guess at the centre of the
+      // scale, which nobody chose.
+      const el = e.target;
+      const tag = el && el.tagName ? el.tagName.toLowerCase() : '';
+      if (tag === 'button' || tag === 'input' || tag === 'select'
+          || tag === 'textarea' || (el && el.isContentEditable)) return;
+
       e.preventDefault();
       setAB(!processed);
     };
@@ -441,21 +464,66 @@ export default function Trainer() {
           <div
             className="tr-scale"
             ref={scaleRef}
-            role="button"
+            // A value picked along an axis is a slider, not a button. As a
+            // button a screen reader announced "press me" and said nothing
+            // about where the cursor was or what the range is.
+            role="slider"
             tabIndex={0}
             aria-label={`${exercise.name} scale`}
-            onMouseMove={(e) => {
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round((revealed ? toNorm(exercise, guess.value) : (hover ?? 0.5)) * 100)}
+            aria-valuetext={revealed ? exercise.format(guess.value)
+                                     : exercise.format(fromNorm(exercise, hover ?? 0.5))}
+            // Pointer events rather than mouse events, so a finger gets the
+            // same live preview a cursor gets and the answer commits on
+            // release. Four of the nine exercises are answered here, and on
+            // a phone they were a blind tap - while the instruction said
+            // "drag along the scale".
+            onPointerDown={(e) => {
               if (revealed) return;
+              e.currentTarget.setPointerCapture(e.pointerId);
               const box = e.currentTarget.getBoundingClientRect();
               setHover(Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)));
             }}
-            onMouseLeave={() => !revealed && setHover(null)}
-            onClick={(e) => answerContinuous(e.clientX)}
+            onPointerMove={(e) => {
+              if (revealed) return;
+              // Only track while down on touch; a mouse previews on hover.
+              if (e.pointerType !== 'mouse' && !e.currentTarget.hasPointerCapture(e.pointerId)) return;
+              const box = e.currentTarget.getBoundingClientRect();
+              setHover(Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)));
+            }}
+            onPointerUp={(e) => {
+              if (revealed) return;
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+              answerContinuous(e.clientX);
+            }}
+            onPointerLeave={(e) => {
+              if (!revealed && e.pointerType === 'mouse') setHover(null);
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              const step = e.shiftKey ? 0.01 : 0.05;
+              const current = hover ?? 0.5;
+
+              // Arrows move the cursor; Enter and Space commit it. Before
+              // this the only keyboard answer was "the exact centre of the
+              // scale", which is not a choice anyone made.
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (!revealed) setHover(Math.max(0, current - step));
+              } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (!revealed) setHover(Math.min(1, current + step));
+              } else if (e.key === 'Home') {
+                e.preventDefault();
+                if (!revealed) setHover(0);
+              } else if (e.key === 'End') {
+                e.preventDefault();
+                if (!revealed) setHover(1);
+              } else if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 const box = scaleRef.current?.getBoundingClientRect();
-                if (box) answerContinuous(box.left + box.width / 2);
+                if (box) answerContinuous(box.left + box.width * current);
               }
             }}
           >

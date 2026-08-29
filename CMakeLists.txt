@@ -204,6 +204,7 @@ target_sources(EarTrainer
         Source/SupportScreenComponent.cpp
         Source/SettingsScreenComponent.cpp
         Source/RunResultsComponent.cpp
+        Source/SideRailComponent.cpp
         Source/AchievementsScreenComponent.cpp
         shared/Vectorscope.cpp
         shared/SpectrumAnalyzer.cpp
@@ -493,6 +494,8 @@ target_sources(EarTrainerTests
         tests/MicroLessonTest.cpp
         tests/UpdateCheckerTest.cpp
         tests/ReferenceAudioLibraryTest.cpp
+        tests/TestSignalGeneratorTest.cpp
+        tests/HintTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
         Source/Achievements.cpp
@@ -595,6 +598,7 @@ target_sources(EditorSnapshots
         Source/SupportScreenComponent.cpp
         Source/SettingsScreenComponent.cpp
         Source/RunResultsComponent.cpp
+        Source/SideRailComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/TrainingSoundsComponent.cpp
         Source/Games/EQGame.cpp
@@ -652,3 +656,17 @@ target_link_libraries(EditorSnapshots
 foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests EditorSnapshots)
     target_include_directories(${abcTrainTarget} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 endforeach()
+
+# Temporary: measures what a round transition costs on the message thread.
+juce_add_console_app(RoundBench PRODUCT_NAME "RoundBench")
+target_sources(RoundBench PRIVATE
+    tools/RoundBench.cpp
+    Source/Games/ReverbGame.cpp Source/Games/DelayGame.cpp
+    Source/Games/EQGame.cpp Source/Games/CompressionGame.cpp
+    Source/Games/DistortionGame.cpp Source/Games/FrequencyRangeGame.cpp
+    shared/ReferenceAudioLibrary.cpp shared/AudioSliceAnalyzer.cpp)
+target_compile_definitions(RoundBench PRIVATE JUCE_STANDALONE_APPLICATION=1)
+target_link_libraries(RoundBench PRIVATE juce::juce_dsp juce::juce_audio_formats
+    juce::juce_audio_basics juce::juce_core juce::juce_events
+    juce::juce_data_structures SampleData
+    juce::juce_recommended_config_flags juce::juce_recommended_lto_flags)

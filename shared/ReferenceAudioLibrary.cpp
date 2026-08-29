@@ -213,6 +213,23 @@ bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSam
     auto* stored = loadedBuffers.add (resampled.release());
     activeBuffer.store (stored);
 
+    // Keep a short tail of previous clips rather than every clip ever
+    // loaded. Freeing the outgoing buffer immediately would be a
+    // use-after-free - the audio thread loads the pointer once and then
+    // reads through the rest of its block - so the old code never freed
+    // anything at all. That is correct and unbounded: EarTrainer selects a
+    // fresh clip on *every round*, at up to 20 seconds each, so a long
+    // session walked into hundreds of megabytes and then into swap, which
+    // is felt as the whole machine stuttering rather than as this plugin.
+    //
+    // Four is far more than the one block of slack the race actually
+    // needs, and it caps the store at a few tens of megabytes.
+    while (loadedBuffers.size() > maxRetainedBuffers)
+    {
+        jassert (loadedBuffers.getFirst() != activeBuffer.load());
+        loadedBuffers.remove (0);
+    }
+
     selectedFile = file;
     properties.setValue (selectedFileKey, file.getFullPathName());
     properties.saveIfNeeded();

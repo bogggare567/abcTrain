@@ -299,6 +299,13 @@ void ChoiceSliderComponent::paint (juce::Graphics& g)
     }
 }
 
+void ChoiceSliderComponent::setHintRegion (float centreNormalised, float halfWidthNormalised)
+{
+    hintCentre = juce::jlimit (0.0f, 1.0f, centreNormalised);
+    hintHalfWidth = juce::jmax (0.0f, halfWidthNormalised);
+    repaint();
+}
+
 void ChoiceSliderComponent::paintScale (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
@@ -317,13 +324,16 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
 
     const auto scaleArea = getScaleArea().toFloat();
 
-    // ---- the recessed panel the zones live in ----
-    AbcTrainLookAndFeel::paintDisplayWell (g, scaleArea);
-
-    juce::Graphics::ScopedSaveState clipped (g);
-    juce::Path panelClip;
-    panelClip.addRoundedRectangle (scaleArea, AbcTrainTheme::Radius::well);
-    g.reduceClipRegion (panelClip);
+    // ---- the zones ----
+    //
+    // Separate cards with a gap, not one recessed slab divided by a
+    // hairline. Two named alternatives are two *things you can pick*, and
+    // a single dark rectangle with a line down the middle and a word in
+    // each half is a diagram of a rectangle - which is most of what made
+    // this screen read as boxes. A gap says "these are two"; the hairline
+    // was saying it far too quietly, and only because the slab underneath
+    // was saying "these are one".
+    constexpr float zoneGap = 10.0f;
 
     for (int i = 0; i < n; ++i)
     {
@@ -336,11 +346,22 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         // is already selected", which is a lie the moment the panel opens.
         // Two identical halves and the hairline between them is all a
         // pair needs.
-        const auto zoneFill = (n > 2 && i % 2 == 0) ? theme.displayBackground.brighter (0.11f)
-                                                    : theme.displayBackground.brighter (0.02f);
+        // Inset so neighbours do not touch, but square at the outer edges
+        // so the pair still sits flush in the space it was given.
+        const auto face = zone.withTrimmedLeft (i == 0 ? 0.0f : zoneGap * 0.5f)
+                        .withTrimmedRight (i == n - 1 ? 0.0f : zoneGap * 0.5f);
 
-        g.setColour (zoneFill);
-        g.fillRect (zone);
+        AbcTrainLookAndFeel::paintDisplayWell (g, face);
+
+        // Alternating shading, for a row long enough that the eye needs
+        // help counting it. With exactly two it does the opposite: one
+        // lighter half beside one darker half reads as "the left one is
+        // already selected", which is a lie the moment the panel opens.
+        if (n > 2 && i % 2 == 0)
+        {
+            g.setColour (theme.displayBackground.brighter (0.06f));
+            g.fillRoundedRectangle (face, AbcTrainTheme::Radius::well);
+        }
 
         // Verdict and highlight are overlays on the stripe rather than
         // replacements for it, so the answer colours can fade in on the
@@ -358,14 +379,17 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         if (! overlay.isTransparent())
         {
             g.setColour (overlay);
-            g.fillRect (zone);
+            g.fillRoundedRectangle (face, AbcTrainTheme::Radius::well);
         }
 
-        // Hairline between zones (not after the last one).
-        if (i > 0)
+        // The highlighted card also lifts its border, so hover and
+        // selection are not carried by fill alone.
+        if (isHighlighted || (answered && (i == correctIndex || i == chosenIndex)))
         {
-            g.setColour (theme.outline.withAlpha (0.5f));
-            g.drawLine (zone.getX(), zone.getY(), zone.getX(), zone.getBottom(), 1.0f);
+            const auto edge = answered ? (i == correctIndex ? theme.positive : theme.negative)
+                                       : theme.accent;
+            g.setColour (edge.withAlpha (0.55f));
+            g.drawRoundedRectangle (face.reduced (0.5f), AbcTrainTheme::Radius::well, 1.2f);
         }
     }
 
@@ -559,14 +583,58 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     // one level up.
     const auto markFont = AbcTrainLookAndFeel::microFont();
     const auto labelRowHeight = std::ceil (markFont.getHeight() * 1.05f) + 5.0f;
-    const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 3.0f;
+    // 10 rather than 3. Measured on a rendered 918x795 window: the lower
+    // series was sliced at about 60% of its glyph height even though the
+    // arithmetic put its box three pixels clear of the well. I did not
+    // find what eats those last few pixels - the numbers on both sides
+    // agree and still disagree with the picture - so this is clearance,
+    // not a diagnosis. Verified by rendering, which is the only thing
+    // that ever catches this class of bug here.
+    const auto lowerRowY = scaleArea.getBottom() - labelRowHeight - 10.0f;
     const auto upperRowY = lowerRowY - labelRowHeight + 1.0f;
+
+    // The hint, if one was bought: everything outside the region is
+    // dimmed, so what remains is a shorter stretch of the same ruler
+    // rather than a marker pointing at the answer.
+    if (hintHalfWidth > 0.0f)
+    {
+        const auto left = xFor (hintCentre - hintHalfWidth);
+        const auto right = xFor (hintCentre + hintHalfWidth);
+
+        // The shadow colour, not the well's own: filling the well with the
+        // well's colour changes nothing, which is exactly what the first
+        // version did and the render showed. This one is black on the dark
+        // theme and a cool grey on the light one, so the dimming reads on
+        // both.
+        g.setColour (theme.shadow.withAlpha (0.55f * theme.shadowStrength));
+
+        if (left > scaleArea.getX())
+            g.fillRect (scaleArea.withRight (left));
+
+        if (right < scaleArea.getRight())
+            g.fillRect (scaleArea.withLeft (right));
+
+        // And the live stretch lifts very slightly, so the region reads as
+        // the part that is still in play rather than as a hole in a mask.
+        g.setColour (theme.accent.withAlpha (0.05f));
+        g.fillRect (scaleArea.withLeft (left).withRight (right));
+
+        // Two soft edges rather than two hard walls: the boundary is not
+        // information, the region is.
+        g.setColour (theme.accent.withAlpha (0.38f));
+        g.fillRect (left - 1.0f, scaleArea.getY(), 1.5f, scaleArea.getHeight());
+        g.fillRect (right, scaleArea.getY(), 1.5f, scaleArea.getHeight());
+    }
 
     for (const auto& mark : gridMarks)
     {
         const auto x = xFor (mark.normalised);
 
-        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.42f : 0.22f));
+        // A ruler's lines are scaffolding, not content. At 0.42 they were
+        // as loud as the answer drawn on top of them; every reference
+        // worth copying puts its grid at a few per cent and lets the
+        // signal be the only bright thing in the frame.
+        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.16f : 0.08f));
         g.drawLine (x, scaleArea.getY() + 6.0f, x, upperRowY - 4.0f, 1.0f);
 
         // Emphasised marks (the octave centres) take the lower row, the
@@ -588,7 +656,7 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         // literals, which is why they stayed put while every other string
         // in the window scaled.
         g.setFont (markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f)));
-        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.85f : 0.5f));
+        g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.62f : 0.34f));
         g.drawText (mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
                      juce::Justification::centred, false);
     }
@@ -616,7 +684,9 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
 
         // A soft bloom under the line so it reads as lit, and so it stays
         // findable where it crosses a gridline.
-        g.setColour (lineColour.withAlpha (0.22f + 0.10f * touch));
+        // The one bright thing in the frame, and it glows. This is the
+        // whole difference between a chart and an instrument.
+        g.setColour (lineColour.withAlpha (0.30f + 0.16f * touch));
         g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 5.0f);
         g.setColour (lineColour);
         g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 1.8f);

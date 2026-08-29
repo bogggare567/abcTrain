@@ -26,6 +26,7 @@ void FrequencyRangeGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
     peakFilter.prepare (spec);
+    scratch.setSize ((int) spec.numChannels, (int) spec.maximumBlockSize);
     newRound();
 }
 
@@ -57,9 +58,24 @@ void FrequencyRangeGame::process (juce::AudioBuffer<float>& buffer)
     }
     else
     {
-        // Still runs the filter on a scratch copy so its state stays
-        // continuous - flipping back mid-tail must not click.
-        peakFilter.reset();
+        // Run the filter on a scratch copy and throw the result away, so
+        // its state stays continuous while "before" is playing.
+        //
+        // This used to call peakFilter.reset() instead, which is the exact
+        // opposite: it zeroed the state on every block, so flipping to
+        // "after" started a filter with Q up to 2.4 from cold against
+        // full-level noise - a resonant transient, i.e. precisely the thump
+        // the comment claimed to be preventing. Nothing caught it because
+        // the comment described the intended behaviour and the code below
+        // it did something else.
+        scratch.setSize (numChannels, numSamples, false, false, true);
+
+        for (int ch = 0; ch < numChannels; ++ch)
+            scratch.copyFrom (ch, 0, buffer, ch, 0, numSamples);
+
+        juce::dsp::AudioBlock<float> scratchBlock (scratch);
+        juce::dsp::ProcessContextReplacing<float> scratchContext (scratchBlock);
+        peakFilter.process (scratchContext);
     }
 
     buffer.applyGain (0.25f);

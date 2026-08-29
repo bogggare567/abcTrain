@@ -101,6 +101,19 @@ juce::Path SpectrumAnalyserComponent::buildResponseCurvePath (juce::Rectangle<fl
     const auto area = curveArea (bounds);
     juce::Path path;
 
+    // Design each band once, not once per point. EQCoefficients::make is a
+    // heap allocation plus a full biquad design, and it depends on the band
+    // only - so having it inside the point loop meant 512 x 8 = 4096
+    // allocate/design/free cycles per paint, at 30 Hz, for a curve that
+    // needs eight. That was the single largest source of "the plugin feels
+    // slow", and it got worse with every band the user added.
+    std::vector<juce::dsp::IIR::Coefficients<float>::Ptr> coefficients;
+    coefficients.reserve (bands.size());
+
+    for (const auto& band : bands)
+        coefficients.push_back (EQCoefficients::make (band.type, eqSampleRate,
+                                                      band.freqHz, band.gainDb, band.q));
+
     for (int i = 0; i < numPoints; ++i)
     {
         const auto proportion = (float) i / (float) (numPoints - 1);
@@ -112,13 +125,9 @@ juce::Path SpectrumAnalyserComponent::buildResponseCurvePath (juce::Rectangle<fl
         // just as much a part of the curve as a bell's bump.
         float totalDb = 0.0f;
 
-        for (const auto& band : bands)
-        {
-            const auto coeffs = EQCoefficients::make (band.type, eqSampleRate,
-                                                       band.freqHz, band.gainDb, band.q);
+        for (const auto& coeffs : coefficients)
             totalDb += juce::Decibels::gainToDecibels (
                 coeffs->getMagnitudeForFrequency ((double) freq, eqSampleRate));
-        }
 
         const auto x = area.getX() + area.getWidth() * proportion;
         const auto y = yForGain (totalDb, area);

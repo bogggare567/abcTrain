@@ -31,10 +31,19 @@ public:
         {
             if (const auto* buffer = library->getActiveBuffer())
             {
-                if (buffer->getNumSamples() > 0)
+                if (const auto length = buffer->getNumSamples(); length > 0)
                 {
+                    // Wrap *before* reading, not after. The library swaps in a
+                    // new clip between rounds without telling anyone, and
+                    // readPosition survives the swap - so a long clip followed
+                    // by a short one used to read past the end of the new
+                    // buffer. PracticeAudioSource has always done it this way
+                    // round; this is the same discipline.
+                    if (readPosition >= length)
+                        readPosition = 0;
+
                     const auto value = buffer->getSample (0, readPosition);
-                    readPosition = (readPosition + 1) % buffer->getNumSamples();
+                    ++readPosition;
                     return value;
                 }
             }

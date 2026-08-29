@@ -29,6 +29,7 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
         statsPerGame.push_back ({});
         progressPerGame.push_back ({});
         favouritePerGame.push_back (false);
+        preferredModePerGame.push_back (0);   // practice
     }
 
     loadState();
@@ -369,6 +370,41 @@ int ProgressManager::getMaxLevelReached() const noexcept
     return highest;
 }
 
+void ProgressManager::addPracticeSecond()
+{
+    ++practiceSeconds;
+
+    // Written to disk once a minute rather than once a second. A
+    // PropertiesFile save is a real file write, and doing one per second
+    // for the whole time somebody is practising is exactly the sort of
+    // background churn that gets a plugin blamed for a stuttering session.
+    if (++unsavedPracticeSeconds >= 60)
+    {
+        unsavedPracticeSeconds = 0;
+        saveState();
+    }
+}
+
+int ProgressManager::getPreferredModeForGame (int gameIndex) const
+{
+    if (gameIndex < 0 || gameIndex >= (int) preferredModePerGame.size())
+        return 0;
+
+    return preferredModePerGame[(size_t) gameIndex];
+}
+
+void ProgressManager::setPreferredModeForGame (int gameIndex, int mode)
+{
+    if (gameIndex < 0 || gameIndex >= (int) preferredModePerGame.size())
+        return;
+
+    if (preferredModePerGame[(size_t) gameIndex] == mode)
+        return;
+
+    preferredModePerGame[(size_t) gameIndex] = mode;
+    saveState();
+}
+
 int ProgressManager::pointsRequiredForLevel (int level) noexcept
 {
     // Points needed to go from level L to L+1 is 100*L, so the cumulative
@@ -434,6 +470,7 @@ void ProgressManager::generateDailyChallengeForDate (const juce::String& todayIs
 void ProgressManager::loadState()
 {
     streakDays = properties->getIntValue ("streakDays", 0);
+    practiceSeconds = properties->getIntValue ("practiceSeconds", 0);
     lastSessionDate = properties->getValue ("lastSessionDate");
     dailyChallengeDate = properties->getValue ("dailyChallengeDate");
     dailyChallengeGameIndex = juce::jlimit (0, juce::jmax (0, gameManager.getNumGames() - 1),
@@ -466,6 +503,9 @@ void ProgressManager::loadState()
 
         if (i < favouritePerGame.size())
             favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);
+
+        if (i < preferredModePerGame.size())
+            preferredModePerGame[i] = properties->getIntValue (prefix + "mode", 0);
     }
 
     earnedAchievements.clear();
@@ -483,6 +523,7 @@ void ProgressManager::loadState()
 void ProgressManager::saveState()
 {
     properties->setValue ("streakDays", streakDays);
+    properties->setValue ("practiceSeconds", practiceSeconds);
     properties->setValue ("lastSessionDate", lastSessionDate);
     properties->setValue ("dailyChallengeDate", dailyChallengeDate);
     properties->setValue ("dailyChallengeGameIndex", dailyChallengeGameIndex);
@@ -506,6 +547,9 @@ void ProgressManager::saveState()
 
         if (i < favouritePerGame.size())
             properties->setValue (prefix + "favourite", (bool) favouritePerGame[i]);
+
+        if (i < preferredModePerGame.size())
+            properties->setValue (prefix + "mode", preferredModePerGame[i]);
     }
 
     properties->setValue ("achievements", earnedAchievements.joinIntoString (","));

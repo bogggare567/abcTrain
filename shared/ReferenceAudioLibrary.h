@@ -160,6 +160,10 @@ private:
     // activeBuffer currently points at. A handful of ~20s mono buffers (a
     // few MB each) is a deliberately accepted memory tradeoff for a
     // simple, correct first pass - see decisions/015.
+    // How many previously-loaded clips to keep alive behind the active one.
+    // See selectFile: the audio thread may still be reading the outgoing
+    // buffer, so it cannot be freed at the moment it stops being active.
+    static constexpr int maxRetainedBuffers = 4;
     juce::OwnedArray<juce::AudioBuffer<float>> loadedBuffers;
     std::atomic<const juce::AudioBuffer<float>*> activeBuffer { nullptr };
 

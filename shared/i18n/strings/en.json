@@ -139,7 +139,7 @@
   "ui.star": "Star on GitHub",
   "ui.continue": "Continue",
   "ui.headphoneNote": "Headphones or monitors recommended — laptop speakers hide the low and high ends.",
-  "ui.supportBody": "Ear training for mixing engineers, and three teaching plugins that process your own audio.\n\nFree and open source, and always will be. Neither of the two buttons below is required — nothing here is locked.",
+  "ui.supportBody": "Ear training for mixing engineers, and three teaching plugins that process your own audio.\n\nFree, and the source is public to read. That stays true. Neither of the two buttons below is required — nothing here is locked.",
   "ui.levelWord": "Level",
   "ui.tileStats": "{{accuracy}}% correct  ·  {{rounds}} rounds",
   "ui.soundsSource": "Where the sounds come from",
@@ -169,7 +169,7 @@
   "ui.backgroundDim": "Dim",
   "ui.chooseImage": "Choose image…",
   "ui.clearImage": "Remove",
-  "ui.toNextLevel": "Level {{level}}: {{have}} / {{need}}",
+  "ui.toNextLevel": "Level {{level}} · {{have}} / {{need}} to level {{next}}",
   "ui.promotionTest": "Level up: {{done}} of {{needed}} in a row",
   "ui.levelMaxed": "Top level",
   "ui.importAndSort": "Add music…",
@@ -285,5 +285,11 @@
   "choice.wide": "Wide",
   "choice.extraWide": "Extra Wide",
   "ui.modesLockedTitle": "Survival and Blitz",
-  "ui.modesLockedCaption": "Get {{count}} right in a row here to open them"
+  "ui.modesLockedCaption": "Get {{count}} right in a row here to open them",
+  "ui.volume": "Volume",
+  "ui.dragOnScale": "Drag along the scale to answer",
+  "ui.runAbandonedTitle": "Run ended",
+  "ui.runAbandonedCaption": "You had {{score}}. Nothing else is lost - your level and record stay.",
+  "ui.runResultsBest": "Your best yet",
+  "ui.trainings": "Trainings"
 }

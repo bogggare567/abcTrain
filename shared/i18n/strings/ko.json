@@ -52,7 +52,7 @@
   "ui.star": "GitHub에 별 주기",
   "ui.continue": "계속",
   "ui.headphoneNote": "헤드폰이나 모니터를 권장합니다 — 노트북 스피커는 저역과 고역이 나오지 않습니다.",
-  "ui.supportBody": "믹싱을 위한 청음 훈련과, 당신의 오디오를 직접 처리하는 세 개의 학습용 플러그인.\n\n무료이며 오픈 소스, 앞으로도 계속. 아래 두 버튼 모두 필수가 아닙니다 — 여기에 잠긴 것은 없습니다.",
+  "ui.supportBody": "믹싱을 위한 청음 훈련과, 당신의 오디오를 직접 처리하는 세 개의 학습용 플러그인.\n\n무료이며 소스 코드 공개, 앞으로도 계속. 아래 두 버튼 모두 필수가 아닙니다 — 여기에 잠긴 것은 없습니다.",
   "achv.firstHundred.name": "백 번 정답",
   "achv.firstHundred.desc": "누적 100회 정답",
   "achv.breadthAll.name": "두루두루",
@@ -169,7 +169,7 @@
   "game.stereowidth.benefit": "음원이 실제로 얼마나 넓은지 들으세요 —— 가운데를 찢지 않고 믹스를 크게 유지하는 능력입니다.",
   "game.db.benefit": "dB 단위의 레벨 변화에 귀를 보정해, 페이더 조작을 더듬거림에서 의식적인 것으로.",
   "game.frequencyrange.benefit": "이름 있는 대역 —— 서브베이스부터 에어까지 —— 을 익혀, 노브에 손대기 전에 문제를 말할 수 있게.",
-  "ui.toNextLevel": "레벨 {{level}}까지: {{have}} / {{need}}",
+  "ui.toNextLevel": "레벨 {{level}} · 레벨 {{next}}까지 {{have}} / {{need}}",
   "ui.promotionTest": "승급: 연속 {{done}} / {{needed}}",
   "ui.levelMaxed": "최고 레벨",
   "ui.importAndSort": "음악 추가…",
@@ -285,5 +285,11 @@
   "choice.wide": "넓게",
   "choice.extraWide": "아주 넓게",
   "ui.modesLockedTitle": "서바이벌과 블리츠",
-  "ui.modesLockedCaption": "이 연습에서 {{count}}번 연속 맞히면 열립니다"
+  "ui.modesLockedCaption": "이 연습에서 {{count}}번 연속 맞히면 열립니다",
+  "ui.volume": "음량",
+  "ui.dragOnScale": "눈금을 드래그해 답하기",
+  "ui.runAbandonedTitle": "런 종료",
+  "ui.runAbandonedCaption": "{{score}}점이었습니다. 다른 것은 사라지지 않습니다 — 레벨과 기록은 그대로입니다.",
+  "ui.runResultsBest": "자기 최고 기록",
+  "ui.trainings": "훈련"
 }
