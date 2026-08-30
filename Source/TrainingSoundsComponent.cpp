@@ -7,7 +7,6 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 {
     setOpaque (true);
 
-    titleLabel.setText ("Choose Training Sounds", juce::dontSendNotification);
     // Drawn by paint() with letter-spacing, like every other heading here.
     titleLabel.setVisible (false);
 
@@ -69,33 +68,39 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     addAndMakeVisible (closeButton);
 }
 
-void TrainingSoundsComponent::setStrings (juce::String title, juce::String sourceSection,
-                                           juce::String trainOnSection, juce::String chooseFolder,
-                                           juce::String pinkNoise, juce::String close,
-                                           juce::String emptyText, juce::String importAndSortText,
-                                           juce::String importing, juce::String importedClips,
-                                           juce::String importedNothing, juce::String importHint)
+void TrainingSoundsComponent::setStrings (Strings strings)
 {
-    importButton.setButtonText (importAndSortText);
-    // Until an import has run, this line explains the button rather than
-    // sitting empty.
-    if (hintText.isEmpty() || hintText == previousHint)
-        hintText = importHint;
+    // The import hint doubles as the result line after an import has run,
+    // so it is only reset while it is still saying what the button does.
+    const auto hintWasStock = text.importHint.isEmpty()
+                                  || text.importHint == previousHint;
 
-    previousHint = importHint;
-    importingText = std::move (importing);
-    importedClipsText = std::move (importedClips);
-    importedNothingText = std::move (importedNothing);
+    previousHint = strings.importHint;
+    const auto keptHint = text.importHint;
 
-    titleLabel.setText (title, juce::dontSendNotification);
-    sourceHeading = std::move (sourceSection);
-    trainOnHeading = std::move (trainOnSection);
-    chooseFolderButton.setButtonText (chooseFolder);
-    pinkNoiseText = pinkNoise;
-    closeButton.setButtonText (close);
-    emptyMessage = std::move (emptyText);
+    text = std::move (strings);
+
+    if (! hintWasStock)
+        text.importHint = keptHint;
+
+    importButton.setButtonText (text.importAndSort);
+    titleLabel.setText (text.title, juce::dontSendNotification);
+    chooseFolderButton.setButtonText (text.chooseFolder);
+    revealButton.setButtonText (text.openFolder);
+    closeButton.setButtonText (text.close);
+
+    updateStatusLabel();
     resized();
     repaint();
+}
+
+juce::String TrainingSoundsComponent::displayNameForCategory (const juce::String& rawName) const
+{
+    if (rawName == "Built-in Percussive") return text.builtInPercussive;
+    if (rawName == "Built-in Sustained")  return text.builtInSustained;
+
+    // Anything else is a folder somebody made. Its name is theirs.
+    return rawName;
 }
 
 TrainingSoundsComponent::~TrainingSoundsComponent() = default;
@@ -199,7 +204,7 @@ void TrainingSoundsComponent::updateStatusLabel()
 
     if (! selected.existsAsFile())
     {
-        statusLabel.setText ("Training on pink noise", juce::dontSendNotification);
+        statusLabel.setText (text.trainingOnPinkNoise, juce::dontSendNotification);
         return;
     }
 
@@ -208,10 +213,13 @@ void TrainingSoundsComponent::updateStatusLabel()
     // promise that this is the clip you will hear next round.
     const auto category = library.getActiveCategory();
 
+    const auto file = selected.getFileNameWithoutExtension();
+
     statusLabel.setText (library.isPinned() || category.isEmpty()
-                              ? "Training on " + selected.getFileNameWithoutExtension()
-                              : "Shuffling " + category + " - now: "
-                                    + selected.getFileNameWithoutExtension(),
+                              ? text.trainingOnFile.replace ("{{file}}", file)
+                              : text.shuffling
+                                    .replace ("{{category}}", displayNameForCategory (category))
+                                    .replace ("{{file}}", file),
                           juce::dontSendNotification);
 }
 
@@ -273,7 +281,7 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
     const auto& categories = library.getCategories();
 
     AbcTrainLookAndFeel::paintSectionHeading (g, railBounds().removeFromTop (18).toFloat(),
-                                               trainOnHeading);
+                                               text.trainOnSection);
 
     const auto drawRow = [&] (int index, const juce::String& name, const juce::String& detail,
                               bool selected)
@@ -299,10 +307,10 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
         g.drawText (detail, text, juce::Justification::centredRight, false);
     };
 
-    drawRow (-1, pinkNoiseText, {}, ! library.getSelectedFile().existsAsFile());
+    drawRow (-1, text.pinkNoise, {}, ! library.getSelectedFile().existsAsFile());
 
     for (int i = 0; i < categories.size(); ++i)
-        drawRow (i, categories.getReference (i).name,
+        drawRow (i, displayNameForCategory (categories.getReference (i).name),
                   juce::String (categories.getReference (i).files.size()),
                   i == selectedCategory && library.getSelectedFile().existsAsFile());
 }
@@ -315,7 +323,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
     const auto pane = filePaneBounds();
 
     AbcTrainLookAndFeel::paintSectionHeading (g, pane.toFloat().withHeight (18.0f),
-                                               files == nullptr ? "" : "Clips");
+                                               files == nullptr ? juce::String() : text.clipsHeading);
 
     if (files == nullptr)
     {
@@ -327,7 +335,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawFittedText (anything ? pickCategoryText : emptyMessage,
+        g.drawFittedText (anything ? text.pickCategory : text.empty,
                            pane.withTrimmedTop (18), juce::Justification::centredTop, 4);
         return;
     }
@@ -463,8 +471,10 @@ juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
 {
     // Two panes need width; the old single column was 480 and could not
     // have held a filename beside a category name.
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 640),
-                                  juce::jmin (getHeight() - 40, 470))
+    return juce::Rectangle<int> (juce::jlimit (560, getWidth() - 80,
+                                                juce::roundToInt ((float) getWidth() * 0.72f)),
+                                  juce::jlimit (440, getHeight() - 80,
+                                                juce::roundToInt ((float) getHeight() * 0.72f)))
                .withCentre (getLocalBounds().getCentre());
 }
 
@@ -683,7 +693,7 @@ void TrainingSoundsComponent::finishImport (int clipsWritten)
 
     if (clipsWritten <= 0)
     {
-        hintText = importedNothingText;
+        text.importHint = text.importedNothing;
         refresh();
         return;
     }
@@ -697,7 +707,7 @@ void TrainingSoundsComponent::finishImport (int clipsWritten)
         if (! category.name.startsWith ("Built-in") && ! category.files.isEmpty())
             parts.add (juce::String (category.files.size()) + " " + category.name.toLowerCase());
 
-    hintText = importedClipsText.replace ("{{count}}", juce::String (clipsWritten))
+    text.importHint = text.importedClips.replace ("{{count}}", juce::String (clipsWritten))
                    + (parts.isEmpty() ? juce::String() : "  -  " + parts.joinIntoString (", "));
 
     refresh();

@@ -63,8 +63,14 @@ void AchievementsScreenComponent::setStrings (juce::String title, juce::String s
 
 juce::Rectangle<int> AchievementsScreenComponent::cardBounds() const
 {
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 32, 560),
-                                  juce::jmin (getHeight() - 32, 560))
+    // A fraction of the window with a floor - see RunResultsComponent
+    // for why these stopped being fixed widths. The shelf also takes more
+    // *height* than the others: it is the one panel whose whole point is
+    // that you can see how much is still ahead of you.
+    return juce::Rectangle<int> (juce::jlimit (460, getWidth() - 64,
+                                                juce::roundToInt ((float) getWidth() * 0.64f)),
+                                  juce::jlimit (440, getHeight() - 64,
+                                                juce::roundToInt ((float) getHeight() * 0.80f)))
                .withCentre (getLocalBounds().getCentre());
 }
 

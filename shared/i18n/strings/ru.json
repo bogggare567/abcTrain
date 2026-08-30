@@ -301,5 +301,13 @@
   "ui.missJoin": " и ",
   "ui.earnedCount": "получено {{done}} из {{total}}",
   "ui.seeAll": "Все",
-  "ui.yourAnswer": "Твой ответ"
+  "ui.yourAnswer": "Твой ответ",
+  "ui.openFolder": "Открыть папку",
+  "ui.soundsClips": "Фрагменты",
+  "ui.soundsPickCategory": "Выбери категорию слева, чтобы увидеть её фрагменты, потом нажми на один — тренировка пойдёт только на нём.",
+  "ui.soundsOnPinkNoise": "Тренировка на розовом шуме",
+  "ui.soundsOnFile": "Тренировка на «{{file}}»",
+  "ui.soundsShuffling": "Перебор: {{category}} — сейчас: {{file}}",
+  "ui.soundsBuiltInPercussive": "Встроенные ударные",
+  "ui.soundsBuiltInSustained": "Встроенные тянущиеся"
 }

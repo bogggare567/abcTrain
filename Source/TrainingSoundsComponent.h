@@ -51,11 +51,21 @@ public:
 
     // Localised strings, pushed in by the editor - this component keeps no
     // LocalisationManager of its own, like every other view here.
-    void setStrings (juce::String title, juce::String sourceSection, juce::String trainOnSection,
-                     juce::String chooseFolder, juce::String pinkNoise, juce::String close,
-                     juce::String emptyText, juce::String importAndSort, juce::String importing,
-                     juce::String importedClips, juce::String importedNothing,
-                     juce::String importHint);
+    //
+    // A struct rather than a parameter list. It was twelve positional
+    // arguments of one type, which is a call site nobody can read and
+    // where swapping two of them compiles cleanly - and it is why the
+    // three strings this panel still drew in English were never added.
+    struct Strings
+    {
+        juce::String title, sourceSection, trainOnSection, chooseFolder, openFolder;
+        juce::String pinkNoise, close, empty, pickCategory, clipsHeading;
+        juce::String importAndSort, importing, importedClips, importedNothing, importHint;
+        juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
+        juce::String builtInPercussive, builtInSustained;
+    };
+
+    void setStrings (Strings);
 
 private:
     juce::Rectangle<int> cardBounds() const;
@@ -65,13 +75,14 @@ private:
     // are choosing between.
     static constexpr int rowHeight = 32;
 
-    juce::String sourceHeading { "Where the sounds come from" };
-    juce::String trainOnHeading { "What to train on" };
-    juce::String emptyMessage;
-    juce::String pinkNoiseText { "Pink noise" };
-    juce::String pickCategoryText { "Pick a category on the left to see its clips, "
-                                     "then click one to train on that clip alone." };
-    juce::String importingText, importedClipsText, importedNothingText, hintText, previousHint;
+    Strings text;
+    juce::String previousHint;
+
+    // The two categories this app supplies itself, which are the only ones
+    // whose names it is entitled to translate: everything else in the list
+    // is a folder somebody made, and renaming a person's folder on screen
+    // is how you make them unable to find it on disk.
+    juce::String displayNameForCategory (const juce::String& rawName) const;
 
     void importAndSort();
     juce::TextButton importButton;
@@ -104,13 +115,13 @@ private:
     // audio files (e.g. their personal music library) - the legitimate
     // way to train on real material without this project ever fetching,
     // bundling, or vetting any of it itself (see decisions/015 and 018).
-    juce::TextButton chooseFolderButton { "Choose Folder..." };
+    juce::TextButton chooseFolderButton;
     juce::Label rootFolderLabel;
     std::unique_ptr<juce::FileChooser> fileChooser;
 
     juce::Label statusLabel;
-    juce::TextButton closeButton { "Close" };
-    juce::TextButton revealButton { "Open folder" };
+    juce::TextButton closeButton;
+    juce::TextButton revealButton;
 
     // -1 is pink noise; 0.. index into the library's categories.
     int selectedCategory = -1;

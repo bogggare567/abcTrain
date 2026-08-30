@@ -107,8 +107,14 @@ juce::Rectangle<int> RunResultsComponent::cardBounds() const
                                     + Spacing::small + 34
                                     + Spacing::large + 34 + 20;
 
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 520),
-                                  juce::jmin (getHeight() - 40, contentHeight))
+    // Sized as a *fraction* of the window with a floor, not as a fixed
+    // 520. A dialogue that keeps its old width inside a window half as
+    // wide again does not read as restrained, it reads as something that
+    // failed to notice the window - which is exactly how these looked
+    // after the design moved to 1180.
+    return juce::Rectangle<int> (juce::jlimit (420, getWidth() - 80,
+                                                juce::roundToInt ((float) getWidth() * 0.62f)),
+                                  juce::jmin (getHeight() - 60, contentHeight))
                .withCentre (getLocalBounds().getCentre());
 }
 

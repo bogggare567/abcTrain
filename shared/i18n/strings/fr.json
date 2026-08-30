@@ -301,5 +301,13 @@
   "ui.missJoin": " et ",
   "ui.earnedCount": "{{done}} sur {{total}} obtenus",
   "ui.seeAll": "Tous",
-  "ui.yourAnswer": "Ta réponse"
+  "ui.yourAnswer": "Ta réponse",
+  "ui.openFolder": "Ouvrir le dossier",
+  "ui.soundsClips": "Extraits",
+  "ui.soundsPickCategory": "Choisis une catégorie à gauche pour voir ses extraits, puis clique sur l'un d'eux pour t'entraîner uniquement dessus.",
+  "ui.soundsOnPinkNoise": "Entraînement sur bruit rose",
+  "ui.soundsOnFile": "Entraînement sur « {{file}} »",
+  "ui.soundsShuffling": "Aléatoire dans {{category}} — actuel : {{file}}",
+  "ui.soundsBuiltInPercussive": "Fournis : percussifs",
+  "ui.soundsBuiltInSustained": "Fournis : tenus"
 }

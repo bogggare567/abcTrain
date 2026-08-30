@@ -301,5 +301,13 @@
   "ui.missJoin": " and ",
   "ui.earnedCount": "{{done}} of {{total}} earned",
   "ui.seeAll": "All",
-  "ui.yourAnswer": "Your answer"
+  "ui.yourAnswer": "Your answer",
+  "ui.openFolder": "Open folder",
+  "ui.soundsClips": "Clips",
+  "ui.soundsPickCategory": "Pick a category on the left to see its clips, then click one to train on that clip alone.",
+  "ui.soundsOnPinkNoise": "Training on pink noise",
+  "ui.soundsOnFile": "Training on {{file}}",
+  "ui.soundsShuffling": "Shuffling {{category}} — now: {{file}}",
+  "ui.soundsBuiltInPercussive": "Built-in percussive",
+  "ui.soundsBuiltInSustained": "Built-in sustained"
 }

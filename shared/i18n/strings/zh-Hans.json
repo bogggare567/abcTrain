@@ -301,5 +301,13 @@
   "ui.missJoin": "和",
   "ui.earnedCount": "已获得 {{total}} 个中的 {{done}} 个",
   "ui.seeAll": "全部",
-  "ui.yourAnswer": "你的回答"
+  "ui.yourAnswer": "你的回答",
+  "ui.openFolder": "打开文件夹",
+  "ui.soundsClips": "片段",
+  "ui.soundsPickCategory": "在左侧选择一个类别以查看其片段，然后点击其中一个，仅用它来训练。",
+  "ui.soundsOnPinkNoise": "使用粉红噪声训练",
+  "ui.soundsOnFile": "使用「{{file}}」训练",
+  "ui.soundsShuffling": "在「{{category}}」中随机 — 当前：{{file}}",
+  "ui.soundsBuiltInPercussive": "内置打击类",
+  "ui.soundsBuiltInSustained": "内置持续类"
 }

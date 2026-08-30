@@ -301,5 +301,13 @@
   "ui.missJoin": " і ",
   "ui.earnedCount": "отримано {{done}} з {{total}}",
   "ui.seeAll": "Усі",
-  "ui.yourAnswer": "Твоя відповідь"
+  "ui.yourAnswer": "Твоя відповідь",
+  "ui.openFolder": "Відкрити теку",
+  "ui.soundsClips": "Фрагменти",
+  "ui.soundsPickCategory": "Обери категорію ліворуч, щоб побачити її фрагменти, потім натисни на один — тренування піде лише на ньому.",
+  "ui.soundsOnPinkNoise": "Тренування на рожевому шумі",
+  "ui.soundsOnFile": "Тренування на «{{file}}»",
+  "ui.soundsShuffling": "Перебір: {{category}} — зараз: {{file}}",
+  "ui.soundsBuiltInPercussive": "Вбудовані ударні",
+  "ui.soundsBuiltInSustained": "Вбудовані тягнуті"
 }

@@ -301,5 +301,13 @@
   "ui.missJoin": "와 ",
   "ui.earnedCount": "{{total}}개 중 {{done}}개 획득",
   "ui.seeAll": "전체",
-  "ui.yourAnswer": "당신의 답"
+  "ui.yourAnswer": "당신의 답",
+  "ui.openFolder": "폴더 열기",
+  "ui.soundsClips": "클립",
+  "ui.soundsPickCategory": "왼쪽에서 카테고리를 고르면 클립이 보입니다. 하나를 누르면 그 클립만으로 연습합니다.",
+  "ui.soundsOnPinkNoise": "핑크 노이즈로 연습 중",
+  "ui.soundsOnFile": "「{{file}}」로 연습 중",
+  "ui.soundsShuffling": "{{category}}에서 무작위 — 현재: {{file}}",
+  "ui.soundsBuiltInPercussive": "내장 타악기",
+  "ui.soundsBuiltInSustained": "내장 지속음"
 }

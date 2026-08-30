@@ -301,5 +301,13 @@
   "ui.missJoin": " i ",
   "ui.earnedCount": "zdobyto {{done}} z {{total}}",
   "ui.seeAll": "Wszystkie",
-  "ui.yourAnswer": "Twoja odpowiedź"
+  "ui.yourAnswer": "Twoja odpowiedź",
+  "ui.openFolder": "Otwórz folder",
+  "ui.soundsClips": "Fragmenty",
+  "ui.soundsPickCategory": "Wybierz kategorię po lewej, aby zobaczyć jej fragmenty, a potem kliknij jeden, by ćwiczyć tylko na nim.",
+  "ui.soundsOnPinkNoise": "Ćwiczenie na szumie różowym",
+  "ui.soundsOnFile": "Ćwiczenie na „{{file}}”",
+  "ui.soundsShuffling": "Losowo z {{category}} — teraz: {{file}}",
+  "ui.soundsBuiltInPercussive": "Wbudowane perkusyjne",
+  "ui.soundsBuiltInSustained": "Wbudowane brzmienia ciągłe"
 }

@@ -301,5 +301,13 @@
   "ui.missJoin": " e ",
   "ui.earnedCount": "{{done}} de {{total}} obtidas",
   "ui.seeAll": "Todas",
-  "ui.yourAnswer": "Sua resposta"
+  "ui.yourAnswer": "Sua resposta",
+  "ui.openFolder": "Abrir pasta",
+  "ui.soundsClips": "Trechos",
+  "ui.soundsPickCategory": "Escolha uma categoria à esquerda para ver os trechos e clique em um para treinar só com ele.",
+  "ui.soundsOnPinkNoise": "Treinando com ruído rosa",
+  "ui.soundsOnFile": "Treinando com \"{{file}}\"",
+  "ui.soundsShuffling": "Aleatório em {{category}} — agora: {{file}}",
+  "ui.soundsBuiltInPercussive": "Incluídos: percussivos",
+  "ui.soundsBuiltInSustained": "Incluídos: sustentados"
 }

@@ -2306,18 +2306,31 @@ void EarTrainerEditor::refreshLocalisedText()
     donateLink.setButtonText (localisation.getText ("ui.support"));
     endRunButton.setButtonText (localisation.getText ("ui.endRun"));
 
-    trainingSounds.setStrings (localisation.getText ("ui.trainingSounds"),
-                                localisation.getText ("ui.soundsSource"),
-                                localisation.getText ("ui.soundsTrainOn"),
-                                localisation.getText ("ui.chooseFolder"),
-                                localisation.getText ("ui.pinkNoise"),
-                                localisation.getText ("ui.close"),
-                                localisation.getText ("ui.soundsEmpty"),
-                                localisation.getText ("ui.importAndSort"),
-                                localisation.getText ("ui.importing"),
-                                localisation.getText ("ui.importedClips"),
-                                localisation.getText ("ui.importedNothing"),
-                                localisation.getText ("ui.importHint"));
+    {
+        TrainingSoundsComponent::Strings sounds;
+        sounds.title              = localisation.getText ("ui.trainingSounds");
+        sounds.sourceSection      = localisation.getText ("ui.soundsSource");
+        sounds.trainOnSection     = localisation.getText ("ui.soundsTrainOn");
+        sounds.chooseFolder       = localisation.getText ("ui.chooseFolder");
+        sounds.openFolder         = localisation.getText ("ui.openFolder");
+        sounds.pinkNoise          = localisation.getText ("ui.pinkNoise");
+        sounds.close              = localisation.getText ("ui.close");
+        sounds.empty              = localisation.getText ("ui.soundsEmpty");
+        sounds.pickCategory       = localisation.getText ("ui.soundsPickCategory");
+        sounds.clipsHeading       = localisation.getText ("ui.soundsClips");
+        sounds.importAndSort      = localisation.getText ("ui.importAndSort");
+        sounds.importing          = localisation.getText ("ui.importing");
+        sounds.importedClips      = localisation.getText ("ui.importedClips");
+        sounds.importedNothing    = localisation.getText ("ui.importedNothing");
+        sounds.importHint         = localisation.getText ("ui.importHint");
+        sounds.trainingOnPinkNoise= localisation.getText ("ui.soundsOnPinkNoise");
+        sounds.trainingOnFile     = localisation.getText ("ui.soundsOnFile");
+        sounds.shuffling          = localisation.getText ("ui.soundsShuffling");
+        sounds.builtInPercussive  = localisation.getText ("ui.soundsBuiltInPercussive");
+        sounds.builtInSustained   = localisation.getText ("ui.soundsBuiltInSustained");
+
+        trainingSounds.setStrings (std::move (sounds));
+    }
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));

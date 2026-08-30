@@ -269,8 +269,10 @@ void SettingsScreenComponent::clearBackground()
 
 juce::Rectangle<int> SettingsScreenComponent::cardBounds() const
 {
-    return juce::Rectangle<int> (juce::jmin (getWidth() - 40, 560),
-                                  juce::jmin (getHeight() - 40, 380))
+    return juce::Rectangle<int> (juce::jlimit (460, getWidth() - 80,
+                                                juce::roundToInt ((float) getWidth() * 0.64f)),
+                                  juce::jlimit (380, getHeight() - 80,
+                                                juce::roundToInt ((float) getHeight() * 0.66f)))
                .withCentre (getLocalBounds().getCentre());
 }
 
