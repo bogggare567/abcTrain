@@ -385,6 +385,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         resized();
         repaint();
     };
+    // Named so tools/ClickMap can see it: it handles its own mouse rather
+    // than holding Buttons, and an unnamed component that answers clicks
+    // is invisible to a check that only knows about widgets.
+    topNav.setComponentID ("topNav");
     addAndMakeVisible (topNav);
 
     // Behind every other child. The rail is added late in this
@@ -2021,6 +2025,62 @@ void EarTrainerEditor::refreshRailStatus()
     topNav.setVisible (railIsVisible());
 }
 
+// While a run is live, the only thing you can press is the answer.
+//
+// Survival spends lives and Blitz spends seconds, and a run that costs
+// something has to be a closed room: if you can change mode, change level,
+// ask for a hint or walk to Settings in the middle of it, the score it
+// posts is not a score, it is a note about how much you fiddled. That was
+// the rule before any of the layout work and it stayed the rule; what the
+// layout work quietly lost was the *enforcement*, because the controls
+// that used to be out of reach were moved somewhere they are always
+// reachable.
+//
+// Four things stay live, and each is here because locking it would make
+// the run broken rather than hard:
+//
+//   - the A/B audition, which is not a way out of the round, it is how you
+//     hear the round at all;
+//   - the hint, because it already *has* a price - a life in Survival,
+//     seconds in Blitz. Something you pay for out of the same pot the run
+//     is scored from is a move inside the run, not an escape from it, and
+//     it is disabled outside a run for exactly that reason;
+//   - "End run", which is the one door - a room with no door is a trap,
+//     and a player who wants out will get out by closing the window, which
+//     loses the run *and* the session;
+//   - the volume, because somebody reaching for it is protecting their
+//     ears, and no scoring rule outranks that.
+//
+// Everything else - navigation, the mode pills, the instructions, the
+// language, the theme, the window size, the update check - is dark for the
+// duration.
+void EarTrainerEditor::applyRunLock()
+{
+    const auto locked = currentScreen == Screen::training && isRunHudActive();
+
+    // Disabling a parent disables what it contains, so the whole nav bar
+    // is one call rather than four.
+    //
+    // The dimming is Component::setAlpha, not an opacity set inside
+    // paint(): setOpacity only tints the colour that happens to be
+    // current, and every subsequent setColour throws it away - so the
+    // first version of this looked completely untouched while being
+    // genuinely dead, which is the exact failure it was meant to prevent.
+    // Found by rendering it.
+    topNav.setEnabled (! locked);
+    topNav.setAlpha (locked ? 0.4f : 1.0f);
+
+    for (auto* c : { (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
+                     (juce::Component*) &blitzButton,    (juce::Component*) &instructionsButton,
+                     (juce::Component*) &themeButton,    (juce::Component*) &updateButton,
+                     (juce::Component*) &sizeSelector,   (juce::Component*) &languageSelector,
+                     (juce::Component*) &soundkorbLink })
+    {
+        c->setEnabled (! locked);
+    }
+
+}
+
 void EarTrainerEditor::refreshRunStatus()
 {
     // The HUD replaces the pills, the session score and the status label
@@ -2045,6 +2105,7 @@ void EarTrainerEditor::refreshRunStatus()
 
         // Visible throughout, including mid-run. Hiding the way you came in
         // is what made a timed mode feel like something you were stuck in.
+        // Visible is not the same as live, though - see applyRunLock().
         practiceButton.setVisible (onTraining);
         scoreLabel.setVisible (onTraining && ! hudNow);
         levelProgressLabel.setVisible (onTraining && ! hudNow);
@@ -2072,6 +2133,8 @@ void EarTrainerEditor::refreshRunStatus()
 
         if (hudWasVisible != (onTraining && hudNow))
             resized();
+
+        applyRunLock();
     }
 
     // Whether this label has text decides whether the control row reserves
@@ -2688,12 +2751,6 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
     // every question. The delay is longer after a wrong answer (more to
     // read) and zero once a run has ended, so the final result stays on
     // screen instead of being replaced by another round.
-    // ...unless they asked to press it. Auto-advance is right at speed and
-    // wrong when you want to sit with what you just heard, and until this
-    // setting existed there was no way to say so.
-    if (! SettingsScreenComponent::getAutoAdvance (localisationProperties))
-        return;
-
     const auto delayMs = session.getAutoAdvanceDelayMs (wasCorrect);
     if (delayMs <= 0)
         return;
@@ -2857,19 +2914,7 @@ void EarTrainerEditor::refreshFromGameState()
         else
             choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
-        // Whether the review appears at all is the player's call now (see
-        // SettingsScreenComponent::Review). The *answer* is always shown -
-        // the scale still reveals where the target was, and hiding that
-        // would turn a wrong answer into a shrug. What this setting
-        // controls is the sentence, which is the part somebody drilling
-        // for speed does not want after every correct round.
-        const auto review = SettingsScreenComponent::getReviewMode (localisationProperties);
-        const auto wanted = review == SettingsScreenComponent::Review::always
-                             || (review == SettingsScreenComponent::Review::onMiss
-                                  && ! game.wasLastAnswerCorrect());
-
-        feedbackLabel.setText (wanted ? localisedFeedback (game, localisation) : juce::String(),
-                                juce::dontSendNotification);
+        feedbackLabel.setText (localisedFeedback (game, localisation), juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().negative);
     }
     else

@@ -311,14 +311,6 @@
   "ui.soundsBuiltInPercussive": "内蔵・打楽器系",
   "ui.soundsBuiltInSustained": "内蔵・持続音系",
   "ui.optionNumber": "選択肢 {{n}}",
-  "ui.settingsTraining": "トレーニング",
-  "ui.reviewWhen": "回答の解説",
-  "ui.reviewAlways": "常に",
-  "ui.reviewOnMiss": "間違えたときだけ",
-  "ui.reviewNever": "表示しない",
-  "ui.advanceWhen": "次のラウンド",
-  "ui.advanceAuto": "自動で",
-  "ui.advanceManual": "ボタンで",
   "ui.licenceMore": "ライセンス全文を読む",
   "ui.licenceLess": "閉じる"
 }

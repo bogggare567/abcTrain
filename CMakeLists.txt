@@ -606,14 +606,11 @@ target_link_libraries(EarTrainerTests
 # with no plugin host. See tools/EditorSnapshots.cpp for why: the whole
 # class of bug this project keeps shipping is invisible to the unit tests
 # and obvious in a picture.
-juce_add_console_app(EditorSnapshots
-    PRODUCT_NAME "EditorSnapshots"
-)
-
-juce_generate_juce_header(EditorSnapshots)
-
-target_sources(EditorSnapshots
-    PRIVATE
+# The editor tools - the snapshot renderer and the click map - are the
+# same program with a different question, so they compile the same
+# fifty files. One list, because two would drift the first time a
+# screen was added to only one of them.
+set(abcTrainEditorToolSources
         shared/IdleScreensaver.cpp
         shared/TourOverlay.cpp
         shared/UpdatePrompt.cpp
@@ -622,7 +619,6 @@ target_sources(EditorSnapshots
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
-        tools/EditorSnapshots.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/GameManager.cpp
@@ -672,6 +668,18 @@ target_sources(EditorSnapshots
         shared/i18n/LocalisationManager.cpp
 )
 
+juce_add_console_app(EditorSnapshots
+    PRODUCT_NAME "EditorSnapshots"
+)
+
+juce_generate_juce_header(EditorSnapshots)
+
+target_sources(EditorSnapshots
+    PRIVATE
+        tools/EditorSnapshots.cpp
+        ${abcTrainEditorToolSources}
+)
+
 target_compile_definitions(EditorSnapshots
     PUBLIC
         JUCE_WEB_BROWSER=0
@@ -693,7 +701,45 @@ target_link_libraries(EditorSnapshots
         juce::juce_recommended_warning_flags
 )
 
-foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests EditorSnapshots)
+# What can actually be pressed. EditorSnapshots answers "what does this
+# look like"; a control can look perfectly present in a picture and still
+# be unreachable because something transparent lies over it, or it was
+# parked at empty bounds. Both read to a player as a broken app, and
+# neither is visible in a snapshot - see tools/ClickMap.cpp.
+juce_add_console_app(ClickMap
+    PRODUCT_NAME "ClickMap"
+)
+
+juce_generate_juce_header(ClickMap)
+
+target_sources(ClickMap
+    PRIVATE
+        tools/ClickMap.cpp
+        ${abcTrainEditorToolSources}
+)
+
+target_compile_definitions(ClickMap
+    PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(ClickMap
+    PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+        juce::juce_animation
+        I18nData
+        FontData
+        SampleData
+        BrandData
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags
+)
+
+foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests EditorSnapshots ClickMap)
     target_include_directories(${abcTrainTarget} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 endforeach()
 

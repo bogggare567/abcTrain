@@ -114,11 +114,10 @@ public:
         tour.completeAnimation();
     }
 
-    void openSettingsForSnapshot (int page = 0)
+    void openSettingsForSnapshot()
     {
         settingsScreen.setVisible (true);
         settingsScreen.refresh();
-        settingsScreen.openPageForSnapshot (page);
         settingsScreen.toFront (false);
     }
 
@@ -194,6 +193,15 @@ public:
     // the countdown needs a message loop the snapshot tool never pumps.
     void startRunForSnapshot (SessionManager::Mode mode)
     {
+        // Through the pills, not around them. Setting the session's mode
+        // directly left the row still saying "Practice" during a Survival
+        // run - which was only ever true in a snapshot, and is exactly the
+        // sort of thing a snapshot exists to catch: two sources of truth
+        // for one fact, and the picture showing the wrong one.
+        practiceButton.setToggleState (mode == SessionManager::Mode::practice, juce::dontSendNotification);
+        survivalButton.setToggleState (mode == SessionManager::Mode::survival, juce::dontSendNotification);
+        blitzButton.setToggleState (mode == SessionManager::Mode::blitz, juce::dontSendNotification);
+
         session.setMode (mode);
         runStarted = true;
         startNewRun();
@@ -919,6 +927,12 @@ private:
     // afforded. See SessionManager::spendHint for the price per mode.
     void requestHint();
     void refreshHintButton();
+
+    // Closes the room while a Survival or Blitz run is live: everything
+    // that would let you change the terms of a run you are already being
+    // scored on stops responding. See the definition for the four things
+    // that deliberately stay live.
+    void applyRunLock();
 
     // Puts the hint back behind its price. Called from every path that
     // starts a round, including the auto-advance - which is why it is its

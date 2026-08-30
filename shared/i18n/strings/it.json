@@ -311,14 +311,6 @@
   "ui.soundsBuiltInPercussive": "Inclusi: percussivi",
   "ui.soundsBuiltInSustained": "Inclusi: tenuti",
   "ui.optionNumber": "Opzione {{n}}",
-  "ui.settingsTraining": "Allenamento",
-  "ui.reviewWhen": "Analisi della risposta",
-  "ui.reviewAlways": "Sempre",
-  "ui.reviewOnMiss": "Solo se sbagli",
-  "ui.reviewNever": "Mai",
-  "ui.advanceWhen": "Turno successivo",
-  "ui.advanceAuto": "Automatico",
-  "ui.advanceManual": "Con un pulsante",
   "ui.licenceMore": "Leggi l'intera licenza",
   "ui.licenceLess": "Mostra meno"
 }

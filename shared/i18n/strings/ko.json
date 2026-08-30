@@ -311,14 +311,6 @@
   "ui.soundsBuiltInPercussive": "내장 타악기",
   "ui.soundsBuiltInSustained": "내장 지속음",
   "ui.optionNumber": "보기 {{n}}",
-  "ui.settingsTraining": "훈련",
-  "ui.reviewWhen": "답 해설",
-  "ui.reviewAlways": "항상",
-  "ui.reviewOnMiss": "틀렸을 때만",
-  "ui.reviewNever": "표시 안 함",
-  "ui.advanceWhen": "다음 라운드",
-  "ui.advanceAuto": "자동으로",
-  "ui.advanceManual": "버튼으로",
   "ui.licenceMore": "라이선스 전문 읽기",
   "ui.licenceLess": "접기"
 }

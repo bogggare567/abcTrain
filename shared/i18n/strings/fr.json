@@ -311,14 +311,6 @@
   "ui.soundsBuiltInPercussive": "Fournis : percussifs",
   "ui.soundsBuiltInSustained": "Fournis : tenus",
   "ui.optionNumber": "Option {{n}}",
-  "ui.settingsTraining": "Entraînement",
-  "ui.reviewWhen": "Analyse de la réponse",
-  "ui.reviewAlways": "Toujours",
-  "ui.reviewOnMiss": "Seulement si raté",
-  "ui.reviewNever": "Jamais",
-  "ui.advanceWhen": "Manche suivante",
-  "ui.advanceAuto": "Automatique",
-  "ui.advanceManual": "Sur un bouton",
   "ui.licenceMore": "Lire toute la licence",
   "ui.licenceLess": "Réduire"
 }

@@ -81,7 +81,7 @@ namespace
         return false;
     }
 
-    enum class Extra { none, training, sounds, settings, settingsTraining, results, achievements,
+    enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint };
 
@@ -146,9 +146,6 @@ namespace
 
                 if (extra == Extra::settings)
                     editor.openSettingsForSnapshot();
-
-                if (extra == Extra::settingsTraining)
-                    editor.openSettingsForSnapshot (2);
 
                 if (extra == Extra::results)
                     editor.showRunResultsForSnapshot();
@@ -298,7 +295,6 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
-            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsTraining", -1, Extra::settingsTraining);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);

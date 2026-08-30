@@ -167,57 +167,6 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
 
     refreshLicenceView();
 
-    // ---- how a round ends -------------------------------------------------
-    {
-        const auto addSegments = [this] (juce::OwnedArray<juce::TextButton>& into,
-                                          std::initializer_list<const char*> keys,
-                                          const char* storageKey, bool isBool)
-        {
-            int index = 0;
-
-            for (const auto* key : keys)
-            {
-                auto* button = into.add (new juce::TextButton (localisation.getText (key)));
-                const auto value = index++;
-
-                button->onClick = [this, storageKey, value, isBool]
-                {
-                    if (isBool)
-                        properties.setValue (storageKey, value == 0);
-                    else
-                        properties.setValue (storageKey, value);
-
-                    properties.saveIfNeeded();
-                    refreshTrainingButtons();
-
-                    if (onSettingsChanged != nullptr)
-                        onSettingsChanged();
-                };
-
-                addChildComponent (button);
-            }
-        };
-
-        // Order matters: the index *is* the stored value, so inserting a
-        // choice in the middle would silently re-mean everybody's setting.
-        addSegments (reviewButtons,
-                     { "ui.reviewAlways", "ui.reviewOnMiss", "ui.reviewNever" },
-                     reviewModeKey, false);
-
-        addSegments (advanceButtons,
-                     { "ui.advanceAuto", "ui.advanceManual" },
-                     autoAdvanceKey, true);
-
-        for (auto* label : { &reviewLabel, &advanceLabel })
-        {
-            label->setFont (AbcTrainLookAndFeel::bodyFont());
-            label->setJustificationType (juce::Justification::centredLeft);
-            addChildComponent (label);
-        }
-
-        refreshTrainingButtons();
-    }
-
     selectPage (Page::about);
     refresh();
 }
@@ -251,47 +200,6 @@ void SettingsScreenComponent::refreshLicenceView()
     licenceToggle.setButtonText (localisation.getText (licenceExpanded ? "ui.licenceLess"
                                                                        : "ui.licenceMore"));
 }
-
-void SettingsScreenComponent::refreshTrainingButtons()
-{
-    reviewLabel.setText (localisation.getText ("ui.reviewWhen"), juce::dontSendNotification);
-    advanceLabel.setText (localisation.getText ("ui.advanceWhen"), juce::dontSendNotification);
-
-    const auto review = (int) getReviewMode (properties);
-    const auto autoAdvance = getAutoAdvance (properties);
-    const auto& theme = AbcTrainTheme::current();
-
-    const auto mark = [&] (juce::OwnedArray<juce::TextButton>& buttons, int selected)
-    {
-        for (int i = 0; i < buttons.size(); ++i)
-        {
-            // Toggle state is what the look-and-feel reads to decide
-            // filled-versus-outlined, and the fill colour comes from the
-            // "on" slot - so a segmented control needs no drawing code of
-            // its own.
-            buttons[i]->setToggleState (i == selected, juce::dontSendNotification);
-            buttons[i]->setColour (juce::TextButton::buttonOnColourId, theme.accent);
-        }
-    };
-
-    mark (reviewButtons, review);
-    mark (advanceButtons, autoAdvance ? 0 : 1);
-}
-
-SettingsScreenComponent::Review SettingsScreenComponent::getReviewMode (juce::PropertiesFile& properties)
-{
-    // Defaults to "always", which is what the app did before this setting
-    // existed - a new preference should never silently change behaviour
-    // for somebody who has not been asked.
-    const auto stored = properties.getIntValue (reviewModeKey, 0);
-    return static_cast<Review> (juce::jlimit (0, 2, stored));
-}
-
-bool SettingsScreenComponent::getAutoAdvance (juce::PropertiesFile& properties)
-{
-    return properties.getBoolValue (autoAdvanceKey, true);
-}
-
 void SettingsScreenComponent::applyStoredTypeface (juce::PropertiesFile& properties)
 {
     AbcTrainLookAndFeel::setTypefaceName (
@@ -318,8 +226,6 @@ void SettingsScreenComponent::applyStoredBackground (juce::PropertiesFile& prope
 
 void SettingsScreenComponent::refresh()
 {
-    refreshTrainingButtons();
-
     const auto& theme = AbcTrainTheme::current();
 
     headingAppearance = localisation.getText ("ui.settingsAppearance");
@@ -439,15 +345,6 @@ void SettingsScreenComponent::selectPage (Page page)
     licenceView.setVisible (page == Page::about);
     licenceToggle.setVisible (page == Page::about);
 
-    {
-        const auto training = page == Page::training;
-        reviewLabel.setVisible (training);
-        advanceLabel.setVisible (training);
-
-        for (auto* b : reviewButtons)  b->setVisible (training);
-        for (auto* b : advanceButtons) b->setVisible (training);
-    }
-
     resized();
     repaint();
 }
@@ -467,10 +364,9 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
 
     const juce::String labels[] { localisation.getText ("ui.about"),
                                    localisation.getText ("ui.settingsAppearance"),
-                                   localisation.getText ("ui.settingsTraining"),
                                    localisation.getText ("ui.settingsBackground") };
 
-    for (int i = 0; i < numPages; ++i)
+    for (int i = 0; i < 3; ++i)
     {
         const auto bounds = row.removeFromTop (34);
         row.removeFromTop (2);
@@ -573,7 +469,6 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
     const juce::String heading = currentPage == Page::about        ? localisation.getText ("ui.about")
                                : currentPage == Page::appearance   ? localisation.getText ("ui.settingsAppearance")
-                               : currentPage == Page::training     ? localisation.getText ("ui.settingsTraining")
                                                                    : localisation.getText ("ui.settingsBackground");
 
     AbcTrainLookAndFeel::drawTrackedText (g, heading,
@@ -632,34 +527,6 @@ void SettingsScreenComponent::resized()
         const auto saverWidth = juce::jmax (90, screensaverSelector.getPreferredWidth());
         screensaverSelector.setBounds (saverRow.removeFromLeft (saverWidth)
                                            .withSizeKeepingCentre (saverWidth, 24));
-    }
-    else if (currentPage == Page::training)
-    {
-        const auto layoutSegments = [&] (juce::Label& label, juce::OwnedArray<juce::TextButton>& buttons)
-        {
-            auto row = page.removeFromTop (34);
-            label.setBounds (row.removeFromLeft (150));
-
-            for (auto* button : buttons)
-            {
-                // Each segment measured from its own tracked capitals -
-                // the same reasoning as the mode pills on the training
-                // screen, and the same reason a fixed width would be
-                // wrong in eleven of our twelve languages.
-                const auto width = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (
-                                       AbcTrainLookAndFeel::toCaps (button->getButtonText()),
-                                       AbcTrainLookAndFeel::labelFont(), 1.4f)) + 30;
-
-                button->setBounds (row.removeFromLeft (juce::jmin (width, row.getWidth()))
-                                       .withSizeKeepingCentre (juce::jmin (width, row.getWidth()), 30));
-                row.removeFromLeft (Spacing::hairline);
-            }
-
-            page.removeFromTop (Spacing::medium);
-        };
-
-        layoutSegments (reviewLabel, reviewButtons);
-        layoutSegments (advanceLabel, advanceButtons);
     }
     else
     {

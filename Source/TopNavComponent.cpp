@@ -136,6 +136,14 @@ juce::Rectangle<int> TopNavComponent::getVolumeSlot() const
 
 void TopNavComponent::mouseMove (const juce::MouseEvent& e)
 {
+    // A plain Component keeps receiving mouse events after setEnabled
+    // (false) - only Button, Slider and friends check the flag for you.
+    // So every handler here checks it, which is what makes the bar
+    // genuinely dead while a run is being played rather than merely
+    // painted that way. See EarTrainerEditor::applyRunLock.
+    if (! isEnabled())
+        return;
+
     const auto now = tabAt (e.getPosition());
 
     if (now != hovered)
@@ -156,6 +164,9 @@ void TopNavComponent::mouseExit (const juce::MouseEvent&)
 
 void TopNavComponent::mouseDown (const juce::MouseEvent& e)
 {
+    if (! isEnabled())
+        return;
+
     const auto index = tabAt (e.getPosition());
 
     if (index >= 0 && onItemChosen != nullptr)
@@ -198,6 +209,7 @@ void TopNavComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
     const auto bounds = getLocalBounds();
+
 
     // One hairline under the whole bar. No fill: the bar is part of the
     // page, and giving it a surface of its own would make it a second
