@@ -300,5 +300,6 @@
   "ui.missVerdict": "놓친 것 대부분이 {{where}}에 있습니다. 여기를 더 해볼 만합니다.",
   "ui.missJoin": "와 ",
   "ui.earnedCount": "{{total}}개 중 {{done}}개 획득",
-  "ui.seeAll": "전체"
+  "ui.seeAll": "전체",
+  "ui.yourAnswer": "당신의 답"
 }

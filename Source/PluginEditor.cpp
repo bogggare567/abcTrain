@@ -379,7 +379,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     auto& gameManager = processor.getGameManager();
 
     currentGameLabel.setJustificationType (juce::Justification::centredLeft);
-    currentGameLabel.setFont (AbcTrainLookAndFeel::headingFont());
+    // The exercise's name is the title of this screen now that the app's
+    // own name lives in the bar above, so it is sized like one.
+    currentGameLabel.setFont (AbcTrainLookAndFeel::titleFont());
     addAndMakeVisible (currentGameLabel);
 
 
@@ -1015,24 +1017,29 @@ void EarTrainerEditor::paint (juce::Graphics& g)
         // now, which is what the room was for.
     }
 
-    // The exercise name, letter-spaced, on the training screen only.
-    //
-    // The home screen used to carry one too, and it was the same words the
-    // wordmark in the bar above already says. Two titles one under the
-    // other is not a hierarchy, it is a repetition - and with navigation
-    // now across the top, the wordmark *is* the page title.
+    // Two painted things on the training screen, both of which would be a
+    // widget in a less careful codebase and are a rectangle here.
     if (currentScreen == Screen::training)
-        AbcTrainLookAndFeel::drawTrackedText (
-            // "ABC" is the product name and does not translate; what
-            // follows it does. The host shows "ABC Ear Trainer" whatever
-            // the interface language is, and a window titled only
-            // "Тренажёр слуха" makes the two look like different programs.
-            g, titleLabel.getText(),
-            juce::Rectangle<float> ((float) (contentBounds().getX() + AbcTrainTheme::Spacing::large),
-                                     (float) (contentBounds().getY() + AbcTrainTheme::Spacing::small),
-                                     (float) contentBounds().getWidth() * 0.6f, 32.0f),
-            AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
-            juce::Justification::centredLeft);
+    {
+        // The caption over the scale. It says what to *do*, not what the
+        // thing is called, which is the difference between a label and an
+        // instruction.
+        if (! answerHeadingRow.isEmpty())
+            AbcTrainLookAndFeel::drawTrackedText (
+                g, AbcTrainLookAndFeel::toCaps (answerHeadingText),
+                answerHeadingRow.toFloat(), AbcTrainLookAndFeel::labelFont(),
+                theme.textDim, 2.8f, juce::Justification::centredLeft);
+
+        // A hairline over the control bar, and nothing else - no fill, no
+        // panel. The bar is the bottom edge of the page rather than an
+        // object resting on it.
+        if (! controlBar.isEmpty())
+        {
+            g.setColour (theme.divider);
+            g.fillRect (getLocalBounds().getX(), controlBar.getY() - AbcTrainTheme::Spacing::large,
+                         getWidth(), 1);
+        }
+    }
 }
 
 void EarTrainerEditor::showUpdateOutcome (const juce::String& text)
@@ -1095,13 +1102,11 @@ void EarTrainerEditor::resized()
                                          + homeStatusHeight + Spacing::small)
                               .withTrimmedBottom (Spacing::large + 30 + Spacing::small));
 
-    auto area = contentBounds().reduced (Spacing::large);
-
-    // --- title row: just the name of where you are ---------------------
-    // The app's controls used to live up here, six of them in a row, and
-    // that made the first thing anyone read a toolbar. They are on a bar
-    // along the bottom now (see below); the top is a title.
-    area.removeFromTop (32);
+    // No title row any more. The app's name is the wordmark in the bar
+    // above, and the *exercise*'s name is the first thing in the row
+    // below - so the 60px this used to reserve was reserving it for a
+    // third copy of one of those two.
+    auto area = contentBounds().reduced (Spacing::large, Spacing::medium);
 
     // --- the tool bar, bottom left ---------------------------------------
     {
@@ -1138,8 +1143,6 @@ void EarTrainerEditor::resized()
         bar.removeFromRight (Spacing::medium);
         donateLink.setBounds (bar.removeFromRight (150).withSizeKeepingCentre (150, 18));
     }
-
-    area.removeFromTop (Spacing::section);
 
     // --- exercise section: which game, and what you're listening for ---
     // Collapses to just the name row once the exercise is familiar (see
@@ -1265,26 +1268,119 @@ void EarTrainerEditor::resized()
     // icons; the icons went to the rail and the strip is 22 now, and a
     // reserve that no longer matches what it is reserving for is how the
     // soundkorb link ended up drawn across the hint button.
+    // Matches the footer strip below exactly. It was 30 when that strip
+    // held six icons; the icons went to the navigation bar and the strip
+    // is 22 now, and a reserve that no longer matches what it is reserving
+    // for is how the soundkorb link ended up drawn across the hint button.
     constexpr int toolBarReserve = 22 + Spacing::medium;
 
-    // 20 heading + 24 verdict + 4 + 210 scale + 12 + 34 controls = 304.
-    // It was 318, written when the scale had no cap and could grow; a
-    // floor larger than the content is a floor that overlaps its
-    // neighbours, since removeFromTop clamps rather than overflowing.
-    answerSection = area.removeFromTop (
-        juce::jmax (304, area.getHeight() - toolBarReserve));
+    // --- the control bar, along the bottom -------------------------------
+    //
+    // Everything about *how this round is being played*, on one line with
+    // a hairline over it: the modes, the tally, the hint, and the action.
+    // It is taken off the bottom before anything else is measured, so the
+    // scale above can then have every pixel between - which is the whole
+    // point of the rearrangement. Laying this out top-down with fixed
+    // heights is what left a tall window with a strip of controls and a
+    // field of nothing under it.
+    controlBar = area.removeFromBottom (controlBarHeight + toolBarReserve)
+                     .withTrimmedBottom (toolBarReserve);
+    {
+        auto controlRow = controlBar.reduced (0, (controlBarHeight - 34) / 2);
+
+        // Modes left, quiet: chosen once a session. The action right, where
+        // the thing you press to move on belongs. Everything in between is
+        // status.
+        //
+        // Each pill is measured from its own tracked capitals rather than
+        // given a fixed width. A fixed 84 fits "PRACTICE" and clips
+        // "ВЫЖИВАНИЕ" - which is not a Russian problem, it is what a fixed
+        // width does to any language that is not the one it was measured
+        // in, and this app ships twelve.
+        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        {
+            const auto width = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (
+                                   AbcTrainLookAndFeel::toCaps (pill->getButtonText()),
+                                   AbcTrainLookAndFeel::labelFont(), 1.4f)) + 34;
+
+            pill->setBounds (controlRow.removeFromLeft (width)
+                                 .withSizeKeepingCentre (width, 34));
+            controlRow.removeFromLeft (Spacing::hairline);
+        }
+
+        controlRow.removeFromLeft (Spacing::large);
+
+        // One slot, two tenants: the session tally when nothing is
+        // running, the way out while something is.
+        {
+            auto slot = controlRow.removeFromLeft (110);
+            const auto running = isRunHudActive();
+            endRunButton.setBounds (running ? slot.withSizeKeepingCentre (100, 30)
+                                            : juce::Rectangle<int>());
+            scoreLabel.setBounds (running ? juce::Rectangle<int>() : slot);
+        }
+
+        // Only reserve width for the lives/clock readout when there is
+        // one. In Practice there is nothing to report, and holding 86px
+        // for an empty label is what pushed the other groups into each
+        // other at the design width.
+        runStatusLabel.setBounds (runStatusLabel.getText().isNotEmpty()
+                                      ? controlRow.removeFromLeft (90)
+                                      : juce::Rectangle<int>());
+
+        // The action, on the right, as the one solid block on the screen.
+        // Between rounds that is "new round"; there is only ever one of
+        // them visible, so they share the slot rather than reserving two.
+        {
+            auto slot = controlRow.removeFromRight (168).withSizeKeepingCentre (168, 38);
+            restartButton.setBounds (slot);
+        }
+
+        controlRow.removeFromRight (Spacing::medium);
+
+        // The hint used to be a 30px glyph with a caption beside it, and
+        // the glyph read as a "no entry" sign - so the one control you
+        // reach for when stuck looked disabled and unlabelled. It is one
+        // button now, with its price written on it.
+        hintButton.setBounds (controlRow.removeFromRight (176)
+                                  .withSizeKeepingCentre (176, 34));
+    }
+
+    // --- answer section: the caption, the A/B pair, and the scale -------
+    //
+    // Everything that is left, and that is deliberate: this is the control
+    // the screen exists for. A taller scale is a more precise scale, and
+    // nothing else here improves by being taller.
+    answerSection = area;
     {
         auto inner = answerSection;
 
-        // Was Spacing::large, clearing a section heading that no longer
-        // exists. A gap reserved for something that was deleted is just a
-        // gap, and this one sat between the instruction and the answer -
-        // the two things a player looks at in sequence.
+        // The heading row carries the A/B pair on its right.
+        //
+        // A/B used to sit on its own row under the scale and the mode
+        // pills on another, which made five levels of importance on a
+        // screen that should have four. Up here it is beside the sentence
+        // that tells you what to do with the scale, which is when you
+        // reach for it - and the row it vacated became scale.
+        {
+            auto headingRow = inner.removeFromTop (34);
+
+            auto pair = headingRow.removeFromRight (
+                juce::jmin (240, headingRow.getWidth() / 3)).withSizeKeepingCentre (
+                    juce::jmin (240, headingRow.getWidth() / 3), 34);
+
+            const auto half = (pair.getWidth() - Spacing::hairline) / 2;
+            beforeButton.setBounds (pair.removeFromLeft (half));
+            pair.removeFromLeft (Spacing::hairline);
+            afterButton.setBounds (pair);
+
+            answerHeadingRow = headingRow;
+        }
+
         inner.removeFromTop (Spacing::small);
 
-        // The pips live beside the verdict line - the promotion test is
-        // part of the answer moment, not part of the header. Reserved on
-        // both sides so the verdict text stays truly centred.
+        // The verdict, over the scale rather than above the heading: it is
+        // about the answer, so it belongs with the answer.
         auto feedbackRow = inner.removeFromTop (24);
         promotionPips.setBounds (feedbackRow.removeFromRight (90));
         feedbackRow.removeFromLeft (90);
@@ -1301,118 +1397,23 @@ void EarTrainerEditor::resized()
         // where the question is about to be.
         runCountdown.setBounds (answerSection);
 
-        // *One* row under the scale, not two.
-        //
-        // A/B sat on its own row and the mode pills on another, which made
-        // five levels of importance on a screen that should have four - and
-        // the two are the same kind of thing anyway: how this round is being
-        // played. Narrower pills and a narrower hint button pay for it.
-        //
-        // Taken off the bottom first so the scale can then have everything
-        // between. Laying these out top-down with fixed heights is what left
-        // a tall window with a strip of controls and a field of nothing
-        // under it.
-        auto controlRow = inner.removeFromBottom (34);
-        inner.removeFromBottom (Spacing::medium);
-
-        // Everything that is left, floored at the height the zones need to
-        // stay legible: 40px of the scale is its value readout and 18 the
-        // caption, so under ~120 the zones are too shallow for staggered
-        // labels. This is the control the screen exists for, so it is the
-        // one that should get the room - a taller scale is a more precise
-        // scale, and nothing else here improves by being taller.
-        // Capped, not merely floored, and centred in whatever is left.
-        //
-        // "Everything left over goes to the scale" is right up to a point
-        // and wrong past it: a ruler is a line with marks on it, and at
-        // 380px tall it stops being an instrument and becomes a large
-        // empty rectangle with some ticks in it - which is most of what
-        // made this screen read as boxes. Past the cap the leftover
-        // becomes air around the control instead of more control, which
-        // is what every interface worth copying does with spare room.
-        // Two caps, not one. Without a hint the scale may take the room a
-        // hint would have used; with one, it gives that room back.
-        //
-        // This is the third answer to the same question and the first good
-        // one. Resizing the *window* was wrong - it shoves every other
-        // window in the DAW at the moment somebody is trying to read a
-        // picture. Reserving the space permanently was also wrong: an empty
-        // reserved strip does not read as "the picture goes here", it reads
-        // as something that failed to load, and the render made that
-        // obvious in a way the reasoning had not. Letting one control
-        // reflow inside a window that never moves is the version with no
-        // victim.
         // Named alternatives and a ruler want different amounts of room.
         // A ruler earns height - it is a value read off a scale, and a
         // taller scale is a more precise one. Two words do not: past about
-        // 180px the cards stop being buttons and become walls.
+        // 190px the cards stop being buttons and become walls, so the rest
+        // becomes air around them instead of more of them.
+        // Named alternatives and a ruler want very different amounts of
+        // room. A ruler takes everything: its height is not empty space
+        // but the vertical extent of the tolerance band, the answer line
+        // and the value read off them - so a taller well really is a more
+        // legible one. Two named alternatives are not: past about 190px
+        // the cards stop being buttons and become walls, and the leftover
+        // is better spent as air around them than as more of them.
         const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
-        const auto continuousMax = (hintRevealed && ! hintNarrowsTheScale()) ? 210
-                                                                             : 210 + hintPanelHeight;
-        const auto maxScaleHeight = onRuler ? continuousMax : 190;
-        const auto scaleHeight = juce::jlimit (onRuler ? 186 : 150, maxScaleHeight, inner.getHeight());
+        const auto scaleHeight = onRuler ? inner.getHeight()
+                                         : juce::jmin (190, inner.getHeight());
 
-        // Anchored to the top of what is left, not centred in it. Centring
-        // put the spare room between the "Your answer" heading and the
-        // thing it heads, which is the one place a gap reads as something
-        // having failed to load. Below the scale it reads as room above
-        // the controls, which is what it is.
-        choiceSlider.setBounds (inner.withHeight (scaleHeight)
-                                     .reduced (Spacing::small, 0));
-
-        {
-            // Modes left, narrow and quiet: chosen once a session. The hint
-            // right, where a choice you spend something on belongs. A/B in
-            // the middle, directly under the scale it compares - it is the
-            // control touched most often, so it gets the centre.
-            const auto pillWidth = 62;
-
-            // The pills are laid out identically whether a run is live or
-            // not, so nothing in this row moves when one starts or ends.
-            for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
-                pill->setBounds (controlRow.removeFromLeft (pillWidth)
-                                     .withSizeKeepingCentre (pillWidth, 28));
-
-            controlRow.removeFromLeft (Spacing::medium);
-
-            // One 92px slot, two tenants: the session tally when nothing is
-            // running, the way out while something is.
-            {
-                auto slot = controlRow.removeFromLeft (92);
-                const auto running = isRunHudActive();
-                endRunButton.setBounds (running ? slot.withSizeKeepingCentre (86, 28)
-                                                : juce::Rectangle<int>());
-                scoreLabel.setBounds (running ? juce::Rectangle<int>() : slot);
-            }
-
-            // Only reserve width for the lives/clock readout when there is
-            // one. In Practice there is nothing to report, and holding 86px
-            // for an empty label is what pushed A/B into the hint button -
-            // five groups do not fit in this row at the design width unless
-            // the empty one gives its space back.
-            runStatusLabel.setBounds (runStatusLabel.getText().isNotEmpty()
-                                          ? controlRow.removeFromLeft (78)
-                                          : juce::Rectangle<int>());
-
-            // The hint used to be a 30px glyph with a caption beside it, and
-            // the glyph read as a "no entry" sign - so the one control you
-            // reach for when stuck looked disabled and unlabelled. It is one
-            // button now, with its price written on it.
-            hintButton.setBounds (controlRow.removeFromRight (146)
-                                      .withSizeKeepingCentre (146, 30));
-
-            // No floor: a minimum wider than the space left is a minimum
-            // that overlaps its neighbours instead of shrinking.
-            auto centred = controlRow.withSizeKeepingCentre (
-                juce::jmin (200, controlRow.getWidth() - Spacing::medium * 2), 30);
-
-            restartButton.setBounds (centred.withSizeKeepingCentre (160, 30));
-
-            const auto half = (centred.getWidth() - Spacing::tight) / 2;
-            beforeButton.setBounds (centred.removeFromLeft (half));
-            centred.removeFromLeft (Spacing::tight);
-            afterButton.setBounds (centred);
-        }
+        choiceSlider.setBounds (inner.withHeight (scaleHeight));
     }
 
     area.removeFromTop (Spacing::large);
@@ -2350,11 +2351,16 @@ void EarTrainerEditor::refreshLocalisedText()
     // A ruler has no zones to click. One key served both modes, so the
     // four scale exercises told you to "click a zone to answer" beside a
     // continuous axis that has none.
-    choiceSlider.setPlaceholderText (localisation.getText (
-        processor.getGameManager().getActiveGame().usesContinuousScale()
-            ? "ui.dragOnScale" : "ui.dragToChoose"));
-
     {
+        const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
+        const auto how = localisation.getText (onRuler ? "ui.dragOnScale" : "ui.dragToChoose");
+
+        choiceSlider.setPlaceholderText (how);
+
+        // The same sentence, once, over the scale rather than inside it -
+        // where it was the placeholder text of the control it describes,
+        // and so disappeared the moment anybody used the control.
+        answerHeadingText = localisation.getText ("ui.yourAnswer") + "  \u00b7  " + how;
     }
 
     rebuildGameSelectorItems();
@@ -2438,9 +2444,13 @@ void EarTrainerEditor::rebuildChoiceSlider()
     // A ruler has no zones to click. One key served both modes, so the
     // four scale exercises told you to "click a zone to answer" beside a
     // continuous axis that has none.
-    choiceSlider.setPlaceholderText (localisation.getText (
-        processor.getGameManager().getActiveGame().usesContinuousScale()
-            ? "ui.dragOnScale" : "ui.dragToChoose"));
+    {
+        const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
+        const auto how = localisation.getText (onRuler ? "ui.dragOnScale" : "ui.dragToChoose");
+
+        choiceSlider.setPlaceholderText (how);
+        answerHeadingText = localisation.getText ("ui.yourAnswer") + "  \u00b7  " + how;
+    }
 }
 
 void EarTrainerEditor::choiceButtonClicked (int choiceIndex)

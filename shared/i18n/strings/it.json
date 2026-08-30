@@ -300,5 +300,6 @@
   "ui.missVerdict": "La maggior parte degli errori è su {{where}}. Vale la pena insistere lì.",
   "ui.missJoin": " e ",
   "ui.earnedCount": "{{done}} di {{total}} ottenuti",
-  "ui.seeAll": "Tutti"
+  "ui.seeAll": "Tutti",
+  "ui.yourAnswer": "La tua risposta"
 }

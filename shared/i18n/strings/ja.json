@@ -300,5 +300,6 @@
   "ui.missVerdict": "外しの多くは{{where}}。ここをもう少し続ける価値があります。",
   "ui.missJoin": "と",
   "ui.earnedCount": "{{total}} 中 {{done}} 個獲得",
-  "ui.seeAll": "すべて"
+  "ui.seeAll": "すべて",
+  "ui.yourAnswer": "あなたの回答"
 }

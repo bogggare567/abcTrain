@@ -1213,6 +1213,14 @@ private:
     // a panel and its contents drift apart.
     juce::Rectangle<int> exerciseSection;
     juce::Rectangle<int> answerSection;
+
+    // The heading row's left half - "YOUR ANSWER - DRAG THE SCALE" - and
+    // the bar of controls along the bottom. Both painted rather than built
+    // from widgets: one is a tracked caption, the other is a hairline.
+    juce::Rectangle<int> answerHeadingRow;
+    juce::String answerHeadingText;
+    juce::Rectangle<int> controlBar;
+    static constexpr int controlBarHeight = 70;
     juce::Rectangle<int> progressSection;
     juce::Rectangle<int> hintSection;
 

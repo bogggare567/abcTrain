@@ -300,5 +300,6 @@
   "ui.missVerdict": "大部分失误集中在 {{where}}。值得在这里多练几轮。",
   "ui.missJoin": "和",
   "ui.earnedCount": "已获得 {{total}} 个中的 {{done}} 个",
-  "ui.seeAll": "全部"
+  "ui.seeAll": "全部",
+  "ui.yourAnswer": "你的回答"
 }

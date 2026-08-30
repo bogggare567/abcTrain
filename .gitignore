@@ -25,3 +25,6 @@ out/
 # messages, which cannot drift; a snapshot of "what is broken" goes stale
 # the moment it is acted on.
 /audit/
+
+# Font sources, re-downloadable; see tools/build_fonts.py
+tools/.fontcache/

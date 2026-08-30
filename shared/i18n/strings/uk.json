@@ -300,5 +300,6 @@
   "ui.missVerdict": "Найбільше промахів — {{where}}. Тут варто побути довше.",
   "ui.missJoin": " і ",
   "ui.earnedCount": "отримано {{done}} з {{total}}",
-  "ui.seeAll": "Усі"
+  "ui.seeAll": "Усі",
+  "ui.yourAnswer": "Твоя відповідь"
 }

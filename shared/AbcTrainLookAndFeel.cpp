@@ -402,32 +402,38 @@ void AbcTrainLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
     // hardcoded fill is what lets EarTrainer's per-choice colours (set via
     // setColour() at answer time) still show through, instead of every
     // button looking identical regardless of what a caller asked for.
-    auto fill = backgroundColour
-                    .brighter (0.14f * hover)
-                    .darker (0.10f * press);
+    //
+    // What changed with the blueprint grammar is the *default*: a button
+    // nobody has coloured is now a hairline frame with nothing in it,
+    // not a raised gradient slab. The slab was the single loudest thing
+    // on a screen otherwise made of drawn outlines, and a row of them
+    // read as a toolbar from an operating system nobody uses any more.
+    // A button somebody *has* coloured - a selected mode, an answered
+    // choice - still fills, and now that filling is rare it means
+    // something again.
+    const auto isFilled = ! backgroundColour.isTransparent()
+                              && backgroundColour != t.widgetBackground
+                              && backgroundColour != t.panelBackground;
 
-    juce::Path shape;
-    shape.addRoundedRectangle (bounds, Radius::button);
+    if (isFilled)
+    {
+        const auto fill = backgroundColour.brighter (0.10f * hover).darker (0.12f * press);
+        g.setColour (fill);
+        g.fillRect (bounds);
+    }
+    else
+    {
+        // Hover tints from the accent rather than lightening the surface:
+        // a frame that fills grey on hover looks like it is loading.
+        if (hover > 0.01f || press > 0.01f)
+        {
+            g.setColour (t.accent.withAlpha (0.08f * hover + 0.06f * press));
+            g.fillRect (bounds);
+        }
 
-    // Shadow interpolates between resting, lifted and pressed states.
-    const auto shadowAlpha  = juce::jmap (hover, 0.26f, 0.46f) * (1.0f - press * 0.7f);
-    const auto shadowRadius = (int) std::round (juce::jmap (hover, 5.0f, 10.0f) * (1.0f - press * 0.65f));
-    const auto shadowDrop   = (int) std::round (juce::jmap (hover, 2.0f, 4.0f) * (1.0f - press * 0.75f));
-    dropShadowForPath (g, shape, shadowAlpha, juce::jmax (1, shadowRadius), { 0, juce::jmax (0, shadowDrop) });
-
-    juce::ColourGradient gradient (fill.brighter (0.07f), bounds.getX(), bounds.getY(),
-                                    fill.darker (0.06f), bounds.getX(), bounds.getBottom(), false);
-    g.setGradientFill (gradient);
-    g.fillRoundedRectangle (bounds, Radius::button);
-
-    // A hairline of light along the top edge only. Real raised surfaces
-    // catch light on their upper bevel; a uniform border does not.
-    g.setColour (t.textBright.withAlpha (0.05f + 0.06f * hover));
-    g.drawLine (bounds.getX() + Radius::button, bounds.getY() + 0.5f,
-                bounds.getRight() - Radius::button, bounds.getY() + 0.5f, 1.0f);
-
-    g.setColour (t.outline.withAlpha (0.9f).brighter (0.25f * hover));
-    g.drawRoundedRectangle (bounds, Radius::button, 1.0f);
+        g.setColour (t.outline.interpolatedWith (t.accent, 0.45f * hover));
+        g.drawRect (bounds, 1.0f);
+    }
 }
 
 void AbcTrainLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
@@ -663,8 +669,35 @@ void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b
 {
     if (! isPrimary (button))
     {
-        juce::LookAndFeel_V4::drawButtonText (g, button, shouldDrawButtonAsHighlighted,
-                                               shouldDrawButtonAsDown);
+        // Tracked capitals for every button in the product, not just the
+        // primary one: it is one of the two things (with the square
+        // corners) that makes a control read as part of an instrument
+        // rather than as a web form field. JUCE has no letter-spacing on
+        // drawText, so this cannot go through the base class.
+        const auto& t = current();
+        const auto on = button.getToggleState();
+
+        // A filled button gets the page colour as its label, whatever the
+        // colour scheme says. The scheme's "on" text colour is tuned for a
+        // gradient slab; on a solid accent block it was near-white on
+        // near-amber, which is the one combination this palette cannot
+        // carry.
+        const auto background = button.findColour (on ? juce::TextButton::buttonOnColourId
+                                                      : juce::TextButton::buttonColourId);
+        const auto filled = ! background.isTransparent()
+                                && background != t.widgetBackground
+                                && background != t.panelBackground;
+
+        const auto colour = (filled ? t.windowBackground
+                                    : button.findColour (on ? juce::TextButton::textColourOnId
+                                                            : juce::TextButton::textColourOffId))
+                                .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f);
+
+        juce::ignoreUnused (shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+
+        drawTrackedText (g, toCaps (button.getButtonText()),
+                         button.getLocalBounds().toFloat().reduced (6.0f, 0.0f),
+                         labelFont(), colour, 1.4f, juce::Justification::centred);
         return;
     }
 
@@ -766,7 +799,13 @@ void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectang
     // room - while the same 26% of the same colour against a near-black is
     // barely a tilt. A light page has far less headroom before a tint
     // becomes the subject.
-    const auto tintStrength = t.mode == Mode::light ? 0.10f : 0.32f;
+    // Cut hard from 0.32. At a third of the family colour the whole page
+    // went blue behind a blue exercise, which was legible as "each
+    // training has its own room" only if you already knew that was the
+    // intention - otherwise it reads as a wash over a design, and it is
+    // exactly what made the window look washed beside the mockup. A tenth
+    // is still a room; it is just no longer painted.
+    const auto tintStrength = t.mode == Mode::light ? 0.05f : 0.11f;
     const auto base = tint.isTransparent() ? t.windowBackground
                                            : t.windowBackground.interpolatedWith (tint.withAlpha (1.0f), tintStrength);
 

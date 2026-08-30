@@ -300,5 +300,6 @@
   "ui.missVerdict": "Die meisten Fehler liegen bei {{where}}. Dort lohnen sich mehr Runden.",
   "ui.missJoin": " und ",
   "ui.earnedCount": "{{done}} von {{total}} erhalten",
-  "ui.seeAll": "Alle"
+  "ui.seeAll": "Alle",
+  "ui.yourAnswer": "Deine Antwort"
 }

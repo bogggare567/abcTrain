@@ -300,5 +300,6 @@
   "ui.missVerdict": "Most misses land in {{where}}. Worth spending more rounds there.",
   "ui.missJoin": " and ",
   "ui.earnedCount": "{{done}} of {{total}} earned",
-  "ui.seeAll": "All"
+  "ui.seeAll": "All",
+  "ui.yourAnswer": "Your answer"
 }

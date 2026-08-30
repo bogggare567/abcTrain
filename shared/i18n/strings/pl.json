@@ -300,5 +300,6 @@
   "ui.missVerdict": "Najwięcej pomyłek wypada na {{where}}. Warto tu zostać dłużej.",
   "ui.missJoin": " i ",
   "ui.earnedCount": "zdobyto {{done}} z {{total}}",
-  "ui.seeAll": "Wszystkie"
+  "ui.seeAll": "Wszystkie",
+  "ui.yourAnswer": "Twoja odpowiedź"
 }

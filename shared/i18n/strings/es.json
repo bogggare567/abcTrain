@@ -300,5 +300,6 @@
   "ui.missVerdict": "La mayoría de los fallos caen en {{where}}. Vale la pena practicar más ahí.",
   "ui.missJoin": " y ",
   "ui.earnedCount": "{{done}} de {{total}} logrados",
-  "ui.seeAll": "Todos"
+  "ui.seeAll": "Todos",
+  "ui.yourAnswer": "Tu respuesta"
 }
