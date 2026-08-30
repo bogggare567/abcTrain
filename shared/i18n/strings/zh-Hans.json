@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "使用「{{file}}」训练",
   "ui.soundsShuffling": "在「{{category}}」中随机 — 当前：{{file}}",
   "ui.soundsBuiltInPercussive": "内置打击类",
-  "ui.soundsBuiltInSustained": "内置持续类"
+  "ui.soundsBuiltInSustained": "内置持续类",
+  "ui.optionNumber": "选项 {{n}}"
 }

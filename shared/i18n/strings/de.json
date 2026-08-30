@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "Übung mit „{{file}}“",
   "ui.soundsShuffling": "Mische {{category}} — jetzt: {{file}}",
   "ui.soundsBuiltInPercussive": "Mitgeliefert: perkussiv",
-  "ui.soundsBuiltInSustained": "Mitgeliefert: gehalten"
+  "ui.soundsBuiltInSustained": "Mitgeliefert: gehalten",
+  "ui.optionNumber": "Option {{n}}"
 }

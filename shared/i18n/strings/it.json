@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "Allenamento su «{{file}}»",
   "ui.soundsShuffling": "Casuale in {{category}} — ora: {{file}}",
   "ui.soundsBuiltInPercussive": "Inclusi: percussivi",
-  "ui.soundsBuiltInSustained": "Inclusi: tenuti"
+  "ui.soundsBuiltInSustained": "Inclusi: tenuti",
+  "ui.optionNumber": "Opzione {{n}}"
 }

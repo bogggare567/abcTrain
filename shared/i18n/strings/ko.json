@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "「{{file}}」로 연습 중",
   "ui.soundsShuffling": "{{category}}에서 무작위 — 현재: {{file}}",
   "ui.soundsBuiltInPercussive": "내장 타악기",
-  "ui.soundsBuiltInSustained": "내장 지속음"
+  "ui.soundsBuiltInSustained": "내장 지속음",
+  "ui.optionNumber": "보기 {{n}}"
 }

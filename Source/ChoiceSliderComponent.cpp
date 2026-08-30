@@ -80,6 +80,13 @@ void ChoiceSliderComponent::setChoices (const juce::StringArray& labels)
     resetForNewRound();
 }
 
+void ChoiceSliderComponent::setOptionNotes (juce::StringArray notes, juce::String caption)
+{
+    optionNotes = std::move (notes);
+    optionCaption = std::move (caption);
+    repaint();
+}
+
 void ChoiceSliderComponent::resetForNewRound()
 {
     if (! feedbackAnimator.isComplete())
@@ -326,81 +333,19 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
 
     // ---- the zones ----
     //
-    // Separate cards with a gap, not one recessed slab divided by a
-    // hairline. Two named alternatives are two *things you can pick*, and
-    // a single dark rectangle with a line down the middle and a word in
-    // each half is a diagram of a rectangle - which is most of what made
-    // this screen read as boxes. A gap says "these are two"; the hairline
-    // was saying it far too quietly, and only because the slab underneath
-    // was saying "these are one".
+    // Two panels, each about one answer: a drawn frame, the option's
+    // number in small capitals, its name at the size a name deserves, and
+    // a line saying what it sounds like. Only the one you are on is
+    // filled, in its family's colour at 7%, with the registration marks -
+    // the same grammar as an exercise card on the home screen, because it
+    // is the same kind of object.
+    //
+    // They used to be recessed wells with a word centred in each, capped
+    // at 190px tall, and the render is what showed that was wrong: two
+    // short slabs at the top of a tall space read as a screen that failed
+    // to finish loading, not as restraint.
     constexpr float zoneGap = 10.0f;
-
-    for (int i = 0; i < n; ++i)
-    {
-        const auto zone = zoneForIndex (i, scaleArea);
-        const auto isHighlighted = (i == highlighted);
-
-        // Alternating zone shading, for a row long enough that the eye
-        // needs help counting it. With exactly two it does the opposite:
-        // one lighter half beside one darker half reads as "the left one
-        // is already selected", which is a lie the moment the panel opens.
-        // Two identical halves and the hairline between them is all a
-        // pair needs.
-        // Inset so neighbours do not touch, but square at the outer edges
-        // so the pair still sits flush in the space it was given.
-        const auto face = zone.withTrimmedLeft (i == 0 ? 0.0f : zoneGap * 0.5f)
-                        .withTrimmedRight (i == n - 1 ? 0.0f : zoneGap * 0.5f);
-
-        AbcTrainLookAndFeel::paintDisplayWell (g, face);
-
-        // Alternating shading, for a row long enough that the eye needs
-        // help counting it. With exactly two it does the opposite: one
-        // lighter half beside one darker half reads as "the left one is
-        // already selected", which is a lie the moment the panel opens.
-        if (n > 2 && i % 2 == 0)
-        {
-            g.setColour (theme.displayBackground.brighter (0.06f));
-            g.fillRoundedRectangle (face, AbcTrainTheme::Radius::well);
-        }
-
-        // Verdict and highlight are overlays on the stripe rather than
-        // replacements for it, so the answer colours can fade in on the
-        // reveal instead of snapping - the stripe stays put underneath.
-        const auto reveal = AbcTrainTheme::Ease::out (revealAmount);
-        auto overlay = juce::Colours::transparentBlack;
-
-        if (answered && i == correctIndex)
-            overlay = theme.positive.withAlpha (0.28f * reveal);
-        else if (answered && i == chosenIndex && ! lastCorrect)
-            overlay = theme.negative.withAlpha (0.28f * reveal);
-        else if (isHighlighted)
-            overlay = theme.accent.withAlpha (0.26f + 0.08f * touch);
-
-        if (! overlay.isTransparent())
-        {
-            g.setColour (overlay);
-            g.fillRoundedRectangle (face, AbcTrainTheme::Radius::well);
-        }
-
-        // The highlighted card also lifts its border, so hover and
-        // selection are not carried by fill alone.
-        if (isHighlighted || (answered && (i == correctIndex || i == chosenIndex)))
-        {
-            const auto edge = answered ? (i == correctIndex ? theme.positive : theme.negative)
-                                       : theme.accent;
-            g.setColour (edge.withAlpha (0.55f));
-            g.drawRoundedRectangle (face.reduced (0.5f), AbcTrainTheme::Radius::well, 1.2f);
-        }
-    }
-
-    // ---- the choice names ----
-    // No tick marks. A tick is a slider's way of saying "the value is
-    // *here* on a continuum", and these zones are not a continuum - they
-    // are two named things you pick between. The line down the middle of
-    // each one was inherited from the ruler this widget started as, and
-    // it only ever pointed at its own label. The zone already has its own
-    // shading and its own hairline edges; what it needed was for the name
-    // to be the thing you see, centred in the region you click.
+    const auto reveal = AbcTrainTheme::Ease::out (revealAmount);
     const auto scale = AbcTrainLookAndFeel::getTextScale();
 
     for (int i = 0; i < n; ++i)
@@ -408,26 +353,82 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         const auto zone = zoneForIndex (i, scaleArea);
         const auto isHighlighted = (i == highlighted);
 
-        auto textColour = theme.text;
-        if (answered && i == correctIndex)
-            textColour = theme.textBright;
-        else if (answered && i == chosenIndex && ! lastCorrect)
-            textColour = theme.textBright;
-        else if (isHighlighted)
-            textColour = theme.textBright;
+        const auto face = zone.withTrimmedLeft (i == 0 ? 0.0f : zoneGap * 0.5f)
+                              .withTrimmedRight (i == n - 1 ? 0.0f : zoneGap * 0.5f)
+                              .reduced (0.5f);
 
-        // Sized against the zone, floored so a narrow one stays legible
-        // and capped so two zones across a stretched window don't turn
-        // into a billboard. drawFittedText does the rest: a long
-        // translated name shrinks and wraps rather than running out of
-        // its own region.
-        const auto height = juce::jlimit (16.0f, 34.0f, zone.getWidth() * 0.075f) * scale;
+        // Which colour this card is speaking in. Before an answer that is
+        // the accent for the one under the pointer; after it, green for
+        // the right answer and red for a wrong one you picked.
+        auto voice = theme.outline;
+        auto lit = false;
 
-        g.setColour (textColour);
-        g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (height));
-        g.drawFittedText (choiceLabels[i],
-                           zone.reduced (14.0f, 12.0f).toNearestInt(),
-                           juce::Justification::centred, 2, 1.0f);
+        if (answered && i == correctIndex)          { voice = theme.positive; lit = true; }
+        else if (answered && i == chosenIndex)       { voice = theme.negative; lit = true; }
+        else if (isHighlighted && ! answered)        { voice = theme.accent;   lit = true; }
+
+        if (lit)
+        {
+            const auto strength = answered ? reveal : (0.85f + 0.15f * touch);
+            g.setColour (voice.withAlpha (0.07f * strength));
+            g.fillRect (face);
+        }
+
+        g.setColour (lit ? voice.withAlpha (answered ? reveal : 1.0f) : theme.outline);
+        g.drawRect (face, 1.0f);
+
+        if (lit)
+            AbcTrainLookAndFeel::drawRegistrationMarks (
+                g, face, voice.withAlpha (answered ? reveal : 1.0f), 5.0f, 3.0f);
+
+        // ---- what is written inside ----
+        //
+        // Anchored to the middle third rather than centred in the whole
+        // card: with a caption above the name and a sentence below it, a
+        // block centred on the card's own centre sits visibly low, because
+        // the sentence is the tallest of the three.
+        auto inner = face.reduced (juce::jmin (28.0f, face.getWidth() * 0.06f), 20.0f);
+        const auto hasNote = i < optionNotes.size() && optionNotes[i].isNotEmpty();
+
+        auto block = inner.withHeight (juce::jmin (inner.getHeight(), 190.0f * scale))
+                          .withCentre ({ inner.getCentreX(),
+                                          inner.getY() + inner.getHeight() * 0.46f });
+
+        if (optionCaption.isNotEmpty())
+            AbcTrainLookAndFeel::drawTrackedText (
+                g, AbcTrainLookAndFeel::toCaps (
+                       optionCaption.replace ("{{n}}", juce::String (i + 1))),
+                block.removeFromTop (18.0f * scale), AbcTrainLookAndFeel::microFont(),
+                lit ? voice : theme.textDim, 1.6f, juce::Justification::centredLeft);
+
+        block.removeFromTop (10.0f * scale);
+
+        {
+            // Sized against the card, floored so a narrow one stays
+            // legible and capped so two cards across a stretched window
+            // do not turn into a billboard. drawFittedText does the rest:
+            // a long translated name shrinks and wraps rather than running
+            // out of its own region.
+            const auto height = juce::jlimit (22.0f, 52.0f, face.getWidth() * 0.095f) * scale;
+            auto nameArea = block.removeFromTop (height * 1.25f);
+
+            g.setColour (answered || isHighlighted ? theme.textBright : theme.text);
+            g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (height));
+            g.drawFittedText (choiceLabels[i], nameArea.toNearestInt(),
+                               juce::Justification::centredLeft, 2, 0.85f);
+        }
+
+        if (hasNote)
+        {
+            block.removeFromTop (14.0f * scale);
+
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::bodyFont());
+            g.drawFittedText (optionNotes[i],
+                               block.withWidth (juce::jmin (block.getWidth(), 340.0f * scale))
+                                    .toNearestInt(),
+                               juce::Justification::topLeft, 3, 0.95f);
+        }
     }
 
     // ---- correct-answer glow, drawn over the chosen zone ----
@@ -451,28 +452,19 @@ void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
     auto bounds = getLocalBounds();
     const auto bigLabelArea = bounds.removeFromTop (bigLabelHeight).toFloat();
 
-    // ---- big current-choice readout ----
-    if (highlighted >= 0 && highlighted < n)
-    {
-        auto valueColour = theme.textBright;
-        if (answered)
-            valueColour = lastCorrect ? theme.positive : theme.negative;
-
-        // The wobble nudges the readout, so a wrong answer reads as the
-        // whole answer shaking its head rather than one element twitching.
-        AbcTrainLookAndFeel::drawTrackedText (
-            g, choiceLabels[highlighted],
-            bigLabelArea.translated (feedbackWobblePx, 0.0f),
-            AbcTrainLookAndFeel::titleFont().withHeight (26.0f * AbcTrainLookAndFeel::getTextScale()),
-            valueColour, 1.6f, juce::Justification::centred);
-    }
-    else
+    // ---- the line above the cards ----
+    //
+    // Only the prompt. The big readout that used to live here echoed the
+    // name of whichever card was highlighted - which was worth having when
+    // a card was a small zone with a word in it, and became a duplicate
+    // the moment the card grew into a panel with the name set at 52px.
+    // Two copies of one word, one above the other, is not emphasis.
+    if (highlighted < 0 || highlighted >= n)
     {
         g.setColour (theme.textDim.withAlpha (0.55f));
         g.setFont (AbcTrainLookAndFeel::bodyFont());
         g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
     }
-
 }
 
 // ============================ continuous mode ============================

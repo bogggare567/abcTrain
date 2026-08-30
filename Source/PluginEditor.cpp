@@ -128,6 +128,28 @@ namespace
     // Game::getBeforeLabel); this maps them to i18n keys, the same shape
     // as translateGameName below - a game whose label isn't listed falls
     // back to its raw English, so adding one is never a crash.
+    // One sentence per named alternative, saying what it sounds like.
+    //
+    // Keyed on the option's own English name rather than on (game, index),
+    // so "Plate" is described once and every exercise that offers it gets
+    // the same sentence - and adding an exercise that reuses a name needs
+    // no edit here at all. A name with no entry falls through to nothing,
+    // and the card simply draws without a description.
+    juce::String describeChoice (const juce::String& englishName, const LocalisationManager& loc)
+    {
+        if (englishName.isEmpty())
+            return {};
+
+        auto key = englishName.toLowerCase().removeCharacters (" -/");
+        key = "choice." + key;
+
+        auto text = loc.getText (key);
+
+        // getText returns the key itself when nothing is found, which is
+        // the one thing that must never reach a card.
+        return text == key ? juce::String() : text;
+    }
+
     juce::String translateAbLabel (const juce::String& englishLabel, const LocalisationManager& loc)
     {
         static const std::array<std::pair<const char*, const char*>, 12> table {{
@@ -1402,18 +1424,19 @@ void EarTrainerEditor::resized()
         // taller scale is a more precise one. Two words do not: past about
         // 190px the cards stop being buttons and become walls, so the rest
         // becomes air around them instead of more of them.
-        // Named alternatives and a ruler want very different amounts of
-        // room. A ruler takes everything: its height is not empty space
-        // but the vertical extent of the tolerance band, the answer line
-        // and the value read off them - so a taller well really is a more
-        // legible one. Two named alternatives are not: past about 190px
-        // the cards stop being buttons and become walls, and the leftover
-        // is better spent as air around them than as more of them.
-        const auto onRuler = processor.getGameManager().getActiveGame().usesContinuousScale();
-        const auto scaleHeight = onRuler ? inner.getHeight()
-                                         : juce::jmin (190, inner.getHeight());
-
-        choiceSlider.setBounds (inner.withHeight (scaleHeight));
+        // Both the ruler and the two named alternatives take everything
+        // that is left.
+        //
+        // The cap that used to sit on the alternatives (190px, on the
+        // reasoning that past it "the cards stop being buttons and become
+        // walls") was wrong, and the render is what showed it: two 190px
+        // cards at the top of a 500px space do not read as restraint, they
+        // read as a screen that failed to finish loading. A card with the
+        // whole height is a *panel about one answer* - room for the name
+        // at the size it deserves and for a line saying what that answer
+        // sounds like - which is what the design asks for and what the
+        // widget can now grow into.
+        choiceSlider.setBounds (inner);
     }
 
     area.removeFromTop (Spacing::large);
@@ -2431,6 +2454,30 @@ void EarTrainerEditor::rebuildChoiceSlider()
     // already assigned, so there's no destroy/recreate-before-layout
     // ordering hazard here to begin with.
     choiceSlider.setChoices (labels);
+
+    // What each option sounds like, beside the name. Only on the
+    // categorical exercises: a ruler's "options" are every value on an
+    // axis, and there is nothing to say about 1.1 kHz that the number does
+    // not already say.
+    if (! game.usesContinuousScale())
+    {
+        juce::StringArray notes;
+        auto anyNote = false;
+
+        for (int i = 0; i < game.getNumChoices(); ++i)
+        {
+            notes.add (describeChoice (game.getChoiceKey (i), localisation));
+            anyNote = anyNote || notes[i].isNotEmpty();
+        }
+
+        choiceSlider.setOptionNotes (anyNote ? notes : juce::StringArray(),
+                                      anyNote ? localisation.getText ("ui.optionNumber")
+                                              : juce::String());
+    }
+    else
+    {
+        choiceSlider.setOptionNotes ({}, {});
+    }
 
     if (game.usesContinuousScale())
     {

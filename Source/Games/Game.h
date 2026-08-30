@@ -215,6 +215,21 @@ public:
     // rather than "you guess here". -1 when there is nothing to record.
     virtual int getSkillBucketForRound() const { return -1; }
 
+    // The English *name* of choice i, as opposed to its displayed label.
+    //
+    // Every categorical exercise offers two names out of its own family,
+    // and those names are audio vocabulary that does not translate - a
+    // plate is a Plate in every language. This is the key the editor looks
+    // a *description* up by: one sentence saying what that option sounds
+    // like, shown on the card while you are choosing between them.
+    //
+    // Two words on two buttons ask you to recognise a label you may never
+    // have been taught. A sentence under each says what the label means,
+    // so a wrong answer teaches something rather than only costing a
+    // point. Empty by default; a game that has nothing to say draws
+    // exactly what it drew before.
+    virtual juce::String getChoiceKey (int index) const { return getChoiceLabel (index); }
+
     // What a hint should do on a ruler exercise: narrow the search, not
     // answer the question.
     //

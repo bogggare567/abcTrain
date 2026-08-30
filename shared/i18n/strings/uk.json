@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "Тренування на «{{file}}»",
   "ui.soundsShuffling": "Перебір: {{category}} — зараз: {{file}}",
   "ui.soundsBuiltInPercussive": "Вбудовані ударні",
-  "ui.soundsBuiltInSustained": "Вбудовані тягнуті"
+  "ui.soundsBuiltInSustained": "Вбудовані тягнуті",
+  "ui.optionNumber": "Варіант {{n}}"
 }

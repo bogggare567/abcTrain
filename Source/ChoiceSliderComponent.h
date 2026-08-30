@@ -27,6 +27,17 @@ public:
     // Called whenever the active game (or its choice count) changes.
     // Resets to an unanswered, nothing-picked state.
     void setChoices (const juce::StringArray& labels);
+
+    // One line per option saying what it sounds like, and the caption over
+    // each ("OPTION {{n}}"). Both optional: a game that offers none draws
+    // exactly what it drew before, only larger.
+    //
+    // This is the difference between a quiz and a lesson. Two words on two
+    // buttons ask you to recognise a label you may never have been taught;
+    // a sentence under each says what the label *means*, so a wrong answer
+    // costs a point and teaches something rather than only costing a
+    // point.
+    void setOptionNotes (juce::StringArray notes, juce::String caption);
     int getNumChoices() const noexcept { return choiceLabels.size(); }
 
     // What the panel is currently showing, so a caller can tell whether it
@@ -130,6 +141,8 @@ private:
     void updatePreviewFromMouse (const juce::MouseEvent& e);
 
     juce::StringArray choiceLabels;
+    juce::StringArray optionNotes;
+    juce::String optionCaption;
     juce::String axisCaption;
     juce::String placeholderText { "Drag to choose" };
 

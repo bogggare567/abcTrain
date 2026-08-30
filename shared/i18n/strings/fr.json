@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "Entraînement sur « {{file}} »",
   "ui.soundsShuffling": "Aléatoire dans {{category}} — actuel : {{file}}",
   "ui.soundsBuiltInPercussive": "Fournis : percussifs",
-  "ui.soundsBuiltInSustained": "Fournis : tenus"
+  "ui.soundsBuiltInSustained": "Fournis : tenus",
+  "ui.optionNumber": "Option {{n}}"
 }

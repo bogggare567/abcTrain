@@ -309,5 +309,6 @@
   "ui.soundsOnFile": "Ćwiczenie na „{{file}}”",
   "ui.soundsShuffling": "Losowo z {{category}} — teraz: {{file}}",
   "ui.soundsBuiltInPercussive": "Wbudowane perkusyjne",
-  "ui.soundsBuiltInSustained": "Wbudowane brzmienia ciągłe"
+  "ui.soundsBuiltInSustained": "Wbudowane brzmienia ciągłe",
+  "ui.optionNumber": "Wariant {{n}}"
 }
