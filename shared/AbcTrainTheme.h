@@ -120,12 +120,19 @@ namespace AbcTrainTheme
         constexpr int section  = 28;  // between grouped sections
     }
 
+    // Corner radii - all zero, and that is the design rather than an
+    // omission. The mockup this build follows is a blueprint grammar:
+    // square corners, hairline frames and registration marks, where a
+    // rounded box would read as a soft filled block instead of a drawn
+    // one. Kept as named constants rather than deleted, because the names
+    // still say which kind of object is being drawn, and because the one
+    // place this is likely to be revisited is here.
     namespace Radius
     {
-        constexpr float small  = 4.0f;
-        constexpr float button = 7.0f;
-        constexpr float panel  = 10.0f;
-        constexpr float well   = 8.0f;   // spectrum/waveform displays
+        constexpr float small  = 0.0f;
+        constexpr float button = 0.0f;
+        constexpr float panel  = 0.0f;
+        constexpr float well   = 0.0f;   // spectrum/waveform displays
     }
 
     // Animation timings, in milliseconds. Slower than a typical web UI on

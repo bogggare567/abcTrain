@@ -199,6 +199,25 @@ public:
 
     static float trackedTextWidth (const juce::String&, const juce::Font&, float trackingPx);
 
+    // The registration marks - four small crosses at a frame's inner
+    // corners. The one ornament this design has, and it earns its keep:
+    // it is what says the object is a *drawn frame* rather than a filled
+    // block, which is the whole difference between this grammar and the
+    // soft rounded panels it replaced. Drawn in the frame's own colour, so
+    // it never introduces one.
+    static void drawRegistrationMarks (juce::Graphics&, juce::Rectangle<float> frame,
+                                       juce::Colour, float inset = 4.0f, float arm = 2.5f,
+                                       float thickness = 1.0f);
+
+    // A bar made of discrete segments rather than one continuous fill.
+    // "Seven of ten" is a countable claim; a smooth bar makes the same
+    // claim unreadable, and every number this app draws beside a bar is
+    // already counting something.
+    static void drawSegmentedBar (juce::Graphics&, juce::Rectangle<float> track,
+                                  int segments, float progress,
+                                  juce::Colour done, juce::Colour remaining,
+                                  float gap = 2.0f);
+
     // Blurs whatever is already in `sourceArea` of the component being
     // painted and fills `bounds` with it - a real Gaussian blur via
     // juce::ImageConvolutionKernel, used for the floating tooltip backdrop.

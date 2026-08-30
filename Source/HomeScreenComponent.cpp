@@ -143,105 +143,104 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
 {
     const auto& theme = AbcTrainTheme::current();
     const auto eased = AbcTrainTheme::Ease::out (hover);
-    const auto bounds = tile.toFloat().reduced (1.0f);
+    const auto bounds = tile.toFloat().reduced (0.5f);
 
-    juce::Path shape;
-    shape.addRoundedRectangle (bounds, AbcTrainTheme::Radius::panel);
+    // A card is a *drawn frame*, not a filled block, and only the one you
+    // are on is filled at all. Nine filled panels shout equally, which is
+    // the same as nine panels saying nothing; an outline that fills when
+    // it is yours says which one is yours without a second colour, a
+    // shadow or a size change.
+    const auto frameColour = card.isCurrent ? card.accent
+                                            : theme.outline.interpolatedWith (card.accent, 0.35f * eased);
 
-    if (eased > 0.01f)
-        juce::DropShadow (theme.shadow.withAlpha (0.45f * theme.shadowStrength * eased),
-                           10 + (int) (6.0f * eased), { 0, 2 }).drawForPath (g, shape);
+    if (card.isCurrent)
+    {
+        g.setColour (card.accent.withAlpha (0.06f));
+        g.fillRect (bounds);
+    }
+    else if (eased > 0.01f)
+    {
+        // Hover is the same gesture at a fraction of the strength, so
+        // pointing at a card previews what selecting it will look like.
+        g.setColour (card.accent.withAlpha (0.03f * eased));
+        g.fillRect (bounds);
+    }
 
-    juce::ColourGradient fill (theme.panelBackground.brighter (0.03f + 0.05f * eased),
-                                bounds.getX(), bounds.getY(),
-                                theme.panelBackground, bounds.getX(), bounds.getBottom(), false);
-    g.setGradientFill (fill);
-    g.fillPath (shape);
+    g.setColour (frameColour);
+    g.drawRect (bounds, 1.0f);
 
-    g.setColour (card.isCurrent ? theme.accent.withAlpha (0.85f)
-                                : theme.outline.withAlpha (0.5f + 0.4f * eased));
-    g.strokePath (shape, juce::PathStrokeType (card.isCurrent ? 1.6f : 1.0f));
+    if (card.isCurrent || eased > 0.5f)
+        AbcTrainLookAndFeel::drawRegistrationMarks (g, bounds,
+                                                     frameColour.withAlpha (card.isCurrent ? 1.0f : eased));
 
-    auto inner = bounds.reduced ((float) AbcTrainTheme::Spacing::small);
+    auto inner = bounds.reduced (14.0f, 13.0f);
 
-    // --- the coloured badge, and the level beside it ---------------------
-    auto topRow = inner.removeFromTop (32.0f);
-    const auto badge = topRow.removeFromLeft (32.0f);
+    // --- the icon, and the level beside it -------------------------------
+    auto topRow = inner.removeFromTop (24.0f);
+    const auto badge = topRow.removeFromLeft (24.0f);
 
-    // Monochrome. The family colour is still carried by the thin progress
-    // line at the bottom of the tile, where it is a hint; nine saturated
-    // squares made the catalogue louder than anything on it.
-    // The tile's own eased hover drives the glyph, so pointing at "Guess the
-    // Compression" makes its chevrons close on the line. A caption tells you
-    // what an exercise is called; this tells you what it is.
+    // Monochrome. The family colour is carried by the frame and by the
+    // segmented line at the foot of the card; nine saturated squares made
+    // the catalogue louder than anything on it. The card's own eased hover
+    // drives the glyph, so pointing at "Guess the Compression" makes its
+    // chevrons close on the line - a caption tells you what an exercise is
+    // called, this tells you what it is.
     AppIcons::drawBadged (g, card.icon, badge, theme.text, 0.75f + 0.25f * eased, eased);
 
-    // The level, with the word "Level" over it.
-    //
-    // A bare "1" in the corner answered no question anybody was asking -
-    // one what? A small caption above the number costs 11px and removes
-    // the guess entirely.
     {
         const auto pending = card.promotionPending;
-        auto levelBox = topRow.removeFromRight (58.0f);
+        auto levelBox = topRow.removeFromRight (66.0f);
 
         AbcTrainLookAndFeel::drawTrackedText (g, levelCaption.toUpperCase(),
                                                levelBox.removeFromTop (11.0f),
-                                               AbcTrainLookAndFeel::captionFont(),
-                                               theme.textDim.withAlpha (0.75f), 1.4f,
+                                               AbcTrainLookAndFeel::microFont(),
+                                               theme.textDim.withAlpha (0.8f), 1.68f,
                                                juce::Justification::centredRight);
 
+        // Condensed rather than mono here. The mono face was carrying
+        // "these digits must not jitter", which is true of a meter
+        // updating sixty times a second and false of a number that
+        // changes about once a week.
         g.setColour (pending ? theme.positive : theme.textBright);
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (19.0f));
-        g.drawText (juce::String (card.level), levelBox.removeFromTop (21.0f).toNearestInt(),
+        g.setFont (AbcTrainLookAndFeel::titleFont());
+        g.drawText (juce::String (card.level), levelBox.removeFromTop (22.0f).toNearestInt(),
                      juce::Justification::centredRight, false);
     }
 
-    inner.removeFromTop (4.0f);
+    inner.removeFromTop (7.0f);
 
-    auto nameArea = inner.removeFromTop (30.0f);
+    auto nameArea = inner.removeFromTop (34.0f);
     g.setColour (theme.textBright);
-    g.setFont (AbcTrainLookAndFeel::headingFont());
-    g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft, 2, 0.85f);
+    g.setFont (AbcTrainLookAndFeel::headingFont().withHeight (
+                   AbcTrainLookAndFeel::headingFontHeight * AbcTrainLookAndFeel::getTextScale() * 1.16f));
+    g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft, 2, 0.9f);
 
     if (card.statsLine.isNotEmpty())
     {
-        g.setColour (theme.textDim.withAlpha (0.8f));
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
-        g.drawText (card.statsLine, inner.removeFromTop (14.0f).toNearestInt(),
+        g.setColour (theme.textDim.withAlpha (0.9f));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
+        g.drawText (card.statsLine, inner.removeFromTop (15.0f).toNearestInt(),
                      juce::Justification::centredLeft, false);
     }
 
-    // --- the bottom line: either level progress, or the live test -------
-    auto track = bounds.reduced ((float) AbcTrainTheme::Spacing::small)
-                     .removeFromBottom (4.0f);
-
-    g.setColour (theme.displayBackground.withAlpha (0.8f));
-    g.fillRoundedRectangle (track, 2.0f);
+    // --- the foot of the card: level progress, or the live promotion ----
+    //
+    // Segments, not a smooth fill. "Seven of ten" is a countable claim and
+    // a continuous bar makes it unreadable - which matters most here,
+    // because the number the bar is about is written directly above it.
+    auto track = bounds.reduced (14.0f, 13.0f).removeFromBottom (3.0f);
 
     if (card.promotionPending)
     {
-        // A promotion is live: the bar stops reporting distance and starts
-        // reporting the test, in discrete pips, because "3 of 5 in a row"
-        // is a countable thing and a smooth bar would hide that.
         const auto pips = juce::jmax (1, card.promotionTestLength);
-        const auto pipWidth = (track.getWidth() - 2.0f * (float) (pips - 1)) / (float) pips;
-
-        for (auto i = 0; i < pips; ++i)
-        {
-            const auto pip = track.withWidth (pipWidth)
-                                  .withX (track.getX() + (float) i * (pipWidth + 2.0f));
-
-            g.setColour (i < card.promotionStreak ? theme.positive
-                                                  : theme.positive.withAlpha (0.22f));
-            g.fillRoundedRectangle (pip, 2.0f);
-        }
+        AbcTrainLookAndFeel::drawSegmentedBar (g, track, pips,
+                                                (float) card.promotionStreak / (float) pips,
+                                                theme.positive, theme.positive.withAlpha (0.22f));
     }
-    else if (card.levelProgress > 0.001f)
+    else
     {
-        g.setColour (card.accent.withAlpha (0.8f));
-        g.fillRoundedRectangle (track.withWidth (juce::jmax (4.0f, track.getWidth() * card.levelProgress)),
-                                 2.0f);
+        AbcTrainLookAndFeel::drawSegmentedBar (g, track, 10, card.levelProgress,
+                                                card.accent, theme.divider);
     }
 
     // --- star -------------------------------------------------------------

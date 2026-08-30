@@ -972,6 +972,61 @@ float AbcTrainLookAndFeel::trackedTextWidth (const juce::String& text, const juc
                + trackingPx * (float) juce::jmax (0, glyphs - 1);
 }
 
+void AbcTrainLookAndFeel::drawRegistrationMarks (juce::Graphics& g, juce::Rectangle<float> frame,
+                                                  juce::Colour colour, float inset, float arm,
+                                                  float thickness)
+{
+    if (frame.getWidth() < inset * 4.0f || frame.getHeight() < inset * 4.0f)
+        return;
+
+    g.setColour (colour);
+
+    const float xs[] { frame.getX() + inset, frame.getRight()  - inset };
+    const float ys[] { frame.getY() + inset, frame.getBottom() - inset };
+
+    for (auto x : xs)
+        for (auto y : ys)
+        {
+            g.fillRect (x - arm, y - thickness * 0.5f, arm * 2.0f, thickness);
+            g.fillRect (x - thickness * 0.5f, y - arm, thickness, arm * 2.0f);
+        }
+}
+
+void AbcTrainLookAndFeel::drawSegmentedBar (juce::Graphics& g, juce::Rectangle<float> track,
+                                             int segments, float progress,
+                                             juce::Colour done, juce::Colour remaining,
+                                             float gap)
+{
+    segments = juce::jmax (1, segments);
+    progress = juce::jlimit (0.0f, 1.0f, progress);
+
+    const auto width = (track.getWidth() - gap * (float) (segments - 1)) / (float) segments;
+
+    if (width < 1.0f)
+    {
+        // Too narrow to be segments at all. One fill is more honest here
+        // than a row of slivers a pixel wide, which reads as noise rather
+        // than as a count.
+        g.setColour (remaining);
+        g.fillRect (track);
+        g.setColour (done);
+        g.fillRect (track.withWidth (track.getWidth() * progress));
+        return;
+    }
+
+    // Rounding up, so any progress at all lights the first segment: a bar
+    // that still reads as empty after a correct answer is a bar reporting
+    // the wrong thing.
+    const auto lit = progress <= 0.0f ? 0
+                                      : (int) std::ceil (progress * (float) segments);
+
+    for (int i = 0; i < segments; ++i)
+    {
+        g.setColour (i < lit ? done : remaining);
+        g.fillRect (track.withWidth (width).withX (track.getX() + (float) i * (width + gap)));
+    }
+}
+
 void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String& text,
                                             juce::Rectangle<float> area, const juce::Font& font,
                                             juce::Colour colour, float trackingPx,
