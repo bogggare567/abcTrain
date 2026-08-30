@@ -1,4 +1,6 @@
 #include "AbcTrainLookAndFeel.h"
+
+#include "AbcTrainFonts.h"
 #include <cmath>
 
 namespace
@@ -136,16 +138,18 @@ void AbcTrainLookAndFeel::setTextScale (float newScale) noexcept
 
 // The interface typeface.
 //
-// Everything here used to ask JUCE for its default sans, which on macOS is
-// a 1990s system face and on Linux is whatever happened to be installed.
-// It is the single loudest "this was not designed" signal a UI can send,
-// and it is free to fix: every platform ships a good interface font, they
-// are simply not the *default* one.
+// Everything here used to ask JUCE for the best face the *machine* had,
+// which meant the same window was SF Pro on one desk, Segoe on another
+// and DejaVu on a third - three products wearing one design. The faces
+// now travel with the binary (see shared/AbcTrainFonts.h): Barlow at
+// three widths for the Latin, a Cyrillic companion pinned out of Roboto
+// at the same three widths, every one of them subset to the single script
+// it is there for.
 //
-// A licensed typeface of our own is still the right long-term answer (see
-// docs/decisions/009), but shipping one means paying for it and embedding
-// it. Asking for the best face the machine already has costs nothing and
-// gets most of the way there.
+// The three widths are a real part of the design, not a flourish. A
+// heading is condensed, a meta line is semi-condensed and body copy is
+// neither - which is how a dense screen keeps a hierarchy without needing
+// four sizes and three greys to say the same thing.
 static juce::String chosenTypefaceOverride;
 
 void AbcTrainLookAndFeel::setTypefaceName (const juce::String& name)
@@ -162,7 +166,10 @@ juce::StringArray AbcTrainLookAndFeel::availableTypefaceNames()
 {
     static const juce::StringArray all = []
     {
-        juce::StringArray names { "System" };
+        // "System" is still offered, and still means the machine's own
+        // face - somebody who cannot read a condensed grotesque should be
+        // able to leave it behind without leaving the app.
+        juce::StringArray names { "Barlow", "System" };
         names.addArray (juce::Font::findAllTypefaceNames());
         names.removeDuplicates (true);
         return names;
@@ -171,10 +178,29 @@ juce::StringArray AbcTrainLookAndFeel::availableTypefaceNames()
     return all;
 }
 
+// Whether the embedded faces are in play at all. False when somebody has
+// picked a specific system font in Settings, in which case every role
+// below collapses onto that one family - a chosen font is a chosen font,
+// and silently keeping the headings in Barlow would ignore the choice.
+static bool usingEmbeddedFonts()
+{
+    if (chosenTypefaceOverride.isNotEmpty()
+        && chosenTypefaceOverride != "System"
+        && chosenTypefaceOverride != "Barlow")
+        return false;
+
+    return AbcTrainFonts::areEmbeddedFontsAvailable();
+}
+
 static juce::String interfaceTypefaceName()
 {
-    if (chosenTypefaceOverride.isNotEmpty() && chosenTypefaceOverride != "System")
+    if (chosenTypefaceOverride.isNotEmpty()
+        && chosenTypefaceOverride != "System"
+        && chosenTypefaceOverride != "Barlow")
         return chosenTypefaceOverride;
+
+    if (AbcTrainFonts::areEmbeddedFontsAvailable())
+        return AbcTrainFonts::Family::body;
 
     // findAllTypefaceNames() enumerates the whole system font book, which
     // is slow enough to matter in a paint callback - so it happens once.
@@ -203,6 +229,13 @@ static juce::String interfaceTypefaceName()
     return chosen;
 }
 
+// One fallback for every role when the embedded faces are not in use: the
+// chosen family at the requested height, bold or not.
+static juce::Font systemFallback (float height, bool bold)
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(), height,
+                                           bold ? juce::Font::bold : juce::Font::plain));
+}
 
 float AbcTrainLookAndFeel::getTextScale() noexcept
 {
@@ -211,40 +244,52 @@ float AbcTrainLookAndFeel::getTextScale() noexcept
 
 juce::Font AbcTrainLookAndFeel::displayFont()
 {
-    // Near-zero tracking: at this size the default letter spacing reads as
-    // loose, and a wordmark that looks loose looks like body text scaled up.
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                           displayFontHeight * sharedTextScale, juce::Font::bold));
+    // The wordmark and the welcome headline. Condensed and bold: at this
+    // size a normal-width face has to be tracked in tighter to stop
+    // reading as body text scaled up, and a condensed one is already
+    // there.
+    const auto h = displayFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::condensed (h, "Bold")
+                                : systemFallback (h, true);
 }
 
 juce::Font AbcTrainLookAndFeel::headingFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                           headingFontHeight * sharedTextScale, juce::Font::bold));
+    const auto h = headingFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::condensed (h, "SemiBold")
+                                : systemFallback (h, true);
 }
 
 juce::Font AbcTrainLookAndFeel::bodyFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                           bodyFontHeight * sharedTextScale, juce::Font::plain));
+    const auto h = bodyFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::body (h, "Regular")
+                                : systemFallback (h, false);
 }
 
 juce::Font AbcTrainLookAndFeel::labelFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                           labelFontHeight * sharedTextScale, juce::Font::plain));
+    // Meta lines - "58% accuracy, 26 rounds". Semi-condensed, because
+    // these sit under something and must not compete with it for width.
+    const auto h = labelFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Regular")
+                                : systemFallback (h, false);
 }
 
 juce::Font AbcTrainLookAndFeel::microFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                           microFontHeight * sharedTextScale, juce::Font::plain));
+    // The tracked small caps. Medium rather than Regular: letter-spacing
+    // thins a line optically, and at this size Regular disappears.
+    const auto h = microFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Medium")
+                                : systemFallback (h, false);
 }
 
 juce::Font AbcTrainLookAndFeel::titleFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       titleFontHeight * sharedTextScale, juce::Font::bold));
+    const auto h = titleFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::condensed (h, "SemiBold")
+                                : systemFallback (h, true);
 }
 
 juce::Font AbcTrainLookAndFeel::monoFont()
@@ -259,20 +304,19 @@ juce::Font AbcTrainLookAndFeel::monoFont()
 
 juce::Font AbcTrainLookAndFeel::captionFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       captionFontHeight * sharedTextScale, juce::Font::plain));
+    const auto h = captionFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Regular")
+                                : systemFallback (h, false);
 }
 
 juce::Font AbcTrainLookAndFeel::getLabelFont (juce::Label&)
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+    return bodyFont();
 }
 
 juce::Font AbcTrainLookAndFeel::getTextButtonFont (juce::TextButton&, int)
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+    return bodyFont();
 }
 
 juce::Font AbcTrainLookAndFeel::getComboBoxFont (juce::ComboBox&)

@@ -132,6 +132,33 @@ juce_add_binary_data(SampleData
         assets/samples/Sustained/Tone.wav
 )
 
+# The interface typeface, embedded because a plugin cannot ask its host's
+# machine to have a font installed. Twelve faces, 356 KB: Barlow carries
+# the Latin at three widths, and a Cyrillic companion pinned out of
+# Roboto's variable font carries the Cyrillic at the same three widths -
+# Barlow has no Cyrillic at all, so without this every Russian word in a
+# Russian-first app would fall through to whatever the operating system
+# happened to pick. Each file is subset to the one script it is there
+# for, which is what keeps twelve faces under half a megabyte. See
+# assets/fonts/README.md and tools/build_fonts.py.
+juce_add_binary_data(FontData
+    NAMESPACE FontBinaryData
+    HEADER_NAME FontBinaryData.h
+    SOURCES
+        assets/fonts/Barlow-Regular.ttf
+        assets/fonts/Barlow-Medium.ttf
+        assets/fonts/BarlowSemiCondensed-Regular.ttf
+        assets/fonts/BarlowSemiCondensed-Medium.ttf
+        assets/fonts/BarlowCondensed-SemiBold.ttf
+        assets/fonts/BarlowCondensed-Bold.ttf
+        assets/fonts/abcTrainCyr-Regular.ttf
+        assets/fonts/abcTrainCyr-Medium.ttf
+        assets/fonts/abcTrainCyrSemiCondensed-Regular.ttf
+        assets/fonts/abcTrainCyrSemiCondensed-Medium.ttf
+        assets/fonts/abcTrainCyrCondensed-SemiBold.ttf
+        assets/fonts/abcTrainCyrCondensed-Bold.ttf
+)
+
 # The app icon, embedded so the first screen can draw the *same* mark the
 # player sees in their dock and Finder. It was already wired to
 # juce_add_plugin's ICON_BIG, but that only reaches the platform's own
@@ -220,6 +247,7 @@ target_sources(EarTrainer
         Source/Games/FrequencyRangeGame.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainFonts.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
         shared/CompactSelector.cpp
@@ -239,6 +267,7 @@ target_link_libraries(EarTrainer
         juce::juce_dsp
         juce::juce_animation
         I18nData
+        FontData
         SampleData
         BrandData
     PUBLIC
@@ -288,6 +317,7 @@ target_sources(LearnerEQ
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainFonts.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
         shared/CompactSelector.cpp
@@ -306,6 +336,7 @@ target_link_libraries(LearnerEQ
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        FontData
         SampleData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -352,6 +383,7 @@ target_sources(LearnerComp
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainFonts.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
         shared/CompactSelector.cpp
@@ -371,6 +403,7 @@ target_link_libraries(LearnerComp
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        FontData
         SampleData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -417,6 +450,7 @@ target_sources(LearnerVerb
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainFonts.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
         shared/CompactSelector.cpp
@@ -436,6 +470,7 @@ target_link_libraries(LearnerVerb
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        FontData
         SampleData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -527,6 +562,7 @@ target_sources(EarTrainerTests
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainFonts.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
         shared/CompactSelector.cpp
@@ -550,6 +586,7 @@ target_link_libraries(EarTrainerTests
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
+        FontData
         SampleData
         BrandData
     PUBLIC
@@ -626,6 +663,7 @@ target_sources(EditorSnapshots
         shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
+        shared/AbcTrainFonts.cpp
         shared/AbcTrainTheme.cpp
         shared/WidgetStateRegistry.cpp
         shared/PracticeSourceSelector.cpp
@@ -646,6 +684,7 @@ target_link_libraries(EditorSnapshots
         juce::juce_dsp
         juce::juce_animation
         I18nData
+        FontData
         SampleData
         BrandData
     PUBLIC
