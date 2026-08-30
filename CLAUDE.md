@@ -614,7 +614,17 @@ full rationale.
   including a `levelSelector` `ComboBox` (1-10)
   that calls `ProgressManager::setLevelManually` directly, so difficulty
   is player-controllable, not just an automatic side effect of points —
-  a mode selector (Practice/Survival/Blitz) with a lives/clock readout,
+  a mode selector (Practice/Survival/Blitz) with a lives/clock readout
+  — dimmed and dead for the length of a run by `applyRunLock()`, along
+  with the nav bar, the instructions, the language, the theme, the window
+  size, the update check and the site link: Survival spends lives and
+  Blitz spends seconds, so a run you can re-mode or walk out of mid-flight
+  posts a note about how much you fiddled rather than a score. Four things
+  stay live and each would break the run rather than ease it if locked —
+  the A/B audition (how you hear the round at all), the hint (it already
+  costs a life or seconds, out of the same pot the run is scored from),
+  "End run" (a room with no door is a trap) and the volume. Checked by
+  `tools/ClickMap`, not by reading —
   navigation across the **top** (`Source/TopNavComponent`) rather than a
   rail down the left - the rail solved the right problem (navigation had
   been unlabelled icons along the bottom, where a *status* bar goes) by
@@ -1407,6 +1417,34 @@ than risking a player's saved progress for a screenshot). The same tool
 produces `docs/screenshots/`, which is what the README shows - so the
 pictures there can never drift from the code. See
 [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
+
+`tools/ClickMap.cpp` (`ClickMap`, a third `juce_add_console_app`) answers
+the question `EditorSnapshots` cannot: **not what a screen looks like, but
+what happens when you click**. A control can be perfectly present in a
+picture and still be unreachable - something transparent lying over it, a
+parent that stopped intercepting mouse events, or bounds parked at empty -
+and all three look identical in a snapshot while reading to a player as a
+broken app. It walks the real editor's real component tree in ten states
+and asks the editor itself, per control, whether a click at that control's
+centre would actually reach it, then whether it would be acted on. A
+full-window overlay covering what is under it is counted as intended
+rather than as a fault. Each state carries an **expectation** -
+`everythingLive`, or `runLocked` for a Survival/Blitz run - so the rule
+that a run is a closed room is a check rather than a comment; it exits
+non-zero on any control that is unreachable, on a dead control in a state
+where everything should respond, and on a live run where nothing is
+locked. Its first run found three real things: every one of the twelve
+controls in a Survival run still responded, a dimming written as
+`g.setOpacity()` at the top of `paint()` did nothing (any later
+`setColour` discards it, so the nav bar was genuinely dead and looked
+completely alive), and the run snapshot highlighted "Practice" during a
+Survival run because it set the session's mode around the pills instead of
+through them. It shares one CMake source list with `EditorSnapshots`
+(`abcTrainEditorToolSources`) - two copies would drift the first time a
+screen was added to only one of them. Note `Component::setEnabled(false)`
+does **not** stop `mouseDown` reaching a plain `Component`; only `Button`,
+`Slider` and friends check the flag, which is why `TopNavComponent`
+checks it in every handler of its own.
 
 - `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
   audio-domain assertions.
