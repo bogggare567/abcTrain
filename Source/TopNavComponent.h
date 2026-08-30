@@ -79,9 +79,10 @@ private:
     juce::Rectangle<int> tabBounds (int index) const;
     int tabAt (juce::Point<int>) const;
     juce::Rectangle<int> rightCell (int slotFromRight) const;
+    juce::String streakCaption() const;
 
     juce::StringArray labels;
-    juce::String streakText;
+    juce::String streakTemplate;
     Item active = Item::trainings;
 
     int hovered = -1;

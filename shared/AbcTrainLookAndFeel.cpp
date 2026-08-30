@@ -349,6 +349,47 @@ namespace
     constexpr const char* primaryButtonProperty = "abcTrainPrimary";
 }
 
+// Whether a button's background colour is a *fill* or a wash.
+//
+// A wash is what an unselected chip uses: the surface colour at a low
+// alpha, which the blueprint grammar draws as an outline with nothing in
+// it. A fill is something a caller deliberately coloured - a selected
+// mode, a chosen preset - and those are the ones that get a solid block.
+bool AbcTrainLookAndFeel::buttonIsFilled (juce::Colour background)
+{
+    if (background.getFloatAlpha() < 0.5f)
+        return false;
+
+    const auto& t = current();
+    const auto flat = background.withAlpha (1.0f);
+
+    // Either it is a colour (an accent) or it is clearly lighter or darker
+    // than the surface it sits on. Matching the surface is not a fill.
+    return flat.getSaturation() > 0.18f
+            || std::abs (flat.getPerceivedBrightness()
+                          - t.panelBackground.getPerceivedBrightness()) > 0.10f;
+}
+
+// Which of the two label colours reads on a given background. Not "the
+// page colour if filled": a dark fill needs the bright label, and only
+// contrast knows which is which.
+juce::Colour AbcTrainLookAndFeel::labelColourOn (juce::Colour background)
+{
+    const auto& t = current();
+
+    if (! buttonIsFilled (background))
+        return t.text;
+
+    const auto flat = t.panelBackground.overlaidWith (background);
+    const auto onDark  = t.textBright;
+    const auto onLight = t.windowBackground;
+
+    const auto b = flat.getPerceivedBrightness();
+
+    return std::abs (b - onLight.getPerceivedBrightness())
+             > std::abs (b - onDark.getPerceivedBrightness()) ? onLight : onDark;
+}
+
 void AbcTrainLookAndFeel::makePrimary (juce::Button& button, bool shouldBePrimary)
 {
     button.getProperties().set (primaryButtonProperty, shouldBePrimary);
@@ -411,9 +452,7 @@ void AbcTrainLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
     // A button somebody *has* coloured - a selected mode, an answered
     // choice - still fills, and now that filling is rare it means
     // something again.
-    const auto isFilled = ! backgroundColour.isTransparent()
-                              && backgroundColour != t.widgetBackground
-                              && backgroundColour != t.panelBackground;
+    const auto isFilled = buttonIsFilled (backgroundColour);
 
     if (isFilled)
     {
@@ -677,20 +716,18 @@ void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b
         const auto& t = current();
         const auto on = button.getToggleState();
 
-        // A filled button gets the page colour as its label, whatever the
-        // colour scheme says. The scheme's "on" text colour is tuned for a
-        // gradient slab; on a solid accent block it was near-white on
-        // near-amber, which is the one combination this palette cannot
-        // carry.
+        // A filled button gets whichever label colour actually shows up on
+        // it - decided by contrast against the fill, not by asking whether
+        // the button "is" a special one.
+        //
+        // The first version tested identity (is this colour the panel
+        // colour?), and a caller passing the panel colour at 25% alpha
+        // slipped through as "filled" - so the preset chips in Learner
+        // Comp drew a near-black label on a near-black chip and vanished.
+        // Contrast cannot be fooled that way.
         const auto background = button.findColour (on ? juce::TextButton::buttonOnColourId
                                                       : juce::TextButton::buttonColourId);
-        const auto filled = ! background.isTransparent()
-                                && background != t.widgetBackground
-                                && background != t.panelBackground;
-
-        const auto colour = (filled ? t.windowBackground
-                                    : button.findColour (on ? juce::TextButton::textColourOnId
-                                                            : juce::TextButton::textColourOffId))
+        const auto colour = labelColourOn (background)
                                 .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f);
 
         juce::ignoreUnused (shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);

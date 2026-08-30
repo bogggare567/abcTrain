@@ -17,7 +17,14 @@ namespace
     constexpr float brandTracking = 0.8f;
 
     constexpr int rightCellWidth = 34;
-    constexpr int rightCells     = 5;   // volume, theme, update, size, language
+    constexpr int rightCells     = 4;   // theme, update, size, language
+    constexpr int volumeWidth    = 96;
+
+    // Everything the app's own controls occupy on the right, measured once
+    // rather than guessed at three call sites. Guessing it is what put the
+    // streak dots underneath the volume slider: the reservation counted
+    // the volume as one 34px cell when it is a 96px run.
+    constexpr int rightCluster = rightCells * rightCellWidth + volumeWidth + 16;
 
     constexpr int dotSize  = 5;
     constexpr int dotPitch = 8;
@@ -38,7 +45,12 @@ void TopNavComponent::setLabels (juce::StringArray itemLabels, juce::String stre
     if (itemLabels.size() == numItems)
         labels = std::move (itemLabels);
 
-    streakText = std::move (streakCaption);
+    // Kept as a template with its {{days}} placeholder still in it. The
+    // caption is set once, when the language changes; the number changes
+    // every day and comes in through setStatus - substituting at
+    // setLabels() time meant the bar drew a literal "{{days}}" for the
+    // whole session, which is exactly what it did.
+    streakTemplate = std::move (streakCaption);
     repaint();
 }
 
@@ -58,6 +70,11 @@ void TopNavComponent::setStatus (int newStreakDays)
 
     streakDays = newStreakDays;
     repaint();
+}
+
+juce::String TopNavComponent::streakCaption() const
+{
+    return streakTemplate.replace ("{{days}}", juce::String (streakDays));
 }
 
 juce::Rectangle<int> TopNavComponent::tabBounds (int index) const
@@ -113,8 +130,8 @@ juce::Rectangle<int> TopNavComponent::getVolumeSlot() const
     // reaches for *during* a round, and the design mockup dropped it
     // entirely, which would have meant leaving the exercise to turn the
     // sound down.
-    const auto cell = rightCell (4);
-    return { cell.getRight() - 96, cell.getY(), 96, cell.getHeight() };
+    const auto cell = rightCell (rightCells - 1);
+    return { cell.getX() - volumeWidth - 8, cell.getY(), volumeWidth, cell.getHeight() };
 }
 
 void TopNavComponent::mouseMove (const juce::MouseEvent& e)
@@ -219,7 +236,7 @@ void TopNavComponent::paint (juce::Graphics& g)
         {
             const auto tab = tabBounds (i);
 
-            if (tab.getRight() > getWidth() - rightCells * rightCellWidth - pagePad)
+            if (tab.getRight() > getWidth() - rightCluster - pagePad)
                 break;   // no room; better a missing tab than one drawn over the streak
 
             const auto isActive = (static_cast<int> (active) == i);
@@ -247,20 +264,21 @@ void TopNavComponent::paint (juce::Graphics& g)
     }
 
     // --- the streak, and its days as dots ---------------------------------
-    if (streakText.isNotEmpty() && streakDays > 0)
+    if (streakTemplate.isNotEmpty() && streakDays > 0)
     {
         const auto font = AbcTrainLookAndFeel::labelFont();
         const auto dotsWidth = maxDots * dotPitch - (dotPitch - dotSize);
+        const auto caption = AbcTrainLookAndFeel::toCaps (streakCaption());
         const auto textWidth = (int) std::ceil (
-            AbcTrainLookAndFeel::trackedTextWidth (AbcTrainLookAndFeel::toCaps (streakText), font, 1.68f));
+            AbcTrainLookAndFeel::trackedTextWidth (caption, font, 1.68f));
 
-        auto right = getWidth() - pagePad - rightCells * rightCellWidth - 24;
+        auto right = getWidth() - pagePad - rightCluster - 20;
         auto area = juce::Rectangle<int> (right - textWidth - 10 - dotsWidth, 0,
                                            textWidth + 10 + dotsWidth, getHeight());
 
         if (area.getX() > tabBounds (numItems - 1).getRight() + 16)
         {
-            AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (streakText),
+            AbcTrainLookAndFeel::drawTrackedText (g, caption,
                                                    area.removeFromLeft (textWidth).toFloat(),
                                                    font, theme.accentWarm, 1.68f,
                                                    juce::Justification::centredLeft);
@@ -283,7 +301,7 @@ void TopNavComponent::paint (juce::Graphics& g)
 
     // --- the divider before the app's own controls ------------------------
     {
-        const auto x = getWidth() - pagePad - rightCells * rightCellWidth - 12;
+        const auto x = getWidth() - pagePad - rightCluster - 10;
         g.setColour (theme.divider);
         g.fillRect (x, bounds.getY() + 12, 1, bounds.getHeight() - 25);
     }

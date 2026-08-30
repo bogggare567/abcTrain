@@ -118,6 +118,14 @@ public:
     static void makePrimary (juce::Button&, bool shouldBePrimary = true);
     static bool isPrimary (const juce::Button&);
 
+    // Whether a button background is a solid fill or a low-alpha wash, and
+    // which label colour reads on it. Both are decided by *contrast* - an
+    // earlier version asked whether the colour was equal to the panel's,
+    // which a caller passing that same colour at 25% alpha walked straight
+    // past, painting a near-black label on a near-black chip.
+    static bool buttonIsFilled (juce::Colour background);
+    static juce::Colour labelColourOn (juce::Colour background);
+
     void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height,
                            float sliderPosProportional, float rotaryStartAngle,
                            float rotaryEndAngle, juce::Slider&) override;
