@@ -583,7 +583,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     scoreLabel.setMinimumHorizontalScale (1.0f);
 
     levelProgressLabel.setJustificationType (juce::Justification::centredRight);
-    levelProgressLabel.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+    levelProgressLabel.setFont (AbcTrainLookAndFeel::labelFont());
     addAndMakeVisible (levelProgressLabel);
     addAndMakeVisible (scoreLabel);
 
@@ -1052,6 +1052,28 @@ void EarTrainerEditor::paint (juce::Graphics& g)
                 answerHeadingRow.toFloat(), AbcTrainLookAndFeel::labelFont(),
                 theme.textDim, 2.8f, juce::Justification::centredLeft);
 
+        // How far into this exercise's level, as ten segments beside the
+        // sentence that says the same thing in words. Ten, because the
+        // sentence is already counting - "100 / 200" - and a smooth bar
+        // beside a count is a picture of a different quantity.
+        if (! levelProgressBarArea.isEmpty())
+        {
+            auto& progress = processor.getProgressManager();
+            const auto index = processor.getGameManager().getActiveGameIndex();
+
+            AbcTrainLookAndFeel::drawSegmentedBar (
+                g, levelProgressBarArea.toFloat(), 10,
+                progress.getLevelProgressForGame (index),
+                tintForGame (processor.getGameManager().getActiveGame().getName()),
+                // Outline, not divider. The training page carries a tint
+                // of the exercise's family colour, and against that a
+                // divider-coloured segment came out five values from the
+                // background - drawn, and invisible. An empty segment has
+                // to be *seen* to be empty; that is the whole difference
+                // between "nothing yet" and "no bar here".
+                theme.outline, 2.0f);
+        }
+
         // A hairline over the control bar, and nothing else - no fill, no
         // panel. The bar is the bottom edge of the page rather than an
         // object resting on it.
@@ -1197,9 +1219,18 @@ void EarTrainerEditor::resized()
         // a run "how many lives are left" genuinely outranks "how far to
         // the next level".
         {
-            auto slot = gameRow.removeFromRight (210);
+            auto slot = gameRow.removeFromRight (360);
             const auto running = isRunHudActive();
             runHud.setBounds (running ? slot.withSizeKeepingCentre (210, 30) : juce::Rectangle<int>());
+
+            // The bar takes the right end of the slot and the sentence the
+            // rest, so "100 / 200 to level 3" has a picture of itself
+            // beside it. Both go away during a run, where lives and a
+            // clock matter more than distance to the next level.
+            levelProgressBarArea = running ? juce::Rectangle<int>()
+                                            : slot.removeFromRight (130)
+                                                  .withSizeKeepingCentre (130, 4);
+            slot.removeFromRight (Spacing::medium);
             levelProgressLabel.setBounds (running ? juce::Rectangle<int>() : slot);
         }
 

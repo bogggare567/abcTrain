@@ -1221,6 +1221,7 @@ private:
     juce::Rectangle<int> answerHeadingRow;
     juce::String answerHeadingText;
     juce::Rectangle<int> controlBar;
+    juce::Rectangle<int> levelProgressBarArea;
     static constexpr int controlBarHeight = 70;
     juce::Rectangle<int> progressSection;
     juce::Rectangle<int> hintSection;
