@@ -63,6 +63,10 @@
   "home.section.focus": "Твой фокус",
   "home.category.frequency": "Частоты",
   "home.yourFocus": "Твой фокус",
+  "ui.today": "Сегодня",
+  "ui.dailyReward": "+{{bonus}} очков за задание",
+  "ui.ofCount": "{{done}} из {{total}}",
+  "home.overallLevel": "Общий уровень",
   "home.category.dynamics": "Динамика",
   "home.category.space": "Пространство и стерео",
   "home.category.character": "Характер",
@@ -117,8 +121,8 @@
   "ui.achievements": "Достижения",
   "ui.achievementEarned": "Достижение получено",
   "ui.achievementsLocked": "Пока не получено",
-  "ui.daily": "Сегодня: {{count}} подряд в «{{game}}»",
-  "ui.dailyDone": "Сегодня сделано — {{count}} подряд в «{{game}}» (+{{bonus}})",
+  "ui.daily": "{{count}} подряд в «{{game}}»",
+  "ui.dailyDone": "Сегодня сделано — {{count}} подряд в «{{game}}»",
   "achv.eqLevel5.name": "Частоты, 5 уровень",
   "achv.eqLevel5.desc": "5 уровень в «Угадай полосу»",
   "achv.compLevel5.name": "Динамика, 5 уровень",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Твой лучший результат",
   "ui.trainings": "Упражнения",
   "ui.missVerdict": "Больше всего промахов — {{where}}. Здесь стоит побыть подольше.",
-  "ui.missJoin": " и "
+  "ui.missJoin": " и ",
+  "ui.earnedCount": "получено {{done}} из {{total}}",
+  "ui.seeAll": "Все"
 }

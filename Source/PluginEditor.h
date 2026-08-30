@@ -643,17 +643,32 @@ private:
     //
     // Deliberately not a "goal for today" or a nag: nothing here asks for
     // anything, it only shows where you already are.
-    class DailyBanner : public juce::Component
+    // The focus band: the one thing worth doing today, how far into it you
+    // are, and the way back into it.
+    //
+    // It used to be a 52px strip carrying a sentence and two rows of dots
+    // - true, but small enough that it read as a status line rather than
+    // as the day's suggestion. At 120px with a real headline it is the
+    // first thing on the page, which is what it should be: somebody
+    // opening this app has already decided to practise, and the only open
+    // question is *what*.
+    //
+    // Split in two by a hairline: the left half is today, the right half
+    // is the standing total and the button that starts. Two different
+    // timescales, so they do not share a cell.
+    class FocusBand : public juce::Component
     {
     public:
         struct State
         {
-            int streakDays = 0;
-            juce::String streakCaption;      // "7-day streak"
+            juce::String kicker;             // "YOUR FOCUS - TODAY"
             juce::String challengeLine;      // "5 in a row on Guess the Reverb"
+            juce::String rewardLine;         // "+50 points for the task"
+            juce::String progressCaption;    // "3 of 5"
+            juce::String levelCaption;       // "OVERALL LEVEL"
+            int level = 1;
             int challengeDone = 0;
             int challengeTarget = 0;
-            int bonusPoints = 0;
             bool challengeComplete = false;
             juce::Colour challengeAccent;
         };
@@ -664,97 +679,118 @@ private:
             repaint();
         }
 
+        // Where the editor puts the button that starts today's exercise.
+        // Same division of labour as the nav bar: this paints, the editor
+        // owns the widget - see TopNavComponent for why.
+        juce::Rectangle<int> getActionSlot() const
+        {
+            return juce::Rectangle<int> (getWidth() - 190 - AbcTrainTheme::Spacing::large,
+                                          (getHeight() - 44) / 2, 190, 44);
+        }
+
         void paint (juce::Graphics& g) override
         {
             const auto& theme = AbcTrainTheme::current();
             auto area = getLocalBounds().toFloat();
 
-            AbcTrainLookAndFeel::paintRaisedCard (g, area);
+            // A surface, not a card: no border, no shadow, no marks. The
+            // band is a stripe across the page rather than an object
+            // sitting on it, and giving it a frame would make it compete
+            // with the exercise cards below, which *are* objects.
+            g.setColour (theme.panelBackground);
+            g.fillRect (area);
 
-            area = area.reduced (AbcTrainTheme::Spacing::medium,
-                                 AbcTrainTheme::Spacing::small);
+            const auto splitX = area.getX() + area.getWidth() * 0.68f;
+            g.setColour (theme.divider);
+            g.fillRect (splitX, area.getY() + 14.0f, 1.0f, area.getHeight() - 28.0f);
 
-            // --- right: the streak, as days rather than as a sentence ---
-            auto streakArea = area.removeFromRight (juce::jmin (200.0f, area.getWidth() * 0.42f));
+            auto left = area.withRight (splitX).reduced ((float) AbcTrainTheme::Spacing::large, 18.0f);
+
+            // --- the kicker ------------------------------------------------
+            AbcTrainLookAndFeel::drawTrackedText (
+                g, AbcTrainLookAndFeel::toCaps (state.kicker),
+                left.removeFromTop (16.0f), AbcTrainLookAndFeel::labelFont(),
+                theme.textDim, 2.6f, juce::Justification::centredLeft);
+
+            left.removeFromTop (10.0f);
+
+            // --- the headline, and what it pays -----------------------------
             {
-                auto dots = streakArea.removeFromBottom (14.0f);
-                auto caption = streakArea;
+                auto line = left.removeFromTop (32.0f);
+                const auto font = AbcTrainLookAndFeel::displayFont()
+                                      .withHeight (AbcTrainLookAndFeel::displayFontHeight
+                                                     * AbcTrainLookAndFeel::getTextScale() * 0.8f);
 
-                g.setColour (state.streakDays > 0 ? theme.accentWarm : theme.textDim);
-                g.setFont (AbcTrainLookAndFeel::monoFont());
-                g.drawText (state.streakCaption, caption, juce::Justification::centredRight, false);
-
-                // Seven days, the most recent on the right. Derived from
-                // the streak count, never invented: a streak of 3 fills
-                // exactly the last three.
-                constexpr int shown = 7;
-                const auto r = 3.5f;
-                const auto gap = 7.0f;
-                auto x = dots.getRight() - r;
-
-                for (int i = 0; i < shown; ++i)
+                if (state.rewardLine.isNotEmpty())
                 {
-                    const auto filled = i < juce::jmin (shown, state.streakDays);
+                    const auto rewardFont = AbcTrainLookAndFeel::headingFont();
+                    const auto width = juce::jmin (line.getWidth() * 0.4f,
+                                                    juce::GlyphArrangement::getStringWidth (rewardFont, state.rewardLine) + 24.0f);
+                    auto reward = line.removeFromRight (width);
 
-                    if (filled)
-                    {
-                        g.setColour (theme.accentWarm);
-                        g.fillEllipse (x - r, dots.getCentreY() - r, r * 2.0f, r * 2.0f);
-                    }
-                    else
-                    {
-                        g.setColour (theme.outline);
-                        g.drawEllipse (x - r, dots.getCentreY() - r, r * 2.0f, r * 2.0f, 1.0f);
-                    }
+                    g.setColour (state.challengeComplete ? theme.positive : theme.accentWarm);
+                    g.setFont (rewardFont);
+                    g.drawText (state.rewardLine, reward.toNearestInt(),
+                                 juce::Justification::centredRight, false);
+                }
 
-                    x -= r * 2.0f + gap;
+                g.setColour (state.challengeComplete ? theme.positive : theme.textBright);
+                g.setFont (font);
+                g.drawText (state.challengeLine, line.toNearestInt(),
+                             juce::Justification::centredLeft, true);
+            }
+
+            left.removeFromTop (10.0f);
+
+            // --- how far in, as segments ------------------------------------
+            {
+                auto row = left.removeFromTop (16.0f);
+                const auto target = juce::jmax (1, state.challengeTarget);
+                const auto captionWidth = state.progressCaption.isEmpty()
+                                              ? 0.0f
+                                              : juce::GlyphArrangement::getStringWidth (
+                                                    AbcTrainLookAndFeel::labelFont(),
+                                                    state.progressCaption) + 14.0f;
+
+                auto bar = row.removeFromLeft (juce::jmax (60.0f, juce::jmin (200.0f,
+                                                    row.getWidth() - captionWidth)));
+
+                AbcTrainLookAndFeel::drawSegmentedBar (
+                    g, bar.withSizeKeepingCentre (bar.getWidth(), 4.0f), target,
+                    state.challengeComplete ? 1.0f
+                                            : (float) state.challengeDone / (float) target,
+                    state.challengeComplete ? theme.positive : state.challengeAccent,
+                    theme.outline, 5.0f);
+
+                if (captionWidth > 0.0f)
+                {
+                    g.setColour (theme.textDim);
+                    g.setFont (AbcTrainLookAndFeel::labelFont());
+                    g.drawText (state.progressCaption,
+                                 row.withTrimmedLeft (14.0f).toNearestInt(),
+                                 juce::Justification::centredLeft, false);
                 }
             }
 
-            area.removeFromRight (AbcTrainTheme::Spacing::medium);
-
-            // --- left: today's challenge, with how far in you are -------
+            // --- the standing total -----------------------------------------
             {
-                auto pips = area.removeFromBottom (14.0f);
-                auto line = area;
+                auto right = area.withLeft (splitX + 1.0f)
+                                 .reduced ((float) AbcTrainTheme::Spacing::large, 0.0f);
+                right = right.removeFromLeft (right.getWidth() - 190.0f - 14.0f);
 
-                g.setColour (state.challengeComplete ? theme.positive : theme.text);
-                g.setFont (AbcTrainLookAndFeel::bodyFont());
-                g.drawText (state.challengeLine, line, juce::Justification::centredLeft, true);
+                auto stack = right.withSizeKeepingCentre (right.getWidth(), 44.0f);
 
-                const auto r = 3.5f;
-                const auto gap = 7.0f;
-                auto x = pips.getX() + r;
+                AbcTrainLookAndFeel::drawTrackedText (
+                    g, AbcTrainLookAndFeel::toCaps (state.levelCaption),
+                    stack.removeFromTop (16.0f), AbcTrainLookAndFeel::microFont(),
+                    theme.textDim, 1.68f, juce::Justification::centredLeft);
 
-                for (int i = 0; i < state.challengeTarget; ++i)
-                {
-                    const auto done = state.challengeComplete || i < state.challengeDone;
-                    const auto hue = state.challengeComplete ? theme.positive : state.challengeAccent;
-
-                    if (done)
-                    {
-                        g.setColour (hue);
-                        g.fillEllipse (x - r, pips.getCentreY() - r, r * 2.0f, r * 2.0f);
-                    }
-                    else
-                    {
-                        g.setColour (theme.outline);
-                        g.drawEllipse (x - r, pips.getCentreY() - r, r * 2.0f, r * 2.0f, 1.0f);
-                    }
-
-                    x += r * 2.0f + gap;
-                }
-
-                // The reward, next to what earns it - a bonus you only
-                // find out about after the fact is not an incentive.
-                if (state.bonusPoints > 0)
-                {
-                    const auto rewardBox = pips.withLeft (x + AbcTrainTheme::Spacing::small);
-                    g.setColour (state.challengeComplete ? theme.positive : theme.textDim);
-                    g.setFont (AbcTrainLookAndFeel::microFont());
-                    g.drawText ("+" + juce::String (state.bonusPoints),
-                                rewardBox, juce::Justification::centredLeft, false);
-                }
+                g.setColour (theme.textBright);
+                g.setFont (AbcTrainLookAndFeel::displayFont()
+                               .withHeight (AbcTrainLookAndFeel::displayFontHeight
+                                              * AbcTrainLookAndFeel::getTextScale() * 0.72f));
+                g.drawText (juce::String (state.level), stack.toNearestInt(),
+                             juce::Justification::centredLeft, false);
             }
         }
 
@@ -1147,14 +1183,20 @@ private:
     // return loop look like a footnote.
     juce::Label streakLabel;
     juce::Label dailyChallengeLabel;
-    DailyBanner dailyBanner;
+    FocusBand focusBand;
+
+    // The way back into today's exercise, right beside the sentence that
+    // names it. Before this the band told you what to do and then made you
+    // find it yourself in the grid below - which is a suggestion with
+    // homework attached.
+    juce::TextButton continueButton;
 
     // How many of Achievements::all() have been earned. Home screen only.
 
     // Height of the home screen's daily banner: a line of text over a row
     // of day/progress dots, with card padding around both. It was 20 - one
     // line of small text - when the streak and the challenge were labels.
-    static constexpr int homeStatusHeight = 52;
+    static constexpr int homeStatusHeight = 120;
 
     void showAchievementToast (const juce::String& achievementId);
 

@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "소리 보기 (-{{seconds}}초)",
   "ui.hintShown": "이번 라운드에 표시됨",
   "ui.sectionHint": "소리의 모습",
-  "ui.daily": "오늘: 「{{game}}」에서 {{count}}회 연속",
-  "ui.dailyDone": "오늘 완료 — 「{{game}}」에서 {{count}}회 연속 (+{{bonus}})",
+  "ui.daily": "「{{game}}」에서 {{count}}회 연속",
+  "ui.dailyDone": "오늘 완료 — 「{{game}}」에서 {{count}}회 연속",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "내 관심",
   "home.category.frequency": "주파수",
   "home.yourFocus": "집중 항목",
+  "ui.today": "오늘",
+  "ui.dailyReward": "과제 완료 시 +{{bonus}}점",
+  "ui.ofCount": "{{total}} 중 {{done}}",
+  "home.overallLevel": "전체 레벨",
   "home.category.dynamics": "다이내믹",
   "home.category.space": "공간과 스테레오",
   "home.category.character": "캐릭터",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "자기 최고 기록",
   "ui.trainings": "훈련",
   "ui.missVerdict": "놓친 것 대부분이 {{where}}에 있습니다. 여기를 더 해볼 만합니다.",
-  "ui.missJoin": "와 "
+  "ui.missJoin": "와 ",
+  "ui.earnedCount": "{{total}}개 중 {{done}}개 획득",
+  "ui.seeAll": "전체"
 }

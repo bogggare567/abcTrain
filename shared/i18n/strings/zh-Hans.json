@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "看见声音（-{{seconds}} 秒）",
   "ui.hintShown": "本轮已显示",
   "ui.sectionHint": "声音长什么样",
-  "ui.daily": "今天：在「{{game}}」中连续答对 {{count}} 次",
-  "ui.dailyDone": "今天已完成 —「{{game}}」连续 {{count}} 次（+{{bonus}}）",
+  "ui.daily": "在「{{game}}」中连续答对 {{count}} 次",
+  "ui.dailyDone": "今天已完成 —「{{game}}」连续 {{count}} 次",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "你的重点",
   "home.category.frequency": "频率",
   "home.yourFocus": "你的重点",
+  "ui.today": "今天",
+  "ui.dailyReward": "完成任务 +{{bonus}} 分",
+  "ui.ofCount": "{{total}} 中的 {{done}}",
+  "home.overallLevel": "总体等级",
   "home.category.dynamics": "动态",
   "home.category.space": "空间与立体声",
   "home.category.character": "音色",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "你的最好成绩",
   "ui.trainings": "训练",
   "ui.missVerdict": "大部分失误集中在 {{where}}。值得在这里多练几轮。",
-  "ui.missJoin": "和"
+  "ui.missJoin": "和",
+  "ui.earnedCount": "已获得 {{total}} 个中的 {{done}} 个",
+  "ui.seeAll": "全部"
 }

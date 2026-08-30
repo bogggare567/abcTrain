@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "Voir le son (-{{seconds}}s)",
   "ui.hintShown": "Affiché pour cette manche",
   "ui.sectionHint": "À quoi ressemble le son",
-  "ui.daily": "Aujourd’hui : {{count}} d’affilée sur « {{game}} »",
-  "ui.dailyDone": "Fait aujourd’hui — {{count}} d’affilée sur « {{game}} » (+{{bonus}})",
+  "ui.daily": "{{count}} d’affilée sur « {{game}} »",
+  "ui.dailyDone": "Fait aujourd’hui — {{count}} d’affilée sur « {{game}} »",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "Ton focus",
   "home.category.frequency": "Fréquence",
   "home.yourFocus": "Ton focus",
+  "ui.today": "Aujourd'hui",
+  "ui.dailyReward": "+{{bonus}} points pour la tâche",
+  "ui.ofCount": "{{done}} sur {{total}}",
+  "home.overallLevel": "Niveau global",
   "home.category.dynamics": "Dynamique",
   "home.category.space": "Espace & stéréo",
   "home.category.character": "Caractère",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Votre meilleur score",
   "ui.trainings": "Exercices",
   "ui.missVerdict": "La plupart des erreurs tombent sur {{where}}. Ça vaut la peine d’y rester.",
-  "ui.missJoin": " et "
+  "ui.missJoin": " et ",
+  "ui.earnedCount": "{{done}} sur {{total}} obtenus",
+  "ui.seeAll": "Tous"
 }

@@ -103,6 +103,21 @@ public:
     void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
                                 bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 
+    void drawButtonText (juce::Graphics&, juce::TextButton&,
+                         bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    // Marks a button as *the* action on its screen: a solid accent block
+    // with the page colour as its label, tracked capitals and the corner
+    // registration marks. Exactly one per screen, which is the whole point
+    // - a screen with two primary buttons has none.
+    //
+    // Set through the component's own property bag rather than a subclass,
+    // because these are plain juce::TextButtons everywhere already and a
+    // parallel PrimaryButton type would mean re-wiring every call site to
+    // change how one rectangle is filled.
+    static void makePrimary (juce::Button&, bool shouldBePrimary = true);
+    static bool isPrimary (const juce::Button&);
+
     void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height,
                            float sliderPosProportional, float rotaryStartAngle,
                            float rotaryEndAngle, juce::Slider&) override;

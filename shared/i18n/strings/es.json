@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "Ver el sonido (-{{seconds}}s)",
   "ui.hintShown": "Mostrado en esta ronda",
   "ui.sectionHint": "Cómo se ve el sonido",
-  "ui.daily": "Hoy: {{count}} seguidas en «{{game}}»",
-  "ui.dailyDone": "Hoy hecho — {{count}} seguidas en «{{game}}» (+{{bonus}})",
+  "ui.daily": "{{count}} seguidas en «{{game}}»",
+  "ui.dailyDone": "Hoy hecho — {{count}} seguidas en «{{game}}»",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "Tu enfoque",
   "home.category.frequency": "Frecuencia",
   "home.yourFocus": "Tu foco",
+  "ui.today": "Hoy",
+  "ui.dailyReward": "+{{bonus}} puntos por la tarea",
+  "ui.ofCount": "{{done}} de {{total}}",
+  "home.overallLevel": "Nivel general",
   "home.category.dynamics": "Dinámica",
   "home.category.space": "Espacio y estéreo",
   "home.category.character": "Carácter",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Tu mejor marca",
   "ui.trainings": "Ejercicios",
   "ui.missVerdict": "La mayoría de los fallos caen en {{where}}. Vale la pena practicar más ahí.",
-  "ui.missJoin": " y "
+  "ui.missJoin": " y ",
+  "ui.earnedCount": "{{done}} de {{total}} logrados",
+  "ui.seeAll": "Todos"
 }

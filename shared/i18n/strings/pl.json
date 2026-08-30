@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "Pokaż dźwięk (-{{seconds}}s)",
   "ui.hintShown": "Pokazane w tej rundzie",
   "ui.sectionHint": "Jak wygląda dźwięk",
-  "ui.daily": "Dziś: {{count}} z rzędu w „{{game}}”",
-  "ui.dailyDone": "Dziś zrobione — {{count}} z rzędu w „{{game}}” (+{{bonus}})",
+  "ui.daily": "{{count}} z rzędu w „{{game}}”",
+  "ui.dailyDone": "Dziś zrobione — {{count}} z rzędu w „{{game}}”",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "Twój wybór",
   "home.category.frequency": "Częstotliwość",
   "home.yourFocus": "Twój wybór",
+  "ui.today": "Dziś",
+  "ui.dailyReward": "+{{bonus}} punktów za zadanie",
+  "ui.ofCount": "{{done}} z {{total}}",
+  "home.overallLevel": "Poziom ogólny",
   "home.category.dynamics": "Dynamika",
   "home.category.space": "Przestrzeń i stereo",
   "home.category.character": "Charakter",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Twój najlepszy wynik",
   "ui.trainings": "Ćwiczenia",
   "ui.missVerdict": "Najwięcej pomyłek wypada na {{where}}. Warto tu zostać dłużej.",
-  "ui.missJoin": " i "
+  "ui.missJoin": " i ",
+  "ui.earnedCount": "zdobyto {{done}} z {{total}}",
+  "ui.seeAll": "Wszystkie"
 }

@@ -61,9 +61,12 @@ void HomeScreenComponent::setLevelCaption (juce::String caption)
     repaint();
 }
 
-void HomeScreenComponent::setBadgeStripCaption (juce::String caption)
+void HomeScreenComponent::setBadgeStripCaption (juce::String caption, juce::String count,
+                                                 juce::String action)
 {
     badgeStripCaption = std::move (caption);
+    badgeStripCount = std::move (count);
+    badgeStripAction = std::move (action);
     repaint();
 }
 
@@ -166,11 +169,29 @@ void HomeScreenComponent::rebuildLayout()
         rowHeight = juce::jmax (rowHeight, blockHeight);
     }
 
-    // The badge strip follows the last block immediately rather than being
-    // pinned to the bottom edge. Pinning it left a 200px hole between the
-    // two whenever the window was taller than the sections required.
-    auto below = area.withTop (juce::jmin (area.getBottom(), rowY + rowHeight + Spacing::section));
-    badgeStrip = below.removeFromTop (badgeStripHeight);
+    // Achievements are laid out as one more block in the same grid, which
+    // is what lets them sit *beside* a one-exercise family instead of
+    // under a full row of nothing. It only starts a new row when there is
+    // no useful width left on this one - two badges wide is not a shelf.
+    {
+        const auto minimumWidth = cardWidth * 2 + gap;
+        auto blockX = rowX;
+        auto blockY = rowY;
+
+        if (rowX == area.getX() || rowX + sectionGap + minimumWidth > area.getRight())
+        {
+            blockY = rowX == area.getX() ? rowY : rowY + rowHeight + sectionGap;
+            blockX = area.getX();
+        }
+        else
+        {
+            blockX = rowX + sectionGap;
+        }
+
+        badgeStripHeader = { blockX, blockY, area.getRight() - blockX, sectionHeaderHeight };
+        badgeStrip = { blockX, blockY + sectionHeaderHeight + gap,
+                        area.getRight() - blockX, tileHeight };
+    }
 
     const auto contentWidth = (int) badges.size() * (badgeSize + Spacing::small);
     maxBadgeScroll = juce::jmax (0.0f, (float) (contentWidth - badgeStrip.getWidth() + Spacing::large));
@@ -300,11 +321,20 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
 
     inner.removeFromTop (7.0f);
 
-    auto nameArea = inner.removeFromTop (34.0f);
-    g.setColour (theme.textBright);
-    g.setFont (AbcTrainLookAndFeel::headingFont().withHeight (
-                   AbcTrainLookAndFeel::headingFontHeight * AbcTrainLookAndFeel::getTextScale() * 1.16f));
-    g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft, 2, 0.9f);
+    {
+        auto nameArea = inner.removeFromTop (card.englishName.isEmpty() ? 34.0f : 22.0f);
+        g.setColour (theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::headingFont().withHeight (
+                       AbcTrainLookAndFeel::headingFontHeight * AbcTrainLookAndFeel::getTextScale() * 1.16f));
+        g.drawFittedText (card.name, nameArea.toNearestInt(), juce::Justification::topLeft,
+                           card.englishName.isEmpty() ? 2 : 1, 0.9f);
+
+        if (card.englishName.isNotEmpty())
+            AbcTrainLookAndFeel::drawTrackedText (
+                g, AbcTrainLookAndFeel::toCaps (card.englishName),
+                inner.removeFromTop (16.0f), AbcTrainLookAndFeel::microFont(),
+                theme.textDim.withAlpha (0.85f), 1.1f, juce::Justification::centredLeft);
+    }
 
     if (card.statsLine.isNotEmpty())
     {
@@ -368,14 +398,42 @@ void HomeScreenComponent::paintBadgeStrip (juce::Graphics& g)
     if (badgeStrip.isEmpty())
         return;
 
+    // The heading, in the same shape as a family's - because on this page
+    // that is what it is: another group of things, sitting beside the last
+    // family rather than under a full row of nothing.
+    {
+        auto header = badgeStripHeader.toFloat();
+        const auto font = AbcTrainLookAndFeel::headingFont();
+        const auto caption = AbcTrainLookAndFeel::toCaps (badgeStripCaption);
+
+        AbcTrainLookAndFeel::drawTrackedText (
+            g, caption,
+            header.removeFromLeft (AbcTrainLookAndFeel::trackedTextWidth (caption, font, 2.7f)),
+            font, theme.text, 2.7f, juce::Justification::centredLeft);
+
+        if (badgeStripCount.isNotEmpty())
+        {
+            header.removeFromLeft (12.0f);
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::labelFont());
+            g.drawText (badgeStripCount, header.toNearestInt(),
+                         juce::Justification::centredLeft, false);
+        }
+
+        if (badgeStripAction.isNotEmpty())
+        {
+            const auto actionFont = AbcTrainLookAndFeel::microFont();
+            const auto action = AbcTrainLookAndFeel::toCaps (badgeStripAction);
+
+            AbcTrainLookAndFeel::drawTrackedText (
+                g, action,
+                header.removeFromRight (
+                    AbcTrainLookAndFeel::trackedTextWidth (action, actionFont, 1.2f) + 2.0f),
+                actionFont, theme.accent, 1.2f, juce::Justification::centredRight);
+        }
+    }
+
     auto area = badgeStrip;
-
-    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (badgeStripCaption),
-                                           area.removeFromTop (16).toFloat(),
-                                           AbcTrainLookAndFeel::captionFont(),
-                                           theme.textDim, 1.6f);
-
-    area.removeFromTop (AbcTrainTheme::Spacing::tight);
 
     // Clipped so a scrolled strip can't paint over the tiles above it.
     juce::Graphics::ScopedSaveState clip (g);
@@ -485,9 +543,13 @@ juce::Rectangle<int> HomeScreenComponent::starHitBox (juce::Rectangle<int> tile)
     // two things fighting for one space. Here it reads as a property of
     // the exercise - the thing the icon already names - and there is
     // nothing behind it to cover.
+    // Derived from paintTile's own padding (14 / 13) and its 24px icon,
+    // not from a second set of numbers that has to be kept in step by
+    // hand - which is exactly how the star ended up five pixels off the
+    // icon it sits beside the last time the card was re-laid-out.
     return juce::Rectangle<int> (22, 22)
-               .withPosition (tile.getX() + AbcTrainTheme::Spacing::small + 36,
-                               tile.getY() + AbcTrainTheme::Spacing::small + 5);
+               .withPosition (tile.getX() + 14 + 24 + 8,
+                               tile.getY() + 13 + 1);
 }
 
 int HomeScreenComponent::tileIndexAt (juce::Point<int> position) const

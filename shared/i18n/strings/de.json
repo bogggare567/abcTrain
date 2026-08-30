@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "Klang anzeigen (-{{seconds}}s)",
   "ui.hintShown": "Für diese Runde gezeigt",
   "ui.sectionHint": "So sieht der Klang aus",
-  "ui.daily": "Heute: {{count}} in Folge bei „{{game}}“",
-  "ui.dailyDone": "Heute geschafft — {{count}} in Folge bei „{{game}}“ (+{{bonus}})",
+  "ui.daily": "{{count}} in Folge bei „{{game}}“",
+  "ui.dailyDone": "Heute geschafft — {{count}} in Folge bei „{{game}}“",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "Dein Fokus",
   "home.category.frequency": "Frequenz",
   "home.yourFocus": "Dein Fokus",
+  "ui.today": "Heute",
+  "ui.dailyReward": "+{{bonus}} Punkte für die Aufgabe",
+  "ui.ofCount": "{{done}} von {{total}}",
+  "home.overallLevel": "Gesamtstufe",
   "home.category.dynamics": "Dynamik",
   "home.category.space": "Raum & Stereo",
   "home.category.character": "Charakter",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Dein bisher bestes",
   "ui.trainings": "Übungen",
   "ui.missVerdict": "Die meisten Fehler liegen bei {{where}}. Dort lohnen sich mehr Runden.",
-  "ui.missJoin": " und "
+  "ui.missJoin": " und ",
+  "ui.earnedCount": "{{done}} von {{total}} erhalten",
+  "ui.seeAll": "Alle"
 }

@@ -63,6 +63,10 @@
   "home.section.focus": "Your focus",
   "home.category.frequency": "Frequency",
   "home.yourFocus": "Your focus",
+  "ui.today": "Today",
+  "ui.dailyReward": "+{{bonus}} points for the task",
+  "ui.ofCount": "{{done}} of {{total}}",
+  "home.overallLevel": "Overall level",
   "home.category.dynamics": "Dynamics",
   "home.category.space": "Space & stereo",
   "home.category.character": "Character",
@@ -117,8 +121,8 @@
   "ui.achievements": "Achievements",
   "ui.achievementEarned": "Achievement unlocked",
   "ui.achievementsLocked": "Not yet earned",
-  "ui.daily": "Today: {{count}} in a row on \"{{game}}\"",
-  "ui.dailyDone": "Today done — {{count}} in a row on \"{{game}}\" (+{{bonus}})",
+  "ui.daily": "{{count}} in a row on \"{{game}}\"",
+  "ui.dailyDone": "Today done — {{count}} in a row on \"{{game}}\"",
   "achv.eqLevel5.name": "Frequency, level 5",
   "achv.eqLevel5.desc": "Reached level 5 on Guess the Band",
   "achv.compLevel5.name": "Dynamics, level 5",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Your best yet",
   "ui.trainings": "Trainings",
   "ui.missVerdict": "Most misses land in {{where}}. Worth spending more rounds there.",
-  "ui.missJoin": " and "
+  "ui.missJoin": " and ",
+  "ui.earnedCount": "{{done}} of {{total}} earned",
+  "ui.seeAll": "All"
 }

@@ -574,7 +574,20 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     streakLabel.setFont (AbcTrainLookAndFeel::monoFont());
     // Not added to the editor: it is now the source of the banner's
     // localised streak string, not a widget of its own.
-    addChildComponent (dailyBanner);
+    addChildComponent (focusBand);
+
+    continueButton.onClick = [this]
+    {
+        // Whatever today's challenge is about. It is the one button on the
+        // home screen that does not need you to have decided anything, so
+        // it goes through the same path a click on that exercise's card
+        // would - including restoring the mode that exercise was last left
+        // in, which is the whole reason not to reimplement it here.
+        if (homeScreen.onGameChosen != nullptr)
+            homeScreen.onGameChosen (processor.getProgressManager().getDailyChallengeGameIndex());
+    };
+    AbcTrainLookAndFeel::makePrimary (continueButton);
+    addChildComponent (continueButton);
     donateLink.setJustificationType (juce::Justification::centredRight);
     addChildComponent (donateLink);
 
@@ -1072,7 +1085,8 @@ void EarTrainerEditor::resized()
                              .withTop (Spacing::large + 32 + Spacing::small)
                              .withHeight (homeStatusHeight);
 
-        dailyBanner.setBounds (statusRow);
+        focusBand.setBounds (statusRow);
+        continueButton.setBounds (focusBand.getActionSlot() + statusRow.getPosition());
     }
 
     homeScreen.setBounds (contentBounds()
@@ -2153,7 +2167,8 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Level, streak and the daily challenge belong to the screen you plan
     // from, not the one you answer on.
-    dailyBanner.setVisible (onHome);
+    focusBand.setVisible (onHome);
+    continueButton.setVisible (onHome);
     donateLink.setVisible (onHome);
 
     resized();
@@ -2172,6 +2187,7 @@ void EarTrainerEditor::rebuildHomeSections()
         HomeScreenComponent::CardInfo card;
         card.gameIndex = i;
         card.name = translateGameName (englishName, localisation);
+        card.englishName = englishName;
         card.benefit = translateGameBenefit (englishName, localisation);
         card.icon = AppIcons::iconForGameName (englishName);
         card.isCurrent = (i == gameManager.getActiveGameIndex());
@@ -2274,9 +2290,11 @@ void EarTrainerEditor::rebuildHomeSections()
 
     homeScreen.setBadges (std::move (badges));
     homeScreen.setBadgeStripCaption (
-        localisation.getText ("ui.achievements") + "  "
-            + juce::String (progress.getNumAchievementsEarned())
-            + " / " + juce::String ((int) Achievements::all().size()));
+        localisation.getText ("ui.achievements"),
+        localisation.getText ("ui.earnedCount",
+                               { { "done", juce::String (progress.getNumAchievementsEarned()) },
+                                 { "total", juce::String ((int) Achievements::all().size()) } }),
+        localisation.getText ("ui.seeAll") + "  \u2192");
 }
 
 void EarTrainerEditor::refreshLocalisedText()
@@ -2310,6 +2328,7 @@ void EarTrainerEditor::refreshLocalisedText()
 
 
     {
+        continueButton.setButtonText (localisation.getText ("ui.continue"));
         practiceButton.setButtonText (localisation.getText ("ui.modePractice"));
         survivalButton.setButtonText (localisation.getText ("ui.modeSurvival"));
         blitzButton.setButtonText (localisation.getText ("ui.modeBlitz"));
@@ -2751,10 +2770,9 @@ void EarTrainerEditor::refreshFromProgressState()
     const auto challengeIndex = progress.getDailyChallengeGameIndex();
     const auto challengeEnglishName = processor.getGameManager().getGame (challengeIndex).getName();
 
-    DailyBanner::State banner;
-    banner.streakDays = progress.getStreakDays();
-    banner.streakCaption = localisation.getText ("ui.streak",
-                                                  { { "days", juce::String (progress.getStreakDays()) } });
+    FocusBand::State banner;
+    banner.kicker = localisation.getText ("home.yourFocus") + "  \u00b7  "
+                        + localisation.getText ("ui.today");
     banner.challengeLine = localisation.getText (
         progress.isDailyChallengeComplete() ? "ui.dailyDone" : "ui.daily",
         { { "count", juce::String (progress.getDailyChallengeTargetStreak()) },
@@ -2763,13 +2781,26 @@ void EarTrainerEditor::refreshFromProgressState()
 
     banner.challengeTarget = progress.getDailyChallengeTargetStreak();
     // Capped at the target: the run that completes the challenge keeps
-    // going, and a sixth filled pip on a five-pip row would be a bug on
-    // screen rather than a bonus.
+    // going, and a sixth filled segment on a five-segment bar would be a
+    // bug on screen rather than a bonus.
     banner.challengeDone = juce::jmin (banner.challengeTarget,
                                         progress.getConsecutiveCorrectForGame (challengeIndex));
-    banner.bonusPoints = progress.getDailyChallengeBonusPoints();
+
+    if (const auto bonus = progress.getDailyChallengeBonusPoints(); bonus > 0)
+        banner.rewardLine = localisation.getText ("ui.dailyReward",
+                                                   { { "bonus", juce::String (bonus) } });
+
+    banner.progressCaption = localisation.getText ("ui.ofCount",
+                                                    { { "done", juce::String (banner.challengeDone) },
+                                                      { "total", juce::String (banner.challengeTarget) } });
+
+    banner.levelCaption = localisation.getText ("home.overallLevel");
+    // The highest level any exercise has reached, which is the only
+    // honest "overall" this app has: levels are per exercise, and an
+    // average would report a number nobody is at.
+    banner.level = progress.getMaxLevelReached();
     banner.challengeComplete = progress.isDailyChallengeComplete();
     banner.challengeAccent = tintForGame (challengeEnglishName);
 
-    dailyBanner.setState (std::move (banner));
+    focusBand.setState (std::move (banner));
 }

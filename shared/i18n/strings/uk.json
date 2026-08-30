@@ -43,8 +43,8 @@
   "ui.hintCostSeconds": "Показати звук (−{{seconds}} с)",
   "ui.hintShown": "Показано на цей раунд",
   "ui.sectionHint": "Як виглядає звук",
-  "ui.daily": "Сьогодні: {{count}} поспіль у «{{game}}»",
-  "ui.dailyDone": "Сьогодні зроблено — {{count}} поспіль у «{{game}}» (+{{bonus}})",
+  "ui.daily": "{{count}} поспіль у «{{game}}»",
+  "ui.dailyDone": "Сьогодні зроблено — {{count}} поспіль у «{{game}}»",
   "brand.a": "ambiance",
   "brand.b": "balance",
   "brand.c": "clarity",
@@ -117,6 +117,10 @@
   "home.section.focus": "Твій фокус",
   "home.category.frequency": "Частоти",
   "home.yourFocus": "Твій фокус",
+  "ui.today": "Сьогодні",
+  "ui.dailyReward": "+{{bonus}} очок за завдання",
+  "ui.ofCount": "{{done}} з {{total}}",
+  "home.overallLevel": "Загальний рівень",
   "home.category.dynamics": "Динаміка",
   "home.category.space": "Простір і стерео",
   "home.category.character": "Характер",
@@ -294,5 +298,7 @@
   "ui.runResultsBest": "Твій найкращий результат",
   "ui.trainings": "Вправи",
   "ui.missVerdict": "Найбільше промахів — {{where}}. Тут варто побути довше.",
-  "ui.missJoin": " і "
+  "ui.missJoin": " і ",
+  "ui.earnedCount": "отримано {{done}} з {{total}}",
+  "ui.seeAll": "Усі"
 }

@@ -72,6 +72,13 @@ public:
         // the same heading twice.
         juce::String sectionTitle;
         juce::String sectionSubtitle;
+
+        // The exercise's English name, under the translated one and always
+        // shown. Same reasoning as the family's: a person learning this in
+        // Russian still has to read English plugin manuals, and the two
+        // names one above the other is how the second one gets learned
+        // without a glossary.
+        juce::String englishName;
     };
 
     struct BadgeInfo
@@ -94,7 +101,11 @@ public:
 
     void setCards (std::vector<CardInfo> newCards);
     void setBadges (std::vector<BadgeInfo> newBadges);
-    void setBadgeStripCaption (juce::String caption);
+    // Three separate strings, because they are three different registers:
+    // the heading is a name, the count is a fact, and the action is a
+    // link. Concatenating them (which is what this used to take) meant
+    // they all had to be one colour and one size.
+    void setBadgeStripCaption (juce::String caption, juce::String count, juce::String action);
 
     // The word above each tile's level number ("LEVEL" / "УРОВЕНЬ").
     // Passed in rather than looked up here, so this component stays free
@@ -161,7 +172,7 @@ private:
 
     std::vector<CardInfo> cards;
     std::vector<BadgeInfo> badges;
-    juce::String badgeStripCaption;
+    juce::String badgeStripCaption, badgeStripCount, badgeStripAction;
     juce::String levelCaption;
 
     std::vector<juce::Rectangle<int>> tileBounds;
@@ -171,6 +182,7 @@ private:
     int hoveredBadge = -1;
 
     juce::Rectangle<int> badgeStrip;
+    juce::Rectangle<int> badgeStripHeader;
     float badgeScroll = 0.0f;
     float maxBadgeScroll = 0.0f;
 

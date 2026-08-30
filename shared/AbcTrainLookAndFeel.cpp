@@ -344,12 +344,47 @@ juce::Font AbcTrainLookAndFeel::getAlertWindowMessageFont()
 
 // -------------------------------------------------------------- buttons
 
+namespace
+{
+    constexpr const char* primaryButtonProperty = "abcTrainPrimary";
+}
+
+void AbcTrainLookAndFeel::makePrimary (juce::Button& button, bool shouldBePrimary)
+{
+    button.getProperties().set (primaryButtonProperty, shouldBePrimary);
+    button.repaint();
+}
+
+bool AbcTrainLookAndFeel::isPrimary (const juce::Button& button)
+{
+    return (bool) button.getProperties().getWithDefault (primaryButtonProperty, false);
+}
+
 void AbcTrainLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button,
                                                  const juce::Colour& backgroundColour,
                                                  bool shouldDrawButtonAsHighlighted,
                                                  bool shouldDrawButtonAsDown)
 {
     const auto& t = current();
+
+    if (isPrimary (button))
+    {
+        // Flat, square and unshaded. Everything else on screen is a drawn
+        // outline, so a filled rectangle is already the loudest thing
+        // available - adding a gradient, a bevel and a shadow on top would
+        // be shouting through a megaphone.
+        const auto hoverP = Ease::out (stateRegistry.hoverAmount (button, shouldDrawButtonAsHighlighted));
+        const auto pressP = Ease::out (stateRegistry.pressAmount (button, shouldDrawButtonAsDown));
+        const auto area = button.getLocalBounds().toFloat();
+
+        g.setColour (t.accent.brighter (0.10f * hoverP).darker (0.12f * pressP));
+        g.fillRect (area);
+
+        // The marks in the *label* colour, not the fill's: on a solid
+        // block they are a cut-out rather than an outline.
+        drawRegistrationMarks (g, area, t.windowBackground.withAlpha (0.5f));
+        return;
+    }
 
     // Eased hover/press, not JUCE's raw booleans - this is what makes the
     // lift and settle feel weighted. See WidgetStateRegistry.h.
@@ -621,6 +656,26 @@ void AbcTrainLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int
 }
 
 // ----------------------------------------------------------- combo/menu
+
+void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& button,
+                                           bool shouldDrawButtonAsHighlighted,
+                                           bool shouldDrawButtonAsDown)
+{
+    if (! isPrimary (button))
+    {
+        juce::LookAndFeel_V4::drawButtonText (g, button, shouldDrawButtonAsHighlighted,
+                                               shouldDrawButtonAsDown);
+        return;
+    }
+
+    // Tracked capitals in the page colour. Drawn here rather than left to
+    // the base class because JUCE has no letter-spacing on drawText, and
+    // untracked capitals in a solid block read as a warning sign.
+    drawTrackedText (g, toCaps (button.getButtonText()),
+                     button.getLocalBounds().toFloat(),
+                     headingFont(), current().windowBackground, 1.9f,
+                     juce::Justification::centred);
+}
 
 void AbcTrainLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool isButtonDown,
                                          int buttonX, int buttonY, int buttonW, int buttonH,
