@@ -310,5 +310,13 @@
   "ui.soundsShuffling": "Mische {{category}} — jetzt: {{file}}",
   "ui.soundsBuiltInPercussive": "Mitgeliefert: perkussiv",
   "ui.soundsBuiltInSustained": "Mitgeliefert: gehalten",
-  "ui.optionNumber": "Option {{n}}"
+  "ui.optionNumber": "Option {{n}}",
+  "ui.settingsTraining": "Training",
+  "ui.reviewWhen": "Antwort besprechen",
+  "ui.reviewAlways": "Immer",
+  "ui.reviewOnMiss": "Nur bei Fehler",
+  "ui.reviewNever": "Nie",
+  "ui.advanceWhen": "Nächste Runde",
+  "ui.advanceAuto": "Automatisch",
+  "ui.advanceManual": "Per Taste"
 }

@@ -114,10 +114,11 @@ public:
         tour.completeAnimation();
     }
 
-    void openSettingsForSnapshot()
+    void openSettingsForSnapshot (int page = 0)
     {
         settingsScreen.setVisible (true);
         settingsScreen.refresh();
+        settingsScreen.openPageForSnapshot (page);
         settingsScreen.toFront (false);
     }
 

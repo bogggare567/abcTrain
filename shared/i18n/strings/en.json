@@ -327,5 +327,13 @@
   "choice.mids": "500 Hz - 2 kHz. Where most instruments live, and where boxiness and honk sit.",
   "choice.highmids": "2-4 kHz. Attack and intelligibility. The ear is most sensitive here, so a little goes far.",
   "choice.presence": "4-6 kHz. Definition and edge - and where sibilance starts to become a problem.",
-  "choice.air": "6-20 kHz. Openness and sheen. Too much turns into hiss rather than into brightness."
+  "choice.air": "6-20 kHz. Openness and sheen. Too much turns into hiss rather than into brightness.",
+  "ui.settingsTraining": "Training",
+  "ui.reviewWhen": "Review the answer",
+  "ui.reviewAlways": "Always",
+  "ui.reviewOnMiss": "Only on a miss",
+  "ui.reviewNever": "Never",
+  "ui.advanceWhen": "Next round",
+  "ui.advanceAuto": "By itself",
+  "ui.advanceManual": "On a button"
 }

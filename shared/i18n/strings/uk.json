@@ -310,5 +310,13 @@
   "ui.soundsShuffling": "Перебір: {{category}} — зараз: {{file}}",
   "ui.soundsBuiltInPercussive": "Вбудовані ударні",
   "ui.soundsBuiltInSustained": "Вбудовані тягнуті",
-  "ui.optionNumber": "Варіант {{n}}"
+  "ui.optionNumber": "Варіант {{n}}",
+  "ui.settingsTraining": "Тренування",
+  "ui.reviewWhen": "Розбір відповіді",
+  "ui.reviewAlways": "Завжди",
+  "ui.reviewOnMiss": "Лише при промаху",
+  "ui.reviewNever": "Ніколи",
+  "ui.advanceWhen": "Наступний раунд",
+  "ui.advanceAuto": "Сам",
+  "ui.advanceManual": "По кнопці"
 }

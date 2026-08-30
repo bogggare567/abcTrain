@@ -39,6 +39,15 @@ public:
 
     void refresh();
 
+    // For tools/EditorSnapshots: opens one page directly. The rail is the
+    // only way in from outside, and a settings page with no snapshot is a
+    // settings page nobody ever looks at - which is how the licence dump
+    // stayed the first thing this screen showed for so long.
+    void openPageForSnapshot (int pageIndex)
+    {
+        selectPage (static_cast<Page> (juce::jlimit (0, numPages - 1, pageIndex)));
+    }
+
     void paint (juce::Graphics&) override;
     void resized() override;
     void mouseMove (const juce::MouseEvent&) override;
@@ -61,6 +70,27 @@ public:
     static constexpr const char* backgroundPathKey = "backgroundImage";
     static constexpr const char* backgroundScrimKey = "backgroundScrim";
 
+    // How a round ends. Two questions the app used to answer for you:
+    //
+    //  - **When to show the review.** Always, only when you missed, or
+    //    never. Somebody drilling for speed does not want a sentence
+    //    after every correct answer; somebody learning wants it every
+    //    time. Neither is the default for the other.
+    //  - **Whether the next round starts by itself.** Auto-advance is
+    //    right at speed and wrong when you want to sit with what you just
+    //    heard - and there was no way to say so.
+    //
+    // Both live in the same shared PropertiesFile as the language and the
+    // theme, since they are preferences about the person rather than about
+    // one session.
+    enum class Review { always, onMiss, never };
+
+    static constexpr const char* reviewModeKey  = "reviewMode";
+    static constexpr const char* autoAdvanceKey = "autoAdvanceRounds";
+
+    static Review getReviewMode (juce::PropertiesFile&);
+    static bool getAutoAdvance (juce::PropertiesFile&);
+
 private:
     juce::Rectangle<int> cardBounds() const;
     void chooseBackground();
@@ -70,7 +100,8 @@ private:
     // pages that are coming (see docs/roadmap.md). A settings screen that
     // is a single flat card stops working the moment it has more than one
     // subject in it, and this one already has three.
-    enum class Page { about, appearance, background };
+    enum class Page { about, appearance, training, background };
+    static constexpr int numPages = 4;
 
     void selectPage (Page);
     void paintSideMenu (juce::Graphics&, juce::Rectangle<int>);
@@ -97,6 +128,14 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser;
 
     juce::String headingAppearance, headingBackground;
+
+    // Segmented choices, built from plain TextButtons: the look-and-feel
+    // already draws an unselected button as a hairline frame and a
+    // selected one as a filled block, which *is* a segmented control.
+    juce::Label reviewLabel, advanceLabel;
+    juce::OwnedArray<juce::TextButton> reviewButtons, advanceButtons;
+
+    void refreshTrainingButtons();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SettingsScreenComponent)
 };

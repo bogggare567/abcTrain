@@ -2657,6 +2657,12 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
     // every question. The delay is longer after a wrong answer (more to
     // read) and zero once a run has ended, so the final result stays on
     // screen instead of being replaced by another round.
+    // ...unless they asked to press it. Auto-advance is right at speed and
+    // wrong when you want to sit with what you just heard, and until this
+    // setting existed there was no way to say so.
+    if (! SettingsScreenComponent::getAutoAdvance (localisationProperties))
+        return;
+
     const auto delayMs = session.getAutoAdvanceDelayMs (wasCorrect);
     if (delayMs <= 0)
         return;
@@ -2820,7 +2826,19 @@ void EarTrainerEditor::refreshFromGameState()
         else
             choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
-        feedbackLabel.setText (localisedFeedback (game, localisation), juce::dontSendNotification);
+        // Whether the review appears at all is the player's call now (see
+        // SettingsScreenComponent::Review). The *answer* is always shown -
+        // the scale still reveals where the target was, and hiding that
+        // would turn a wrong answer into a shrug. What this setting
+        // controls is the sentence, which is the part somebody drilling
+        // for speed does not want after every correct round.
+        const auto review = SettingsScreenComponent::getReviewMode (localisationProperties);
+        const auto wanted = review == SettingsScreenComponent::Review::always
+                             || (review == SettingsScreenComponent::Review::onMiss
+                                  && ! game.wasLastAnswerCorrect());
+
+        feedbackLabel.setText (wanted ? localisedFeedback (game, localisation) : juce::String(),
+                                juce::dontSendNotification);
         feedbackLabel.setColour (juce::Label::textColourId, game.wasLastAnswerCorrect() ? AbcTrainTheme::current().positive : AbcTrainTheme::current().negative);
     }
     else
