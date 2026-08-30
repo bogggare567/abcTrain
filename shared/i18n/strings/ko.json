@@ -318,5 +318,7 @@
   "ui.reviewNever": "표시 안 함",
   "ui.advanceWhen": "다음 라운드",
   "ui.advanceAuto": "자동으로",
-  "ui.advanceManual": "버튼으로"
+  "ui.advanceManual": "버튼으로",
+  "ui.licenceMore": "라이선스 전문 읽기",
+  "ui.licenceLess": "접기"
 }

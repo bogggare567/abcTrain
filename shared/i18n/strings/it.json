@@ -318,5 +318,7 @@
   "ui.reviewNever": "Mai",
   "ui.advanceWhen": "Turno successivo",
   "ui.advanceAuto": "Automatico",
-  "ui.advanceManual": "Con un pulsante"
+  "ui.advanceManual": "Con un pulsante",
+  "ui.licenceMore": "Leggi l'intera licenza",
+  "ui.licenceLess": "Mostra meno"
 }

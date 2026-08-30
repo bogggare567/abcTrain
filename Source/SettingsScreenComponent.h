@@ -111,9 +111,26 @@ private:
     Page currentPage = Page::about;
     int hoveredMenuRow = -1;
 
-    // The licence, shown in full rather than linked: a licence you have to
-    // leave the app to read is a licence nobody reads.
+    // The licence.
+    //
+    // Still never a link out - a licence you have to leave the app to read
+    // is a licence nobody reads, which is why it is embedded at all. But
+    // opening Settings straight into sixty lines of it made the first
+    // thing this screen ever showed a legal document, and the page a
+    // person came here for was two rows down and unread.
+    //
+    // So: the part that says what you *may* do, which is the part almost
+    // everyone is actually asking about, and a button that expands the
+    // rest in place. Quoted out of the file by its own headings rather
+    // than paraphrased - a summary of a licence written by the same person
+    // who wrote the code is exactly the kind of paraphrase nobody should
+    // be relying on.
     juce::TextEditor licenceView;
+    juce::TextButton licenceToggle;
+    bool licenceExpanded = false;
+
+    void refreshLicenceView();
+    static juce::String licenceText (bool full);
 
     LocalisationManager& localisation;
     juce::PropertiesFile& properties;

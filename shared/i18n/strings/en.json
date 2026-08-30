@@ -335,5 +335,7 @@
   "ui.reviewNever": "Never",
   "ui.advanceWhen": "Next round",
   "ui.advanceAuto": "By itself",
-  "ui.advanceManual": "On a button"
+  "ui.advanceManual": "On a button",
+  "ui.licenceMore": "Read the whole licence",
+  "ui.licenceLess": "Show less"
 }

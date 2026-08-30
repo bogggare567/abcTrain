@@ -335,5 +335,7 @@
   "ui.reviewNever": "Никогда",
   "ui.advanceWhen": "Следующий раунд",
   "ui.advanceAuto": "Сам",
-  "ui.advanceManual": "По кнопке"
+  "ui.advanceManual": "По кнопке",
+  "ui.licenceMore": "Читать лицензию целиком",
+  "ui.licenceLess": "Свернуть"
 }

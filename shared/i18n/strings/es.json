@@ -318,5 +318,7 @@
   "ui.reviewNever": "Nunca",
   "ui.advanceWhen": "Siguiente ronda",
   "ui.advanceAuto": "Automática",
-  "ui.advanceManual": "Con un botón"
+  "ui.advanceManual": "Con un botón",
+  "ui.licenceMore": "Leer la licencia completa",
+  "ui.licenceLess": "Mostrar menos"
 }

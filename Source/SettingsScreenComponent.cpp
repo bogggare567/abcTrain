@@ -155,9 +155,17 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     licenceView.setScrollbarsShown (true);
     licenceView.setCaretVisible (false);
     licenceView.setFont (AbcTrainLookAndFeel::captionFont());
-    licenceView.setText (juce::String::fromUTF8 (BrandBinaryData::LICENSE,
-                                                  BrandBinaryData::LICENSESize));
     addAndMakeVisible (licenceView);
+
+    licenceToggle.onClick = [this]
+    {
+        licenceExpanded = ! licenceExpanded;
+        refreshLicenceView();
+        resized();
+    };
+    addChildComponent (licenceToggle);
+
+    refreshLicenceView();
 
     // ---- how a round ends -------------------------------------------------
     {
@@ -215,6 +223,34 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
 }
 
 SettingsScreenComponent::~SettingsScreenComponent() = default;
+
+juce::String SettingsScreenComponent::licenceText (bool full)
+{
+    const auto whole = juce::String::fromUTF8 (BrandBinaryData::LICENSE,
+                                                BrandBinaryData::LICENSESize);
+
+    if (full)
+        return whole;
+
+    // From the first heading to the second, quoted verbatim. If the file
+    // is ever restructured and the headings move, this falls back to the
+    // whole thing rather than to a confident excerpt of the wrong part.
+    const auto from = whole.indexOf ("WHAT YOU MAY DO");
+    const auto to   = whole.indexOf ("WHAT YOU MAY NOT DO");
+
+    if (from < 0 || to <= from)
+        return whole;
+
+    return whole.substring (0, to).trimEnd();
+}
+
+void SettingsScreenComponent::refreshLicenceView()
+{
+    licenceView.setText (licenceText (licenceExpanded));
+    licenceView.moveCaretToTop (false);
+    licenceToggle.setButtonText (localisation.getText (licenceExpanded ? "ui.licenceLess"
+                                                                       : "ui.licenceMore"));
+}
 
 void SettingsScreenComponent::refreshTrainingButtons()
 {
@@ -401,6 +437,7 @@ void SettingsScreenComponent::selectPage (Page page)
     }
 
     licenceView.setVisible (page == Page::about);
+    licenceToggle.setVisible (page == Page::about);
 
     {
         const auto training = page == Page::training;
@@ -567,7 +604,12 @@ void SettingsScreenComponent::resized()
     if (currentPage == Page::about)
     {
         page.removeFromTop (18 + Spacing::small);
-        licenceView.setBounds (page.withTrimmedBottom (40));
+
+        auto body = page.withTrimmedBottom (40);
+        auto toggleRow = body.removeFromBottom (32);
+        licenceToggle.setBounds (toggleRow.removeFromLeft (200).withSizeKeepingCentre (200, 30));
+        body.removeFromBottom (Spacing::small);
+        licenceView.setBounds (body);
     }
     else if (currentPage == Page::appearance)
     {

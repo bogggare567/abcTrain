@@ -318,5 +318,7 @@
   "ui.reviewNever": "表示しない",
   "ui.advanceWhen": "次のラウンド",
   "ui.advanceAuto": "自動で",
-  "ui.advanceManual": "ボタンで"
+  "ui.advanceManual": "ボタンで",
+  "ui.licenceMore": "ライセンス全文を読む",
+  "ui.licenceLess": "閉じる"
 }

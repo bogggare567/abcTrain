@@ -318,5 +318,7 @@
   "ui.reviewNever": "从不",
   "ui.advanceWhen": "下一轮",
   "ui.advanceAuto": "自动",
-  "ui.advanceManual": "手动"
+  "ui.advanceManual": "手动",
+  "ui.licenceMore": "阅读完整许可",
+  "ui.licenceLess": "收起"
 }
