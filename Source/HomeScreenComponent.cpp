@@ -77,59 +77,150 @@ void HomeScreenComponent::rebuildLayout()
     using namespace AbcTrainTheme;
 
     tileBounds.clear();
+    sections.clear();
 
     auto area = getLocalBounds();
 
-    if (area.isEmpty())
-        return;
-
-    const auto rows = (int) ((cards.size() + columns - 1) / columns);
-
-    if (rows <= 0)
+    if (area.isEmpty() || cards.empty())
     {
-        badgeStrip = area.removeFromBottom (badgeStripHeight);
+        if (! area.isEmpty())
+            badgeStrip = area.removeFromBottom (badgeStripHeight);
+
         return;
+    }
+
+    tileBounds.resize (cards.size());
+
+    // --- who belongs with whom -------------------------------------------
+    //
+    // A new section starts wherever the family changes, which is why the
+    // editor has to hand these over already grouped. Cards with no family
+    // at all still lay out - they just get one nameless section, which is
+    // what the screen looked like before this.
+    for (size_t i = 0; i < cards.size(); ++i)
+    {
+        if (sections.empty() || cards[i].sectionTitle != sections.back().title)
+        {
+            Section section;
+            section.title = cards[i].sectionTitle;
+            section.subtitle = cards[i].sectionSubtitle;
+            section.accent = cards[i].accent;
+            section.firstCard = (int) i;
+            section.numCards = 0;
+            sections.push_back (std::move (section));
+        }
+
+        ++sections.back().numCards;
     }
 
     const auto gap = Spacing::small;
 
-    // The grid takes what it needs and no more; the badge strip follows it
-    // immediately rather than being pinned to the bottom edge. Pinning it
-    // left a 200px hole between the two whenever the window was taller
-    // than the tiles required.
-    const auto rowHeight = juce::jlimit (tileHeight, tileHeightCeiling,
-                                          (area.getHeight() - badgeStripHeight - Spacing::medium
-                                            - gap * (rows - 1)) / rows);
+    // One card width for the whole page. It is sized so that *two
+    // two-exercise families fit on one row with the between-families gap
+    // between them* - not just so four cards fit, which is 12px wider and
+    // was enough to push Dynamics onto its own row and the last family off
+    // the bottom of the window. A four-card family then leaves that 12px
+    // spare at the right, which is the right way round: cards lining up
+    // column-for-column between families matters more than the last one
+    // reaching the margin.
+    const auto cardWidth = (area.getWidth() - sectionGap - gap * (columns - 2)) / columns;
+    const auto headerBlock = sectionHeaderHeight + gap;
 
-    for (auto row = 0; row < rows; ++row)
+    auto rowY = area.getY();
+    auto rowX = area.getX();
+    auto rowHeight = 0;
+
+    for (auto& section : sections)
     {
-        auto rowArea = area.removeFromTop (rowHeight);
-        area.removeFromTop (gap);
+        const auto across = juce::jmin (section.numCards, columns);
+        const auto rows = (section.numCards + columns - 1) / columns;
+        const auto blockWidth = across * cardWidth + (across - 1) * gap;
+        const auto blockHeight = headerBlock + rows * tileHeight + (rows - 1) * gap;
 
-        const auto columnWidth = (rowArea.getWidth() - gap * (columns - 1)) / columns;
-
-        for (auto column = 0; column < columns; ++column)
+        // Does it fit beside what is already on this row?
+        if (rowX > area.getX() && rowX + sectionGap + blockWidth > area.getRight())
         {
-            const auto index = row * columns + column;
-
-            if (index >= (int) cards.size())
-                break;
-
-            tileBounds.push_back (rowArea.removeFromLeft (columnWidth));
-            rowArea.removeFromLeft (gap);
+            rowY += rowHeight + sectionGap;
+            rowX = area.getX();
+            rowHeight = 0;
         }
+        else if (rowX > area.getX())
+        {
+            rowX += sectionGap;
+        }
+
+        section.header = { rowX, rowY, blockWidth, sectionHeaderHeight };
+
+        for (int i = 0; i < section.numCards; ++i)
+        {
+            const auto row = i / columns;
+            const auto column = i % columns;
+
+            tileBounds[(size_t) (section.firstCard + i)] =
+                juce::Rectangle<int> (rowX + column * (cardWidth + gap),
+                                       rowY + headerBlock + row * (tileHeight + gap),
+                                       cardWidth, tileHeight);
+        }
+
+        rowX += blockWidth;
+        rowHeight = juce::jmax (rowHeight, blockHeight);
     }
 
-    area.removeFromTop (Spacing::medium);
-    badgeStrip = area.removeFromTop (badgeStripHeight);
+    // The badge strip follows the last block immediately rather than being
+    // pinned to the bottom edge. Pinning it left a 200px hole between the
+    // two whenever the window was taller than the sections required.
+    auto below = area.withTop (juce::jmin (area.getBottom(), rowY + rowHeight + Spacing::section));
+    badgeStrip = below.removeFromTop (badgeStripHeight);
 
     const auto contentWidth = (int) badges.size() * (badgeSize + Spacing::small);
     maxBadgeScroll = juce::jmax (0.0f, (float) (contentWidth - badgeStrip.getWidth() + Spacing::large));
     badgeScroll = juce::jlimit (0.0f, maxBadgeScroll, badgeScroll);
 }
 
+void HomeScreenComponent::paintSectionHeader (juce::Graphics& g, const Section& section)
+{
+    if (section.title.isEmpty())
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+    auto area = section.header.toFloat();
+
+    // The family's colour, as a filled square and nothing else. It is the
+    // only saturated mark in the heading, so it reads as a key to the
+    // outlines below it rather than as decoration.
+    {
+        const auto mark = area.removeFromLeft (9.0f).withSizeKeepingCentre (9.0f, 9.0f);
+        g.setColour (section.accent);
+        g.fillRect (mark);
+        area.removeFromLeft (10.0f);
+    }
+
+    const auto titleFont = AbcTrainLookAndFeel::headingFont();
+    const auto titleText = AbcTrainLookAndFeel::toCaps (section.title);
+    const auto titleWidth = AbcTrainLookAndFeel::trackedTextWidth (titleText, titleFont, 2.7f);
+
+    AbcTrainLookAndFeel::drawTrackedText (g, titleText, area.removeFromLeft (titleWidth),
+                                           titleFont, theme.text, 2.7f,
+                                           juce::Justification::centredLeft);
+
+    if (section.subtitle.isNotEmpty())
+    {
+        area.removeFromLeft (10.0f);
+        const auto subFont = AbcTrainLookAndFeel::microFont();
+        const auto subText = AbcTrainLookAndFeel::toCaps (section.subtitle);
+
+        AbcTrainLookAndFeel::drawTrackedText (
+            g, subText,
+            area.removeFromLeft (AbcTrainLookAndFeel::trackedTextWidth (subText, subFont, 1.68f)),
+            subFont, theme.textDim, 1.68f, juce::Justification::centredLeft);
+    }
+}
+
 void HomeScreenComponent::paint (juce::Graphics& g)
 {
+    for (const auto& section : sections)
+        paintSectionHeader (g, section);
+
     for (size_t i = 0; i < tileBounds.size() && i < cards.size(); ++i)
         paintTile (g, cards[i], tileBounds[i],
                     i < hoverAmounts.size() ? hoverAmounts[i] : 0.0f);
@@ -191,7 +282,7 @@ void HomeScreenComponent::paintTile (juce::Graphics& g, const CardInfo& card,
         const auto pending = card.promotionPending;
         auto levelBox = topRow.removeFromRight (66.0f);
 
-        AbcTrainLookAndFeel::drawTrackedText (g, levelCaption.toUpperCase(),
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (levelCaption),
                                                levelBox.removeFromTop (11.0f),
                                                AbcTrainLookAndFeel::microFont(),
                                                theme.textDim.withAlpha (0.8f), 1.68f,
@@ -279,7 +370,7 @@ void HomeScreenComponent::paintBadgeStrip (juce::Graphics& g)
 
     auto area = badgeStrip;
 
-    AbcTrainLookAndFeel::drawTrackedText (g, badgeStripCaption.toUpperCase(),
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (badgeStripCaption),
                                            area.removeFromTop (16).toFloat(),
                                            AbcTrainLookAndFeel::captionFont(),
                                            theme.textDim, 1.6f);

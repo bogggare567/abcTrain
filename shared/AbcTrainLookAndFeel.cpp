@@ -972,6 +972,49 @@ float AbcTrainLookAndFeel::trackedTextWidth (const juce::String& text, const juc
                + trackingPx * (float) juce::jmax (0, glyphs - 1);
 }
 
+juce::String AbcTrainLookAndFeel::toCaps (const juce::String& text)
+{
+    juce::String out;
+    out.preallocateBytes ((size_t) text.getNumBytesAsUTF8() + 8);
+
+    for (auto c : text)
+    {
+        const auto u = (juce::juce_wchar) c;
+
+        if (u >= 'a' && u <= 'z')
+            out << (juce::juce_wchar) (u - 32);
+        else if (u >= 0x00E0 && u <= 0x00FE && u != 0x00F7)      // Latin-1: à-þ, minus ÷
+            out << (juce::juce_wchar) (u - 32);
+        else if (u == 0x00FF)                                     // ÿ -> Ÿ, which is not adjacent
+            out << (juce::juce_wchar) 0x0178;
+        else if (u >= 0x0100 && u <= 0x017F)
+        {
+            // Latin Extended-A is laid out as upper/lower pairs, with
+            // three runs where the parity flips. Getting the parity wrong
+            // here would turn Polish "ł" into the letter above it rather
+            // than into "Ł", so the runs are spelled out.
+            if (u <= 0x0137 || (u >= 0x014A && u <= 0x0177))
+                out << (juce::juce_wchar) ((u % 2 == 1) ? u - 1 : u);
+            else if (u >= 0x0139 && u <= 0x0148)
+                out << (juce::juce_wchar) ((u % 2 == 0) ? u - 1 : u);
+            else if (u >= 0x0179 && u <= 0x017E)
+                out << (juce::juce_wchar) ((u % 2 == 0) ? u - 1 : u);
+            else
+                out << c;
+        }
+        else if (u >= 0x0430 && u <= 0x044F)                       // а-я
+            out << (juce::juce_wchar) (u - 32);
+        else if (u >= 0x0450 && u <= 0x045F)                       // ё and the rest of the extras
+            out << (juce::juce_wchar) (u - 80);
+        else if (u >= 0x0460 && u <= 0x052F)                       // Cyrillic supplement, in pairs
+            out << (juce::juce_wchar) ((u % 2 == 1) ? u - 1 : u);
+        else
+            out << c;
+    }
+
+    return out;
+}
+
 void AbcTrainLookAndFeel::drawRegistrationMarks (juce::Graphics& g, juce::Rectangle<float> frame,
                                                   juce::Colour colour, float inset, float arm,
                                                   float thickness)

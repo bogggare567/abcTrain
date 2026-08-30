@@ -60,6 +60,18 @@ public:
 
         bool isCurrent = false;
         bool isFavourite = false;
+
+        // Which family this exercise belongs to, and that family's name in
+        // English underneath it. The English name is always shown, in
+        // every language: "SPACE" is what the rest of the industry calls
+        // this, and somebody learning the subject in Russian still has to
+        // read English plugin manuals.
+        //
+        // Cards must arrive already grouped - the layout starts a new
+        // section whenever this changes, so an interleaved list would draw
+        // the same heading twice.
+        juce::String sectionTitle;
+        juce::String sectionSubtitle;
     };
 
     struct BadgeInfo
@@ -105,10 +117,28 @@ public:
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:
+    // A family is laid out as a *block* - its heading, then its own cards
+    // in one run - and the blocks pack across the page. Two two-exercise
+    // families sit side by side; a four-exercise family takes the whole
+    // width. Giving every family a full-width row of its own would leave
+    // half a page of nothing beside "Character", which has one exercise
+    // in it.
+    struct Section
+    {
+        juce::String title, subtitle;
+        juce::Colour accent;
+        int firstCard = 0;
+        int numCards = 0;
+        juce::Rectangle<int> header;
+    };
+
+    std::vector<Section> sections;
+
     void timerCallback() override;
     void rebuildLayout();
 
     void paintTile (juce::Graphics&, const CardInfo&, juce::Rectangle<int>, float hover);
+    void paintSectionHeader (juce::Graphics&, const Section&);
     void paintBadgeStrip (juce::Graphics&);
     void paintHoverTip (juce::Graphics&);
 
@@ -116,14 +146,16 @@ private:
     int tileIndexAt (juce::Point<int>) const;
     int badgeIndexAt (juce::Point<int>) const;
 
-    static constexpr int columns = 3;
+    static constexpr int columns = 4;
+    static constexpr int sectionHeaderHeight = 26;
+    static constexpr int sectionGap = 20;
     // What the tile's own contents add up to: 8 padding + 32 badge row +
     // 4 + 30 name + 14 stats + 4 track + 8 padding. Derived, not guessed -
     // at 76 the stats line and the progress track drew on top of each
     // other, which is exactly the kind of thing a rendered screenshot
     // shows in a second and no test ever will.
-    static constexpr int tileHeight = 100;
-    static constexpr int tileHeightCeiling = 112;
+    static constexpr int tileHeight = 148;
+    static constexpr int tileHeightCeiling = 148;
     static constexpr int badgeStripHeight = 78;
     static constexpr int badgeSize = 46;
 

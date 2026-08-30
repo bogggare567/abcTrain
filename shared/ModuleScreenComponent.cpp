@@ -728,7 +728,7 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (text.walkthroughs.toUpperCase(), row.translated (0, -22).withHeight (16),
+            g.drawText (AbcTrainLookAndFeel::toCaps (text.walkthroughs), row.translated (0, -22).withHeight (16),
                          juce::Justification::centredLeft, true);
         }
 

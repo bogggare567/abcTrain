@@ -276,7 +276,7 @@ void UpdateWindow::paint (juce::Graphics& g)
         // and until now nothing answered it.
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawText (text.installedHere.toUpperCase(),
+        g.drawText (AbcTrainLookAndFeel::toCaps (text.installedHere),
                     inner.removeFromTop (16.0f), juce::Justification::topLeft, false);
 
         auto list = inner;

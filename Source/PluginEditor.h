@@ -10,7 +10,7 @@
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
 #include "RunResultsComponent.h"
-#include "SideRailComponent.h"
+#include "TopNavComponent.h"
 #include "AchievementsScreenComponent.h"
 #include "../shared/TourOverlay.h"
 #include "../shared/IdleScreensaver.h"
@@ -995,14 +995,20 @@ private:
     // a different question: "this window is small on a 4K display" is
     // answered by scaling the whole design, "I want to see more at once" by
     // dragging the corner.
-    static constexpr int logicalWidth = 840;
-    // Derived from resized(), not guessed: 20 margin + 32 title row + 28
-    // section gap + 124 exercise + 20 + 312 answer + 26 + 18 footer + 20.
-    // Guessing this is what left LearnerComp with 132px of dead window
-    // (decisions/023).
-    // 20 margin + 32 title + 28 + 124 exercise + 20 + 318 answer + 20 +
-    // 30 tool bar + 20 margin.
-    static constexpr int logicalBaseHeight = 720;
+    //
+    // 1180 x 880 is the size the design mockup is drawn at, and it is not
+    // a round number somebody liked: it is what the content needs once the
+    // navigation is a bar across the top rather than a rail down the side.
+    // Four exercise cards fit on a row at 276 each, the training screen's
+    // control row gets its five groups side by side instead of stacked,
+    // and the scale gets the full width - which is the one measurement in
+    // this app where width *is* resolution, since the whole answer is
+    // "where along this line".
+    //
+    // Still resizable, and uiScale still multiplies on top, for the
+    // laptop screen where 880 is most of the height there is.
+    static constexpr int logicalWidth = 1180;
+    static constexpr int logicalBaseHeight = 880;
 
     // Wider than it was, because the rail takes 156 from the left and the
     // training screen's control row genuinely needs about 640: pills,
@@ -1049,9 +1055,10 @@ private:
     AppIconComponent volumeIcon;
     void applyVolumeFromSlider();
 
-    // Navigation down the left, permanently. See SideRailComponent for why
-    // the bottom of a window was the wrong place for it.
-    SideRailComponent sideRail;
+    // Navigation across the top, permanently. See TopNavComponent for why
+    // it moved off the left edge, and why the bottom of a window was the
+    // wrong place for it before that.
+    TopNavComponent topNav;
     void refreshRailStatus();
 
     // One second of real practice, and the one place the support ask can
@@ -1068,16 +1075,16 @@ private:
     juce::Random hintRandom;
     float hintCentreForRound = 0.0f;
 
-    // The rail is on for the two screens you navigate between and off for
+    // The bar is on for the two screens you navigate between and off for
     // the welcome screen, which is a single thing with one button.
     bool railIsVisible() const noexcept { return currentScreen != Screen::support; }
 
-    // Everything the rail does not occupy. Overlays deliberately keep
-    // using getLocalBounds(): a dialog that stopped short of the left edge
+    // Everything the bar does not occupy. Overlays deliberately keep
+    // using getLocalBounds(): a dialog that stopped short of the top edge
     // would look like it had failed to load.
     juce::Rectangle<int> contentBounds() const
     {
-        return getLocalBounds().withTrimmedLeft (railIsVisible() ? SideRailComponent::preferredWidth : 0);
+        return getLocalBounds().withTrimmedTop (railIsVisible() ? TopNavComponent::preferredHeight : 0);
     }
 
     // Puts the session and the three pills into whatever mode this

@@ -199,6 +199,23 @@ public:
 
     static float trackedTextWidth (const juce::String&, const juce::Font&, float trackingPx);
 
+    // Uppercase, for the tracked capitals this design uses as labels.
+    //
+    // juce::String::toUpperCase() goes through the C library's towupper(),
+    // which is **locale-dependent** - and a plugin inherits the "C" locale
+    // unless its host has set another, where towupper() leaves every
+    // non-ASCII letter exactly as it found it. The effect was invisible in
+    // English and wrong in every other language this app ships: every
+    // "УРОВЕНЬ", "ЧАСТОТЫ" and "ДОСТИЖЕНИЯ" was quietly drawing as
+    // "Уровень", "Частоты", "Достижения" - tracked sentence case, which
+    // reads as a mistake rather than as a label.
+    //
+    // So the mapping is done here, over exactly the scripts the embedded
+    // fonts carry: ASCII, Latin-1, Latin Extended-A and Cyrillic. Anything
+    // else is returned untouched, which is the right answer for the CJK
+    // tables (they have no case at all).
+    static juce::String toCaps (const juce::String&);
+
     // The registration marks - four small crosses at a frame's inner
     // corners. The one ornament this design has, and it earns its keep:
     // it is what says the object is a *drawn frame* rather than a filled

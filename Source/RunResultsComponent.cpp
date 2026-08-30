@@ -118,7 +118,7 @@ void RunResultsComponent::paintStat (juce::Graphics& g, juce::Rectangle<int> are
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::drawTrackedText (g, caption.toUpperCase(),
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (caption),
                                            area.removeFromTop (13).toFloat(),
                                            AbcTrainLookAndFeel::captionFont(),
                                            theme.textDim, 1.4f,
@@ -177,7 +177,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
     // So one of them is large and three are small, which is the whole
     // difference between a result and a receipt.
     {
-        AbcTrainLookAndFeel::drawTrackedText (g, scoreCaption.toUpperCase(),
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (scoreCaption),
                                                inner.removeFromTop (14).toFloat(),
                                                AbcTrainLookAndFeel::captionFont(),
                                                theme.textDim.withAlpha (0.75f), 1.4f,

@@ -93,7 +93,7 @@ public:
 
         content.removeFromLeft ((float) AbcTrainTheme::Spacing::small);
 
-        AbcTrainLookAndFeel::drawTrackedText (g, heading.toUpperCase(),
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (heading),
                                                content.removeFromTop (14.0f),
                                                AbcTrainLookAndFeel::captionFont(),
                                                theme.textDim.withAlpha (eased), 1.6f);

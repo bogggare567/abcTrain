@@ -325,7 +325,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
         languageSelector.addItem (LocalisationManager::getDisplayName (code),
                                    LocalisationManager::getSupportedLanguageCodes().indexOf (code) + 1,
-                                   code.upToFirstOccurrenceOf ("-", false, false).toUpperCase());
+                                   AbcTrainLookAndFeel::toCaps (code.upToFirstOccurrenceOf ("-", false, false)));
     languageSelector.setSelectedId (LocalisationManager::getSupportedLanguageCodes().indexOf (localisation.getCurrentLanguage()) + 1,
                                      juce::dontSendNotification);
     languageSelector.onChange = [this] { languageSelected(); };
@@ -334,27 +334,27 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // Added before the training children and every overlay, so it sits
     // behind all of them: the rail is the floor of the window, not a
     // thing that covers other things.
-    sideRail.onItemChosen = [this] (SideRailComponent::Item item)
+    topNav.onItemChosen = [this] (TopNavComponent::Item item)
     {
         switch (item)
         {
-            case SideRailComponent::Item::achievements:
+            case TopNavComponent::Item::achievements:
                 showAchievementsScreen();
                 break;
 
-            case SideRailComponent::Item::sounds:
+            case TopNavComponent::Item::sounds:
                 trainingSounds.refresh();
                 trainingSounds.setVisible (true);
                 trainingSounds.toFront (false);
                 break;
 
-            case SideRailComponent::Item::settings:
+            case TopNavComponent::Item::settings:
                 settingsScreen.setVisible (true);
                 settingsScreen.toFront (false);
                 settingsScreen.refresh();
                 break;
 
-            case SideRailComponent::Item::trainings:
+            case TopNavComponent::Item::trainings:
             default:
                 showScreen (Screen::home);
                 break;
@@ -363,7 +363,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         resized();
         repaint();
     };
-    addAndMakeVisible (sideRail);
+    addAndMakeVisible (topNav);
 
     // Behind every other child. The rail is added late in this
     // constructor - after the theme button, the volume slider and the rest
@@ -372,7 +372,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // it is supposed to be holding. Found by rendering it: the update
     // button was there and the theme toggle beside it was not, because one
     // was added after the rail and one before.
-    sideRail.toBack();
+    topNav.toBack();
 
     addAndMakeVisible (gameIcon);
 
@@ -1002,24 +1002,21 @@ void EarTrainerEditor::paint (juce::Graphics& g)
         // now, which is what the room was for.
     }
 
-    // The title, letter-spaced. Drawn here rather than through a Label
-    // because JUCE exposes no tracking control on Label/drawText.
+    // The exercise name, letter-spaced, on the training screen only.
     //
-    // Both screens carry one now. The home screen's top strip used to hold
-    // six control buttons, which made the first thing anyone read a
-    // toolbar; those are on a bar along the bottom and this says where you
-    // are instead.
-    if (currentScreen != Screen::support)
+    // The home screen used to carry one too, and it was the same words the
+    // wordmark in the bar above already says. Two titles one under the
+    // other is not a hierarchy, it is a repetition - and with navigation
+    // now across the top, the wordmark *is* the page title.
+    if (currentScreen == Screen::training)
         AbcTrainLookAndFeel::drawTrackedText (
             // "ABC" is the product name and does not translate; what
             // follows it does. The host shows "ABC Ear Trainer" whatever
             // the interface language is, and a window titled only
             // "Тренажёр слуха" makes the two look like different programs.
-            g, "ABC " + (currentScreen == Screen::training
-                             ? titleLabel.getText()
-                             : localisation.getText ("app.eartrainer.name")),
+            g, titleLabel.getText(),
             juce::Rectangle<float> ((float) (contentBounds().getX() + AbcTrainTheme::Spacing::large),
-                                     (float) AbcTrainTheme::Spacing::medium,
+                                     (float) (contentBounds().getY() + AbcTrainTheme::Spacing::small),
                                      (float) contentBounds().getWidth() * 0.6f, 32.0f),
             AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
             juce::Justification::centredLeft);
@@ -1094,29 +1091,28 @@ void EarTrainerEditor::resized()
 
     // --- the tool bar, bottom left ---------------------------------------
     {
-        // The rail is the window's left edge, floor to ceiling. Settings
-        // and Training Sounds became rows in it, so their buttons are gone
-        // rather than hidden - two ways to reach one screen is two things
-        // to keep in step.
-        const auto railWidth = railIsVisible() ? SideRailComponent::preferredWidth : 0;
-        sideRail.setBounds (getLocalBounds().removeFromLeft (railWidth));
+        // The bar is the window's top edge, edge to edge. Settings and
+        // Training Sounds are tabs in it, so their buttons are gone rather
+        // than hidden - two ways to reach one screen is two things to keep
+        // in step.
+        const auto navHeight = railIsVisible() ? TopNavComponent::preferredHeight : 0;
+        topNav.setBounds (getLocalBounds().removeFromTop (navHeight));
 
-        // Theme, updates and the output level live *on* the rail but stay
-        // the editor's own widgets - see SideRailComponent for why moving
-        // ownership was not worth it. Their slots come from the rail, so
+        // Theme, updates and the output level live *on* the bar but stay
+        // the editor's own widgets - see TopNavComponent for why moving
+        // ownership was not worth it. Their slots come from the bar, so
         // its painted background and the controls on it cannot drift.
-        const auto railOrigin = sideRail.getPosition();
-        themeButton.setBounds (sideRail.getThemeSlot() + railOrigin);
-        updateButton.setBounds (sideRail.getUpdateSlot() + railOrigin);
-        volumeSlider.setBounds (sideRail.getVolumeSlot() + railOrigin);
-        volumeIcon.setBounds ({});   // the rail captions this itself
+        themeButton.setBounds (topNav.getThemeSlot());
+        updateButton.setBounds (topNav.getUpdateSlot());
+        volumeSlider.setBounds (topNav.getVolumeSlot());
+        volumeIcon.setBounds ({});   // the bar captions this itself
 
-        // The two indicators go on the rail with the rest of the app
+        // The two indicators go on the bar with the rest of the app
         // chrome. Floating under the exercise with nothing holding them,
         // they read as two loose fragments - which is what they were.
-        sizeSelector.setBounds ((sideRail.getSizeSlot() + railOrigin)
+        sizeSelector.setBounds (topNav.getSizeSlot()
                                     .withWidth (sizeSelector.getPreferredWidth()));
-        languageSelector.setBounds ((sideRail.getLanguageSlot() + railOrigin)
+        languageSelector.setBounds (topNav.getLanguageSlot()
                                         .withWidth (languageSelector.getPreferredWidth()));
 
         // What is left in the content area: the two links, and nothing
@@ -1950,12 +1946,10 @@ void EarTrainerEditor::refreshRailStatus()
     auto& progress = processor.getProgressManager();
     const auto index = processor.getGameManager().getActiveGameIndex();
 
-    sideRail.setStatus (progress.getLevelForGame (index),
-                         progress.getLevelProgressForGame (index),
-                         progress.getStreakDays());
+    topNav.setStatus (progress.getStreakDays());
 
-    sideRail.setActiveItem (SideRailComponent::Item::trainings);
-    sideRail.setVisible (railIsVisible());
+    topNav.setActiveItem (TopNavComponent::Item::trainings);
+    topNav.setVisible (railIsVisible());
 }
 
 void EarTrainerEditor::refreshRunStatus()
@@ -2111,7 +2105,7 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Nothing to listen for outside a training.
     processor.setSignalEnabled (onTraining);
-    sideRail.setVisible (railIsVisible());
+    topNav.setVisible (railIsVisible());
 
     // Everything that belongs to the training screen.
     // The title-row controls belong to Home and Training, not the
@@ -2202,14 +2196,58 @@ void EarTrainerEditor::rebuildHomeSections()
         return card;
     };
 
-    // One flat grid, no category headings, no starring-into-its-own-group:
-    // the star sorts a tile to the front instead of duplicating it into a
-    // second section, which is what used to make the catalogue longer the
-    // more you cared about.
+    // Grouped by the *skill* each exercise builds, because that is the
+    // question somebody arriving actually has - "I cannot hear where
+    // things sit in the stereo field" is a family, not an exercise. A flat
+    // grid answered a different question ("what is there"), which is only
+    // interesting on the first day.
+    //
+    // Starred exercises come first, in a family of their own, so caring
+    // about something moves it to the top of the page rather than
+    // duplicating it into a second copy further down.
+    static const std::array<const char*, 4> familyOrder {{
+        "home.category.frequency", "home.category.dynamics",
+        "home.category.space", "home.category.character"
+    }};
+
+    // The English family name, always shown under the translated one: it
+    // is what the rest of the industry calls this, and somebody learning
+    // the subject in Russian still has to read English plugin manuals.
+    const auto englishFamilyName = [] (const juce::String& key) -> const char*
+    {
+        if (key == "home.category.frequency") return "Frequency";
+        if (key == "home.category.dynamics")  return "Dynamics";
+        if (key == "home.category.space")     return "Space";
+        return "Character";
+    };
+
     std::vector<HomeScreenComponent::CardInfo> cards;
 
     for (int i = 0; i < gameManager.getNumGames(); ++i)
-        cards.push_back (makeCard (i));
+        if (progress.isFavouriteGame (i))
+        {
+            auto card = makeCard (i);
+            card.sectionTitle = localisation.getText ("home.yourFocus");
+            card.sectionSubtitle = "Your focus";
+            cards.push_back (std::move (card));
+        }
+
+    for (const auto* familyKey : familyOrder)
+        for (int i = 0; i < gameManager.getNumGames(); ++i)
+        {
+            if (progress.isFavouriteGame (i))
+                continue;
+
+            const auto name = gameManager.getGame (i).getName();
+
+            if (juce::String (categoryForGame (name)) != familyKey)
+                continue;
+
+            auto card = makeCard (i);
+            card.sectionTitle = localisation.getText (familyKey);
+            card.sectionSubtitle = englishFamilyName (familyKey);
+            cards.push_back (std::move (card));
+        }
 
     homeScreen.setLevelCaption (localisation.getText ("ui.levelWord"));
     homeScreen.setCards (std::move (cards));
@@ -2264,12 +2302,11 @@ void EarTrainerEditor::refreshLocalisedText()
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));
-    sideRail.setLabels ({ localisation.getText ("ui.trainings"),
-                           localisation.getText ("ui.achievements"),
-                           localisation.getText ("ui.trainingSounds"),
-                           localisation.getText ("ui.settings") },
-                         localisation.getText ("ui.level").upToFirstOccurrenceOf ("{{", false, false).trim(),
-                         localisation.getText ("ui.streak"));
+    topNav.setLabels ({ localisation.getText ("ui.trainings"),
+                        localisation.getText ("ui.achievements"),
+                        localisation.getText ("ui.trainingSounds"),
+                        localisation.getText ("ui.settings") },
+                      localisation.getText ("ui.streak"));
 
 
     {
