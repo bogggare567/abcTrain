@@ -153,6 +153,11 @@ troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
 starts explaining a decision, it belongs in an ADR instead. The wiki git
 remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
+`docs/design/redesign-spec.md` (the user's own redesign mockup, measured
+off its computed styles rather than estimated from a screenshot - the
+frame, the nav bar, the focus band, the section headers and the exercise
+card, every number of them; when the code and that file disagree, the
+file is right and the code is behind).
 `docs/testing-strategy.md`. This file (`CLAUDE.md`) stays the per-file
 breakdown; `docs/` is the higher-level/visual layer — keep both in sync
 when the architecture changes rather than letting one drift.
@@ -479,9 +484,15 @@ full rationale.
   `GameManager` then `ProgressManager` in that declaration order (matters
   — `ProgressManager`'s constructor registers listeners on every game).
 - `Source/ChoiceSliderComponent.{h,cpp}` — the answer-selection widget, in
-  two modes. **Categorical**: the panel is divided into one clickable
-  zone per choice — now always two — with the name written large and
-  centred in each and a single hairline between them. **No tick marks**:
+  two modes. **Categorical**: two full-height panels, each about one
+  answer — the option number in small capitals, the name at the size a
+  name deserves, and **one line saying what that option sounds like**
+  (`Game::getChoiceKey` + the editor's `describeChoice` table, keyed on
+  the option's English name so "Plate" is described once for every
+  exercise that offers it). That sentence is the difference between a
+  quiz and a lesson: two words on two buttons ask you to recognise a
+  label nobody taught you. Only the current panel fills, in its family
+  colour at 7%, with registration marks. **No tick marks**:
   a tick is a slider's way of saying "the value is *here* on a
   continuum", and two named alternatives aren't one; the line down each
   zone was inherited from the ruler this widget started as and only ever
@@ -592,6 +603,15 @@ full rationale.
   that calls `ProgressManager::setLevelManually` directly, so difficulty
   is player-controllable, not just an automatic side effect of points —
   a mode selector (Practice/Survival/Blitz) with a lives/clock readout,
+  navigation across the **top** (`Source/TopNavComponent`) rather than a
+  rail down the left - the rail solved the right problem (navigation had
+  been unlabelled icons along the bottom, where a *status* bar goes) by
+  spending 156px of an 840px window on five words; across the top the same
+  five cost 59px of height and the content gets the width back, which is
+  what makes four exercise cards fit a row. The window is **1180 x 880**,
+  the size the design mockup is drawn at - see
+  [decisions/033](docs/decisions/033-the-redesign-made-real.md) and the
+  measured spec in [docs/design/redesign-spec.md](docs/design/redesign-spec.md),
   an "Updates" button (`shared/UpdateChecker`, see
   [decisions/007](docs/decisions/007-update-checker.md)) that now always
   shows "Checking..." → a result → (on no response within 6s) "Couldn't
@@ -991,6 +1011,33 @@ See [decisions/009](docs/decisions/009-look-and-feel.md),
 [019](docs/decisions/019-design-system-and-light-theme.md) for the full
 rationale; summary here.
 
+- `shared/AbcTrainFonts.h/.cpp` + `assets/fonts/` + `tools/build_fonts.py`
+  — the interface typeface, **in the binary**, because a plugin cannot ask
+  its host's machine to have a font. Barlow at three widths carries the
+  Latin. **Barlow has no Cyrillic at all**, so a companion carries that,
+  and which companion was found by *measuring* rather than by eye: for
+  each Barlow cut, the width-to-cap-height ratio and ink coverage of H/O/N
+  are matched against a candidate's variable axes. That returns two
+  companions (Noto Sans for body and meta, Oswald for the condensed
+  headings, where Noto cannot get narrow enough), which is consistent
+  rather than not - Barlow and Barlow Condensed are already two designs.
+  Every companion is scaled onto Barlow's own vertical metrics, since JUCE
+  scales a typeface by its *own* ascent + descent. See
+  [decisions/033](docs/decisions/033-the-redesign-made-real.md) and
+  `assets/fonts/README.md`.
+- **Every corner radius is 0**, a card is a drawn frame that fills only
+  when it is the current one, a button is a hairline frame that fills only
+  when something chose it, labels are tracked capitals, progress bars are
+  segments you can count, and frames wear registration marks at their
+  corners. That grammar - not the palette, which already matched to the
+  digit - is what separated the build from the mockup.
+  `AbcTrainLookAndFeel::toCaps` exists because
+  `juce::String::toUpperCase()` goes through the locale-dependent
+  `towupper()` and leaves Cyrillic alone under the "C" locale a plugin
+  inherits; `drawRegistrationMarks`, `drawSegmentedBar`, `makePrimary`,
+  `buttonIsFilled` and `labelColourOn` are the rest of it, the last two
+  deciding by **contrast** rather than by colour identity (see ADR 033 for
+  the bug that taught that).
 - `shared/AbcTrainTheme.h/.cpp` — **the single source of every colour,
   spacing step, corner radius, animation duration and easing curve in the
   UI**. `current()` returns the active `Palette`; `setMode()` switches
