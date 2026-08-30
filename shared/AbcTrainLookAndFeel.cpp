@@ -309,8 +309,31 @@ juce::Font AbcTrainLookAndFeel::captionFont()
                                 : systemFallback (h, false);
 }
 
-juce::Font AbcTrainLookAndFeel::getLabelFont (juce::Label&)
+juce::Font AbcTrainLookAndFeel::getLabelFont (juce::Label& label)
 {
+    // Honour a font the label was actually given.
+    //
+    // This returned bodyFont() unconditionally, which is not "a default" -
+    // JUCE's drawLabel asks the LookAndFeel for the font and uses whatever
+    // comes back, so returning one colour of font here *discarded* every
+    // explicit setFont in the product. There are 87 of them across four
+    // plugins, every one from this same type ladder, and all 87 were being
+    // thrown away: the training screen's exercise title asked for the
+    // title size and drew at body size, and so did everything else.
+    //
+    // A label whose font is not one of ours has never been styled, and
+    // that is the case bodyFont() is for - it stops an unstyled label
+    // falling back to JUCE's default sans, which was the original point.
+    const auto own = label.getFont();
+    const auto name = own.getTypefaceName();
+
+    if (name == AbcTrainFonts::Family::body
+        || name == AbcTrainFonts::Family::semiCondensed
+        || name == AbcTrainFonts::Family::condensed
+        || name == interfaceTypefaceName()
+        || name == juce::Font::getDefaultMonospacedFontName())
+        return own;
+
     return bodyFont();
 }
 
