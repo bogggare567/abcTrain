@@ -403,8 +403,20 @@ full rationale.
   welcome screen now opens **every** launch; the old `seenSupportScreen`
   flag became `tourOffered`, which is a different question.
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail (About /
-  Appearance / Background) rather than one flat card, so the screen keeps
-  working as it grows; `docs/roadmap.md` records the pages that were
+  Appearance / **Training** / Background) rather than one flat card, so the
+  screen keeps working as it grows. The Training page holds the two things
+  the app used to decide for the player: **when the review appears**
+  (always / only on a miss / never — somebody drilling for speed does not
+  want a sentence after every correct round, somebody learning wants it
+  every time, and neither is the default for the other) and **whether the
+  next round starts by itself**. Both persist in the same shared
+  `abcTrain` `PropertiesFile` as the language and the theme, since they
+  are preferences about the person rather than about one session; the
+  option's *index* is the stored value, so a choice can never be inserted
+  in the middle without re-meaning everybody's setting. The segmented
+  control needed no drawing code — the look-and-feel already draws an
+  unselected button as a hairline frame and a selected one as a filled
+  block, which is what a segmented control is; `docs/roadmap.md` records the pages that were
   discussed and deliberately not started. The About page shows the
   `LICENSE` in full, embedded through the `BrandData` binary target - a
   licence you have to leave the app to read is a licence nobody reads.
