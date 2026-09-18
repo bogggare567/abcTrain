@@ -5,6 +5,7 @@
 #include "../shared/Version.h"
 #include <array>
 #include <memory>
+#include <map>
 
 namespace
 {
@@ -358,29 +359,42 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // thing that covers other things.
     topNav.onItemChosen = [this] (TopNavComponent::Item item)
     {
-        switch (item)
+        // Exactly one of the three pages is ever visible, and picking any
+        // tab closes the other two.
+        //
+        // They used to be shown and never hidden: each was a full-window
+        // overlay with its own "Close", so the bar was underneath it and
+        // the question could not come up. Now that they are pages under a
+        // bar that stays live, leaving one visible would make the next tab
+        // you press look broken - it would do its work behind a page still
+        // covering the content.
+        const auto onAchievements = (item == TopNavComponent::Item::achievements);
+        const auto onSounds       = (item == TopNavComponent::Item::sounds);
+        const auto onSettings     = (item == TopNavComponent::Item::settings);
+
+        achievementsScreen.setVisible (onAchievements);
+        trainingSounds.setVisible (onSounds);
+        settingsScreen.setVisible (onSettings);
+
+        if (onAchievements)
+            showAchievementsScreen();
+
+        if (onSounds)
         {
-            case TopNavComponent::Item::achievements:
-                showAchievementsScreen();
-                break;
-
-            case TopNavComponent::Item::sounds:
-                trainingSounds.refresh();
-                trainingSounds.setVisible (true);
-                trainingSounds.toFront (false);
-                break;
-
-            case TopNavComponent::Item::settings:
-                settingsScreen.setVisible (true);
-                settingsScreen.toFront (false);
-                settingsScreen.refresh();
-                break;
-
-            case TopNavComponent::Item::trainings:
-            default:
-                showScreen (Screen::home);
-                break;
+            trainingSounds.refresh();
+            trainingSounds.toFront (false);
         }
+
+        if (onSettings)
+        {
+            settingsScreen.toFront (false);
+            settingsScreen.refresh();
+        }
+
+        if (item == TopNavComponent::Item::trainings)
+            showScreen (Screen::home);
+        else
+            hideContentUnderNavPage();
 
         resized();
         repaint();
@@ -1197,7 +1211,7 @@ void EarTrainerEditor::resized()
     // shouldShowInstructions); the freed height flows to the answer
     // section below, which is the part that improves by being taller.
     const auto instructionsShown = shouldShowInstructions();
-    exerciseSection = area.removeFromTop (instructionsShown ? 124
+    exerciseSection = area.removeFromTop (instructionsShown ? 104
                                                             : Spacing::large + 30 + Spacing::small);
     {
         auto inner = exerciseSection;
@@ -1459,19 +1473,27 @@ void EarTrainerEditor::resized()
         // taller scale is a more precise one. Two words do not: past about
         // 190px the cards stop being buttons and become walls, so the rest
         // becomes air around them instead of more of them.
-        // Both the ruler and the two named alternatives take everything
-        // that is left.
+        // Both are capped, and the render is what settled the numbers.
         //
-        // The cap that used to sit on the alternatives (190px, on the
-        // reasoning that past it "the cards stop being buttons and become
-        // walls") was wrong, and the render is what showed it: two 190px
-        // cards at the top of a 500px space do not read as restraint, they
-        // read as a screen that failed to finish loading. A card with the
-        // whole height is a *panel about one answer* - room for the name
-        // at the size it deserves and for a line saying what that answer
-        // sounds like - which is what the design asks for and what the
-        // widget can now grow into.
-        choiceSlider.setBounds (inner);
+        // Uncapped, this section swallowed every spare pixel of an 880px
+        // window: two panels 600px tall holding a name and one sentence in
+        // their top third, and a ruler 500px tall that is empty by
+        // definition - a horizontal scale gains resolution from width, not
+        // from height. Both read as a screen that failed to finish
+        // loading, which is the opposite of what the extra room was spent
+        // on. The caps are the mockup's own proportions.
+        //
+        // What is left over stays plain background. That is deliberate and
+        // is the same call the hint section above makes: an empty stretch
+        // of background reads as space, where a drawn frame around nothing
+        // reads as a broken element.
+        const auto naturalHeight = choiceSlider.usesContinuousScale() ? 420 : 380;
+        // Top-anchored, not centred. Centring split the slack into a gap
+        // above and a gap below, and the one above sat between the
+        // heading and the thing the heading names - which reads as
+        // something missing between them. Below, the same slack is the
+        // margin over the control bar.
+        choiceSlider.setBounds (inner.removeFromTop (juce::jmin (inner.getHeight(), naturalHeight)));
     }
 
     area.removeFromTop (Spacing::large);
@@ -1487,12 +1509,20 @@ void EarTrainerEditor::resized()
 
     // Unconditional, same as shared/LessonController's integration in the
     // Learner editors - whether or not they're currently visible.
-    trainingSounds.setBounds (getLocalBounds());
-    settingsScreen.setBounds (getLocalBounds());
+    //
+    // The three reached from a tab get the area *under* the bar, and fill
+    // it: they are places you navigate to, and the bar you navigated with
+    // has to stay visible and clickable above them. Covering the whole
+    // window made each one a dialogue with its own way out - which is why
+    // every one of them used to need a "Close" button to undo a click on a
+    // tab.
+    trainingSounds.setBounds (contentBounds());
+    settingsScreen.setBounds (contentBounds());
+    achievementsScreen.setBounds (contentBounds());
 
-    // Centred under the title row, wide enough for an achievement name.
+    // The run result still covers everything: it is not a destination, it
+    // is what a finished run leaves on the screen.
     runResults.setBounds (getLocalBounds());
-    achievementsScreen.setBounds (getLocalBounds());
     tour.setBounds (getLocalBounds());
     screensaver.setBounds (getLocalBounds());
 
@@ -2288,9 +2318,47 @@ void EarTrainerEditor::showScreen (Screen screen)
     focusBand.setVisible (onHome);
     continueButton.setVisible (onHome);
     donateLink.setVisible (onHome);
+    soundkorbLink.setVisible (! onSupport);
+
+    // Leaving for a screen closes whichever page was open over it.
+    settingsScreen.setVisible (false);
+    trainingSounds.setVisible (false);
+    achievementsScreen.setVisible (false);
 
     resized();
     repaint();
+}
+
+void EarTrainerEditor::hideContentUnderNavPage()
+{
+    // A page under the bar covers the content but does not replace it, so
+    // everything it covers has to be hidden as well as painted over.
+    //
+    // tools/ClickMap is what found this. With Settings open, the home
+    // screen's "Continue" and both footer links were still live under the
+    // page - invisible, full-size, and answering clicks aimed at a page
+    // that had every right to expect them. A control you cannot see but
+    // can still press is worse than one that is simply broken, because
+    // nothing on screen explains what just happened.
+    homeScreen.setVisible (false);
+    focusBand.setVisible (false);
+    continueButton.setVisible (false);
+    donateLink.setVisible (false);
+    soundkorbLink.setVisible (false);
+
+    for (auto* c : { (juce::Component*) &gameIcon,
+                     (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
+                     (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
+                     (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
+                     (juce::Component*) &blitzButton,
+                     (juce::Component*) &hintButton,
+                     (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
+                     (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
+                     (juce::Component*) &levelProgressLabel,
+                     (juce::Component*) &instructionsButton })
+    {
+        c->setVisible (false);
+    }
 }
 
 void EarTrainerEditor::rebuildHomeSections()
@@ -2305,7 +2373,13 @@ void EarTrainerEditor::rebuildHomeSections()
         HomeScreenComponent::CardInfo card;
         card.gameIndex = i;
         card.name = translateGameName (englishName, localisation);
-        card.englishName = englishName;
+        // The English name sits under the translated one so somebody
+        // learning this in Russian can still read an English plugin
+        // manual. In English that makes every card say its own name
+        // twice, which is noise wearing the costume of a subtitle.
+        card.englishName = localisation.getCurrentLanguage().startsWithIgnoreCase ("en")
+                               ? juce::String()
+                               : juce::String (englishName);
         card.benefit = translateGameBenefit (englishName, localisation);
         card.icon = AppIcons::iconForGameName (englishName);
         card.isCurrent = (i == gameManager.getActiveGameIndex());
@@ -2321,8 +2395,12 @@ void EarTrainerEditor::rebuildHomeSections()
         const auto stats = progress.getStatsForGame (i);
         // Spelled out. "10%  ·  29" made the reader work out which number
         // was which and what either measured.
+        // Never blank. An untouched exercise used to leave this line
+        // empty, which turned two thirds of a fresh install's home screen
+        // into outlined boxes with a name in the corner - the app looking
+        // unfinished on the one screen everybody sees first.
         card.statsLine = stats.roundsPlayed == 0
-                             ? juce::String()
+                             ? localisation.getText ("ui.tileNotStarted")
                              : localisation.getText ("ui.tileStats",
                                                       { { "accuracy", juce::String (juce::roundToInt (stats.getAccuracy() * 100.0f)) },
                                                         { "rounds", juce::String (stats.roundsPlayed) } });
@@ -2355,6 +2433,16 @@ void EarTrainerEditor::rebuildHomeSections()
         return "Character";
     };
 
+    // The English name under the translated one earns its line in the
+    // eleven languages that are not English. In English it is the same
+    // word twice, and "SPACE & STEREO  SPACE" is worse than twice.
+    const auto showEnglishSecondName = ! localisation.getCurrentLanguage().startsWithIgnoreCase ("en");
+
+    const auto secondName = [showEnglishSecondName] (const juce::String& english) -> juce::String
+    {
+        return showEnglishSecondName ? english : juce::String();
+    };
+
     std::vector<HomeScreenComponent::CardInfo> cards;
 
     for (int i = 0; i < gameManager.getNumGames(); ++i)
@@ -2362,7 +2450,7 @@ void EarTrainerEditor::rebuildHomeSections()
         {
             auto card = makeCard (i);
             card.sectionTitle = localisation.getText ("home.yourFocus");
-            card.sectionSubtitle = "Your focus";
+            card.sectionSubtitle = secondName ("Your focus");
             cards.push_back (std::move (card));
         }
 
@@ -2379,9 +2467,22 @@ void EarTrainerEditor::rebuildHomeSections()
 
             auto card = makeCard (i);
             card.sectionTitle = localisation.getText (familyKey);
-            card.sectionSubtitle = englishFamilyName (familyKey);
+            card.sectionSubtitle = secondName (englishFamilyName (familyKey));
             cards.push_back (std::move (card));
         }
+
+    // How many exercises each family holds, worded once and written onto
+    // every card of that family - the view starts a new section when the
+    // title changes and reads the heading fields off the first card.
+    {
+        std::map<juce::String, int> perFamily;
+        for (const auto& card : cards)
+            ++perFamily[card.sectionTitle];
+
+        for (auto& card : cards)
+            card.sectionCount = localisation.getText (
+                "ui.familyCount", { { "count", juce::String (perFamily[card.sectionTitle]) } });
+    }
 
     homeScreen.setLevelCaption (localisation.getText ("ui.levelWord"));
     homeScreen.setCards (std::move (cards));

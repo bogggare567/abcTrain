@@ -153,6 +153,11 @@ troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
 starts explaining a decision, it belongs in an ADR instead. The wiki git
 remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
+`docs/decisions/034-pages-not-dialogues.md` (what the renders found once
+ADR 033's grammar had landed: the three tab screens were still dialogues
+and are now pages under the bar, the answer section was taking every spare
+pixel, one sentence was on screen three times, and an untouched exercise
+card said nothing — plus where the mockup deliberately did not win).
 `docs/design/redesign-spec.md` (the user's own redesign mockup, measured
 off its computed styles rather than estimated from a screenshot - the
 frame, the nav bar, the focus band, the section headers and the exercise
@@ -403,21 +408,20 @@ full rationale.
   welcome screen now opens **every** launch; the old `seenSupportScreen`
   flag became `tourOffered`, which is a different question.
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail (About /
-  Appearance / **Training** / Background) rather than one flat card, so the
-  screen keeps working as it grows. The Training page holds the two things
-  the app used to decide for the player: **when the review appears**
-  (always / only on a miss / never — somebody drilling for speed does not
-  want a sentence after every correct round, somebody learning wants it
-  every time, and neither is the default for the other) and **whether the
-  next round starts by itself**. Both persist in the same shared
-  `abcTrain` `PropertiesFile` as the language and the theme, since they
-  are preferences about the person rather than about one session; the
-  option's *index* is the stored value, so a choice can never be inserted
-  in the middle without re-meaning everybody's setting. The segmented
-  control needed no drawing code — the look-and-feel already draws an
-  unselected button as a hairline frame and a selected one as a filled
-  block, which is what a segmented control is; `docs/roadmap.md` records the pages that were
-  discussed and deliberately not started. The About page shows the
+  Appearance / Background) rather than one flat card, so the screen keeps
+  working as it grows. A **Training** page briefly existed here (review
+  policy, auto-advance) and was reverted in `a83f901` as behaviour nobody
+  asked for; `docs/roadmap.md` records the pages that were discussed and
+  deliberately not started. It **opens on Appearance**, not About: a
+  licence and a version string are a reference page, not a destination.
+  Like Achievements and Training sounds, it is a **page under the
+  navigation bar**, sized to `contentBounds()` — not a centred card over a
+  dimmed window. All three used to be full-window overlays with their own
+  "Close" button, which is the shape of a dialogue you must dismiss rather
+  than a place you navigate to; the bar stays live above them, picking any
+  tab closes the other two, and `EarTrainerEditor::hideContentUnderNavPage`
+  hides what a page covers so nothing underneath keeps answering clicks
+  (found by `tools/ClickMap`, not by reading). The About page shows the
   `LICENSE` in full, embedded through the `BrandData` binary target - a
   licence you have to leave the app to read is a licence nobody reads.
   Text size is deliberately separate from the window-size picker: that one

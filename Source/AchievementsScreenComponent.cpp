@@ -18,7 +18,13 @@ AchievementsScreenComponent::AchievementsScreenComponent()
         if (onClosed != nullptr)
             onClosed();
     };
-    addAndMakeVisible (closeButton);
+    // Not shown. This is a page reached from a tab in the bar above, and
+    // the way out of it is another tab - a "Close" button in the corner of
+    // a full page is a second exit for a door that is already open, and it
+    // read as the leftover of the dialogue this used to be. Kept as a
+    // child (rather than deleted) so the key handler and tests that reach
+    // for it still have something to reach for.
+    addChildComponent (closeButton);
 
     startTimerHz (tickHz);
 }
@@ -63,15 +69,12 @@ void AchievementsScreenComponent::setStrings (juce::String title, juce::String s
 
 juce::Rectangle<int> AchievementsScreenComponent::cardBounds() const
 {
-    // A fraction of the window with a floor - see RunResultsComponent
-    // for why these stopped being fixed widths. The shelf also takes more
-    // *height* than the others: it is the one panel whose whole point is
-    // that you can see how much is still ahead of you.
-    return juce::Rectangle<int> (juce::jlimit (460, getWidth() - 64,
-                                                juce::roundToInt ((float) getWidth() * 0.64f)),
-                                  juce::jlimit (440, getHeight() - 64,
-                                                juce::roundToInt ((float) getHeight() * 0.80f)))
-               .withCentre (getLocalBounds().getCentre());
+    // A page, not a card. Opened from a tab in the bar above, it fills
+    // everything under that bar: a centred panel over a dimmed window is
+    // the shape of a dialogue you must dismiss, and this is a place you
+    // navigate to. The editor already hands this component only the area
+    // below the bar.
+    return getLocalBounds();
 }
 
 juce::Rectangle<int> AchievementsScreenComponent::listBounds() const
@@ -157,13 +160,11 @@ void AchievementsScreenComponent::paint (juce::Graphics& g)
     juce::Path shape;
     shape.addRoundedRectangle (card, AbcTrainTheme::Radius::panel);
 
-    juce::DropShadow (theme.shadow.withAlpha (0.6f * theme.shadowStrength), 24, { 0, 6 })
-        .drawForPath (g, shape);
+    // No shadow and no outline: a page has nothing to float above. Both
+    // were what made this read as a dialogue laid over the app.
 
     g.setColour (theme.panelBackground);
     g.fillPath (shape);
-    g.setColour (theme.outline);
-    g.strokePath (shape, juce::PathStrokeType (1.0f));
 
     auto header = card.reduced ((float) AbcTrainTheme::Spacing::large).toNearestInt();
 

@@ -83,7 +83,12 @@ public:
         runResults.completeAnimation();
     }
 
-    void openAchievementsForSnapshot() { showAchievementsScreen(); }
+    void openAchievementsForSnapshot()
+    {
+        showScreen (Screen::home);
+        showAchievementsScreen();
+        hideContentUnderNavPage();
+    }
 
     // The screen a player lands on after the welcome, and - until this
     // was added - the only screen in the product with no snapshot at all.
@@ -114,18 +119,28 @@ public:
         tour.completeAnimation();
     }
 
+    // Home first, in every one of these. The snapshot tool runs against a
+    // fresh settings file, so the editor opens on the welcome screen -
+    // where the navigation bar is deliberately hidden. Photographing a
+    // page that sits *under* that bar with the bar not there showed a
+    // layout the player never sees, which is the one thing a contact
+    // sheet must not do.
     void openSettingsForSnapshot()
     {
+        showScreen (Screen::home);
         settingsScreen.setVisible (true);
         settingsScreen.refresh();
         settingsScreen.toFront (false);
+        hideContentUnderNavPage();
     }
 
     void openSoundsForSnapshot()
     {
+        showScreen (Screen::home);
         trainingSounds.setVisible (true);
         trainingSounds.refresh();
         trainingSounds.toFront (false);
+        hideContentUnderNavPage();
     }
 
     // Snapshot seam: the hint costs points, so there is no way to
@@ -915,6 +930,9 @@ private:
     enum class Screen { support, home, training };
     void showScreen (Screen);
     void rebuildHomeSections();
+
+    // Hides everything a nav page covers; see the definition.
+    void hideContentUnderNavPage();
     bool choiceSliderMatchesGame (Game& game) const;
     void rebuildChoiceSlider();
     void choiceButtonClicked (int choiceIndex);

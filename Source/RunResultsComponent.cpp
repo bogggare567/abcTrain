@@ -208,10 +208,13 @@ void RunResultsComponent::paint (juce::Graphics& g)
             newBestText, AbcTrainLookAndFeel::headingFont(), 0.0f);
         auto pill = badgeRow.withSizeKeepingCentre (juce::roundToInt (textWidth) + 34, 24).toFloat();
 
+        // A frame, not a lozenge. Every corner in this design is square,
+        // and a fully-rounded pill was the one shape left over from the
+        // look this replaced.
         g.setColour (theme.positive.withAlpha (0.16f));
-        g.fillRoundedRectangle (pill, pill.getHeight() * 0.5f);
+        g.fillRect (pill);
         g.setColour (theme.positive.withAlpha (0.55f));
-        g.drawRoundedRectangle (pill, pill.getHeight() * 0.5f, 1.0f);
+        g.drawRect (pill, 1.0f);
 
         g.setColour (theme.positive);
         g.setFont (AbcTrainLookAndFeel::headingFont());
@@ -294,7 +297,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
             // untouched bucket reads as "not tried yet" rather than as
             // "perfect".
             g.setColour (theme.displayBackground);
-            g.fillRoundedRectangle (bar, 3.0f);
+            g.fillRect (bar);
 
             if (b.attempts > 0)
             {
@@ -309,7 +312,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
                 g.setColour (isWorst ? theme.negative.withAlpha (0.85f)
                                      : theme.textDim.withAlpha (0.62f));
-                g.fillRoundedRectangle (fill, 3.0f);
+                g.fillRect (fill);
             }
 
             column.removeFromTop (4);

@@ -107,6 +107,7 @@ void HomeScreenComponent::rebuildLayout()
             Section section;
             section.title = cards[i].sectionTitle;
             section.subtitle = cards[i].sectionSubtitle;
+            section.count = cards[i].sectionCount;
             section.accent = cards[i].accent;
             section.firstCard = (int) i;
             section.numCards = 0;
@@ -223,6 +224,16 @@ void HomeScreenComponent::paintSectionHeader (juce::Graphics& g, const Section& 
     AbcTrainLookAndFeel::drawTrackedText (g, titleText, area.removeFromLeft (titleWidth),
                                            titleFont, theme.text, 2.7f,
                                            juce::Justification::centredLeft);
+
+    if (section.count.isNotEmpty())
+    {
+        const auto countFont = AbcTrainLookAndFeel::microFont();
+        AbcTrainLookAndFeel::drawTrackedText (
+            g, section.count,
+            area.removeFromRight (AbcTrainLookAndFeel::trackedTextWidth (section.count, countFont, 0.0f) + 4.0f),
+            countFont, AbcTrainTheme::current().textDim, 0.0f,
+            juce::Justification::centredRight);
+    }
 
     if (section.subtitle.isNotEmpty())
     {

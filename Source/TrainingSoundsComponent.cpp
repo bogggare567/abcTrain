@@ -65,7 +65,13 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
         if (onClosed != nullptr)
             onClosed();
     };
-    addAndMakeVisible (closeButton);
+    // Not shown. This is a page reached from a tab in the bar above, and
+    // the way out of it is another tab - a "Close" button in the corner of
+    // a full page is a second exit for a door that is already open, and it
+    // read as the leftover of the dialogue this used to be. Kept as a
+    // child (rather than deleted) so the key handler and tests that reach
+    // for it still have something to reach for.
+    addChildComponent (closeButton);
 }
 
 void TrainingSoundsComponent::setStrings (Strings strings)
@@ -397,13 +403,11 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
     juce::Path shape;
     shape.addRoundedRectangle (card, AbcTrainTheme::Radius::panel);
 
-    juce::DropShadow (theme.shadow.withAlpha (0.6f * theme.shadowStrength), 24, { 0, 6 })
-        .drawForPath (g, shape);
+    // No shadow and no outline: a page has nothing to float above. Both
+    // were what made this read as a dialogue laid over the app.
 
     g.setColour (theme.panelBackground);
     g.fillPath (shape);
-    g.setColour (theme.outline);
-    g.strokePath (shape, juce::PathStrokeType (1.0f));
 
     auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large);
 
@@ -469,13 +473,12 @@ void TrainingSoundsComponent::paint (juce::Graphics& g)
 
 juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
 {
-    // Two panes need width; the old single column was 480 and could not
-    // have held a filename beside a category name.
-    return juce::Rectangle<int> (juce::jlimit (560, getWidth() - 80,
-                                                juce::roundToInt ((float) getWidth() * 0.72f)),
-                                  juce::jlimit (440, getHeight() - 80,
-                                                juce::roundToInt ((float) getHeight() * 0.72f)))
-               .withCentre (getLocalBounds().getCentre());
+    // A page, not a card. Opened from a tab in the bar above, it fills
+    // everything under that bar: a centred panel over a dimmed window is
+    // the shape of a dialogue you must dismiss, and this is a place you
+    // navigate to. The editor already hands this component only the area
+    // below the bar.
+    return getLocalBounds();
 }
 
 void TrainingSoundsComponent::mouseMove (const juce::MouseEvent& event)
@@ -567,7 +570,12 @@ void TrainingSoundsComponent::resized()
         row.removeFromRight (Spacing::small);
         revealButton.setBounds (row.removeFromRight (110).reduced (0, 6));
         row.removeFromRight (Spacing::small);
-        importButton.setBounds (row);
+        // Capped. It used to take whatever the row had left, which on a
+        // card was a sensible 400px and on a full page is a button
+        // fifteen hundred pixels wide - a control whose size claims it is
+        // the most important thing in the product.
+        importButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth(), 220))
+                                    .reduced (0, 6));
     }
 
     rootFolderLabel.setVisible (false);
@@ -719,18 +727,17 @@ void TrainingSoundsComponent::paintImportProgress (juce::Graphics& g, juce::Rect
     const auto bounds = area.toFloat();
 
     g.setColour (theme.displayBackground);
-    g.fillRoundedRectangle (bounds, bounds.getHeight() * 0.5f);
+    g.fillRect (bounds);
 
     const auto progress = juce::jlimit (0.0f, 1.0f, importProgress.load());
 
     if (progress > 0.001f)
     {
         g.setColour (theme.accent);
-        g.fillRoundedRectangle (bounds.withWidth (juce::jmax (bounds.getHeight(),
-                                                              bounds.getWidth() * progress)),
-                                 bounds.getHeight() * 0.5f);
+        g.fillRect (bounds.withWidth (juce::jmax (bounds.getHeight(),
+                                                  bounds.getWidth() * progress)));
     }
 
     g.setColour (theme.outline.withAlpha (0.6f));
-    g.drawRoundedRectangle (bounds, bounds.getHeight() * 0.5f, 1.0f);
+    g.drawRect (bounds, 1.0f);
 }

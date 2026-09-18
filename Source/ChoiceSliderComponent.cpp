@@ -178,7 +178,13 @@ void ChoiceSliderComponent::startFeedbackAnimation (bool wasCorrect)
 juce::Rectangle<int> ChoiceSliderComponent::getScaleArea() const
 {
     auto bounds = getLocalBounds();
-    bounds.removeFromTop (bigLabelHeight);       // the large value readout
+
+    // The readout strip is the continuous mode's: it carries the value
+    // riding above the cursor. Named alternatives have no value to read
+    // out - the name is set at 52px inside its own panel - so reserving
+    // the strip there was 40px of nothing above two cards.
+    if (continuousMode)
+        bounds.removeFromTop (bigLabelHeight);
 
     // Only reserved when there is actually a caption to put there. It was
     // taken unconditionally, which cost every scale 18px of height for a
@@ -450,7 +456,6 @@ void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
     const auto highlighted = answered ? chosenIndex : previewIndex;
 
     auto bounds = getLocalBounds();
-    const auto bigLabelArea = bounds.removeFromTop (bigLabelHeight).toFloat();
 
     // ---- the line above the cards ----
     //
@@ -459,12 +464,12 @@ void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
     // a card was a small zone with a word in it, and became a duplicate
     // the moment the card grew into a panel with the name set at 52px.
     // Two copies of one word, one above the other, is not emphasis.
-    if (highlighted < 0 || highlighted >= n)
-    {
-        g.setColour (theme.textDim.withAlpha (0.55f));
-        g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
-    }
+    //
+    // Nothing is drawn before a card is highlighted. The prompt used to
+    // sit here as well as in the band heading directly above it and in
+    // the exercise line above that - the same sentence three times on one
+    // screen, which is how a screen stops being read at all.
+    juce::ignoreUnused (bounds, highlighted, n);
 }
 
 // ============================ continuous mode ============================
@@ -530,9 +535,11 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         const auto bandCentre = answered
                                     ? cursorNormalised + (targetNormalised - cursorNormalised) * reveal
                                     : cursorNormalised;
-        const auto showBand = answered || cursorEngaged;
-
-        if (showBand && bandCentre >= 0.0f)
+        // At rest the band sits where the cursor rests. Hiding it until
+        // the first drag left the whole scale an empty black well - the
+        // largest thing on the screen saying nothing - and hid the one
+        // answer to "what does my level actually change?".
+        if (bandCentre >= 0.0f)
         {
             const auto left = xFor (bandCentre - toleranceNormalised);
             const auto right = xFor (bandCentre + toleranceNormalised);
@@ -546,8 +553,9 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
             // travels, so it arrives at the target already telling you
             // how the round went.
             const auto verdict = lastCorrect ? theme.positive : theme.negative;
-            auto bandColour = theme.accent.withAlpha (0.14f);
-            auto edgeColour = theme.accent.withAlpha (0.3f);
+            const auto atRest = ! answered && ! cursorEngaged;
+            auto bandColour = theme.accent.withAlpha (atRest ? 0.10f : 0.14f);
+            auto edgeColour = theme.accent.withAlpha (atRest ? 0.26f : 0.3f);
             if (answered)
             {
                 bandColour = theme.accent.interpolatedWith (verdict, reveal)
@@ -696,13 +704,8 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
         return scaleArea.getX() + scaleArea.getWidth() * juce::jlimit (0.0f, 1.0f, normalised);
     };
 
-    if (! cursorEngaged || valueFormatter == nullptr)
-    {
-        g.setColour (theme.textDim.withAlpha (0.55f));
-        g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (placeholderText, bigLabelArea, juce::Justification::centred, false);
+    if (valueFormatter == nullptr)
         return;
-    }
 
     // The readout rides above the cursor rather than sitting centred, so
     // the number and the line it refers to are never far apart - the whole
@@ -720,6 +723,8 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
     auto valueColour = theme.textBright;
     if (answered)
         valueColour = lastCorrect ? theme.positive : theme.negative;
+    else if (! cursorEngaged)
+        valueColour = theme.textDim;   // at rest: present, but not an answer yet
 
     AbcTrainLookAndFeel::drawTrackedText (
         g, text,

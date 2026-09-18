@@ -73,6 +73,11 @@ public:
         juce::String sectionTitle;
         juce::String sectionSubtitle;
 
+        // How many exercises this family holds, already worded by the
+        // editor ("4 exercises"). Right-aligned in the heading, where it
+        // answers "is that all of them?" without counting the cards.
+        juce::String sectionCount;
+
         // The exercise's English name, under the translated one and always
         // shown. Same reasoning as the family's: a person learning this in
         // Russian still has to read English plugin manuals, and the two
@@ -136,7 +141,7 @@ private:
     // in it.
     struct Section
     {
-        juce::String title, subtitle;
+        juce::String title, subtitle, count;
         juce::Colour accent;
         int firstCard = 0;
         int numCards = 0;

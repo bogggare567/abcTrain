@@ -28,6 +28,10 @@ public:
     // Resets to an unanswered, nothing-picked state.
     void setChoices (const juce::StringArray& labels);
 
+    // A ruler and two named panels want different amounts of height, and
+    // the editor sizes this widget, so it has to be able to ask.
+    bool usesContinuousScale() const { return continuousMode; }
+
     // One line per option saying what it sounds like, and the caption over
     // each ("OPTION {{n}}"). Both optional: a game that offers none draws
     // exactly what it drew before, only larger.

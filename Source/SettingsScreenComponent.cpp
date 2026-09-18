@@ -142,7 +142,13 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         if (onClosed != nullptr)
             onClosed();
     };
-    addAndMakeVisible (closeButton);
+    // Not shown. This is a page reached from a tab in the bar above, and
+    // the way out of it is another tab - a "Close" button in the corner of
+    // a full page is a second exit for a door that is already open, and it
+    // read as the leftover of the dialogue this used to be. Kept as a
+    // child (rather than deleted) so the key handler and tests that reach
+    // for it still have something to reach for.
+    addChildComponent (closeButton);
 
     for (auto* label : { &textScaleLabel, &backgroundLabel, &scrimLabel })
     {
@@ -304,11 +310,12 @@ void SettingsScreenComponent::clearBackground()
 
 juce::Rectangle<int> SettingsScreenComponent::cardBounds() const
 {
-    return juce::Rectangle<int> (juce::jlimit (460, getWidth() - 80,
-                                                juce::roundToInt ((float) getWidth() * 0.64f)),
-                                  juce::jlimit (380, getHeight() - 80,
-                                                juce::roundToInt ((float) getHeight() * 0.66f)))
-               .withCentre (getLocalBounds().getCentre());
+    // A page, not a card. Opened from a tab in the bar above, it fills
+    // everything under that bar: a centred panel over a dimmed window is
+    // the shape of a dialogue you must dismiss, and this is a place you
+    // navigate to. The editor already hands this component only the area
+    // below the bar.
+    return getLocalBounds();
 }
 
 juce::Rectangle<int> SettingsScreenComponent::sideMenuBounds() const
@@ -377,14 +384,13 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
         {
             g.setColour (selected ? theme.accent.withAlpha (0.18f)
                                   : theme.widgetBackground.withAlpha (0.6f));
-            g.fillRoundedRectangle (bounds.toFloat().reduced (2.0f, 0.0f),
-                                     (float) AbcTrainTheme::Radius::small);
+            g.fillRect (bounds.toFloat().reduced (2.0f, 0.0f));
         }
 
         if (selected)
         {
             g.setColour (theme.accent);
-            g.fillRoundedRectangle (bounds.toFloat().withWidth (3.0f).reduced (0.0f, 6.0f), 1.5f);
+            g.fillRect (bounds.toFloat().withWidth (3.0f).reduced (0.0f, 6.0f));
         }
 
         g.setColour (selected ? theme.textBright : theme.text);
@@ -448,8 +454,8 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     juce::Path shape;
     shape.addRoundedRectangle (card, AbcTrainTheme::Radius::panel);
 
-    juce::DropShadow (theme.shadow.withAlpha (0.6f * theme.shadowStrength), 24, { 0, 6 })
-        .drawForPath (g, shape);
+    // No shadow and no outline: a page has nothing to float above. Both
+    // were what made this read as a dialogue laid over the app.
 
     g.setColour (theme.panelBackground);
     g.fillPath (shape);
@@ -462,8 +468,6 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
         paintSideMenu (g, sideMenuBounds());
     }
 
-    g.setColour (theme.outline);
-    g.strokePath (shape, juce::PathStrokeType (1.0f));
 
     auto page = pageBounds();
 
@@ -500,11 +504,20 @@ void SettingsScreenComponent::resized()
     {
         page.removeFromTop (18 + Spacing::small);
 
-        auto body = page.withTrimmedBottom (40);
-        auto toggleRow = body.removeFromBottom (32);
-        licenceToggle.setBounds (toggleRow.removeFromLeft (200).withSizeKeepingCentre (200, 30));
-        body.removeFromBottom (Spacing::small);
+        // Width and height both capped. Now that this is a full page
+        // rather than a card, letting the licence take the whole of it
+        // drew a well three quarters empty and a line of text 1100px
+        // wide - a reading measure nobody reads. 760 x 420 is the block
+        // the summary actually fills; the "read it all" button sits under
+        // it rather than at the bottom of the window.
+        auto body = page.removeFromTop (juce::jmin (page.getHeight() - 40, 420))
+                        .removeFromLeft (juce::jmin (page.getWidth(), 760));
+
         licenceView.setBounds (body);
+
+        auto toggleRow = juce::Rectangle<int> (body.getX(), body.getBottom() + Spacing::small,
+                                                200, 30);
+        licenceToggle.setBounds (toggleRow);
     }
     else if (currentPage == Page::appearance)
     {

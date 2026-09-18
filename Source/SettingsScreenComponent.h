@@ -77,7 +77,11 @@ private:
     juce::Rectangle<int> sideMenuBounds() const;
     juce::Rectangle<int> pageBounds() const;
 
-    Page currentPage = Page::about;
+    // Opens on Appearance. "About" is a reference page - a licence and a
+    // version string - and nobody walks into Settings to read a licence.
+    // It stays first in the rail, because that is where a person looks
+    // for it when they do want it.
+    Page currentPage = Page::appearance;
     int hoveredMenuRow = -1;
 
     // The licence.
