@@ -34,6 +34,16 @@ public:
     // changed underneath (a new import in another window).
     void refresh();
 
+    // The three words it shows, in the plugin's language. Rebuilds the list.
+    void setLabels (juce::String caption, juce::String hostAudio, juce::String hostShort)
+    {
+        captionText = std::move (caption);
+        hostText = std::move (hostAudio);
+        hostShortText = std::move (hostShort);
+        selector.setCaption (captionText);
+        refresh();
+    }
+
     int getPreferredWidth() const { return selector.getPreferredWidth(); }
 
     void resized() override;
@@ -41,6 +51,7 @@ public:
     static constexpr const char* selectedCategoryKey = "practiceCategory";
 
 private:
+    juce::String captionText { "source" }, hostText { "Host audio" }, hostShortText { "host" };
     void applySelection();
 
     ReferenceAudioLibrary& library;

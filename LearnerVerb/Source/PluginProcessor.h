@@ -118,6 +118,7 @@ private:
 
     ReverbEngine engine;
     juce::AudioBuffer<float> wetBuffer;
+    juce::SmoothedValue<float> wetAmount { 0.3f };
     std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrumAnalyzer { nullptr };
 

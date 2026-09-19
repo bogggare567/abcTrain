@@ -25,7 +25,7 @@ PracticeSourceSelector::PracticeSourceSelector (ReferenceAudioLibrary& libraryTo
     : library (libraryToUse), source (sourceToDrive), properties (propertiesFile),
       getSampleRate (std::move (sampleRateProvider))
 {
-    selector.setCaption ("source");
+    selector.setCaption (captionText);
     selector.onChange = [this] { applySelection(); };
     addAndMakeVisible (selector);
 
@@ -37,7 +37,7 @@ void PracticeSourceSelector::refresh()
     library.rescan();
 
     selector.clearItems();
-    selector.addItem ("Host audio", 1, "host");
+    selector.addItem (hostText, 1, hostShortText);
 
     const auto& categories = library.getCategories();
 

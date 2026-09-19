@@ -282,6 +282,8 @@ public:
     WidgetStateRegistry& getStateRegistry() noexcept { return stateRegistry; }
 
 private:
+    juce::Colour primaryFill;
+
     WidgetStateRegistry stateRegistry;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AbcTrainLookAndFeel)

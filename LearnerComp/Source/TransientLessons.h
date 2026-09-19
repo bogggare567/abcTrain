@@ -26,8 +26,9 @@ inline MicroLesson buildAttackLesson()
           "the transient, and it is most of what makes a drum sound like a "
           "drum rather than like a tone.",
           { { P::ratioParamId, 1.0f }, { P::thresholdParamId, 0.0f },
-            { P::makeupParamId, 0.0f }, { P::dryWetParamId, 1.0f },
-            { P::kneeParamId, 6.0f } } },
+            { P::makeupParamId, 0.0f }, { P::dryWetParamId, 100.0f },
+            { P::kneeParamId, 6.0f }, { P::attackParamId, 10.0f },
+            { P::releaseParamId, 120.0f }, { P::bypassParamId, 0.0f } } },
 
         { "Now 4:1 at -18 dB with a 1 ms attack. The compressor catches the "
           "transient itself, so the loudest part of every hit is the part "
@@ -83,7 +84,7 @@ inline MicroLesson buildReleaseLesson()
           { { P::ratioParamId, 4.0f }, { P::thresholdParamId, -18.0f },
             { P::attackParamId, 20.0f }, { P::releaseParamId, 800.0f },
             { P::kneeParamId, 6.0f }, { P::makeupParamId, 3.0f },
-            { P::dryWetParamId, 1.0f } } },
+            { P::dryWetParamId, 100.0f }, { P::bypassParamId, 0.0f } } },
 
         { "Now 30 ms. It releases fully between every hit, which means the "
           "gain is moving constantly - up in the gaps, down on the hits. "

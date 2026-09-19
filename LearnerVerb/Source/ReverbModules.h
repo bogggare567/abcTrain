@@ -2,6 +2,9 @@
 
 #include "../../shared/TrainingModule.h"
 #include <vector>
+#include "VocalSpaceLesson.h"
+#include "BrightVsDarkTailLesson.h"
+#include "SpaceLessons.h"
 
 // One module per control on this reverb. Same shape and same reasoning as
 // LearnerComp/Source/CompressorModules.h - content stays with the plugin
@@ -200,6 +203,19 @@ namespace ReverbModules
                     {}, "%", 1.0f
                 }
             }
+        };
+    }
+
+    // The multi-knob walkthroughs, as checkless modules (ADR 037).
+    inline std::vector<TrainingModule::Definition> walkthroughs()
+    {
+        using TrainingModule::Bed;
+
+        return {
+            TrainingModule::walkthrough ("verb.walk.vocal", "A plate for a voice, then a hall to compare.", Bed::singleHit, buildVocalSpaceLesson()),
+            TrainingModule::walkthrough ("verb.walk.tail", "Why real rooms get darker as they fade.", Bed::brightHit, buildBrightVsDarkTailLesson()),
+            TrainingModule::walkthrough ("verb.walk.predelay", "Keeping the source in front of its room.", Bed::singleHit, buildPreDelayLesson()),
+            TrainingModule::walkthrough ("verb.walk.bigger", "Decay, size and damping are not the same knob.", Bed::singleHit, buildSizeAndDampingLesson())
         };
     }
 }

@@ -28,6 +28,24 @@ namespace FrequencyGuide
     // decisions/010-book-library-scope.md). "Learn more" names one
     // relevant book from docs/library_catalog.md - title/author only,
     // never a quote from it.
+    // Which of describe()'s ranges a frequency is in, so a translation can
+    // be looked up by index ("guide.eq.freq.2").
+    inline int rangeIndexFor (float freqHz)
+    {
+        const float edges[] { 150.0f, 400.0f, 1000.0f, 3000.0f, 6000.0f, 12000.0f };
+        int i = 0;
+
+        for (auto edge : edges)
+        {
+            if (freqHz < edge)
+                return i;
+
+            ++i;
+        }
+
+        return i;
+    }
+
     inline juce::String describe (float freqHz)
     {
         if (freqHz < 150.0f)

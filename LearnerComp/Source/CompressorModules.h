@@ -2,6 +2,9 @@
 
 #include "../../shared/TrainingModule.h"
 #include <vector>
+#include "VocalCompressionLesson.h"
+#include "BusGlueLesson.h"
+#include "TransientLessons.h"
 
 // One module per knob on this compressor.
 //
@@ -212,6 +215,19 @@ namespace CompressorModules
                     {}, "%", 1.0f
                 }
             }
+        };
+    }
+
+    // The multi-knob walkthroughs, as checkless modules (ADR 037).
+    inline std::vector<TrainingModule::Definition> walkthroughs()
+    {
+        using TrainingModule::Bed;
+
+        return {
+            TrainingModule::walkthrough ("comp.walk.vocal", "A vocal chain, knob by knob.", Bed::bassNote, buildVocalCompressionLesson()),
+            TrainingModule::walkthrough ("comp.walk.glue", "Two or three dB that hold a mix together.", Bed::drumLoop, buildBusGlueLesson()),
+            TrainingModule::walkthrough ("comp.walk.attack", "Why a slow attack punches harder.", Bed::drumLoop, buildAttackLesson()),
+            TrainingModule::walkthrough ("comp.walk.release", "Where pumping comes from.", Bed::drumLoop, buildReleaseLesson())
         };
     }
 }

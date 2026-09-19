@@ -41,9 +41,10 @@ namespace ReverbGuide
           "reflections, which is why this still sounds close.",
           0, 0.6f, 10.0f, 0.3f, 0.5f, 20.0f, 0.7f },
         { "Spring Tank",
-          "The metallic, springy character you know from guitar amps. It "
-          "comes from resonant allpass filters, not from a modelled room, "
-          "which is why it colours the sound rather than placing it.",
+          "The metallic, springy character you know from guitar amps. Every "
+          "repeat round the coil arrives as a chirp - high frequencies travel "
+          "along a spring faster than low ones - which is why it colours the "
+          "sound rather than placing it.",
           3, 2.0f, 0.0f,  0.5f, 0.3f, 35.0f, 0.5f }
     }};
 
@@ -66,7 +67,7 @@ namespace ReverbGuide
                    "space in a full mix.\n"
                    "Learn more: F. Alton Everest - Master Handbook of Acoustics.";
         if (paramId == "decay")
-            return "How long the reverb tail takes to fade out. Longer decay "
+            return "RT60: the time, in seconds, the tail takes to fall by 60 dB. Longer decay "
                    "sounds like a bigger, more reflective space; 1.5-2.5 s is "
                    "typical for vocal ambience, while shorter times (0.3-0.8 s) "
                    "keep a dense mix from getting washed out. In a real space "
@@ -83,11 +84,12 @@ namespace ReverbGuide
                    "on its own.\n"
                    "Learn more: Philip Newell - Recording Studio Design.";
         if (paramId == "size")
-            return "How large the simulated space is - affects the density and "
-                   "spacing of reflections, not just the decay time. A bigger "
-                   "size feels like a physically larger room even at the same "
-                   "decay setting, though pushed too far it can blur a "
-                   "transient's sharp attack into the reflections themselves.\n"
+            return "How far apart the reflecting surfaces are: it spaces the "
+                   "early reflections and thins the tail, without changing how "
+                   "long it lasts. On Plate it is the size of the sheet, on "
+                   "Spring the length of the coil - a longer spring repeats "
+                   "later and drips more slowly. Pushed too far on a room it "
+                   "can blur a transient's attack into the reflections.\n"
                    "Learn more: F. Alton Everest - Master Handbook of Acoustics.";
         if (paramId == "damping")
             return "How quickly high frequencies die out in the tail. More "

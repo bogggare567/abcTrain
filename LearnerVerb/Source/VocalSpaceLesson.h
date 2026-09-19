@@ -12,7 +12,9 @@ inline MicroLesson buildVocalSpaceLesson()
 
     return MicroLesson ("Space for Vocals", {
         { "Dry signal, no reverb.",
-          { { P::dryWetParamId, 0.0f } } },
+          { { P::dryWetParamId, 0.0f }, { P::bypassParamId, 0.0f }, { P::typeParamId, 2.0f },
+            { P::decayParamId, 1.5f }, { P::preDelayParamId, 0.0f }, { P::sizeParamId, 50.0f },
+            { P::dampingParamId, 30.0f }, { P::widthParamId, 100.0f } } },
         { "Add Plate reverb: 1.5 s decay, 20% wet.",
           { { P::typeParamId, 2.0f }, { P::decayParamId, 1.5f }, { P::dryWetParamId, 20.0f } } },
         { "Pre-Delay 40 ms - separate the voice from the reverb before it blooms.",

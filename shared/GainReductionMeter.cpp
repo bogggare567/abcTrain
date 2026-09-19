@@ -3,13 +3,6 @@
 #include "AbcTrainTheme.h"
 #include <cmath>
 
-namespace
-{
-    // Same sweep as the rotary knobs above it, so the meter reads as part
-    // of the same instrument rather than a borrowed widget.
-    constexpr float arcStart = juce::MathConstants<float>::pi * 1.2f;
-    constexpr float arcEnd   = juce::MathConstants<float>::pi * 2.8f;
-}
 
 GainReductionMeter::GainReductionMeter()
 {
@@ -40,74 +33,67 @@ void GainReductionMeter::timerCallback()
 
 void GainReductionMeter::paint (juce::Graphics& g)
 {
+    // A bar that hangs from 0 dB at the right and grows leftwards, in
+    // segments you can count (ADR 037). It was an arc with its readout
+    // drawn inside the ring, and at the trainer's type sizes the number and
+    // the ring ran into each other. Left-growing is what a hardware GR
+    // meter's needle does, and "more is lower" is still said by the arrow.
     const auto& theme = AbcTrainTheme::current();
+    auto area = getLocalBounds().toFloat().reduced (2.0f, 0.0f);
 
-    auto bounds = getLocalBounds().toFloat().reduced (4.0f);
-    // Reserve the lower strip for the numeric readout, then centre the arc
-    // in what's left.
-    const auto labelHeight = 16.0f;
-    const auto arcArea = bounds.withTrimmedBottom (labelHeight);
+    const auto labelFont = AbcTrainLookAndFeel::labelFont();
+    const auto caption = juce::String::fromUTF8 ("GR \xe2\x86\x93");
+    const auto captionWidth = AbcTrainLookAndFeel::trackedTextWidth (caption, labelFont, 1.3f) + 12.0f;
 
-    const auto radius = juce::jmin (arcArea.getWidth(), arcArea.getHeight() * 1.6f) * 0.42f;
-    const auto centre = juce::Point<float> (arcArea.getCentreX(), arcArea.getBottom() - radius * 0.25f);
-    constexpr float thickness = 7.0f;
+    AbcTrainLookAndFeel::drawTrackedText (g, caption, area.removeFromLeft (captionWidth), labelFont,
+                                          theme.textDim, 1.3f, juce::Justification::centredLeft);
 
-    juce::Path track;
-    track.addCentredArc (centre.x, centre.y, radius, radius, 0.0f, arcStart, arcEnd, true);
+    auto readout = area.removeFromRight (86.0f);
+    g.setColour (displayedDb > 0.5f ? theme.textBright : theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::monoFont());
+    g.drawText ((displayedDb > 0.05f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String())
+                    + juce::String (displayedDb, 1).replace (".", decimal) + " " + unit,
+                readout, juce::Justification::centredRight, false);
 
-    g.setColour (theme.displayBackground);
-    g.strokePath (track, juce::PathStrokeType (thickness + 2.0f, juce::PathStrokeType::curved,
-                                                juce::PathStrokeType::rounded));
-    g.setColour (theme.outline);
-    g.strokePath (track, juce::PathStrokeType (thickness, juce::PathStrokeType::curved,
-                                                juce::PathStrokeType::rounded));
+    area.removeFromRight (10.0f);
 
-    const auto proportion = juce::jlimit (0.0f, 1.0f, displayedDb / rangeDb);
+    auto block = area.withSizeKeepingCentre (area.getWidth(), 30.0f);
+    auto bar = block.removeFromTop (14.0f);
+    block.removeFromTop (2.0f);
+    auto scale = block;
 
-    if (proportion > 0.001f)
+    constexpr int segments = 24;
+    const auto gap = 2.0f;
+    const auto w = (bar.getWidth() - gap * (segments - 1)) / (float) segments;
+    const auto lit = juce::roundToInt (juce::jlimit (0.0f, 1.0f, displayedDb / rangeDb) * segments);
+
+    for (int i = 0; i < segments; ++i)
     {
-        const auto endAngle = arcStart + proportion * (arcEnd - arcStart);
+        // Segment 0 is the rightmost: 0 to 1 dB of reduction.
+        const auto x = bar.getRight() - (float) (i + 1) * w - (float) i * gap;
+        const auto seg = juce::Rectangle<float> (x, bar.getY(), w, bar.getHeight());
 
-        juce::Path fill;
-        fill.addCentredArc (centre.x, centre.y, radius, radius, 0.0f, arcStart, endAngle, true);
-
-        // Glow first, underneath: progressively wider, fainter copies. The
-        // whole point of this meter is that heavy compression should be
-        // visible from the corner of your eye without reading a number.
-        if (glow > 0.01f)
+        if (i < lit)
         {
-            for (int layer = 3; layer >= 1; --layer)
-            {
-                g.setColour (theme.negative.withAlpha (0.13f * glow / (float) layer));
-                g.strokePath (fill, juce::PathStrokeType (thickness + 3.0f * (float) layer,
-                                                           juce::PathStrokeType::curved,
-                                                           juce::PathStrokeType::rounded));
-            }
+            const auto t = (float) i / (float) (segments - 1);
+            g.setColour (t < 0.25f ? theme.accent : t < 0.5f ? theme.accentWarm : theme.negative);
+        }
+        else
+        {
+            g.setColour (theme.outline.withAlpha (0.7f));
         }
 
-        // Gradient along the sweep: calm accent where reduction is gentle,
-        // warm then hot as it deepens. Because the gradient is anchored to
-        // the arc's geometry rather than to the current value, a given
-        // amount of reduction always lands on the same colour.
-        juce::ColourGradient sweep (theme.accent, centre.x - radius, centre.y,
-                                     theme.negative, centre.x + radius, centre.y, false);
-        sweep.addColour (0.5, theme.accentWarm);
-        g.setGradientFill (sweep);
-        g.strokePath (fill, juce::PathStrokeType (thickness, juce::PathStrokeType::curved,
-                                                   juce::PathStrokeType::rounded));
+        g.fillRect (seg);
     }
 
-    // Numeric readout in the monospaced face, so the digits don't jitter
-    // horizontally as the value changes.
-    g.setColour (displayedDb > 0.5f ? theme.textBright : theme.textDim);
-    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f));
-    g.drawText (juce::String (displayedDb, 1) + " dB",
-                bounds.removeFromBottom (labelHeight), juce::Justification::centred, false);
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::microFont());
 
-    g.setColour (theme.textDim.withAlpha (0.7f));
-    g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (11.0f));
-    // The arrow is not decoration: this is the one meter where more is
-    // lower, and a newcomer reads an unlabelled falling arc backwards.
-    g.drawText (juce::String::fromUTF8 ("GR \xe2\x86\x93"), arcArea.withHeight (14.0f),
-                 juce::Justification::centredTop, false);
+    for (int db : { 0, 6, 12, 18, 24 })
+    {
+        const auto x = bar.getRight() - bar.getWidth() * (float) db / rangeDb;
+        g.drawText (db == 0 ? juce::String ("0") : juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (db),
+                    juce::Rectangle<float> (x - 20.0f, scale.getY(), 40.0f, scale.getHeight()),
+                    juce::Justification::centred, false);
+    }
 }

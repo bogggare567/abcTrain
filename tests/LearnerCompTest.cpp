@@ -85,6 +85,14 @@ public:
             const auto input = TestUtils::generateSineBuffer (1000.0f, sampleRate, numSamples, 2, 0.8f);
             auto buffer = input;
             juce::MidiBuffer midi;
+            // Bypass crossfades over 20 ms rather than stepping (ADR 037);
+            // once it has, the passthrough is exact.
+            for (int warmUp = 0; warmUp < 4; ++warmUp)
+            {
+                auto settle = TestUtils::generateSineBuffer (1000.0f, sampleRate, 512, 2, 0.5f);
+                processor.processBlock (settle, midi);
+            }
+
             processor.processBlock (buffer, midi);
 
             for (int ch = 0; ch < 2; ++ch)
@@ -164,6 +172,14 @@ public:
             // feed is computed separately in that branch.
             processor.apvts.getRawParameterValue (LearnerCompProcessor::bypassParamId)->store (1.0f);
             const auto input = TestUtils::generateSineBuffer (1000.0f, sampleRate, 512, 2, 0.5f);
+            // Bypass crossfades over 20 ms rather than stepping (ADR 037);
+            // once it has, the passthrough is exact.
+            for (int warmUp = 0; warmUp < 4; ++warmUp)
+            {
+                auto settle = TestUtils::generateSineBuffer (1000.0f, sampleRate, 512, 2, 0.5f);
+                processor.processBlock (settle, midi);
+            }
+
             auto bypassBuffer = input;
             processor.processBlock (bypassBuffer, midi);
 

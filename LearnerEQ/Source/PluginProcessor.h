@@ -85,6 +85,16 @@ public:
     void removeBand (int band);
     static constexpr const char* bypassParamId = "bypass";
 
+    // Training-module checks: the hidden reference goes into the DSP past
+    // the knob, so the knob stays the player's answer.
+    void setCheckOverride (const juce::String& parameterID, float value)
+    {
+        checkOverrideValue.store (value);
+        checkOverrideTarget.store (apvts.getRawParameterValue (parameterID));
+    }
+
+    void clearCheckOverride() { checkOverrideTarget.store (nullptr); }
+
     // Practice audio: the shared reference library, played through this
     // plugin so it is not silent outside a DAW. Off by default - see
     // shared/PracticeAudioSource.h.
@@ -131,6 +141,28 @@ private:
 
     std::array<BandParams, maxBands> bandParams {};
     std::atomic<float>* bypassParam = nullptr;
+
+    // Parameter glide (ADR 037). A frequency swept by hand used to jump
+    // once per block, which is a zipper; each band now glides, and the
+    // coefficients are recomputed every 32 samples while it does.
+    struct BandGlide
+    {
+        juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> freq { 1000.0f }, q { 0.7f };
+        juce::SmoothedValue<float> gain { 0.0f };
+        bool wasOn = false;
+    };
+
+    std::array<BandGlide, maxBands> glide {};
+    juce::SmoothedValue<float> activeAmount { 1.0f };
+
+    // The module check's hidden reference (see LearnerCompProcessor).
+    std::atomic<std::atomic<float>*> checkOverrideTarget { nullptr };
+    std::atomic<float> checkOverrideValue { 0.0f };
+
+    float read (std::atomic<float>* p) const noexcept
+    {
+        return p == checkOverrideTarget.load() ? checkOverrideValue.load() : p->load();
+    }
     void cacheParameterPointers();
     double sampleRate = 44100.0;
     juce::AudioBuffer<float> dryBuffer;

@@ -54,9 +54,11 @@ public:
             constexpr int numSamples = 512;
 
             LearnerVerbProcessor processor;
-            processor.prepareToPlay (sampleRate, numSamples);
 
+            // Before prepare: the mix glides (ADR 037), and prepare is where
+            // it starts from the stored value rather than gliding to it.
             processor.apvts.getRawParameterValue (LearnerVerbProcessor::dryWetParamId)->store (0.0f);
+            processor.prepareToPlay (sampleRate, numSamples);
 
             const auto input = TestUtils::generateSineBuffer (1000.0f, sampleRate, numSamples, 2, 0.5f);
             auto buffer = input;
@@ -122,6 +124,14 @@ public:
             const auto input = TestUtils::generateSineBuffer (1000.0f, sampleRate, numSamples, 2, 0.5f);
             auto buffer = input;
             juce::MidiBuffer midi;
+            // Bypass crossfades over 20 ms rather than stepping (ADR 037);
+            // once it has, the passthrough is exact.
+            for (int warmUp = 0; warmUp < 4; ++warmUp)
+            {
+                auto settle = TestUtils::generateSineBuffer (1000.0f, sampleRate, 512, 2, 0.5f);
+                processor.processBlock (settle, midi);
+            }
+
             processor.processBlock (buffer, midi);
 
             for (int ch = 0; ch < 2; ++ch)

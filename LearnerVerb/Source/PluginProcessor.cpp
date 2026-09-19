@@ -75,6 +75,8 @@ void LearnerVerbProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
     engine.reset();
 
     wetBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock);
+    wetAmount.reset (sampleRate, 0.03);
+    wetAmount.setCurrentAndTargetValue (valueOf (bypassParamId) > 0.5f ? 0.0f : valueOf (dryWetParamId) / 100.0f);
 
     updateEngineParameters();
 }
@@ -135,8 +137,9 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // engine still runs every block regardless of bypass so its internal
     // state (the reverb tail) stays warm - no click or cold-start thump
     // if bypass is toggled off mid-tail.
-    const auto dryWetFraction = bypassed ? 0.0f
-        : juce::jlimit (0.0f, 1.0f, valueOf (dryWetParamId) / 100.0f);
+    // Smoothed per sample: a mix knob dragged, or bypass pressed, must
+    // glide rather than step - a step in the wet level mid-tail clicks.
+    wetAmount.setTargetValue (bypassed ? 0.0f : juce::jlimit (0.0f, 1.0f, valueOf (dryWetParamId) / 100.0f));
 
     auto* display = waveformDisplay.load();
     auto* analyzer = spectrumAnalyzer.load();
@@ -149,6 +152,7 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         if (numChannels > 0)
             monoIn /= (float) numChannels;
 
+        const auto dryWetFraction = wetAmount.getNextValue();
         const auto dryForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
         const auto wetForDisplay = numChannels > 0 ? wetBuffer.getSample (0, i) : 0.0f;
 

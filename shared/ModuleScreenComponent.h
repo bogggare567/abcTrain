@@ -8,76 +8,94 @@
 #include <functional>
 #include <vector>
 
-// The training-module panel inside a Learner plugin.
+// The training panel inside a Learner plugin: the shelf of modules and
+// walkthroughs, and the runner that teaches one and then checks it.
 //
-// **It deliberately does not cover the whole editor.** During the
-// demonstration and the try-it-yourself step it sits over the analysis
-// section only, so the knobs stay visible and reachable underneath - a
-// lesson about a knob you cannot touch is a slideshow. Everything outside
-// the painted panel falls through to whatever is beneath it, via hitTest.
+// **Where it sits.** The editor gives it exactly the analysis section -
+// spectrum, waveform, meters - and never the knobs. While a module is
+// explaining (demo, try it) the panel takes only the height its text needs,
+// so the spectrum under it still shows what the knobs are doing. During the
+// check and the result it covers the whole analysis section: every meter
+// there - the output level, the gain reduction, the waveform - can answer
+// the question for you, and a test of hearing that can be passed by
+// reading a number is not one (ADR 037).
 //
-// The check works the same way, and for a better reason than it used to.
-// **You answer by turning the plugin's own knob** - not a slider this panel
-// invented, which was a second answering mechanic in a product that already
-// had one and made the plugins feel unlike the trainer. So the knobs must
-// stay reachable during the check too; only the analysis section is covered,
-// which is also what stops the answer being readable off the spectrum.
+// **You answer with the plugin's own knob.** The hidden reference goes into
+// the DSP through the processor's check override, past the knob, so the
+// knob is yours throughout and its position is the answer.
 //
-// The hidden reference is applied through Processor::setCheckOverride rather
-// than by writing the parameter, because the knob is bound to that parameter
-// and would otherwise move to the answer and give it away.
+// **A staircase, like the trainer.** Each module has a step 1..10 in
+// ModuleProgress; the step sets the accept band, three passes in a row
+// take one step narrower, a miss one step wider. The band is drawn on the
+// scale in the knob's own units, and the result says the error and the
+// band in those units too - "+2.1 dB against ±3 dB".
+//
+// **Walkthroughs are modules with no check** - a sequence of settings with
+// a sentence each. They used to be a second, full-window overlay with its
+// own buttons in English; now there is one panel and one set of words.
 class ModuleScreenComponent : public juce::Component,
                                private juce::Timer
 {
 public:
-    // The two callbacks are how the panel reaches the processor's check
-    // override without knowing which processor it is - the alternative was
-    // a template, for two call sites.
     ModuleScreenComponent (juce::AudioProcessorValueTreeState&, ModuleProgress&,
                            PracticeAudioSource&,
                            std::function<void (const juce::String&, float)> setOverride,
                            std::function<void()> clearOverride);
     ~ModuleScreenComponent() override;
 
+    // Modules first, then walkthroughs (definitions whose check has no
+    // parameter), in the order given.
     void setModules (std::vector<TrainingModule::Definition>);
 
-    // The plugin's existing multi-knob lessons, listed under the modules
-    // rather than behind a second dropdown of their own. A module is one
-    // knob; a walkthrough is a whole workflow. Two entry points for "teach
-    // me something" in one title row was the confusion this removes.
-    void setWalkthroughs (juce::StringArray names);
-
-    // Every caption, localised by the caller. Shared code keeps no
-    // LocalisationManager, same as UpdatePrompt.
     struct Strings
     {
-        juce::String match, reference, mine, submit, turnKnob;
+        juce::String match, reference, mine, submit;
         juce::String passed, notYet, itWas, youSaid, again, done;
         juce::String phaseWatch, phaseTry, phaseCheck, phaseResult;
         juce::String shelfTitle, shelfSubtitle, walkthroughs, walkthroughWhy;
-        juce::String clips, pickCategory, close, back, next, ready;
+        juce::String close, back, next, ready, finish;
+
+        // Templates with {{placeholders}}.
+        juce::String stepOf;          // "Step {{n}} of {{m}}"
+        juce::String levelLine;       // "Step {{n}} · within {{tol}}"
+        juce::String errorLine;       // "off by {{err}} - the band was {{tol}}"
+        juce::String steppedUp;       // "Step {{from}} -> {{to}}: a narrower band"
+        juce::String steppedDown;     // "Step {{from}} -> {{to}}: a wider band"
+        juce::String toNextStep;      // "{{n}} more in a row for the next step"
+        juce::String topStep;         // "The top step - this is as fine as it gets"
+        juce::String newRecord;
+        juce::String notTried = "Not tried";
+        juce::String checkHint;                    // {{knob}}, {{submit}}
+        juce::String stepsCount = "{{n}} steps";   // a walkthrough's length
+
+        juce::String decimal = ".";   // "," in languages that write it so
+        juce::String octaves = "oct";
     };
 
     void setStrings (Strings);
-    std::function<void (int)> onWalkthroughSelected;
-    void setAccentColour (juce::Colour);
 
-    // Rendered at the host's rate, so the beds are in tune with the plugin.
+    // Module and walkthrough text, looked up by key ("mod.comp.attack.name",
+    // ".why", ".try", ".step1" ...), falling back to the English in the
+    // definition when a language has no entry. Unit suffixes likewise
+    // ("unit.dB", "unit.ms").
+    std::function<juce::String (const juce::String& key)> translate;
+
+    void setAccentColour (juce::Colour);
     void prepare (double sampleRate);
 
-    // Opens on the list of modules.
     void openShelf();
-
     std::function<void()> onClosed;
 
-    // Jumps every eased value to its end state, for tools/EditorSnapshots -
-    // which never pumps a message loop. Same seam, same reason, as
-    // RunResultsComponent::completeAnimation.
-    void completeAnimation();
+    // After a module's first step is applied - Learner EQ selects the band
+    // the check will be about, so the knobs under the panel are its knobs.
+    std::function<void (const TrainingModule::Definition&)> onModuleOpened;
 
-    // Snapshot seam: opens straight into a module's check, which is the
-    // state worth photographing.
+    // For tools/EditorSnapshots.
+    void completeAnimation();
     void openCheckForSnapshot (int moduleIndex);
+    void openResultForSnapshot (int moduleIndex, bool passed);
+
+    bool isRunning() const noexcept { return isVisible() && phase != Phase::shelf; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -85,6 +103,7 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:
     enum class Phase { shelf, demo, tryIt, check, result };
@@ -96,6 +115,7 @@ private:
     void beginCheck();
     void submitAnswer();
     void closeModule();
+    void closePanel();
 
     void applyStep (const LessonStep&);
     void setParameter (const juce::String& id, float value);
@@ -103,15 +123,31 @@ private:
     void playBed (TrainingModule::Bed, int seed);
     void stopBed();
 
+    void saveParameters();
+    void restoreParameters();
+
+    bool isWalkthrough (int index) const;
+    int numModules() const;
+
     juce::Rectangle<int> panelBounds() const;
     juce::Rectangle<int> shelfRowBounds (int index) const;
-    juce::Rectangle<int> checkBandBounds() const;
-    int numShelfRows() const { return (int) modules.size() + walkthroughs.size(); }
+    juce::Rectangle<int> shelfListBounds() const;
+    int shelfColumns() const;
+    int shelfContentHeight() const;
+    void paintModuleCard (juce::Graphics&, int index, juce::Rectangle<int>);
+    void paintWalkthroughCard (juce::Graphics&, int index, juce::Rectangle<int>);
+    void layoutButtons();
     void paintShelf (juce::Graphics&, juce::Rectangle<int>);
     void paintRunner (juce::Graphics&, juce::Rectangle<int>);
-    void layoutButtons();
+    void paintCheckScale (juce::Graphics&, juce::Rectangle<int>);
+
+    juce::String textFor (const TrainingModule::Definition&, const juce::String& field, const juce::String& fallback) const;
+    juce::String stepText (const TrainingModule::Definition&, int step) const;
+    juce::String unitSuffix (const TrainingModule::Check&) const;
+    juce::String number (float value, int decimals) const;
     juce::String formatValue (float value) const;
-    static juce::String describeTolerance (const TrainingModule::Check&, int tier);
+    juce::String formatTolerance (const TrainingModule::Check&, int level) const;
+    juce::String formatError (const TrainingModule::Check&, float target, float answer, int level) const;
     void refreshAuditionButtons();
     float currentKnobValue() const;
 
@@ -124,57 +160,31 @@ private:
     std::function<void()> clearOverride;
 
     std::vector<TrainingModule::Definition> modules;
-    juce::StringArray walkthroughs;
     Strings text;
-    juce::Colour accent { 0xff7f77dd };
+    juce::Colour accent { 0xff5b8def };
 
     Phase phase = Phase::shelf;
     int moduleIndex = -1;
     int demoStep = 0;
     int hoveredRow = -1;
+    float shelfScroll = 0.0f;
 
     // The check.
-    int checkTier = 1;
+    int checkLevel = 1;
     float hiddenTarget = 0.0f;
     float playerValue = 0.0f;
     bool auditioningReference = true;
-    bool lastAttemptPassed = false;
-    float lastAttemptQuality = 0.0f;
+    ModuleProgress::Outcome lastOutcome;
+    int levelBefore = 1;
     juce::Random random;
 
-    // What the knobs said before the module touched them, so leaving puts
-    // the plugin back the way it was found. A teaching screen that silently
-    // rewrites your settings is a teaching screen you stop opening.
     std::vector<std::pair<juce::String, float>> savedParameters;
-    void saveParameters();
-    void restoreParameters();
 
     double bedSampleRate = 44100.0;
-
-    // Beds are *not* owned here any more.
-    //
-    // They used to be, and it was still a use-after-free - just a rarer
-    // one than the first. Keeping every bed alive fixed "the next bed
-    // frees the one being played", but this panel belongs to the editor,
-    // and a host destroys the editor whenever the window is closed while
-    // audio keeps running. Closing the window during a check freed every
-    // bed underneath a block already in flight.
-    //
-    // PracticeAudioSource owns them now: it lives in the processor, which
-    // the host only destroys after it has stopped calling processBlock.
-    // See publishOverrideBuffer for the full note.
-
-    // 0 = panel over the analysis area, 1 = panel over everything.
-    float expansion = 0.0f;
-    float expansionTarget = 0.0f;
     float appearAmount = 0.0f;
 
-    juce::TextButton backButton { "Back" }, nextButton { "Next" },
-                     readyButton { "I'm ready" }, referenceButton { "Reference" },
-                     mineButton { "Mine" }, submitButton { "Submit" },
-                     againButton { "Try again" }, doneButton { "Done" },
-                     closeButton { "Close" };
-
+    juce::TextButton backButton, nextButton, readyButton, referenceButton,
+                     mineButton, submitButton, againButton, doneButton, closeButton;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ModuleScreenComponent)
 };

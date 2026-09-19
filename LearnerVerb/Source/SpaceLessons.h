@@ -18,15 +18,16 @@ inline MicroLesson buildPreDelayLesson()
         { "Completely dry. This is the reference - a source with no space "
           "around it at all, which is also what a close microphone in a "
           "treated room gives you.",
-          { { P::dryWetParamId, 0.0f }, { P::preDelayParamId, 0.0f },
-            { P::decayParamId, 1.8f }, { P::sizeParamId, 0.5f },
-            { P::dampingParamId, 0.4f }, { P::widthParamId, 1.0f } } },
+          { { P::bypassParamId, 0.0f }, { P::typeParamId, 1.0f },
+            { P::dryWetParamId, 0.0f }, { P::preDelayParamId, 0.0f },
+            { P::decayParamId, 1.8f }, { P::sizeParamId, 50.0f },
+            { P::dampingParamId, 40.0f }, { P::widthParamId, 100.0f } } },
 
         { "A hall at 30% wet, pre-delay 0. The reverb starts at the same "
           "instant the sound does, so the two are glued together. It sounds "
           "distant, and the words get harder to follow - the tail is "
           "covering the very consonants that make them legible.",
-          { { P::typeParamId, 1.0f }, { P::dryWetParamId, 0.3f },
+          { { P::typeParamId, 1.0f }, { P::dryWetParamId, 30.0f },
             { P::preDelayParamId, 0.0f } } },
 
         { "Same reverb, pre-delay 40 ms. The dry sound now arrives alone "
@@ -52,7 +53,7 @@ inline MicroLesson buildPreDelayLesson()
           "room from smearing across the grid. Back to 40 ms - and note "
           "that on a fast, dense arrangement, less wet with more pre-delay "
           "usually beats more wet with none.",
-          { { P::preDelayParamId, 40.0f }, { P::dryWetParamId, 0.25f } } }
+          { { P::preDelayParamId, 40.0f }, { P::dryWetParamId, 25.0f } } }
     });
 }
 
@@ -64,10 +65,10 @@ inline MicroLesson buildSizeAndDampingLesson()
         { "A small, dry-ish room to start from. Decay, Size and Damping all "
           "make a space sound larger or smaller, and they are not "
           "interchangeable - this walks what each one actually changes.",
-          { { P::typeParamId, 0.0f }, { P::decayParamId, 0.8f },
-            { P::sizeParamId, 0.3f }, { P::dampingParamId, 0.5f },
-            { P::preDelayParamId, 20.0f }, { P::dryWetParamId, 0.3f },
-            { P::widthParamId, 1.0f } } },
+          { { P::bypassParamId, 0.0f }, { P::typeParamId, 0.0f }, { P::decayParamId, 0.8f },
+            { P::sizeParamId, 30.0f }, { P::dampingParamId, 50.0f },
+            { P::preDelayParamId, 20.0f }, { P::dryWetParamId, 30.0f },
+            { P::widthParamId, 100.0f } } },
 
         { "Decay to 3.5 s, nothing else touched. The room did not get "
           "bigger - it got *more reflective*. This is the difference "
@@ -79,7 +80,7 @@ inline MicroLesson buildSizeAndDampingLesson()
           "arrive further apart, which is the cue that actually says "
           "\"large room\". A short decay in a big space is a real thing - "
           "a well-treated concert hall behaves like that.",
-          { { P::decayParamId, 1.2f }, { P::sizeParamId, 0.9f } } },
+          { { P::decayParamId, 1.2f }, { P::sizeParamId, 90.0f } } },
 
         { "Damping is the third one, and it is the most physical. Real "
           "surfaces absorb high frequencies faster than low ones, so a real "
@@ -92,14 +93,14 @@ inline MicroLesson buildSizeAndDampingLesson()
           "first, and the space suddenly has surfaces in it - curtains, "
           "wood, people. This is usually the knob that makes a reverb stop "
           "sounding like a plugin.",
-          { { P::dampingParamId, 0.75f } } },
+          { { P::dampingParamId, 75.0f } } },
 
         { "The last one is not on this plugin, and is worth saying anyway: "
           "reverb belongs on a send, not on every insert. One room that "
           "several tracks share sounds like a place; a different room per "
           "track sounds like several recordings edited together - and costs "
           "several times the CPU to get there.",
-          { { P::sizeParamId, 0.6f }, { P::decayParamId, 1.8f },
-            { P::dryWetParamId, 0.28f } } }
+          { { P::sizeParamId, 60.0f }, { P::decayParamId, 1.8f },
+            { P::dryWetParamId, 28.0f } } }
     });
 }

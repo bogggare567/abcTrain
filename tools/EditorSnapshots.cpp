@@ -84,11 +84,11 @@ namespace
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
-                       settingsPro, settingsHearing, hearingNotice };
+                       settingsPro, settingsHearing, hearingNotice, moduleResult };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
-                   int openTraining = -1, Extra extra = Extra::none)
+                   int openTraining = -1, Extra extra = Extra::none, int moduleIndex = 2)
     {
         int failures = 0;
 
@@ -181,12 +181,20 @@ namespace
                 // nobody has touched is a picture of nothing.
                 if (extra == Extra::none)
                     editor.applyPresetForSnapshot (1);
+            }
 
+            if constexpr (std::is_same_v<EditorType, LearnerCompEditor>
+                          || std::is_same_v<EditorType, LearnerVerbEditor>
+                          || std::is_same_v<EditorType, LearnerEQEditor>)
+            {
                 if (extra == Extra::moduleShelf)
                     editor.openModuleShelfForSnapshot();
 
                 if (extra == Extra::moduleCheck)
-                    editor.openModuleCheckForSnapshot();
+                    editor.openModuleCheckForSnapshot (moduleIndex);
+
+                if (extra == Extra::moduleResult)
+                    editor.openModuleResultForSnapshot (moduleIndex, true);
             }
 
             // "Adaptive" is a claim, and the only way to check a claim about
@@ -249,8 +257,33 @@ int main (int argc, char* argv[])
                                                                      -1, Extra::stretched);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Modules",
                                                                      -1, Extra::moduleShelf);
-    failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Check",
-                                                                     -1, Extra::moduleCheck);
+    // The module shots answer a check, which writes a step to the practice
+    // library's settings file - the player's own. Put it aside first.
+    {
+        const auto library = ReferenceAudioLibrary::makeDefaultOptions().getDefaultFile();
+        const auto backup = library.getSiblingFile (library.getFileName() + ".snapshot-backup");
+        const auto hadLibrary = library.existsAsFile();
+
+        if (! hadLibrary || library.copyFileTo (backup))
+        {
+            failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Check", -1, Extra::moduleCheck, 2);
+            failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Result", -1, Extra::moduleResult, 2);
+            failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb-Modules", -1, Extra::moduleShelf);
+            failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb-Check", -1, Extra::moduleCheck, 1);
+            failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Modules", -1, Extra::moduleShelf);
+            failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Check", -1, Extra::moduleCheck, 0);
+
+            if (hadLibrary)
+            {
+                backup.copyFileTo (library);
+                backup.deleteFile();
+            }
+            else
+            {
+                library.deleteFile();
+            }
+        }
+    }
 
     // EarTrainer's editor owns a ProgressManager writing to the real
     // per-user settings file, so rendering it *does* touch a player's

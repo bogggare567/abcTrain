@@ -69,6 +69,13 @@ void LearnerCompProcessor::prepareToPlay (double sampleRate, int)
     engine.prepare (sampleRate);
     engine.reset();
     updateEngineParameters();
+
+    makeupGain.reset (sampleRate, 0.03);
+    mixAmount.reset (sampleRate, 0.03);
+    activeAmount.reset (sampleRate, 0.02);
+    makeupGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (valueOf (makeupParamId)));
+    mixAmount.setCurrentAndTargetValue (valueOf (dryWetParamId) / 100.0f);
+    activeAmount.setCurrentAndTargetValue (valueOf (bypassParamId) > 0.5f ? 0.0f : 1.0f);
 }
 
 void LearnerCompProcessor::updateEngineParameters()
@@ -97,12 +104,9 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 {
     juce::ScopedNoDenormals noDenormals;
 
-    // Practice audio replaces the host's input before anything else
-    // touches it, so every meter, curve and knob downstream behaves
-    // exactly as it would on a real track. Off unless someone asked for
-    // it; see shared/PracticeAudioSource.h.
+    // When no host is feeding us, play the practice clip instead - see
+    // shared/PracticeAudioSource.h. Off by default.
     practiceSource.fillBlock (buffer);
-
 
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
@@ -112,61 +116,52 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     auto* display = waveformDisplay.load();
     auto* analyzer = spectrumAnalyzer.load();
 
-    const bool bypassed = valueOf (bypassParamId) > 0.5f;
-
-    if (bypassed)
-    {
-        for (int i = 0; i < numSamples; ++i)
-        {
-            const auto sample = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
-
-            if (display != nullptr)
-                display->pushSample (sample, sample, 0.0f);
-
-            if (analyzer != nullptr)
-            {
-                float mono = 0.0f;
-                for (int ch = 0; ch < numChannels; ++ch)
-                    mono += buffer.getSample (ch, i);
-                if (numChannels > 0)
-                    mono /= (float) numChannels;
-                analyzer->pushNextSampleIntoFifo (mono);
-            }
-        }
-        return;
-    }
-
-    updateEngineParameters();
-    const auto dryWetFraction = juce::jlimit (0.0f, 1.0f,
-        valueOf (dryWetParamId) / 100.0f);
+    // Three things glide rather than step (ADR 037): makeup, the mix, and
+    // bypass itself. A makeup knob dragged or a bypass pressed used to jump
+    // the output level between one sample and the next, which is a click -
+    // and a click is exactly the thing a person learning to listen will
+    // notice first and trust least.
+    engine.setParameters (valueOf (thresholdParamId), valueOf (ratioParamId), valueOf (attackParamId),
+                          valueOf (releaseParamId), valueOf (kneeParamId), 0.0f);
+    makeupGain.setTargetValue (juce::Decibels::decibelsToGain (valueOf (makeupParamId)));
+    mixAmount.setTargetValue (juce::jlimit (0.0f, 1.0f, valueOf (dryWetParamId) / 100.0f));
+    activeAmount.setTargetValue (valueOf (bypassParamId) > 0.5f ? 0.0f : 1.0f);
 
     for (int i = 0; i < numSamples; ++i)
     {
         float detection = 0.0f;
         float monoInput = 0.0f;
+
         for (int ch = 0; ch < numChannels; ++ch)
         {
-            const auto inputSample = buffer.getSample (ch, i);
-            detection = juce::jmax (detection, std::abs (inputSample));
-            monoInput += inputSample;
+            const auto x = buffer.getSample (ch, i);
+            detection = juce::jmax (detection, std::abs (x));
+            monoInput += x;
         }
+
         if (numChannels > 0)
             monoInput /= (float) numChannels;
 
-        const auto gain = engine.computeGain (detection);
+        // Stereo-linked: one gain for every channel, so the image does not
+        // pump sideways.
+        const auto gain = engine.computeGain (detection) * makeupGain.getNextValue();
+        const auto mix = mixAmount.getNextValue();
+        const auto active = activeAmount.getNextValue();
         const auto inputForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
 
         for (int ch = 0; ch < numChannels; ++ch)
         {
             const auto dry = buffer.getSample (ch, i);
-            const auto wet = dry * gain;
-            buffer.setSample (ch, i, dryWetFraction * wet + (1.0f - dryWetFraction) * dry);
+            const auto processed = mix * (dry * gain) + (1.0f - mix) * dry;
+            buffer.setSample (ch, i, active >= 1.0f ? processed
+                                     : active <= 0.0f ? dry
+                                                      : dry + active * (processed - dry));
         }
 
         if (display != nullptr)
         {
             const auto outputForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
-            display->pushSample (inputForDisplay, outputForDisplay, engine.getLastGainReductionDb());
+            display->pushSample (inputForDisplay, outputForDisplay, engine.getLastGainReductionDb() * active);
         }
 
         if (analyzer != nullptr)
@@ -197,6 +192,12 @@ void LearnerCompProcessor::applyPreset (int presetIndex)
     setParam (attackParamId, preset.attackMs);
     setParam (releaseParamId, preset.releaseMs);
     setParam (kneeParamId, preset.kneeDb);
+
+    // All seven, not five: a preset that leaves makeup and mix wherever
+    // they were sounds different depending on what you did before it.
+    setParam (makeupParamId, preset.makeupDb);
+    setParam (dryWetParamId, preset.dryWetPercent);
+    setParam (bypassParamId, 0.0f);
 }
 
 void LearnerCompProcessor::getStateInformation (juce::MemoryBlock& destData)

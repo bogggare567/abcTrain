@@ -4,24 +4,27 @@
 
 namespace
 {
-    constexpr int rowHeight = 46;
     constexpr int buttonHeight = 30;
+    constexpr int headerHeight = 58;     // title + subtitle / name + phase marks
 
-    // Reading text explains a knob; a panel sized to the whole window
-    // just to hold four lines of it says the opposite. Each phase asks for
-    // the height it needs, and the check asks for all of it - not to be
-    // grand, but because the knobs and the spectrum under it are the
-    // answer.
-    int contentHeightFor (int phaseIndex)
+    // How much of the analysis section each explaining phase needs. The
+    // check and the result take all of it (see the class comment).
+    int heightFor (int phaseIndex)
     {
         switch (phaseIndex)
         {
-            case 1:  return 210;  // demo: explanation, step counter
-            case 2:  return 190;  // try it
-            case 3:  return 250;  // check: question, tier, live readout
-            case 4:  return 230;  // result
-            default: return 0;    // the shelf sizes itself
+            case 1:  return 238;   // demo
+            case 2:  return 214;   // try it
+            default: return 0;
         }
+    }
+
+    juce::String fill (juce::String templ, std::initializer_list<std::pair<const char*, juce::String>> values)
+    {
+        for (const auto& v : values)
+            templ = templ.replace ("{{" + juce::String (v.first) + "}}", v.second);
+
+        return templ;
     }
 }
 
@@ -65,20 +68,22 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
         }
 
         progress.markDemoSeen (definition->id);
-        goToPhase (Phase::tryIt);
+
+        // A walkthrough has no check: its last step is its end.
+        if (isWalkthrough (moduleIndex))
+            closeModule();
+        else
+            goToPhase (Phase::tryIt);
     };
 
     readyButton.onClick = [this] { beginCheck(); };
 
-    // The two audition buttons are the whole reason a check by ear is
-    // possible at all. Matching a hidden value without being able to
-    // switch back to it is not a listening task, it is a guess.
+    // Matching a hidden value without being able to switch back to it is
+    // not a listening task, it is a guess.
     referenceButton.onClick = [this]
     {
         auditioningReference = true;
 
-        // The knob stays where the player left it; the reference goes
-        // straight into the DSP past it.
         if (setOverride != nullptr)
             if (auto* definition = currentModule())
                 setOverride (definition->check.parameterID, hiddenTarget);
@@ -99,43 +104,32 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
     };
 
     submitButton.onClick = [this] { submitAnswer(); };
-
     againButton.onClick = [this] { beginCheck(); };
     doneButton.onClick = [this] { closeModule(); };
+    closeButton.onClick = [this] { closePanel(); };
 
-    closeButton.onClick = [this]
-    {
-        stopBed();
-        restoreParameters();
-        setVisible (false);
-
-        if (onClosed != nullptr)
-            onClosed();
-    };
-
-
-    startTimerHz (60);
+    startTimerHz (30);
 }
 
 ModuleScreenComponent::~ModuleScreenComponent()
 {
-    // Stop the bed. The buffer itself is owned by PracticeAudioSource in
-    // the processor and deliberately outlives this panel.
     practiceSource.clearOverrideBuffer();
 
     if (clearOverride != nullptr)
         clearOverride();
+
+    // Closing the plugin window mid-module used to leave the session on
+    // whatever the demonstration had set. A teaching screen must leave the
+    // mix the way it found it, window or no window.
+    restoreParameters();
 }
 
 void ModuleScreenComponent::setModules (std::vector<TrainingModule::Definition> newModules)
 {
+    // Modules first, walkthroughs after, whatever order they arrived in.
+    std::stable_partition (newModules.begin(), newModules.end(),
+                           [] (const TrainingModule::Definition& d) { return d.check.parameterID.isNotEmpty(); });
     modules = std::move (newModules);
-    repaint();
-}
-
-void ModuleScreenComponent::setWalkthroughs (juce::StringArray names)
-{
-    walkthroughs = std::move (names);
     repaint();
 }
 
@@ -160,12 +154,28 @@ void ModuleScreenComponent::setStrings (Strings newStrings)
 void ModuleScreenComponent::setAccentColour (juce::Colour colour)
 {
     accent = colour;
+    refreshAuditionButtons();
     repaint();
 }
 
 void ModuleScreenComponent::prepare (double sampleRate)
 {
     bedSampleRate = sampleRate > 0.0 ? sampleRate : 44100.0;
+}
+
+bool ModuleScreenComponent::isWalkthrough (int index) const
+{
+    return index >= 0 && index < (int) modules.size() && modules[(size_t) index].check.parameterID.isEmpty();
+}
+
+int ModuleScreenComponent::numModules() const
+{
+    int n = 0;
+
+    for (const auto& m : modules)
+        n += m.check.parameterID.isNotEmpty() ? 1 : 0;
+
+    return n;
 }
 
 const TrainingModule::Definition* ModuleScreenComponent::currentModule() const
@@ -176,11 +186,118 @@ const TrainingModule::Definition* ModuleScreenComponent::currentModule() const
     return &modules[(size_t) moduleIndex];
 }
 
+// ---- text ---------------------------------------------------------------
+
+juce::String ModuleScreenComponent::textFor (const TrainingModule::Definition& d, const juce::String& field,
+                                             const juce::String& fallback) const
+{
+    if (translate != nullptr)
+    {
+        const auto t = translate ("mod." + d.id + "." + field);
+
+        if (t.isNotEmpty())
+            return t;
+    }
+
+    return fallback;
+}
+
+juce::String ModuleScreenComponent::stepText (const TrainingModule::Definition& d, int step) const
+{
+    const auto& fallback = d.demoSteps[(size_t) juce::jlimit (0, (int) d.demoSteps.size() - 1, step)].explanationText;
+    return textFor (d, "step" + juce::String (step + 1), fallback);
+}
+
+juce::String ModuleScreenComponent::unitSuffix (const TrainingModule::Check& check) const
+{
+    const auto bare = check.unitSuffix.trim();
+
+    if (bare.isEmpty() || bare == "%" || bare.startsWith (":"))
+        return check.unitSuffix;
+
+    if (translate != nullptr)
+    {
+        const auto t = translate ("unit." + bare);
+
+        if (t.isNotEmpty())
+            return " " + t;
+    }
+
+    return check.unitSuffix;
+}
+
+juce::String ModuleScreenComponent::number (float value, int decimals) const
+{
+    auto s = decimals > 0 ? juce::String (value, decimals) : juce::String (juce::roundToInt (value));
+    return text.decimal == "." ? s : s.replace (".", text.decimal);
+}
+
+juce::String ModuleScreenComponent::formatValue (float value) const
+{
+    auto* definition = currentModule();
+
+    if (definition == nullptr)
+        return {};
+
+    const auto& check = definition->check;
+
+    if (check.unit == TrainingModule::Unit::choice)
+    {
+        const auto index = juce::jlimit (0, (int) check.choiceLabels.size() - 1, juce::roundToInt (value));
+        return check.choiceLabels.empty() ? number (value, 0) : check.choiceLabels[(size_t) index];
+    }
+
+    const auto shown = value * check.displayScale;
+
+    // "10000 Hz" is a number you have to count the zeros of.
+    if (check.unitSuffix.trim() == "Hz" && shown >= 999.5f)
+    {
+        const auto khz = translate != nullptr ? translate ("unit.kHz") : juce::String();
+        return number (shown / 1000.0f, shown >= 9995.0f ? 1 : 2) + " " + (khz.isNotEmpty() ? khz : juce::String ("kHz"));
+    }
+
+    return number (shown, std::abs (shown) < 10.0f ? 1 : 0) + unitSuffix (check);
+}
+
+juce::String ModuleScreenComponent::formatTolerance (const TrainingModule::Check& check, int level) const
+{
+    const auto r = TrainingModule::readout (check, 0.0f, 0.0f, level);
+    const auto pm = juce::String (juce::CharPointer_UTF8 ("\xc2\xb1"));
+
+    if (check.unit == TrainingModule::Unit::choice)
+        return {};
+
+    if (r.percent)
+        return pm + number (r.tolerance, 0) + "%";
+
+    if (r.octaves)
+        return pm + number (r.tolerance, 2) + " " + text.octaves;
+
+    return pm + number (r.tolerance, r.tolerance < 10.0f ? 1 : 0) + unitSuffix (check);
+}
+
+juce::String ModuleScreenComponent::formatError (const TrainingModule::Check& check, float target,
+                                                 float answer, int level) const
+{
+    const auto r = TrainingModule::readout (check, target, answer, level);
+    const auto sign = r.signedError >= 0.0f ? juce::String ("+") : juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"));
+    const auto mag = std::abs (r.signedError);
+
+    if (r.percent)
+        return sign + number (mag, 0) + "%";
+
+    if (r.octaves)
+        return sign + number (mag, 2) + " " + text.octaves;
+
+    return sign + number (mag, mag < 10.0f ? 1 : 0) + unitSuffix (check);
+}
+
+// ---- flow ---------------------------------------------------------------
+
 void ModuleScreenComponent::openShelf()
 {
     phase = Phase::shelf;
     moduleIndex = -1;
-    expansionTarget = 0.0f;
     appearAmount = 0.0f;
     stopBed();
     layoutButtons();
@@ -203,6 +320,9 @@ void ModuleScreenComponent::openModule (int index)
     if (! definition.demoSteps.empty())
         applyStep (definition.demoSteps[0]);
 
+    if (onModuleOpened != nullptr)
+        onModuleOpened (definition);
+
     playBed (definition.check.bed, 1);
     goToPhase (Phase::demo);
 }
@@ -210,9 +330,6 @@ void ModuleScreenComponent::openModule (int index)
 void ModuleScreenComponent::goToPhase (Phase newPhase)
 {
     phase = newPhase;
-    // No phase covers the knobs any more: during the check they are how
-    // you answer.
-    expansionTarget = 0.0f;
     layoutButtons();
     repaint();
 }
@@ -221,28 +338,25 @@ void ModuleScreenComponent::beginCheck()
 {
     auto* definition = currentModule();
 
-    if (definition == nullptr)
+    if (definition == nullptr || isWalkthrough (moduleIndex))
         return;
 
     const auto& check = definition->check;
-
-    // One tier above whatever has already been passed, so a module that is
-    // done at "roughly" opens at "confidently" rather than replaying a
-    // question already answered.
-    checkTier = juce::jlimit (1, TrainingModule::numTiers,
-                               progress.getTierPassed (definition->id) + 1);
+    checkLevel = progress.get (definition->id).level;
 
     hiddenTarget = TrainingModule::drawTarget (check, random);
 
     // Put the knob somewhere neutral once, then never touch it again: from
-    // here on its position *is* the answer, and moving it would be the
-    // panel answering for the player.
+    // here on its position *is* the answer.
     const auto neutral = check.drawLogarithmically && check.minTarget > 0.0f
                              ? std::sqrt (check.minTarget * check.maxTarget)
                              : (check.minTarget + check.maxTarget) * 0.5f;
 
-    setParameter (check.parameterID, check.unit == TrainingModule::Unit::choice
-                                         ? check.minTarget : neutral);
+    setParameter (check.parameterID, check.unit == TrainingModule::Unit::choice ? check.minTarget : neutral);
+
+    // A choice check must never start on the answer.
+    if (check.unit == TrainingModule::Unit::choice && juce::roundToInt (hiddenTarget) == juce::roundToInt (check.minTarget))
+        hiddenTarget = check.minTarget + 1.0f + (float) random.nextInt (juce::jmax (1, juce::roundToInt (check.maxTarget - check.minTarget)));
 
     auditioningReference = true;
 
@@ -250,31 +364,20 @@ void ModuleScreenComponent::beginCheck()
         setOverride (check.parameterID, hiddenTarget);
 
     refreshAuditionButtons();
-
-    // A fresh instance of the bed, so the check is not the same recording
-    // the demonstration used.
     playBed (check.bed, random.nextInt (10000));
-
     goToPhase (Phase::check);
 }
 
 float ModuleScreenComponent::currentKnobValue() const
 {
     auto* definition = currentModule();
-
     return definition != nullptr ? getParameter (definition->check.parameterID) : 0.0f;
 }
 
 void ModuleScreenComponent::refreshAuditionButtons()
 {
-    // Which one you are hearing has to be visible at a glance: two
-    // identical buttons and a line of text is a state you have to read.
-    referenceButton.setColour (juce::TextButton::buttonColourId,
-                                auditioningReference ? accent.withAlpha (0.85f)
-                                                     : AbcTrainTheme::current().widgetBackground);
-    mineButton.setColour (juce::TextButton::buttonColourId,
-                           auditioningReference ? AbcTrainTheme::current().widgetBackground
-                                                : accent.withAlpha (0.85f));
+    AbcTrainLookAndFeel::makePrimary (referenceButton, auditioningReference);
+    AbcTrainLookAndFeel::makePrimary (mineButton, ! auditioningReference);
     referenceButton.repaint();
     mineButton.repaint();
 }
@@ -287,21 +390,17 @@ void ModuleScreenComponent::submitAnswer()
         return;
 
     const auto& check = definition->check;
-
-    // Whatever the knob says now is the answer.
     playerValue = currentKnobValue();
 
     if (clearOverride != nullptr)
         clearOverride();
 
-    lastAttemptPassed = TrainingModule::passes (check, hiddenTarget, playerValue, checkTier);
-    lastAttemptQuality = TrainingModule::quality (check, hiddenTarget, playerValue, checkTier);
+    levelBefore = checkLevel;
+    const auto passed = TrainingModule::passesAtLevel (check, hiddenTarget, playerValue, checkLevel);
+    lastOutcome = progress.recordAttempt (definition->id, passed);
 
-    if (lastAttemptPassed)
-        progress.recordPass (definition->id, checkTier);
-
-    // Reveal: put the knob on the answer and leave it there, so the eased
-    // travel shows how far off it was rather than merely stating it.
+    // Reveal: the knob travels to the answer, which shows how far off it
+    // was rather than merely stating it.
     setParameter (check.parameterID, hiddenTarget);
 
     goToPhase (Phase::result);
@@ -312,6 +411,16 @@ void ModuleScreenComponent::closeModule()
     stopBed();
     restoreParameters();
     openShelf();
+}
+
+void ModuleScreenComponent::closePanel()
+{
+    stopBed();
+    restoreParameters();
+    setVisible (false);
+
+    if (onClosed != nullptr)
+        onClosed();
 }
 
 void ModuleScreenComponent::saveParameters()
@@ -353,52 +462,32 @@ float ModuleScreenComponent::getParameter (const juce::String& id) const
 
 void ModuleScreenComponent::playBed (TrainingModule::Bed which, int seed)
 {
-    // Handed to PracticeAudioSource, which owns it from here. It lives in
-    // the processor, so the bed outlives this panel - closing the plugin
-    // window mid-check used to free the buffer the audio thread was
-    // reading. See publishOverrideBuffer.
-    practiceSource.publishOverrideBuffer (
-        LessonAudioBed::render (which, bedSampleRate, seed));
+    practiceSource.publishOverrideBuffer (LessonAudioBed::render (which, bedSampleRate, seed));
 }
 
 void ModuleScreenComponent::stopBed()
 {
     practiceSource.clearOverrideBuffer();
 
-    // An override left armed would silently keep processing at a value no
-    // knob shows, for as long as the plugin stayed loaded.
     if (clearOverride != nullptr)
         clearOverride();
 }
+
+// ---- layout -------------------------------------------------------------
 
 juce::Rectangle<int> ModuleScreenComponent::panelBounds() const
 {
     auto area = getLocalBounds();
 
-    if (phase == Phase::shelf)
-    {
-        const auto rows = numShelfRows() * rowHeight
-                              + ((walkthroughs.isEmpty() || modules.empty()) ? 0 : 26);
-        const auto needed = AbcTrainTheme::Spacing::large * 2 + 48 + rows + buttonHeight + 12;
+    if (phase == Phase::demo || phase == Phase::tryIt)
+        return area.withHeight (juce::jmin (area.getHeight(), heightFor (phase == Phase::demo ? 1 : 2)));
 
-        return area.withHeight (juce::jmin (area.getHeight(), needed));
-    }
-
-    const auto forPhase = phase == Phase::demo   ? 1
-                        : phase == Phase::tryIt  ? 2
-                        : phase == Phase::check  ? 3 : 4;
-
-    const auto resting = juce::jmin (area.getHeight(), contentHeightFor (forPhase));
-    const auto height = resting + (int) ((float) (area.getHeight() - resting) * expansion);
-
-    return area.withHeight (juce::jlimit (0, area.getHeight(), height));
+    return area;
 }
 
 bool ModuleScreenComponent::hitTest (int x, int y)
 {
-    // Everything outside the painted panel belongs to whatever is under it -
-    // which during a lesson is the plugin's own knobs, and they have to
-    // stay usable or the lesson is a slideshow.
+    // Below a short panel is the spectrum, which belongs to the plugin.
     return panelBounds().contains (x, y);
 }
 
@@ -412,7 +501,6 @@ void ModuleScreenComponent::layoutButtons()
     for (auto* button : { &backButton, &nextButton, &readyButton, &referenceButton,
                           &mineButton, &submitButton, &againButton, &doneButton, &closeButton })
         button->setVisible (false);
-
 
     auto area = panelBounds().reduced (AbcTrainTheme::Spacing::large);
 
@@ -428,43 +516,57 @@ void ModuleScreenComponent::layoutButtons()
         row.removeFromRight (AbcTrainTheme::Spacing::small);
     };
 
+    const auto placeLeft = [&row] (juce::TextButton& button, int width)
+    {
+        button.setVisible (true);
+        button.setBounds (row.removeFromLeft (width));
+        row.removeFromLeft (AbcTrainTheme::Spacing::small);
+    };
+
     switch (phase)
     {
         case Phase::shelf:
-            place (closeButton, 92);
+        {
+            // Top right, beside the title - the shelf needs every row of
+            // height for cards, and a page's close lives up there anyway.
+            auto top = panelBounds().reduced (AbcTrainTheme::Spacing::large).removeFromTop (buttonHeight);
+            closeButton.setVisible (true);
+            closeButton.setBounds (top.removeFromRight (110));
             break;
+        }
 
         case Phase::demo:
-            place (nextButton, 92);
-            place (backButton, 84);
-            place (closeButton, 84);
+        {
+            auto* d = currentModule();
+            const auto last = d != nullptr && demoStep + 1 >= (int) d->demoSteps.size();
+            nextButton.setButtonText (last && isWalkthrough (moduleIndex) ? text.finish : text.next);
+            AbcTrainLookAndFeel::makePrimary (nextButton, true);
+            place (nextButton, 120);
+
+            if (demoStep > 0)
+                place (backButton, 100);
+
+            placeLeft (closeButton, 110);
             break;
+        }
 
         case Phase::tryIt:
-            place (readyButton, 110);
-            place (closeButton, 84);
+            AbcTrainLookAndFeel::makePrimary (readyButton, true);
+            place (readyButton, 150);
+            placeLeft (closeButton, 110);
             break;
 
         case Phase::check:
         {
-            // Laid out like the trainer's answer row, not as four equal
-            // grey buttons in a huddle. Reference/Mine is one *pair*,
-            // centred under the scale it compares - the same shape and the
-            // same place as A/B - because it is the same act: hearing the
-            // treated thing against your own. Submit sits right, where a
-            // commit belongs; leaving sits left, out of the way.
-            //
-            // Four identically-weighted buttons made the two that matter
-            // most look like housekeeping.
-            place (submitButton, 96);
+            AbcTrainLookAndFeel::makePrimary (submitButton, true);
+            place (submitButton, 130);
+            placeLeft (closeButton, 110);
 
-            auto leaveArea = row.removeFromLeft (84);
-            closeButton.setVisible (true);
-            closeButton.setBounds (leaveArea);
+            // Reference / Mine is one pair, centred, the same shape and place
+            // as the trainer's A/B - it is the same act.
+            const auto pairWidth = juce::jmin (280, row.getWidth() - AbcTrainTheme::Spacing::medium * 2);
 
-            const auto pairWidth = juce::jmin (200, row.getWidth() - AbcTrainTheme::Spacing::medium * 2);
-
-            if (pairWidth > 60)
+            if (pairWidth > 80)
             {
                 auto pair = row.withSizeKeepingCentre (pairWidth, buttonHeight);
                 const auto half = (pair.getWidth() - AbcTrainTheme::Spacing::tight) / 2;
@@ -472,7 +574,6 @@ void ModuleScreenComponent::layoutButtons()
                 referenceButton.setVisible (true);
                 referenceButton.setBounds (pair.removeFromLeft (half));
                 pair.removeFromLeft (AbcTrainTheme::Spacing::tight);
-
                 mineButton.setVisible (true);
                 mineButton.setBounds (pair);
             }
@@ -481,104 +582,99 @@ void ModuleScreenComponent::layoutButtons()
         }
 
         case Phase::result:
-            place (doneButton, 84);
-            place (againButton, 104);
+            AbcTrainLookAndFeel::makePrimary (againButton, true);
+            place (againButton, 150);
+            place (doneButton, 110);
             break;
     }
 }
 
-juce::String ModuleScreenComponent::describeTolerance (const TrainingModule::Check& check,
-                                                       int tier)
+// The shelf is a grid of cards, not a list: seven modules and two or
+// three walkthroughs fit on one screen that way, where a list of rows ran
+// off the bottom and hid the walkthroughs under a scroll nobody found.
+namespace
 {
-    const auto tolerance = TrainingModule::toleranceForTier (check, tier);
-
-    // "within 0.70 as a ratio" is a number from the implementation, not a
-    // sentence anybody could act on.
-    switch (check.unit)
-    {
-        case TrainingModule::Unit::proportion:
-            return "get within " + juce::String (juce::roundToInt (tolerance * 100.0f)) + "%";
-
-        case TrainingModule::Unit::decibels:
-            return "get within " + juce::String (tolerance, 1) + " dB";
-
-        case TrainingModule::Unit::octaves:
-            return "get within " + juce::String (tolerance, 2) + " of an octave";
-
-        case TrainingModule::Unit::rangeFraction:
-            return "get within " + juce::String (juce::roundToInt (tolerance * 100.0f))
-                       + "% of the range";
-
-        case TrainingModule::Unit::choice:
-            return "name it exactly";
-    }
-
-    return {};
+    constexpr int cardGap = 10;
+    constexpr int moduleCardHeight = 108;
+    constexpr int walkCardHeight = 66;
+    constexpr int walkCaptionHeight = 34;
 }
 
-juce::String ModuleScreenComponent::formatValue (float value) const
+juce::Rectangle<int> ModuleScreenComponent::shelfListBounds() const
 {
-    auto* definition = currentModule();
+    auto area = panelBounds().reduced (AbcTrainTheme::Spacing::large);
+    area.removeFromTop (headerHeight);
+    return area;
+}
 
-    if (definition == nullptr)
-        return {};
+int ModuleScreenComponent::shelfColumns() const
+{
+    const auto width = shelfListBounds().getWidth();
+    return width >= 760 ? 4 : width >= 540 ? 3 : 2;
+}
 
-    const auto& check = definition->check;
+int ModuleScreenComponent::shelfContentHeight() const
+{
+    const auto cols = shelfColumns();
+    const auto moduleRows = (numModules() + cols - 1) / cols;
+    const auto walks = (int) modules.size() - numModules();
+    const auto walkCols = juce::jmax (1, juce::jmin (walks, cols));
+    const auto walkRows = walks > 0 ? (walks + walkCols - 1) / walkCols : 0;
 
-    if (check.unit == TrainingModule::Unit::choice)
+    return moduleRows * (moduleCardHeight + cardGap)
+         + (walks > 0 ? walkCaptionHeight + walkRows * (walkCardHeight + cardGap) : 0);
+}
+
+juce::Rectangle<int> ModuleScreenComponent::shelfRowBounds (int index) const
+{
+    const auto list = shelfListBounds();
+    const auto cols = shelfColumns();
+    const auto scroll = juce::roundToInt (shelfScroll);
+
+    if (index < numModules())
     {
-        const auto index = juce::jlimit (0, (int) check.choiceLabels.size() - 1, (int) value);
-        return check.choiceLabels.empty() ? juce::String (value) : check.choiceLabels[(size_t) index];
+        const auto cardWidth = (list.getWidth() - (cols - 1) * cardGap) / cols;
+        const auto row = index / cols, col = index % cols;
+        return { list.getX() + col * (cardWidth + cardGap),
+                 list.getY() + row * (moduleCardHeight + cardGap) - scroll,
+                 cardWidth, moduleCardHeight };
     }
 
-    const auto shown = value * check.displayScale;
+    const auto walks = (int) modules.size() - numModules();
+    const auto walkCols = juce::jmax (1, juce::jmin (walks, cols));
+    const auto moduleRows = (numModules() + cols - 1) / cols;
+    const auto top = list.getY() + moduleRows * (moduleCardHeight + cardGap) + walkCaptionHeight - scroll;
+    const auto j = index - numModules();
+    const auto cardWidth = (list.getWidth() - (walkCols - 1) * cardGap) / walkCols;
 
-    // juce::String (double, 0) does *not* mean "round to an integer" - it
-    // means "use the shortest representation that round-trips", so 26.7496
-    // printed as "26.7496 ms" wherever a value happened to be over ten.
-    // It had nowhere to show before the check grew a scale with numbers on
-    // it; it was wrong in every module the whole time.
-    if (std::abs (shown) < 10.0f)
-        return juce::String (shown, 1) + check.unitSuffix;
-
-    return juce::String (juce::roundToInt (shown)) + check.unitSuffix;
+    return { list.getX() + (j % walkCols) * (cardWidth + cardGap),
+             top + (j / walkCols) * (walkCardHeight + cardGap),
+             cardWidth, walkCardHeight };
 }
+
+// ---- time ---------------------------------------------------------------
 
 void ModuleScreenComponent::timerCallback()
 {
-    const auto step = 1.0f / (float) (AbcTrainTheme::Duration::transition * 0.06);
     auto moved = false;
 
-    if (std::abs (expansion - expansionTarget) > 0.001f)
+    if (appearAmount < 1.0f)
     {
-        expansion += juce::jlimit (-step, step, expansionTarget - expansion);
+        appearAmount = juce::jmin (1.0f, appearAmount + 0.2f);
         moved = true;
     }
 
     // The mark and the readout follow the knob, which this panel does not
-    // own and gets no callback from. Tracked during the whole check, not
-    // just while auditioning your own setting: the knob is yours to turn
-    // at any point, and a scale that froze whenever the reference played
-    // was most of why the old check screen looked dead.
-    if (phase == Phase::check)
+    // own and gets no callback from.
+    if (isVisible() && (phase == Phase::check || phase == Phase::demo))
         moved = true;
-
-    if (appearAmount < 1.0f)
-    {
-        appearAmount = juce::jmin (1.0f, appearAmount + step);
-        moved = true;
-    }
 
     if (moved)
-    {
-        layoutButtons();
         repaint();
-    }
 }
 
 void ModuleScreenComponent::completeAnimation()
 {
-    expansion = expansionTarget;
     appearAmount = 1.0f;
     layoutButtons();
 }
@@ -591,6 +687,23 @@ void ModuleScreenComponent::openCheckForSnapshot (int index)
     completeAnimation();
 }
 
+void ModuleScreenComponent::openResultForSnapshot (int index, bool passed)
+{
+    openCheckForSnapshot (index);
+
+    if (auto* d = currentModule())
+    {
+        const auto band = TrainingModule::acceptRange (d->check, hiddenTarget, checkLevel);
+        setParameter (d->check.parameterID, passed ? hiddenTarget + (band.getEnd() - hiddenTarget) * 0.4f
+                                                   : band.getEnd() + (band.getEnd() - hiddenTarget) * 0.6f);
+    }
+
+    submitAnswer();
+    completeAnimation();
+}
+
+// ---- mouse --------------------------------------------------------------
+
 void ModuleScreenComponent::mouseMove (const juce::MouseEvent& event)
 {
     if (phase != Phase::shelf)
@@ -598,7 +711,7 @@ void ModuleScreenComponent::mouseMove (const juce::MouseEvent& event)
 
     auto found = -1;
 
-    for (int i = 0; i < numShelfRows(); ++i)
+    for (int i = 0; i < (int) modules.size(); ++i)
         if (shelfRowBounds (i).contains (event.getPosition()))
             found = i;
 
@@ -623,74 +736,46 @@ void ModuleScreenComponent::mouseUp (const juce::MouseEvent& event)
     if (phase != Phase::shelf)
         return;
 
-    for (int i = 0; i < numShelfRows(); ++i)
-    {
-        if (! shelfRowBounds (i).contains (event.getPosition()))
-            continue;
+    if (! shelfListBounds().contains (event.getPosition()))
+        return;
 
-        if (i < (int) modules.size())
+    for (int i = 0; i < (int) modules.size(); ++i)
+        if (shelfRowBounds (i).contains (event.getPosition()))
         {
             openModule (i);
+            return;
         }
-        else if (onWalkthroughSelected != nullptr)
-        {
-            stopBed();
-            setVisible (false);
-            onWalkthroughSelected (i - (int) modules.size());
-        }
+}
 
+void ModuleScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
+{
+    if (phase != Phase::shelf)
         return;
-    }
+
+    const auto maxScroll = juce::jmax (0.0f, (float) (shelfContentHeight() - shelfListBounds().getHeight()));
+
+    shelfScroll = juce::jlimit (0.0f, maxScroll, shelfScroll - wheel.deltaY * 160.0f);
+    repaint();
 }
 
-juce::Rectangle<int> ModuleScreenComponent::shelfRowBounds (int index) const
-{
-    auto area = panelBounds().reduced (AbcTrainTheme::Spacing::large);
-    area.removeFromTop (48);                       // heading
-    area.removeFromBottom (buttonHeight + 8);      // the close button's row
-
-    // The walkthroughs sit under a gap, so "one knob" and "one workflow"
-    // do not read as the same kind of thing in one flat list.
-    const auto divider = index >= (int) modules.size() && ! walkthroughs.isEmpty() ? 26 : 0;
-
-    return { area.getX(), area.getY() + index * rowHeight + divider, area.getWidth(), rowHeight - 4 };
-}
-
-juce::Rectangle<int> ModuleScreenComponent::checkBandBounds() const
-{
-    // The check panel has to be tall enough to cover the knobs, which
-    // leaves far more room than the question needs. Rather than pinning
-    // the readout to the top and the slider to the bottom - two halves of
-    // one control with a window between them - the whole group sits in the
-    // middle of the space it was given.
-    auto area = panelBounds().reduced (AbcTrainTheme::Spacing::large);
-    area.removeFromTop (26 + 16 + AbcTrainTheme::Spacing::small);
-    area.removeFromBottom (buttonHeight + AbcTrainTheme::Spacing::small);
-
-    constexpr int bandHeight = 176;
-
-    return area.withSizeKeepingCentre (area.getWidth(), juce::jmin (area.getHeight(), bandHeight));
-}
+// ---- painting -----------------------------------------------------------
 
 void ModuleScreenComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
-    const auto panel = panelBounds().toFloat();
+    const auto panel = panelBounds();
 
-    juce::Path shape;
-    shape.addRoundedRectangle (panel.reduced (1.0f), AbcTrainTheme::Radius::panel);
-
-    juce::DropShadow (theme.shadow.withAlpha (0.55f * theme.shadowStrength), 22, { 0, 5 })
-        .drawForPath (g, shape);
-
-    // Opaque, not translucent. An overlay you can read the spectrum through
-    // is an overlay you can read the answer through.
+    // Opaque: an overlay you can read the spectrum through is an overlay
+    // you can read the answer through. A frame, not a floating card - the
+    // same grammar as every panel in the trainer.
     g.setColour (theme.panelBackground);
-    g.fillPath (shape);
+    g.fillRect (panel);
     g.setColour (theme.outline);
-    g.strokePath (shape, juce::PathStrokeType (1.0f));
+    g.drawRect (panel, 1);
+    g.setColour (accent);
+    g.fillRect (panel.getX(), panel.getY(), panel.getWidth(), 2);
 
-    auto area = panel.toNearestInt().reduced (AbcTrainTheme::Spacing::large);
+    auto area = panel.reduced (AbcTrainTheme::Spacing::large);
 
     if (phase == Phase::shelf)
         paintShelf (g, area);
@@ -702,79 +787,155 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::drawTrackedText (g, text.shelfTitle, area.removeFromTop (26).toFloat(),
-                                           AbcTrainLookAndFeel::headingFont(),
-                                           theme.textBright, 1.2f);
+    g.setColour (theme.textBright);
+    g.setFont (AbcTrainLookAndFeel::titleFont());
+    g.drawText (text.shelfTitle, area.removeFromTop (28), juce::Justification::centredLeft, true);
 
     g.setColour (theme.textDim);
-    g.setFont (AbcTrainLookAndFeel::labelFont());
-    g.drawText (text.shelfSubtitle,
-                 area.removeFromTop (20), juce::Justification::centredLeft, true);
+    g.setFont (AbcTrainLookAndFeel::bodyFont());
+    g.drawText (text.shelfSubtitle, area.removeFromTop (22), juce::Justification::centredLeft, true);
 
-    for (int i = 0; i < numShelfRows(); ++i)
+    const auto list = shelfListBounds();
+
+    juce::Graphics::ScopedSaveState clip (g);
+    g.reduceClipRegion (list);
+
+    for (int i = 0; i < (int) modules.size(); ++i)
     {
-        const auto row = shelfRowBounds (i);
+        const auto card = shelfRowBounds (i);
 
-        if (! row.intersects (getLocalBounds()))
+        if (! card.intersects (list))
             continue;
 
-        const auto isWalkthrough = i >= (int) modules.size();
-
-        // The sub-heading exists to separate walkthroughs from the
-        // modules above them. With no modules - Learner EQ, which has none
-        // by choice (ADR 027) - there is nothing to separate them from,
-        // and a heading over the only group on the shelf is noise.
-        if (isWalkthrough && i == (int) modules.size() && ! modules.empty())
+        if (isWalkthrough (i))
         {
-            g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (AbcTrainLookAndFeel::toCaps (text.walkthroughs), row.translated (0, -22).withHeight (16),
-                         juce::Justification::centredLeft, true);
-        }
-
-        const auto name = isWalkthrough ? walkthroughs[i - (int) modules.size()]
-                                        : modules[(size_t) i].name;
-        const auto why = isWalkthrough ? text.walkthroughWhy
-                                       : modules[(size_t) i].why;
-        const auto tier = isWalkthrough ? 0 : progress.getTierPassed (modules[(size_t) i].id);
-
-        if (i == hoveredRow)
-        {
-            g.setColour (theme.widgetBackground.withAlpha (0.55f));
-            g.fillRoundedRectangle (row.toFloat(), AbcTrainTheme::Radius::button);
-        }
-
-        auto text = row.reduced (10, 4);
-
-        // Three pips, one per tier. A number would need a legend; three
-        // dots that fill in do not.
-        auto pips = text.removeFromRight (52);
-
-        for (int pip = 0; pip < (isWalkthrough ? 0 : TrainingModule::numTiers); ++pip)
-        {
-            const juce::Rectangle<float> dot ((float) (pips.getX() + pip * 15),
-                                               (float) pips.getCentreY() - 4.0f, 8.0f, 8.0f);
-
-            if (pip < tier)
+            if (i == numModules())
             {
-                g.setColour (accent);
-                g.fillEllipse (dot);
+                // WALKTHROUGHS, then what one is, over a hairline.
+                auto caption = juce::Rectangle<int> (list.getX(), card.getY() - walkCaptionHeight, list.getWidth(), walkCaptionHeight - 8);
+                const auto label = AbcTrainLookAndFeel::toCaps (text.walkthroughs);
+                const auto labelFont = AbcTrainLookAndFeel::labelFont();
+                const auto w = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (label, labelFont, 1.8f)) + 4;
+                AbcTrainLookAndFeel::drawTrackedText (g, label, caption.removeFromLeft (w).toFloat(), labelFont, theme.text, 1.8f);
+                caption.removeFromLeft (12);
+                g.setColour (theme.textDim);
+                g.setFont (AbcTrainLookAndFeel::captionFont());
+                g.drawText (text.walkthroughWhy, caption, juce::Justification::centredLeft, true);
+                g.setColour (theme.divider);
+                g.fillRect (list.getX(), card.getY() - 6, list.getWidth(), 1);
             }
-            else
-            {
-                g.setColour (theme.outline);
-                g.drawEllipse (dot, 1.2f);
-            }
+
+            paintWalkthroughCard (g, i, card);
         }
-
-        g.setColour (tier > 0 ? theme.textBright : theme.text);
-        g.setFont (AbcTrainLookAndFeel::headingFont());
-        g.drawText (name, text.removeFromTop (18), juce::Justification::centredLeft, true);
-
-        g.setColour (theme.textDim);
-        g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawText (why, text.removeFromTop (16), juce::Justification::centredLeft, true);
+        else
+        {
+            paintModuleCard (g, i, card);
+        }
     }
+}
+
+void ModuleScreenComponent::paintModuleCard (juce::Graphics& g, int index, juce::Rectangle<int> card)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto& m = modules[(size_t) index];
+    const auto state = progress.get (m.id);
+    const auto tried = state.attempts > 0;
+
+    // A frame; filled faintly on hover, and warm once it has a record -
+    // the cards you have worked on are the ones that look worked on.
+    if (tried)
+    {
+        g.setColour (accent.withAlpha (0.06f));
+        g.fillRect (card);
+    }
+
+    if (index == hoveredRow)
+    {
+        g.setColour (theme.widgetBackground.withAlpha (0.8f));
+        g.fillRect (card);
+    }
+
+    g.setColour (tried ? accent.withAlpha (0.55f) : theme.outline);
+    g.drawRect (card, 1);
+
+    if (tried)
+        AbcTrainLookAndFeel::drawRegistrationMarks (g, card.toFloat(), accent.withAlpha (0.7f));
+
+    auto r = card.reduced (12, 10);
+
+    g.setColour (theme.textBright);
+    g.setFont (AbcTrainLookAndFeel::headingFont());
+    g.drawFittedText (textFor (m, "name", m.name), r.removeFromTop (22), juce::Justification::centredLeft, 1, 0.85f);
+
+    // Bottom: ten steps with the record filled and today's step marked
+    // (the same ruler as a row on the trainer's home screen), and the
+    // threshold reached, in the knob's own units, or that there is none.
+    auto bottom = r.removeFromBottom (18);
+    r.removeFromBottom (4);
+
+    const auto status = ! tried ? AbcTrainLookAndFeel::toCaps (text.notTried)
+                                : m.check.unit == TrainingModule::Unit::choice ? AbcTrainLookAndFeel::toCaps (text.passed)
+                                                                               : formatTolerance (m.check, state.bestLevel);
+    const auto statusFont = tried ? AbcTrainLookAndFeel::monoFont() : AbcTrainLookAndFeel::microFont();
+    const auto statusWidth = juce::jmin (bottom.getWidth() / 2,
+                                         (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (status, statusFont, tried ? 0.0f : 1.2f)) + 6);
+    AbcTrainLookAndFeel::drawTrackedText (g, status, bottom.removeFromRight (statusWidth).toFloat(), statusFont,
+                                          tried ? accent : theme.textDim, tried ? 0.0f : 1.2f,
+                                          juce::Justification::centredRight);
+    bottom.removeFromRight (10);
+
+    auto ruler = bottom.withSizeKeepingCentre (bottom.getWidth(), 6).toFloat();
+    AbcTrainLookAndFeel::drawSegmentedBar (g, ruler, TrainingModule::maxLevel,
+                                           tried ? (float) state.bestLevel / (float) TrainingModule::maxLevel : 0.0f,
+                                           accent, theme.outline.withAlpha (0.8f), 2.0f);
+
+    if (tried)
+    {
+        const auto segW = (ruler.getWidth() - 2.0f * (TrainingModule::maxLevel - 1)) / (float) TrainingModule::maxLevel;
+        const auto x = ruler.getX() + (float) (state.level - 1) * (segW + 2.0f) + segW * 0.5f;
+        g.setColour (theme.textBright);
+        g.fillRect (x - 1.0f, ruler.getY() - 4.0f, 2.0f, ruler.getHeight() + 8.0f);
+    }
+
+    g.setColour (theme.text);
+    g.setFont (AbcTrainLookAndFeel::captionFont());
+    g.drawFittedText (textFor (m, "why", m.why), r.withTrimmedTop (2), juce::Justification::topLeft, 3, 0.9f);
+}
+
+void ModuleScreenComponent::paintWalkthroughCard (juce::Graphics& g, int index, juce::Rectangle<int> card)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto& m = modules[(size_t) index];
+
+    if (index == hoveredRow)
+    {
+        g.setColour (theme.widgetBackground.withAlpha (0.8f));
+        g.fillRect (card);
+    }
+
+    g.setColour (theme.outline);
+    g.drawRect (card, 1);
+
+    auto r = card.reduced (14, 10);
+
+    // "01", "02" in the family colour: a walkthrough is a sequence, and
+    // its number is the one ornament it needs.
+    const auto number = juce::String (index - numModules() + 1).paddedLeft ('0', 2);
+    g.setColour (accent);
+    g.setFont (AbcTrainLookAndFeel::titleFont());
+    g.drawText (number, r.removeFromLeft (36), juce::Justification::centredLeft, false);
+    r.removeFromLeft (6);
+
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::captionFont());
+    g.drawText (text.stepsCount.replace ("{{n}}", juce::String ((int) m.demoSteps.size())), r.removeFromBottom (16),
+                juce::Justification::centredLeft, true);
+
+    // Two lines if it needs them: "Pre-delay: staying in f..." said less
+    // than the title the lesson actually has.
+    g.setColour (theme.textBright);
+    g.setFont (AbcTrainLookAndFeel::bodyFont());
+    g.drawFittedText (textFor (m, "name", m.name), r, juce::Justification::centredLeft, 2, 0.9f);
 }
 
 void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int> area)
@@ -785,252 +946,319 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
     if (definition == nullptr)
         return;
 
-    AbcTrainLookAndFeel::drawTrackedText (g, definition->name, area.removeFromTop (26).toFloat(),
-                                           AbcTrainLookAndFeel::headingFont(),
-                                           theme.textBright, 1.2f);
+    const auto walkthrough = isWalkthrough (moduleIndex);
 
-    // Where you are, as four marks rather than "step 2 of 4" - the shape of
-    // the journey is the useful part, not its arithmetic.
+    // Name, and on the right where this module stands.
     {
-        auto marks = area.removeFromTop (16);
-        const Phase order[] = { Phase::demo, Phase::tryIt, Phase::check, Phase::result };
-        const juce::String names[] { text.phaseWatch, text.phaseTry,
-                                      text.phaseCheck, text.phaseResult };
+        auto top = area.removeFromTop (28);
 
+        if (! walkthrough && definition->check.unit != TrainingModule::Unit::choice)
+        {
+            const auto level = phase == Phase::result ? levelBefore : progress.get (definition->id).level;
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::labelFont());
+            g.drawText (fill (text.levelLine, { { "n", juce::String (level) },
+                                                { "tol", formatTolerance (definition->check, level) } }),
+                        top.removeFromRight (top.getWidth() / 2), juce::Justification::centredRight, true);
+        }
+
+        g.setColour (theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::titleFont());
+        g.drawText (textFor (*definition, "name", definition->name), top, juce::Justification::centredLeft, true);
+    }
+
+    // Where you are in the module, as marks rather than "step 2 of 4".
+    if (! walkthrough)
+    {
+        auto marks = area.removeFromTop (22);
+        const Phase order[] = { Phase::demo, Phase::tryIt, Phase::check, Phase::result };
+        const juce::String names[] { text.phaseWatch, text.phaseTry, text.phaseCheck, text.phaseResult };
+        const auto font = AbcTrainLookAndFeel::microFont();
         auto x = (float) marks.getX();
 
         for (int i = 0; i < 4; ++i)
         {
             const auto here = order[i] == phase;
-            const auto font = AbcTrainLookAndFeel::microFont();
-            const auto width = AbcTrainLookAndFeel::trackedTextWidth (names[i], font, 0.8f) + 16.0f;
+            const auto caps = AbcTrainLookAndFeel::toCaps (names[i]);
+            const auto width = AbcTrainLookAndFeel::trackedTextWidth (caps, font, 1.4f);
 
-            g.setColour (here ? accent : theme.textDim.withAlpha (0.5f));
-            g.setFont (font);
-            g.drawText (names[i], juce::Rectangle<float> (x, (float) marks.getY(),
-                                                          width, 16.0f).toNearestInt(),
-                         juce::Justification::centredLeft, false);
+            AbcTrainLookAndFeel::drawTrackedText (g, caps, { x, (float) marks.getY(), width + 2.0f, 16.0f },
+                                                  font, here ? accent : theme.textDim.withAlpha (0.6f), 1.4f);
 
             if (here)
-                g.fillRoundedRectangle ({ x, (float) marks.getBottom() - 1.0f,
-                                           width - 16.0f, 2.0f }, 1.0f);
+            {
+                g.setColour (accent);
+                g.fillRect (x, (float) marks.getY() + 17.0f, width, 2.0f);
+            }
 
-            x += width;
+            x += width + 22.0f;
         }
+    }
+    else
+    {
+        area.removeFromTop (6);
     }
 
     area.removeFromTop (AbcTrainTheme::Spacing::small);
     area.removeFromBottom (buttonHeight + AbcTrainTheme::Spacing::small);
 
-    const auto bodyFont = AbcTrainLookAndFeel::bodyFont();
-    g.setFont (bodyFont);
-
     switch (phase)
     {
         case Phase::demo:
         {
-            const auto& step = definition->demoSteps[(size_t) juce::jlimit (0, (int) definition->demoSteps.size() - 1, demoStep)];
-
             g.setColour (theme.text);
-            g.drawFittedText (step.explanationText, area.removeFromTop (96),
-                               juce::Justification::topLeft, 6);
+            g.setFont (AbcTrainLookAndFeel::bodyFont());
+            g.drawFittedText (stepText (*definition, demoStep), area.removeFromTop (area.getHeight() - 20),
+                              juce::Justification::topLeft, 6, 1.0f);
 
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText ("Step " + juce::String (demoStep + 1) + " of "
-                            + juce::String ((int) definition->demoSteps.size())
-                            + " - the knobs below are moving as you read.",
-                         area.removeFromTop (18), juce::Justification::centredLeft, true);
+            g.drawText (fill (text.stepOf, { { "n", juce::String (demoStep + 1) },
+                                             { "m", juce::String ((int) definition->demoSteps.size()) } }),
+                        area, juce::Justification::centredLeft, true);
             break;
         }
 
         case Phase::tryIt:
             g.setColour (theme.text);
-            g.drawFittedText (definition->tryPrompt, area.removeFromTop (96),
-                               juce::Justification::topLeft, 6);
+            g.setFont (AbcTrainLookAndFeel::bodyFont());
+            g.drawFittedText (textFor (*definition, "try", definition->tryPrompt), area,
+                              juce::Justification::topLeft, 6, 1.0f);
             break;
 
         case Phase::check:
-        {
-            auto band = checkBandBounds();
-
-            // Rebuilt to speak the trainer's language (ADR 030).
-            //
-            // What was here: an 8px line that showed *nothing at all*
-            // while the reference played - which is most of the time - so
-            // the screen was a black strip with the word "Reference" in
-            // it, and the instruction "turn the knob" written underneath.
-            // A check explained in sentences, in a product whose whole
-            // answer mechanic is a scale you can read.
-            //
-            // What is here now is the trainer's own vocabulary: a
-            // recessed well with real-unit grid marks, your knob drawn on
-            // it live as you turn it, the accept band around your mark,
-            // and a value readout riding above it. The same picture the
-            // trainer shows, driven by the plugin's own knob instead of a
-            // drag.
-            g.setColour (theme.textBright);
-            g.setFont (AbcTrainLookAndFeel::headingFont());
-            g.drawText (text.match, band.removeFromTop (22), juce::Justification::centred, false);
-
-            band.removeFromTop (6);
-
-            const auto& check = definition->check;
-
-            const auto toNormalised = [&check] (float value)
-            {
-                if (check.drawLogarithmically && check.minTarget > 0.0f && value > 0.0f)
-                    return juce::jlimit (0.0f, 1.0f,
-                        std::log (value / check.minTarget)
-                            / std::log (check.maxTarget / check.minTarget));
-
-                return juce::jlimit (0.0f, 1.0f,
-                    (value - check.minTarget)
-                        / juce::jmax (0.0001f, check.maxTarget - check.minTarget));
-            };
-
-            const auto fromNormalised = [&check] (float t)
-            {
-                if (check.drawLogarithmically && check.minTarget > 0.0f)
-                    return check.minTarget * std::pow (check.maxTarget / check.minTarget, t);
-
-                return check.minTarget + (check.maxTarget - check.minTarget) * t;
-            };
-
-            // The value readout rides over the mark rather than sitting
-            // centred, so the number and the line it belongs to are never
-            // far apart - exactly as on the trainer's scale.
-            auto readoutRow = band.removeFromTop (30);
-            band.removeFromTop (4);
-
-            auto well = band.removeFromBottom (juce::jmax (72, band.getHeight() - 6)).toFloat();
-            AbcTrainLookAndFeel::paintRecessedWell (g, well, AbcTrainTheme::Radius::well);
-
-            const auto xFor = [&well] (float t)
-            {
-                return well.getX() + well.getWidth() * juce::jlimit (0.0f, 1.0f, t);
-            };
-
-            // Grid marks in the parameter's real unit. A scale with no
-            // numbers on it cannot tell you what "a bit more" means, which
-            // is the one thing a knob check has to teach.
-            const auto labelRow = 15.0f;
-            constexpr int numMarks = 5;
-
-            for (int i = 0; i < numMarks; ++i)
-            {
-                const auto t = (float) i / (float) (numMarks - 1);
-                const auto x = xFor (t);
-
-                g.setColour (theme.textDim.withAlpha (0.24f));
-                g.drawLine (x, well.getY() + 5.0f, x, well.getBottom() - labelRow - 3.0f, 1.0f);
-
-                if (check.unit == TrainingModule::Unit::choice)
-                    continue;
-
-                const auto boxWidth = 62.0f;
-                const auto boxX = juce::jlimit (well.getX() + 1.0f,
-                                                 well.getRight() - boxWidth - 1.0f,
-                                                 x - boxWidth * 0.5f);
-
-                g.setColour (theme.textDim.withAlpha (0.5f));
-                g.setFont (AbcTrainLookAndFeel::microFont());
-                g.drawText (formatValue (fromNormalised (t)),
-                            juce::Rectangle<float> (boxX, well.getBottom() - labelRow - 1.0f,
-                                                     boxWidth, labelRow),
-                            juce::Justification::centred, false);
-            }
-
-            const auto here = toNormalised (currentKnobValue());
-            const auto half = juce::jlimit (0.02f, 0.45f,
-                TrainingModule::toleranceForTier (check, checkTier) * 0.5f);
-
-            // Everything that belongs *inside* the well is drawn in this
-            // scope. The readout below is deliberately outside it: it sits
-            // above the well, and reduceClipRegion intersects rather than
-            // replaces, so drawing it under the well's clip produced an
-            // empty region and no text at all - the same mistake the
-            // tooltip backdrop made (ADR 029).
-            {
-                juce::Graphics::ScopedSaveState clipped (g);
-                juce::Path wellClip;
-                wellClip.addRoundedRectangle (well, AbcTrainTheme::Radius::well);
-                g.reduceClipRegion (wellClip);
-
-            // The accept band, drawn around *your* mark: its width is the
-            // answer to "how close is close enough" with no number in it.
-            {
-                const auto left = xFor (here - half);
-                const auto right = xFor (here + half);
-                const auto lit = juce::Rectangle<float> (left, well.getY(),
-                                                          right - left, well.getHeight() - labelRow);
-
-                g.setColour (accent.withAlpha (0.16f));
-                g.fillRect (lit);
-
-                g.setColour (accent.withAlpha (0.34f));
-                g.drawLine (lit.getX(), lit.getY(), lit.getX(), lit.getBottom(), 1.0f);
-                g.drawLine (lit.getRight(), lit.getY(), lit.getRight(), lit.getBottom(), 1.0f);
-            }
-
-            // Your knob, live. Shown while the reference is playing too -
-            // it is still where your knob is, and hiding it left the
-            // screen blank for most of the exercise.
-            {
-                const auto x = xFor (here);
-
-                g.setColour (accent.withAlpha (0.22f));
-                g.fillRect (juce::Rectangle<float> (x - 3.0f, well.getY(),
-                                                     6.0f, well.getHeight() - labelRow));
-
-                g.setColour (accent);
-                g.fillRect (juce::Rectangle<float> (x - 1.0f, well.getY(),
-                                                     2.0f, well.getHeight() - labelRow));
-            }
-            }
-
-            // The value readout rides over the mark, clamped inside the
-            // well so it cannot run off either end.
-            {
-                const auto readoutText = formatValue (currentKnobValue());
-                const auto font = AbcTrainLookAndFeel::titleFont();
-                const auto width = AbcTrainLookAndFeel::trackedTextWidth (readoutText, font, 1.0f) + 18.0f;
-                const auto centreX = juce::jlimit (well.getX() + width * 0.5f,
-                                                    well.getRight() - width * 0.5f,
-                                                    xFor (here));
-
-                AbcTrainLookAndFeel::drawTrackedText (
-                    g, readoutText,
-                    juce::Rectangle<float> (centreX - width * 0.5f, (float) readoutRow.getY(),
-                                             width, (float) readoutRow.getHeight()),
-                    font, theme.textBright, 1.0f, juce::Justification::centred);
-            }
-
+            paintCheckScale (g, area);
             break;
-        }
 
         case Phase::result:
         {
-            g.setColour (lastAttemptPassed ? accent : theme.textBright);
-            g.setFont (AbcTrainLookAndFeel::headingFont());
-            g.drawText (lastAttemptPassed ? text.passed : text.notYet,
-                         area.removeFromTop (26), juce::Justification::centred, false);
+            const auto& check = definition->check;
+            const auto passed = lastOutcome.passed;
+
+            // One block, centred in the space the panel has.
+            area = area.withSizeKeepingCentre (area.getWidth(), juce::jmin (area.getHeight(), 210));
+
+            auto verdict = area.removeFromTop (40);
+            g.setColour (passed ? theme.positive : theme.textBright);
+            g.setFont (AbcTrainLookAndFeel::titleFont().withHeight (AbcTrainLookAndFeel::titleFont().getHeight() * 1.3f));
+            g.drawText (passed ? text.passed : text.notYet, verdict, juce::Justification::centred, false);
+
+            area.removeFromTop (6);
+
+            g.setColour (theme.textBright);
+            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (20.0f));
+            g.drawText (text.itWas + " " + formatValue (hiddenTarget) + "   " + text.youSaid + " " + formatValue (playerValue),
+                        area.removeFromTop (30), juce::Justification::centred, false);
+
+            if (check.unit != TrainingModule::Unit::choice)
+            {
+                g.setColour (theme.text);
+                g.setFont (AbcTrainLookAndFeel::bodyFont());
+                g.drawText (fill (text.errorLine, { { "err", formatError (check, hiddenTarget, playerValue, levelBefore) },
+                                                    { "tol", formatTolerance (check, levelBefore) } }),
+                            area.removeFromTop (26), juce::Justification::centred, false);
+            }
 
             area.removeFromTop (10);
 
-            g.setColour (theme.textBright);
-            g.setFont (juce::Font (AbcTrainLookAndFeel::monoFont()).withHeight (20.0f));
-            g.drawText (text.itWas + " " + formatValue (hiddenTarget),
-                         area.removeFromTop (26), juce::Justification::centred, false);
+            // What the staircase did - the part that makes the next check
+            // mean something.
+            const auto& after = lastOutcome.after;
+            juce::String stair;
 
-            g.setColour (theme.textDim);
+            if (lastOutcome.steppedUp)
+                stair = fill (text.steppedUp, { { "from", juce::String (levelBefore) }, { "to", juce::String (after.level) } });
+            else if (lastOutcome.steppedDown)
+                stair = fill (text.steppedDown, { { "from", juce::String (levelBefore) }, { "to", juce::String (after.level) } });
+            else if (after.level >= ModuleProgress::maxLevel && passed)
+                stair = text.topStep;
+            else
+                stair = fill (text.toNextStep, { { "n", juce::String (ModuleProgress::stepUpAfter - after.stepRun) } });
+
+            if (lastOutcome.newBest)
+                stair << "  " << juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")) << "  " << text.newRecord;
+
+            auto stairRow = area.removeFromTop (26);
+
+            // The three squares: passes in a row toward the next step.
+            auto squares = stairRow.withSizeKeepingCentre (3 * 14 + 2 * 6, 14).translated (0, 30);
+
+            for (int s = 0; s < ModuleProgress::stepUpAfter; ++s)
+            {
+                const auto sq = juce::Rectangle<int> (squares.getX() + s * 20, squares.getY(), 14, 14);
+
+                if (s < after.stepRun || (lastOutcome.steppedUp && passed))
+                {
+                    g.setColour (accent);
+                    g.fillRect (sq);
+                }
+                else
+                {
+                    g.setColour (theme.outline);
+                    g.drawRect (sq, 1);
+                }
+            }
+
+            g.setColour (lastOutcome.newBest ? accent : theme.textDim);
             g.setFont (AbcTrainLookAndFeel::labelFont());
-            g.drawText (text.youSaid + " " + formatValue (playerValue),
-                         area.removeFromTop (20), juce::Justification::centred, false);
+            g.drawText (stair, stairRow, juce::Justification::centred, false);
             break;
         }
 
         case Phase::shelf:
             break;
+    }
+}
+
+void ModuleScreenComponent::paintCheckScale (juce::Graphics& g, juce::Rectangle<int> area)
+{
+    const auto& theme = AbcTrainTheme::current();
+    auto* definition = currentModule();
+
+    if (definition == nullptr)
+        return;
+
+    const auto& check = definition->check;
+
+    // MATCH THIS, the three squares toward the next step beside it, and
+    // one sentence saying exactly what to do - "match this" on its own
+    // left people looking for a second slider.
+    {
+        auto row = area.removeFromTop (26);
+        const auto caps = AbcTrainLookAndFeel::toCaps (text.match);
+        const auto font = AbcTrainLookAndFeel::labelFont();
+        const auto w = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (caps, font, 1.8f)) + 4;
+        AbcTrainLookAndFeel::drawTrackedText (g, caps, row.removeFromLeft (w).toFloat(), font, theme.textBright, 1.8f);
+        row.removeFromLeft (16);
+
+        const auto run = progress.get (definition->id).stepRun;
+
+        for (int s = 0; s < ModuleProgress::stepUpAfter; ++s)
+        {
+            const auto sq = juce::Rectangle<int> (row.getX() + s * 20, row.getCentreY() - 6, 12, 12);
+
+            if (s < run) { g.setColour (accent); g.fillRect (sq); }
+            else         { g.setColour (theme.outline); g.drawRect (sq, 1); }
+        }
+    }
+
+    if (text.checkHint.isNotEmpty())
+    {
+        const auto knob = textFor (*definition, "name", definition->name);
+        g.setColour (theme.text);
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
+        g.drawFittedText (fill (text.checkHint, { { "knob", knob }, { "submit", text.submit } }),
+                          area.removeFromTop (46), juce::Justification::topLeft, 2, 1.0f);
+    }
+
+    area.removeFromTop (AbcTrainTheme::Spacing::medium);
+
+    auto band = area.withSizeKeepingCentre (area.getWidth(), juce::jmin (area.getHeight(), 170));
+    auto readoutRow = band.removeFromTop (34);
+    band.removeFromTop (4);
+    auto well = band.toFloat();
+
+    AbcTrainLookAndFeel::paintRecessedWell (g, well, 0.0f);
+
+    const auto toNormalised = [&check] (float value)
+    {
+        if (check.drawLogarithmically && check.minTarget > 0.0f && value > 0.0f)
+            return std::log (value / check.minTarget) / std::log (check.maxTarget / check.minTarget);
+
+        return (value - check.minTarget) / juce::jmax (0.0001f, check.maxTarget - check.minTarget);
+    };
+
+    const auto fromNormalised = [&check] (float t)
+    {
+        if (check.drawLogarithmically && check.minTarget > 0.0f)
+            return check.minTarget * std::pow (check.maxTarget / check.minTarget, t);
+
+        return check.minTarget + (check.maxTarget - check.minTarget) * t;
+    };
+
+    const auto xFor = [&well] (float t) { return well.getX() + well.getWidth() * juce::jlimit (0.0f, 1.0f, t); };
+    const auto labelRow = 18.0f;
+
+    if (check.unit == TrainingModule::Unit::choice)
+    {
+        // A choice is named, not dialled: one cell per option, yours lit.
+        const auto n = (int) check.choiceLabels.size();
+        const auto here = juce::roundToInt (currentKnobValue());
+
+        for (int i = 0; i < n; ++i)
+        {
+            auto cell = juce::Rectangle<float> (well.getX() + well.getWidth() * i / n, well.getY(),
+                                                well.getWidth() / n, well.getHeight()).reduced (4.0f);
+
+            if (i + juce::roundToInt (check.minTarget) == here)
+            {
+                g.setColour (accent.withAlpha (0.22f));
+                g.fillRect (cell);
+                g.setColour (accent);
+                g.drawRect (cell, 1.5f);
+            }
+
+            g.setColour (theme.textBright);
+            g.setFont (AbcTrainLookAndFeel::headingFont());
+            g.drawText (check.choiceLabels[(size_t) i], cell, juce::Justification::centred, false);
+        }
+
+        return;
+    }
+
+    constexpr int numMarks = 5;
+
+    for (int i = 0; i < numMarks; ++i)
+    {
+        const auto t = (float) i / (float) (numMarks - 1);
+        const auto x = xFor (t);
+
+        g.setColour (theme.textDim.withAlpha (0.24f));
+        g.drawLine (x, well.getY() + 5.0f, x, well.getBottom() - labelRow - 3.0f, 1.0f);
+
+        const auto boxWidth = 76.0f;
+        const auto boxX = juce::jlimit (well.getX() + 2.0f, well.getRight() - boxWidth - 2.0f, x - boxWidth * 0.5f);
+
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::microFont());
+        g.drawText (formatValue (fromNormalised (t)),
+                    juce::Rectangle<float> (boxX, well.getBottom() - labelRow - 1.0f, boxWidth, labelRow),
+                    juce::Justification::centred, false);
+    }
+
+    const auto value = currentKnobValue();
+    const auto here = toNormalised (value);
+
+    // The accept band around *your* mark, in the knob's own units: exactly
+    // the values that would pass at this step, mapped onto this scale.
+    {
+        juce::Graphics::ScopedSaveState clipped (g);
+        g.reduceClipRegion (well.toNearestInt());
+
+        const auto range = TrainingModule::acceptRange (check, value, checkLevel);
+        const auto left = xFor (toNormalised (juce::jmax (range.getStart(), check.drawLogarithmically ? check.minTarget * 0.5f : range.getStart())));
+        const auto right = xFor (toNormalised (range.getEnd()));
+        const auto lit = juce::Rectangle<float> (left, well.getY(), juce::jmax (2.0f, right - left), well.getHeight() - labelRow);
+
+        g.setColour (accent.withAlpha (0.16f));
+        g.fillRect (lit);
+        g.setColour (accent.withAlpha (0.4f));
+        g.fillRect (lit.withWidth (1.0f));
+        g.fillRect (lit.withX (lit.getRight() - 1.0f).withWidth (1.0f));
+
+        const auto x = xFor (here);
+        g.setColour (accent);
+        g.fillRect (juce::Rectangle<float> (x - 1.0f, well.getY(), 2.0f, well.getHeight() - labelRow));
+    }
+
+    {
+        const auto readoutText = formatValue (value);
+        const auto font = AbcTrainLookAndFeel::titleFont();
+        const auto width = AbcTrainLookAndFeel::trackedTextWidth (readoutText, font, 1.0f) + 18.0f;
+        const auto centreX = juce::jlimit (well.getX() + width * 0.5f, well.getRight() - width * 0.5f, xFor (here));
+
+        AbcTrainLookAndFeel::drawTrackedText (g, readoutText,
+                                              { centreX - width * 0.5f, (float) readoutRow.getY(), width, (float) readoutRow.getHeight() },
+                                              font, theme.textBright, 1.0f, juce::Justification::centred);
     }
 }

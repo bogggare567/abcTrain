@@ -15,7 +15,9 @@ inline MicroLesson buildBrightVsDarkTailLesson()
 
     return MicroLesson ("Bright vs. Dark Tail", {
         { "Dry signal, no reverb.",
-          { { P::dryWetParamId, 0.0f } } },
+          { { P::dryWetParamId, 0.0f }, { P::bypassParamId, 0.0f }, { P::typeParamId, 1.0f },
+            { P::decayParamId, 2.0f }, { P::preDelayParamId, 20.0f }, { P::sizeParamId, 60.0f },
+            { P::dampingParamId, 10.0f }, { P::widthParamId, 100.0f } } },
         { "Add a Hall reverb with low damping - the tail stays bright and "
           "metallic all the way through its decay.",
           { { P::typeParamId, 1.0f }, { P::decayParamId, 2.0f }, { P::dryWetParamId, 30.0f }, { P::dampingParamId, 10.0f } } },

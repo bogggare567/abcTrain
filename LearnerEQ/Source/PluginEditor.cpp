@@ -1,94 +1,67 @@
 #include "PluginEditor.h"
-#include "../../shared/UpdatePrompt.h"
 #include "EQCoefficients.h"
 #include "FrequencyGuide.h"
 #include "FrequencyZones.h"
+#include "EQModules.h"
 #include "VocalEqLesson.h"
 #include "FindResonanceLesson.h"
 #include "HighPassLesson.h"
-#include "../../shared/Version.h"
-#include "../../shared/i18n/LocalisationManager.h"
-#include <memory>
 
 namespace
 {
-    // Every caption the update window shows, localised here because shared
-    // code keeps no LocalisationManager of its own - the same shape as
-    // UpdatePrompt's strings and ModuleScreenComponent's.
-    UpdateWindow::Strings updateWindowStrings (const LocalisationManager& loc)
+    LearnerEditorBase::Services servicesFor (LearnerEQProcessor& p)
     {
-        UpdateWindow::Strings s;
-        s.title          = loc.getText ("upd.title");
-        s.body           = loc.getText ("upd.body");
-        s.installedHere  = loc.getText ("upd.installedHere");
-        s.nothingFound   = loc.getText ("upd.nothingFound");
-        s.noAsset        = loc.getText ("upd.noAsset");
-        s.install        = loc.getText ("upd.install");
-        s.later          = loc.getText ("upd.later");
-        s.cancel         = loc.getText ("upd.cancel");
-        s.openPage       = loc.getText ("upd.openPage");
-        s.downloading    = loc.getText ("upd.downloading");
-        s.opening        = loc.getText ("upd.opening");
-        s.failed         = loc.getText ("upd.failed");
-        s.finishedPlugin = loc.getText ("upd.finishedPlugin");
-        s.finishedApp    = loc.getText ("upd.finishedApp");
-        s.versionUnknown = loc.getText ("upd.versionUnknown");
-        return s;
+        return { p.apvts, LearnerEQProcessor::bypassParamId, p.getSharedProperties(),
+                 p.getPracticeLibrary(), p.getPracticeSource(),
+                 [&p] (const juce::String& id, float v) { p.setCheckOverride (id, v); },
+                 [&p] { p.clearCheckOverride(); } };
+    }
+
+    const char* typeKey (EQCoefficients::BandType type)
+    {
+        switch (type)
+        {
+            case EQCoefficients::BandType::bell:      return "eq.type.bell";
+            case EQCoefficients::BandType::lowShelf:  return "eq.type.lowShelf";
+            case EQCoefficients::BandType::highShelf: return "eq.type.highShelf";
+            case EQCoefficients::BandType::highPass:  return "eq.type.highPass";
+            case EQCoefficients::BandType::lowPass:   return "eq.type.lowPass";
+            case EQCoefficients::BandType::notch:     return "eq.type.notch";
+        }
+
+        return "eq.type.bell";
+    }
+
+    const char* zoneKey (const FrequencyZones::Zone& zone)
+    {
+        return zone.name;
     }
 }
 
-namespace
-{
-}
-
-namespace
-{
-    constexpr const char* themeModeKey = "themeMode";
-}
-
 LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
-    : AudioProcessorEditor (&p), processor (p),
-      lessonController (p.apvts, buildVocalEqLesson()),
-      resonanceLessonController (p.apvts, buildFindResonanceLesson()),
-      highPassLessonController (p.apvts, buildHighPassLesson()),
-      lowPassLessonController (p.apvts, buildLowPassLesson()),
-      // Same shared "abcTrain" settings folder the language preference
-      // uses, so light/dark is one product-wide choice.
-      themeProperties (LocalisationManager::makeDefaultOptions())
+    : LearnerEditorBase (p, servicesFor (p),
+                         { "ABC Learner EQ", AbcTrainTheme::Family::frequency,
+                           AppIcons::Icon::learnerEQ, "lp.bands" }),
+      eqProcessor (p)
 {
+    {
+        juce::StringArray names;
 
-    AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
-                                ? AbcTrainTheme::Mode::light
-                                : AbcTrainTheme::Mode::dark);
-    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::frequency);
-    lookAndFeel.refreshFromTheme (accent);
+        for (const auto& zone : FrequencyZones::all)
+            names.add (t (juce::String ("zone.") + zone.name + ".name", zone.name));
 
-    setLookAndFeel (&lookAndFeel);
-
-    // Drawn by paint() with letter-spacing rather than via the Label.
-    titleLabel.setText ("ABC Learner EQ", juce::dontSendNotification);
-    titleLabel.setVisible (false);
-
-    themeButton.onClick = [this] { toggleTheme(); };
-    addAndMakeVisible (themeButton);
-
-    addAndMakeVisible (practiceSelector);
-
-    pluginIcon.setIcon (AppIcons::Icon::learnerEQ);
-    addAndMakeVisible (pluginIcon);
-
+        spectrum.setZoneNames (names);
+    }
 
     addAndMakeVisible (spectrum);
-
     addAndMakeVisible (waveform);
 
-    inputPeakLabel.setJustificationType (juce::Justification::centred);
-    inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    addAndMakeVisible (inputPeakLabel);
-
-    outputPeakLabel.setJustificationType (juce::Justification::centred);
-    outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    addAndMakeVisible (outputPeakLabel);
+    for (auto* label : { &inputPeakLabel, &outputPeakLabel })
+    {
+        label->setJustificationType (juce::Justification::centred);
+        label->setFont (AbcTrainLookAndFeel::monoFont());
+        addAndMakeVisible (*label);
+    }
 
     // ---- the curve is the instrument ----
     spectrum.onBandSelected = [this] (int band) { selectBand (band); };
@@ -97,15 +70,13 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     {
         writeParameter (LearnerEQProcessor::freqParamId (band), freqHz);
 
-        // A pass filter or a notch has no gain to move, so vertical drag
-        // does nothing for them rather than writing a value the shape
-        // ignores. A control that looks like it works and does not is
-        // worse than one that visibly does not.
-        if (EQCoefficients::usesGain (processor.getBandType (band)))
+        // A pass filter or a notch has no gain to move.
+        if (EQCoefficients::usesGain (eqProcessor.getBandType (band)))
             writeParameter (LearnerEQProcessor::gainParamId (band), gainDb);
 
-        guideTooltip.setText (juce::String (EQCoefficients::nameForType (processor.getBandType (band)))
-                                   + " - " + FrequencyGuide::describe (freqHz));
+        showGuide (typeName (eqProcessor.getBandType (band)) + " - "
+                   + t ("guide.eq.freq." + juce::String ((int) FrequencyGuide::rangeIndexFor (freqHz)),
+                        FrequencyGuide::describe (freqHz)));
         pushSelectedBandToControls();
     };
 
@@ -117,13 +88,9 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     spectrum.onBandAdded = [this] (float freqHz, float gainDb)
     {
-        // Below 45 Hz a new band is almost always meant to be a high-pass
-        // - that is what anyone reaches for down there - so offering a
-        // bell first would make the common case the two-step one.
-        const auto type = freqHz < 45.0f ? EQCoefficients::BandType::highPass
-                                         : EQCoefficients::BandType::bell;
-
-        const auto added = processor.addBand (freqHz, gainDb, type);
+        // Below 45 Hz a new band is almost always meant to be a high-pass.
+        const auto type = freqHz < 45.0f ? EQCoefficients::BandType::highPass : EQCoefficients::BandType::bell;
+        const auto added = eqProcessor.addBand (freqHz, gainDb, type);
 
         if (added >= 0)
             selectBand (added);
@@ -131,7 +98,7 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     spectrum.onBandRemoved = [this] (int band)
     {
-        processor.removeBand (band);
+        eqProcessor.removeBand (band);
 
         if (selectedBand == band)
             selectBand (-1);
@@ -139,36 +106,58 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
     spectrum.onPointerMoved = [this] { refreshZoneLabel(); };
 
-    // ---- the selected band's exact numbers ----
-    for (int type = 0; type < EQCoefficients::numTypes; ++type)
-        typeSelector.addItem (EQCoefficients::nameForType (EQCoefficients::typeFromIndex (type)), type + 1);
-
-    typeSelector.onChange = [this]
+    // ---- the selected band ----
     {
-        if (selectedBand < 0)
-            return;
+        std::vector<int> values;
+        juce::StringArray labels;
 
-        writeParameter (LearnerEQProcessor::typeParamId (selectedBand),
-                        (float) (typeSelector.getSelectedId() - 1));
-        pushSelectedBandToControls();
+        for (int type = 0; type < EQCoefficients::numTypes; ++type)
+        {
+            const auto bandType = EQCoefficients::typeFromIndex (type);
+            values.push_back (type);
+            labels.add (t (juce::String (typeKey (bandType)) + ".short", EQCoefficients::nameForType (bandType)));
+        }
+
+        typeChoice.setOptions (values, labels);
+    }
+
+    typeChoice.onChange = [this] (int value)
+    {
+        if (selectedBand >= 0)
+        {
+            writeParameter (LearnerEQProcessor::typeParamId (selectedBand), (float) value);
+            pushSelectedBandToControls();
+        }
     };
-
-    addAndMakeVisible (typeSelector);
+    addAndMakeVisible (typeChoice);
 
     freqSlider.setRange (20.0, 20000.0);
-    freqSlider.setSkewFactorFromMidPoint (1000.0);
+    freqSlider.setSkewFactor (0.3);
     gainSlider.setRange (-18.0, 18.0, 0.1);
     qSlider.setRange (0.1, 18.0, 0.01);
-    qSlider.setSkewFactorFromMidPoint (1.2);
+    qSlider.setSkewFactor (0.4);
 
-    // Without this the frequency box read "999.9999390". A slider prints
-    // its raw double unless told otherwise, and the number under a knob is
-    // the one thing on this panel that has to be exact *and* readable.
-    freqSlider.setNumDecimalPlacesToDisplay (0);
-    freqSlider.setTextValueSuffix (" Hz");
-    gainSlider.setNumDecimalPlacesToDisplay (1);
-    gainSlider.setTextValueSuffix (" dB");
-    qSlider.setNumDecimalPlacesToDisplay (2);
+    // Values in this language's units and decimals, and kHz above 1000 -
+    // "12000 Hz" is a number you have to count the zeros of.
+    freqSlider.textFromValueFunction = [this] (double hz) { return formatFrequency (hz); };
+    freqSlider.valueFromTextFunction = [] (const juce::String& text)
+    {
+        const auto v = text.replace (",", ".").retainCharacters ("0123456789.").getDoubleValue();
+        return text.containsIgnoreCase ("k") || text.contains (juce::CharPointer_UTF8 ("\xd0\xba")) ? v * 1000.0 : v;
+    };
+    gainSlider.textFromValueFunction = [this] (double db)
+    {
+        return (db > 0.05 ? "+" : "") + formatNumber (db, 1) + " " + t ("unit.dB", "dB");
+    };
+    gainSlider.valueFromTextFunction = [] (const juce::String& text)
+    {
+        return text.replace (",", ".").retainCharacters ("-0123456789.").getDoubleValue();
+    };
+    qSlider.textFromValueFunction = [this] (double q) { return formatNumber (q, 2); };
+    qSlider.valueFromTextFunction = [] (const juce::String& text)
+    {
+        return text.replace (",", ".").retainCharacters ("0123456789.").getDoubleValue();
+    };
 
     freqSlider.onValueChange = [this]
     {
@@ -177,11 +166,11 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
         writeParameter (LearnerEQProcessor::freqParamId (selectedBand), (float) freqSlider.getValue());
 
-        if (freqSlider.isMouseButtonDown())
-            guideTooltip.setText (FrequencyGuide::describe ((float) freqSlider.getValue()));
+        if (freqSlider.isMouseButtonDown() && ! moduleScreen.isRunning())
+            showGuide (t ("guide.eq.freq." + juce::String ((int) FrequencyGuide::rangeIndexFor ((float) freqSlider.getValue())),
+                          FrequencyGuide::describe ((float) freqSlider.getValue())));
     };
-
-    freqSlider.onDragEnd = [this] { guideTooltip.setText ({}); };
+    freqSlider.onDragEnd = [this] { showGuide ({}); };
 
     gainSlider.onValueChange = [this]
     {
@@ -198,516 +187,255 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     for (auto* slider : { &freqSlider, &gainSlider, &qSlider })
     {
         addAndMakeVisible (slider);
-        slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 62, 18);
+        slider->setTextBoxStyle (juce::Slider::TextBoxBelow, false, 96, 20);
+        slider->updateText();
     }
 
-    for (auto* label : { &typeLabel, &freqLabel, &gainLabel, &qLabel })
+    for (int i = 0; i < LearnerEQProcessor::maxBands; ++i)
     {
-        label->setJustificationType (juce::Justification::centred);
-        label->setFont (AbcTrainLookAndFeel::captionFont());
-        addAndMakeVisible (label);
+        bandChips[(size_t) i].setButtonText (juce::String (i + 1));
+        bandChips[(size_t) i].onClick = [this, i] { selectBand (i); };
+        addChildComponent (bandChips[(size_t) i]);
     }
 
-    freqLabel.setText (localisation.getText ("eq.freq"), juce::dontSendNotification);
-    gainLabel.setText (localisation.getText ("eq.gain"), juce::dontSendNotification);
-    qLabel.setText (localisation.getText ("eq.q"), juce::dontSendNotification);
-    refreshZoneLabel();
+    addBandChip.setTooltip (t ("eq.addBand", "Add a band at 1 kHz"));
+    addBandChip.onClick = [this]
+    {
+        const auto added = eqProcessor.addBand (1000.0f, 0.0f, EQCoefficients::BandType::bell);
+
+        if (added >= 0)
+            selectBand (added);
+    };
+    addAndMakeVisible (addBandChip);
+
+    bandLabel.setJustificationType (juce::Justification::centredRight);
+    bandLabel.setFont (AbcTrainLookAndFeel::labelFont());
+    addAndMakeVisible (bandLabel);
 
     zoneLabel.setJustificationType (juce::Justification::centredLeft);
     zoneLabel.setFont (AbcTrainLookAndFeel::bodyFont());
     addAndMakeVisible (zoneLabel);
 
+    zonesButton.setButtonText (t ("eq.zones", "Zones"));
     zonesButton.setClickingTogglesState (true);
     zonesButton.setToggleState (true, juce::dontSendNotification);
-    zonesButton.onClick = [this] { spectrum.setZonesVisible (zonesButton.getToggleState()); };
+    AbcTrainLookAndFeel::makePrimary (zonesButton, true);
+    zonesButton.onClick = [this]
+    {
+        spectrum.setZonesVisible (zonesButton.getToggleState());
+        AbcTrainLookAndFeel::makePrimary (zonesButton, zonesButton.getToggleState());
+    };
     addAndMakeVisible (zonesButton);
 
+    refreshZoneLabel();
     selectBand (0);
-
-    // The display's band list arrives on the 30 Hz timer, so without this
-    // the curve and its nodes are empty for the first frame after the
-    // window opens - and permanently empty anywhere the message loop is
-    // not pumped, which is how tools/EditorSnapshots first showed a
-    // node-less curve.
     pushBandsToDisplay();
 
-    processor.setSpectrumAnalyser (&spectrum);
-    processor.setWaveformDisplay (&waveform);
+    eqProcessor.setSpectrumAnalyser (&spectrum);
+    eqProcessor.setWaveformDisplay (&waveform);
 
-    bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        processor.apvts, LearnerEQProcessor::bypassParamId, bypassButton);
-    addAndMakeVisible (bypassButton);
-
-    moduleScreen.setStrings ([this]
+    // Every module and lesson is about band 1; the knobs under the panel
+    // must be band 1's when it opens.
+    moduleScreen.onModuleOpened = [this] (const TrainingModule::Definition&)
     {
-        ModuleScreenComponent::Strings t;
-        t.match = localisation.getText ("module.match");
-        t.reference = localisation.getText ("module.reference");
-        t.mine = localisation.getText ("module.mine");
-        t.submit = localisation.getText ("module.submit");
-        t.turnKnob = localisation.getText ("module.turnKnob");
-        t.passed = localisation.getText ("module.passed");
-        t.notYet = localisation.getText ("module.notYet");
-        t.itWas = localisation.getText ("module.itWas");
-        t.youSaid = localisation.getText ("module.youSaid");
-        t.again = localisation.getText ("module.again");
-        t.done = localisation.getText ("module.done");
-        t.phaseWatch = localisation.getText ("module.phaseWatch");
-        t.phaseTry = localisation.getText ("module.phaseTry");
-        t.phaseCheck = localisation.getText ("module.phaseCheck");
-        t.phaseResult = localisation.getText ("module.phaseResult");
-        t.shelfTitle = localisation.getText ("module.shelfTitle");
-        t.shelfSubtitle = localisation.getText ("module.shelfSubtitle");
-        t.walkthroughs = localisation.getText ("module.walkthroughs");
-        t.walkthroughWhy = localisation.getText ("module.walkthroughWhy");
-        t.clips = localisation.getText ("module.clips");
-        t.pickCategory = localisation.getText ("module.pickCategory");
-        t.close = localisation.getText ("module.close");
-        t.back = localisation.getText ("module.back");
-        t.next = localisation.getText ("module.next");
-        t.ready = localisation.getText ("module.ready");
-        return t;
-    }());
-    // No knob modules here by choice (ADR 027): what an EQ teaches is
-    // judgement about *where*, not hitting a number on a dial. The shelf
-    // carries the four lessons and nothing else, and hides its own
-    // "walkthroughs" sub-heading when there is no module list above it.
-    moduleScreen.setModules ({});
-    moduleScreen.setWalkthroughs ({ "Vocal EQ Basics", "Find & Fix a Resonance",
-                                    "High-pass: what it costs",
-                                    "Low-pass and the top end" });
-    moduleScreen.onWalkthroughSelected = [this] (int which)
-    {
-        switch (which)
-        {
-            case 0:  lessonController.showAndStart();          break;
-            case 1:  resonanceLessonController.showAndStart(); break;
-            case 2:  highPassLessonController.showAndStart();  break;
-            case 3:  lowPassLessonController.showAndStart();   break;
-            default: break;
-        }
-    };
-    moduleScreen.onClosed = [this] { repaint(); };
-    moduleScreen.prepare (processor.getSampleRate());
-    moduleScreen.setAccentColour (accent);
-
-    modulesButton.setTooltip (localisation.getText ("module.shelfTitle"));
-    modulesButton.onClick = [this] { moduleScreen.openShelf(); };
-    addAndMakeVisible (modulesButton);
-
-    updateButton.onClick = [this]
-    {
-        // See CLAUDE.md's Update-checking section: without this,
-        // clicking "Updates" gave no visible reaction at all whenever no
-        // newer release was found (or this repo simply had no releases
-        // yet), since checkForUpdatesAsync's callback deliberately never
-        // fires on failure. Now every click gets some visible outcome:
-        // "Checking...", then the update prompt, a brief "Up to date",
-        // or - if nothing came back within a few seconds - "Couldn't
-        // check".
-        juce::Component::SafePointer<LearnerEQEditor> safeThis (this);
-        auto handled = std::make_shared<bool> (false);
-
-        updateButton.setEnabled (false);
-        // The button is now an icon with no room for text, so the outcome
-        // goes where there is room: the guide card that already floats in
-        // over the visualisation. ADR 014's rule still holds - every click
-        // gets a visible outcome - it just gets a better-looking one.
-        guideTooltip.setText ("Checking for updates...");
-
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
-        {
-            if (safeThis == nullptr || *handled)
-                return;
-            *handled = true;
-
-            safeThis->updateButton.setEnabled (true);
-
-            if (! foundNewer)
-            {
-                safeThis->guideTooltip.setText ("You're on the latest version ("
-                                                 + juce::String (CurrentVersion::string) + ").", 4000);
-                return;
-            }
-
-            safeThis->guideTooltip.setText ({});
-
-            // A window, not a tooltip. The progress was always real and
-            // always went somewhere nobody was looking.
-            safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
-            safeThis->updateWindow.show (release,
-                juce::JUCEApplicationBase::isStandaloneApp());
-        });
-
-        juce::Timer::callAfterDelay (6000, [safeThis, handled]
-        {
-            if (safeThis == nullptr || *handled)
-                return;
-            *handled = true;
-
-            safeThis->updateButton.setEnabled (true);
-            safeThis->guideTooltip.setText ("Couldn't reach the update server. "
-                                             "Check your connection and try again.", 5000);
-        });
-    };
-    addAndMakeVisible (updateButton);
-
-    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
-                            juce::Justification::centredRight);
-    addAndMakeVisible (soundkorbLink);
-
-    // After the controls (so it floats above the visualisation it covers)
-    // but before the lesson overlays, which must stay on top of everything.
-    addAndMakeVisible (guideTooltip);
-
-    // Added last, after every other child, so a shown lesson overlay
-    // actually covers the title-row buttons/link instead of them poking
-    // through on top of it - the same z-order fix as decisions/015's
-    // Training Sounds overlay and decisions/016's soundkorb.ru link.
-    addChildComponent (lessonController);
-    lessonController.onClosed = [this]
-    {
-        // Back to "Lessons" so the same one can be started again.
-        resized();
+        pushBandsToDisplay();
+        selectBand (0);
     };
 
-    // One handler shape for all of them: reset the picker so the same
-    // lesson can be started twice in a row, and re-lay out.
-    for (auto* controller : { &resonanceLessonController, &highPassLessonController,
-                              &lowPassLessonController })
-    {
-        addChildComponent (*controller);
-        controller->onClosed = [this]
-        {
-            resized();
-        };
-    }
+    auto modules = EQModules::all();
+    for (auto& w : EQModules::walkthroughs())
+        modules.push_back (std::move (w));
 
-    // Absolutely last, so it covers every other overlay. An update is the
-    // one thing that should never be behind something else.
-    addChildComponent (moduleScreen);
-    addChildComponent (updateWindow);
-    updateWindow.onClosed = [this] { resized(); repaint(); };
-
-    startTimerHz (30);
-    // Taller for the section panels' own padding/captions; the guide text
-    // no longer needs a permanent strip (it floats on demand instead).
-    // 20 + 32 + 28 + 432 + 12 + 212 + 20, derived from resized().
-    // Resizable, with a floor that keeps the layout honest rather than
-    // letting somebody squeeze it into nonsense, and a ceiling so the
-    // knobs do not end up an inch across on a 5K display.
-    setResizable (true, true);
-    setResizeLimits (647, 589, 1264, 1134);
-    getConstrainer()->setFixedAspectRatio (0.0);
-
-    setSize (790, 756);
-
-    applyTheme();
+    finishSetup (std::move (modules), 880, 800);
 }
 
-void LearnerEQEditor::applyTheme()
+LearnerEQEditor::~LearnerEQEditor()
+{
+    eqProcessor.setSpectrumAnalyser (nullptr);
+    eqProcessor.setWaveformDisplay (nullptr);
+}
+
+juce::String LearnerEQEditor::formatFrequency (double hz) const
+{
+    if (hz >= 999.5)
+        return formatNumber (hz / 1000.0, hz >= 10000.0 ? 1 : 2) + " " + t ("unit.kHz", "kHz");
+
+    return juce::String (juce::roundToInt (hz)) + " " + t ("unit.Hz", "Hz");
+}
+
+void LearnerEQEditor::refreshBandChips()
+{
+    auto row = chipRow;
+    auto count = 0;
+
+    for (int i = 0; i < LearnerEQProcessor::maxBands; ++i)
+    {
+        auto& chip = bandChips[(size_t) i];
+        const auto on = eqProcessor.isBandOn (i);
+
+        if (on && row.getWidth() >= 34)
+        {
+            chip.setBounds (row.removeFromLeft (34));
+            row.removeFromLeft (2);
+            ++count;
+        }
+
+        chip.setVisible (on);
+
+        if (AbcTrainLookAndFeel::isPrimary (chip) != (i == selectedBand))
+            AbcTrainLookAndFeel::makePrimary (chip, i == selectedBand);
+    }
+
+    addBandChip.setBounds (row.removeFromLeft (34));
+    addBandChip.setEnabled (count < LearnerEQProcessor::maxBands);
+}
+
+juce::String LearnerEQEditor::typeName (EQCoefficients::BandType type) const
+{
+    return t (typeKey (type), EQCoefficients::nameForType (type));
+}
+
+void LearnerEQEditor::layoutAnalysis (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+
+    auto meterRow = area.removeFromBottom (24);
+    area.removeFromBottom (Spacing::small);
+
+    // The curve is the instrument and gets most of the height.
+    const auto spectrumHeight = (area.getHeight() - Spacing::medium) * 64 / 100;
+    spectrum.setBounds (area.removeFromTop (spectrumHeight).reduced (1));
+    area.removeFromTop (Spacing::medium);
+    waveform.setBounds (area.reduced (1));
+
+    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
+    outputPeakLabel.setBounds (meterRow);
+}
+
+void LearnerEQEditor::layoutControls (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+
+    auto zoneRow = area.removeFromTop (24);
+    zonesButton.setBounds (zoneRow.removeFromRight (96).withSizeKeepingCentre (96, 24));
+    zoneRow.removeFromRight (Spacing::small);
+    zoneLabel.setBounds (zoneRow);
+
+    area.removeFromTop (8);
+
+    auto typeRow = area.removeFromTop (30);
+    bandLabel.setBounds (typeRow.removeFromRight (110));
+    typeRow.removeFromRight (Spacing::small);
+    chipRow = typeRow.removeFromRight (juce::jmin (typeRow.getWidth() / 3, 9 * 36));
+    typeRow.removeFromRight (Spacing::medium);
+    refreshBandChips();
+    typeChoice.setBounds (typeRow.removeFromLeft (juce::jmin (typeRow.getWidth(), juce::jmax (typeChoice.getPreferredWidth(), 520))));
+
+    area.removeFromTop (10);
+
+    const auto width = area.getWidth() / 3;
+    juce::Slider* sliders[] { &freqSlider, &gainSlider, &qSlider };
+
+    for (int i = 0; i < 3; ++i)
+    {
+        auto column = area.removeFromLeft (width).reduced (Spacing::tight, 0);
+        knobCaptions[(size_t) i] = column.removeFromTop (20);
+        sliders[i]->setBounds (column);
+    }
+}
+
+void LearnerEQEditor::paintOverChildren (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const juce::String captions[] { t ("eq.freq", "Frequency"), t ("eq.gain", "Gain"), t ("eq.q", "Q") };
+
+    for (int i = 0; i < 3; ++i)
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (captions[i]), knobCaptions[(size_t) i].toFloat(),
+                                              AbcTrainLookAndFeel::labelFont(), theme.textDim, 1.3f,
+                                              juce::Justification::centred);
+
+    LearnerEditorBase::paintOverChildren (g);
+}
+
+void LearnerEQEditor::themeChanged()
 {
     const auto& theme = AbcTrainTheme::current();
 
     inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
     outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
-    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
+    bandLabel.setColour (juce::Label::textColourId, theme.textDim);
 
-    for (auto* label : { &typeLabel, &freqLabel, &gainLabel, &qLabel })
-        label->setColour (juce::Label::textColourId, theme.textDim);
-
-    refreshZoneLabel();
-
-    // The glyph cross-fades rather than cutting, so the toggle reads as
-    // one control changing state (see IconButton).
-    themeButton.setIcon (theme.mode == AbcTrainTheme::Mode::light ? AppIcons::Icon::moon
-                                                                  : AppIcons::Icon::sun);
+    for (auto* slider : { &freqSlider, &gainSlider, &qSlider })
+    {
+        slider->setColour (juce::Slider::textBoxTextColourId, theme.textBright);
+        slider->setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+        slider->setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    }
 
     spectrum.setAccentColour (accent);
     waveform.setAccentColour (accent);
-    pluginIcon.setIconColour (accent);
-    repaint();
+    typeChoice.setAccent (accent);
+    refreshZoneLabel();
 }
 
-void LearnerEQEditor::toggleTheme()
+void LearnerEQEditor::tick()
 {
-    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
-                             ? AbcTrainTheme::Mode::dark
-                             : AbcTrainTheme::Mode::light;
-
-    AbcTrainTheme::setMode (newMode);
-    themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
-
-    // accentFor() returns a different value per mode, so it has to be
-    // asked again rather than reused from construction.
-    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::frequency);
-    lookAndFeel.refreshFromTheme (accent);
-    applyTheme();
-
-    for (auto* child : getChildren())
-        child->repaint();
-}
-
-LearnerEQEditor::~LearnerEQEditor()
-{
-    processor.setSpectrumAnalyser (nullptr);
-    processor.setWaveformDisplay (nullptr);
-    setLookAndFeel (nullptr);
-}
-
-void LearnerEQEditor::paint (juce::Graphics& g)
-{
-    const auto& theme = AbcTrainTheme::current();
-
-    // Each plugin's own room, the same idea EarTrainer applies per
-    // exercise - and the same four family colours, so the trainer and the
-    // plugin that teaches the same skill read as one subject.
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat(), accent);
-
-    AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
-    AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Bands");
-
-    AbcTrainLookAndFeel::paintDisplayWell (g, spectrum.getBounds().toFloat().expanded (1.0f));
-    AbcTrainLookAndFeel::paintDisplayWell (g, waveform.getBounds().toFloat().expanded (1.0f));
-
-    AbcTrainLookAndFeel::drawTrackedText (
-        g, titleLabel.getText(),
-        juce::Rectangle<float> (52.0f, (float) AbcTrainTheme::Spacing::medium,
-                                 (float) getWidth() * 0.4f, 32.0f),
-        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
-        juce::Justification::centredLeft);
-}
-
-void LearnerEQEditor::paintOverChildren (juce::Graphics& g)
-{
-    if (bypassVeil <= 0.004f || analysisSection.isEmpty())
-        return;
-
-    const auto& theme = AbcTrainTheme::current();
-    const auto eased = AbcTrainTheme::Ease::out (bypassVeil);
-    const auto area = analysisSection.toFloat().reduced (AbcTrainTheme::Spacing::medium);
-
-    // Desaturating the analysis rather than hiding it: you still want to
-    // see the signal going past, you just need to be able to tell at a
-    // glance that nothing is being done to it.
-    g.setColour (theme.windowBackground.withAlpha (0.62f * eased));
-    g.fillRoundedRectangle (area, AbcTrainTheme::Radius::well);
-
-    AbcTrainLookAndFeel::drawTrackedText (g, "BYPASSED", area.withHeight (20.0f)
-                                                              .withY (area.getCentreY() - 10.0f),
-                                           AbcTrainLookAndFeel::captionFont(),
-                                           theme.textDim.withAlpha (eased), 3.0f,
-                                           juce::Justification::centred);
-}
-
-void LearnerEQEditor::resized()
-{
-    updateWindow.setBounds (getLocalBounds());
-    moduleScreen.setBounds (getLocalBounds());
-
-    using namespace AbcTrainTheme;
-
-    // Every lesson overlay is full-size whether visible or not - see the
-    // LessonController class comment.
-    for (auto* controller : { &lessonController, &resonanceLessonController,
-                              &highPassLessonController, &lowPassLessonController })
-        controller->setBounds (getLocalBounds());
-
-    auto area = getLocalBounds().reduced (Spacing::large);
-
-    auto titleRow = area.removeFromTop (32);
-    titleRow.removeFromRight (Spacing::small);
-    modulesButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
-    titleRow.removeFromRight (Spacing::tight);
-    themeButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
-    titleRow.removeFromRight (Spacing::tight);
-    updateButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
-    titleRow.removeFromRight (Spacing::small);
-    bypassButton.setBounds (titleRow.removeFromRight (96));
-    titleRow.removeFromRight (Spacing::small);
-    practiceSelector.setBounds (titleRow.removeFromRight (practiceSelector.getPreferredWidth())
-                                    .withSizeKeepingCentre (practiceSelector.getPreferredWidth(), 24));
-    pluginIcon.setBounds (titleRow.removeFromLeft (28));
-
-    area.removeFromTop (Spacing::section);
-
-    // --- analysis section: response curve + spectrum, waveform, peaks ---
-    // Everything below the analysis has a fixed height on purpose: a
-    // rotary that grows is a rotary that stops matching its neighbours,
-    // and a preset chip does not get more readable for being taller.
-    const auto controlsHeight = 212 + Spacing::medium + 18 + Spacing::small;
-
-    // Everything left over, but never less than what the rows inside it
-    // actually ask for.
-    //
-    // The floor is not a guess: removeFromTop *clamps* to the height
-    // available instead of overflowing, so a floor one pixel short does not
-    // produce a scrollbar or a warning - it silently shrinks whatever is
-    // last inside, which here is the gain-reduction meter. That is the same
-    // fault ADR 023 recorded, and this reintroduced it by setting the floor
-    // below the content height.
-    analysisSection = area.removeFromTop (juce::jmax (432, area.getHeight() - controlsHeight));
-    {
-        auto inner = analysisSection.reduced (Spacing::medium);
-        inner.removeFromTop (Spacing::large);
-
-        spectrum.setBounds (inner.removeFromTop (215).reduced (1));
-        inner.removeFromTop (Spacing::medium);
-        waveform.setBounds (inner.removeFromTop (124).reduced (1));
-        inner.removeFromTop (Spacing::small);
-
-        auto meterRow = inner.removeFromTop (20);
-        inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
-        outputPeakLabel.setBounds (meterRow);
-    }
-
-    area.removeFromTop (Spacing::medium);
-
-    // --- one row for the selected band: type, then its three numbers ---
-    // Twelve knobs became four controls that follow your selection. The
-    // curve says *where*; this says exactly what.
-    controlSection = area.removeFromTop (150);
-    {
-        auto inner = controlSection.reduced (Spacing::medium);
-        inner.removeFromTop (Spacing::large);
-
-        auto zoneRow = inner.removeFromTop (22);
-        zonesButton.setBounds (zoneRow.removeFromRight (78).withSizeKeepingCentre (78, 22));
-        zoneRow.removeFromRight (Spacing::small);
-        zoneLabel.setBounds (zoneRow);
-
-        inner.removeFromTop (Spacing::small);
-
-        const auto columnWidth = inner.getWidth() / 4;
-
-        auto typeColumn = inner.removeFromLeft (columnWidth).reduced (Spacing::small, 0);
-        typeLabel.setBounds (typeColumn.removeFromTop (14));
-        typeSelector.setBounds (typeColumn.removeFromTop (28));
-
-        const auto place = [&inner, columnWidth] (juce::Label& caption, juce::Slider& slider)
-        {
-            auto column = inner.removeFromLeft (columnWidth).reduced (Spacing::tight, 0);
-            caption.setBounds (column.removeFromTop (14));
-            slider.setBounds (column);
-        };
-
-        place (freqLabel, freqSlider);
-        place (gainLabel, gainSlider);
-        place (qLabel, qSlider);
-    }
-
-    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
-
-    // The guide card floats over the lower part of the analysis section:
-    // close to the knob being dragged, without covering the curve itself.
-    guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
-                                            .withHeight (70)
-                                            .withY (analysisSection.getBottom() - 82));
-}
-
-void LearnerEQEditor::timerCallback()
-{
-    // Bypass used to change nothing on screen, so the only way to know
-    // whether you were hearing the plugin was to look at the checkbox.
-    // Eased on this timer rather than a second one - 30 Hz over ~260 ms is
-    // eight frames, plenty for a fade.
-    {
-        const auto target = processor.apvts.getRawParameterValue (LearnerEQProcessor::bypassParamId)->load() > 0.5f
-                                ? 1.0f : 0.0f;
-
-        if (! juce::approximatelyEqual (bypassVeil, target))
-        {
-            const auto step = (float) (1000.0 / 30.0 / AbcTrainTheme::Duration::release);
-
-            bypassVeil = std::abs (target - bypassVeil) <= step
-                             ? target
-                             : bypassVeil + (target > bypassVeil ? step : -step);
-            repaint();
-        }
-    }
-
     pushBandsToDisplay();
 
-    // A band can go away without this editor doing it - a host automating
-    // the On parameter, or a preset load - so the selection is re-checked
-    // every frame rather than only when this editor changes it.
-    if (selectedBand >= 0 && ! processor.isBandOn (selectedBand))
+    // A band can go away without this editor doing it - host automation,
+    // a preset load, a lesson - so the selection is re-checked every frame.
+    if (selectedBand >= 0 && ! eqProcessor.isBandOn (selectedBand))
         selectBand (-1);
 
     pushSelectedBandToControls();
+    refreshBandChips();
 
-
-    inputPeakLabel.setText ("In: "
-                                 + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)
-                                 + " dB",
-                             juce::dontSendNotification);
-
-    outputPeakLabel.setText ("Out: "
-                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getOutputPeak(), -60.0f), 1)
-                                  + " dB",
-                              juce::dontSendNotification);
+    inputPeakLabel.setText (peakText ("lp.in", "In", waveform.getInputPeak()), juce::dontSendNotification);
+    outputPeakLabel.setText (peakText ("lp.out", "Out", waveform.getOutputPeak()), juce::dontSendNotification);
 }
-
-// ---------------------------------------------------------------------------
-// The selected band
-//
-// One set of controls follows the selection instead of one set per band
-// owning its own. That rules out APVTS attachments, which bind to a single
-// parameter for their lifetime - so values are pushed in on the editor's
-// timer and written back through the parameter object, which is what keeps
-// host automation, undo and the "someone else moved it" case working.
-// ---------------------------------------------------------------------------
 
 void LearnerEQEditor::writeParameter (const juce::String& id, float value)
 {
-    if (auto* parameter = processor.apvts.getParameter (id))
+    if (auto* parameter = eqProcessor.apvts.getParameter (id))
         parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
 }
 
 void LearnerEQEditor::selectBand (int band)
 {
-    selectedBand = (band >= 0 && processor.isBandOn (band)) ? band : -1;
+    selectedBand = (band >= 0 && eqProcessor.isBandOn (band)) ? band : -1;
     spectrum.setSelectedBand (selectedBand);
     pushSelectedBandToControls();
+    refreshBandChips();
 }
 
 void LearnerEQEditor::pushSelectedBandToControls()
 {
     const auto hasBand = selectedBand >= 0;
 
-    typeSelector.setEnabled (hasBand);
+    typeChoice.setEnabled (hasBand);
     freqSlider.setEnabled (hasBand);
     qSlider.setEnabled (hasBand);
 
     if (! hasBand)
     {
         gainSlider.setEnabled (false);
-        typeLabel.setText (localisation.getText ("eq.noBand"), juce::dontSendNotification);
+        bandLabel.setText (localisation.getText ("eq.noBand"), juce::dontSendNotification);
         return;
     }
 
-    const auto type = processor.getBandType (selectedBand);
+    const auto type = eqProcessor.getBandType (selectedBand);
 
-    typeLabel.setText (localisation.getText ("eq.band",
-                                              { { "number", juce::String (selectedBand + 1) } }),
-                        juce::dontSendNotification);
+    bandLabel.setText (localisation.getText ("eq.band", { { "number", juce::String (selectedBand + 1) } }),
+                       juce::dontSendNotification);
 
-    // Gain is greyed for the shapes that have none. A pass filter cuts by
-    // its slope, not by an amount, and a gain control on it would be a
-    // control that lies.
+    // Gain is greyed for the shapes that have none.
     gainSlider.setEnabled (EQCoefficients::usesGain (type));
+    typeChoice.setValue ((int) type);
 
-    typeSelector.setSelectedId ((int) type + 1, juce::dontSendNotification);
-
-    // dontSendNotification throughout: these are a mirror of the
-    // parameters, and echoing them straight back would be a write loop
-    // that fights whatever the user is currently dragging.
-    freqSlider.setValue (processor.apvts.getRawParameterValue (
-        LearnerEQProcessor::freqParamId (selectedBand))->load(), juce::dontSendNotification);
-    gainSlider.setValue (processor.apvts.getRawParameterValue (
-        LearnerEQProcessor::gainParamId (selectedBand))->load(), juce::dontSendNotification);
-    qSlider.setValue (processor.apvts.getRawParameterValue (
-        LearnerEQProcessor::qParamId (selectedBand))->load(), juce::dontSendNotification);
+    // A mirror of the parameters, never echoed back.
+    freqSlider.setValue (eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (selectedBand))->load(), juce::dontSendNotification);
+    gainSlider.setValue (eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (selectedBand))->load(), juce::dontSendNotification);
+    qSlider.setValue (eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::qParamId (selectedBand))->load(), juce::dontSendNotification);
 }
 
 void LearnerEQEditor::refreshZoneLabel()
@@ -716,42 +444,40 @@ void LearnerEQEditor::refreshZoneLabel()
 
     if (freq < 0.0f)
     {
-        // The hint for the gesture, when there is nothing to report. The
-        // surface has no other affordance saying you can make a band.
         zoneLabel.setText (localisation.getText ("eq.zoneHint"), juce::dontSendNotification);
         zoneLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
         return;
     }
 
     const auto& zone = FrequencyZones::zoneFor (freq);
+    const auto key = juce::String ("zone.") + zoneKey (zone);
 
-    zoneLabel.setText (juce::String (zone.name) + " - " + zone.feels
-                           + "   ·   " + juce::String (juce::roundToInt (freq)) + " Hz",
-                        juce::dontSendNotification);
+    zoneLabel.setText (t (key + ".name", zone.name) + " - " + t (key + ".feels", zone.feels)
+                           + "   " + juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")) + "   "
+                           + formatFrequency (freq),
+                       juce::dontSendNotification);
     zoneLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().text);
 }
 
 void LearnerEQEditor::pushBandsToDisplay()
 {
-    // Only the bands that are on. The display draws exactly what the DSP
-    // runs, so the curve can never show a band the audio does not have.
     std::vector<SpectrumAnalyserComponent::Band> active;
     active.reserve (LearnerEQProcessor::maxBands);
 
     for (int band = 0; band < LearnerEQProcessor::maxBands; ++band)
     {
-        if (! processor.isBandOn (band))
+        if (! eqProcessor.isBandOn (band))
             continue;
 
         SpectrumAnalyserComponent::Band entry;
         entry.index = band;
-        entry.type = processor.getBandType (band);
-        entry.freqHz = processor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (band))->load();
-        entry.gainDb = processor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (band))->load();
-        entry.q = processor.apvts.getRawParameterValue (LearnerEQProcessor::qParamId (band))->load();
+        entry.type = eqProcessor.getBandType (band);
+        entry.freqHz = eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (band))->load();
+        entry.gainDb = eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (band))->load();
+        entry.q = eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::qParamId (band))->load();
         active.push_back (entry);
     }
 
-    const auto sr = processor.getSampleRate();
+    const auto sr = eqProcessor.getSampleRate();
     spectrum.setEQState (sr > 0.0 ? sr : 44100.0, std::move (active));
 }

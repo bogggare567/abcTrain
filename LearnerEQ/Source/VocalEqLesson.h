@@ -1,30 +1,34 @@
 #pragma once
 
 #include "../../shared/MicroLesson.h"
-#include "PluginProcessor.h"
+#include "EQSetup.h"
 
-// Lesson content lives per-plugin, not in shared/ - only the MicroLesson/
-// LessonController machinery is shared; the steps themselves are specific
-// to this plugin's parameters (see ADR 005 for why).
+// Four moves on a vocal, each band built explicitly (see EQSetup.h).
 inline MicroLesson buildVocalEqLesson()
 {
-    using P = LearnerEQProcessor;
+    using T = EQCoefficients::BandType;
+    using EQSetup::bands;
 
     return MicroLesson ("Vocal EQ Basics", {
-        { "This is the untreated sound - every band flat.",
-          { { P::gainParamId (0), 0.0f }, { P::gainParamId (1), 0.0f },
-            { P::gainParamId (2), 0.0f }, { P::gainParamId (3), 0.0f } } },
-        { "Add low-end warmth: boost 60 Hz (the low shelf) by +1.5 dB - a "
-          "shelf reshapes the whole low edge, unlike the narrow bell you'll "
-          "use next for mud.",
-          { { P::freqParamId (0), 60.0f }, { P::gainParamId (0), 1.5f } } },
-        { "Add presence: boost 3 kHz by +3 dB.",
-          { { P::freqParamId (2), 3000.0f }, { P::gainParamId (2), 3.0f } } },
-        { "Clean up mud: cut 250 Hz by -3 dB.",
-          { { P::freqParamId (1), 250.0f }, { P::gainParamId (1), -3.0f } } },
-        { "Add air: boost 10 kHz (the high shelf) by +2 dB.",
-          { { P::freqParamId (3), 10000.0f }, { P::gainParamId (3), 2.0f } } },
-        { "Compare: go back a step to hear the difference, or close the lesson to keep this EQ curve.",
+        { "The untreated sound. One band, flat - nothing is being done yet.",
+          bands ({ { T::bell, 1000.0f, 0.0f } }) },
+        { "Low-end warmth: a low shelf at 120 Hz, +1.5 dB. A shelf lifts "
+          "everything below its corner, not one spot - which is why it reads "
+          "as weight rather than as a tone.",
+          bands ({ { T::lowShelf, 120.0f, 1.5f } }) },
+        { "Presence: a bell at 3 kHz, +3 dB. This is where consonants and "
+          "the edge of the voice live; a little brings the words forward.",
+          bands ({ { T::lowShelf, 120.0f, 1.5f }, { T::bell, 3000.0f, 3.0f, 1.0f } }) },
+        { "Mud: a bell at 250 Hz, -3 dB. Most boxy, cardboard-sounding vocals "
+          "have too much here, and cutting it lets the presence boost do less.",
+          bands ({ { T::lowShelf, 120.0f, 1.5f }, { T::bell, 3000.0f, 3.0f, 1.0f },
+                   { T::bell, 250.0f, -3.0f, 1.2f } }) },
+        { "Air: a high shelf at 10 kHz, +2 dB. Openness above the voice itself "
+          "- too much and it turns into hiss rather than brightness.",
+          bands ({ { T::lowShelf, 120.0f, 1.5f }, { T::bell, 3000.0f, 3.0f, 1.0f },
+                   { T::bell, 250.0f, -3.0f, 1.2f }, { T::highShelf, 10000.0f, 2.0f } }) },
+        { "Compare: step back to hear it without, or finish to put the plugin "
+          "back the way it was.",
           {} }
     });
 }

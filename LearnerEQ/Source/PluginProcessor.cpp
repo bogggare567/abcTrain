@@ -103,6 +103,17 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
     for (auto& filter : filters)
         filter.prepare (spec);
 
+    for (auto& g : glide)
+    {
+        g.freq.reset (sampleRate, 0.05);
+        g.q.reset (sampleRate, 0.05);
+        g.gain.reset (sampleRate, 0.05);
+        g.wasOn = false;
+    }
+
+    activeAmount.reset (sampleRate, 0.02);
+    activeAmount.setCurrentAndTargetValue (bypassParam->load() > 0.5f ? 0.0f : 1.0f);
+
     dryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock);
 
     updateFilters();
@@ -110,21 +121,42 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
 
 void LearnerEQProcessor::updateFilters()
 {
+    // Targets only; the coefficients follow the glide in processBlock.
     for (int band = 0; band < maxBands; ++band)
     {
         const auto& p = bandParams[(size_t) band];
-        const auto on = p.on->load() > 0.5f;
+        auto& g = glide[(size_t) band];
+        const auto on = read (p.on) > 0.5f;
+
         bandActive[(size_t) band] = on;
 
         if (! on)
-            continue;   // a band that is off costs nothing to skip
+        {
+            g.wasOn = false;
+            continue;
+        }
 
-        const auto type = EQCoefficients::typeFromIndex ((int) p.type->load());
-        const auto freq = p.freq->load();
-        const auto gain = p.gain->load();
-        const auto q = p.q->load();
+        const auto freq = juce::jlimit (10.0f, (float) (sampleRate * 0.49), read (p.freq));
+        const auto q = juce::jmax (0.05f, read (p.q));
+        const auto gain = read (p.gain);
 
-        *filters[(size_t) band].state = *EQCoefficients::make (type, sampleRate, freq, gain, q);
+        if (! g.wasOn)
+        {
+            // A band switched back on starts clean: no glide from wherever
+            // it was, and no filter memory left over from before (a stale
+            // state is a thump on the first block).
+            g.freq.setCurrentAndTargetValue (freq);
+            g.q.setCurrentAndTargetValue (q);
+            g.gain.setCurrentAndTargetValue (gain);
+            filters[(size_t) band].reset();
+            g.wasOn = true;
+        }
+        else
+        {
+            g.freq.setTargetValue (freq);
+            g.q.setTargetValue (q);
+            g.gain.setTargetValue (gain);
+        }
     }
 }
 
@@ -203,18 +235,56 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     // untreated input alongside whatever bypass leaves in `buffer`.
     dryBuffer.makeCopyOf (buffer, true);
 
-    const bool bypassed = bypassParam->load() > 0.5f;
+    activeAmount.setTargetValue (bypassParam->load() > 0.5f ? 0.0f : 1.0f);
 
-    if (! bypassed)
+    if (activeAmount.isSmoothing() || activeAmount.getTargetValue() > 0.0f)
     {
         updateFilters();
 
-        juce::dsp::AudioBlock<float> block (buffer);
-        juce::dsp::ProcessContextReplacing<float> context (block);
+        constexpr int step = 32;
 
-        for (int band = 0; band < maxBands; ++band)
-            if (bandActive[(size_t) band])
+        for (int start = 0; start < numSamples; start += step)
+        {
+            const auto n = juce::jmin (step, numSamples - start);
+
+            for (int band = 0; band < maxBands; ++band)
+            {
+                if (! bandActive[(size_t) band])
+                    continue;
+
+                auto& g = glide[(size_t) band];
+                const auto type = EQCoefficients::typeFromIndex ((int) read (bandParams[(size_t) band].type));
+
+                if (start == 0 || g.freq.isSmoothing() || g.q.isSmoothing() || g.gain.isSmoothing())
+                    *filters[(size_t) band].state = *EQCoefficients::make (type, sampleRate,
+                                                                       g.freq.getCurrentValue(),
+                                                                       g.gain.getCurrentValue(),
+                                                                       g.q.getCurrentValue());
+                g.freq.skip (n);
+                g.q.skip (n);
+                g.gain.skip (n);
+
+                juce::dsp::AudioBlock<float> block (buffer);
+                auto sub = block.getSubBlock ((size_t) start, (size_t) n);
+                juce::dsp::ProcessContextReplacing<float> context (sub);
                 filters[(size_t) band].process (context);
+            }
+        }
+
+        // Bypass crossfades rather than stepping.
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto active = activeAmount.getNextValue();
+
+            if (active >= 1.0f)
+                continue;
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                const auto dry = dryBuffer.getSample (ch, i);
+                buffer.setSample (ch, i, active <= 0.0f ? dry : dry + active * (buffer.getSample (ch, i) - dry));
+            }
+        }
     }
 
     if (auto* display = waveformDisplay.load())

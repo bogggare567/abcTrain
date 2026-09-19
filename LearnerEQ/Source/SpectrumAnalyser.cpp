@@ -181,7 +181,9 @@ void SpectrumAnalyserComponent::paintZones (juce::Graphics& g, juce::Rectangle<f
         {
             g.setColour (underPointer ? theme.accent : theme.textDim.withAlpha (0.55f));
             g.setFont (AbcTrainLookAndFeel::microFont());
-            g.drawText (zone.name, labelBox, juce::Justification::centred, false);
+            const auto name = (int) i < zoneNames.size() && zoneNames[(int) i].isNotEmpty() ? zoneNames[(int) i]
+                                                                                          : juce::String (zone.name);
+            g.drawText (name, labelBox, juce::Justification::centred, false);
         }
     }
 }

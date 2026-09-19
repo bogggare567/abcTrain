@@ -56,9 +56,14 @@ public:
         return w;
     }
 
+    // The fill of the chosen cell; transparent means the palette's accent.
+    // A Learner plugin passes its family colour.
+    void setAccent (juce::Colour c) { accentOverride = c; repaint(); }
+
     void paint (juce::Graphics& g) override
     {
         const auto& theme = AbcTrainTheme::current();
+        const auto accent = accentOverride.isTransparent() ? theme.accent : accentOverride;
         const auto font = AbcTrainLookAndFeel::labelFont();
         const auto cells = cellBounds();
         const auto mouse = getMouseXYRelative();
@@ -71,7 +76,7 @@ public:
 
             if (selected)
             {
-                g.setColour (theme.accent.withAlpha (isEnabled() ? 0.85f : 0.35f));
+                g.setColour (accent.withAlpha (isEnabled() ? 0.85f : 0.35f));
                 g.fillRect (r);
             }
             else if (hover)
@@ -80,7 +85,7 @@ public:
                 g.fillRect (r);
             }
 
-            const auto textColour = selected ? AbcTrainLookAndFeel::labelColourOn (theme.accent)
+            const auto textColour = selected ? AbcTrainLookAndFeel::labelColourOn (accent)
                                              : (isEnabled() ? theme.text : theme.textDim);
 
             AbcTrainLookAndFeel::drawTrackedText (g, shown (labels[(int) i]), r,
@@ -107,6 +112,7 @@ public:
     }
 
 private:
+    juce::Colour accentOverride;
     juce::String shown (const juce::String& label) const
     {
         return uppercase ? AbcTrainLookAndFeel::toCaps (label) : label;

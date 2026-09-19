@@ -14,7 +14,9 @@ inline MicroLesson buildBusGlueLesson()
 
     return MicroLesson ("Bus Glue Compression", {
         { "Original signal, no compression.",
-          { { P::bypassParamId, 1.0f } } },
+          { { P::bypassParamId, 1.0f }, { P::thresholdParamId, 0.0f }, { P::ratioParamId, 1.0f },
+            { P::attackParamId, 10.0f }, { P::releaseParamId, 150.0f }, { P::kneeParamId, 0.0f },
+            { P::makeupParamId, 0.0f }, { P::dryWetParamId, 100.0f } } },
         { "A gentle 2:1 ratio with a high threshold - just brushing the "
           "loudest peaks, not squashing everything.",
           { { P::bypassParamId, 0.0f }, { P::thresholdParamId, -8.0f }, { P::ratioParamId, 2.0f } } },

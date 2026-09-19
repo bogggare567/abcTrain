@@ -1,588 +1,152 @@
 #include "PluginEditor.h"
-#include "../../shared/UpdatePrompt.h"
 #include "CompressorModules.h"
 #include "ParameterGuide.h"
 #include "VocalCompressionLesson.h"
 #include "BusGlueLesson.h"
 #include "TransientLessons.h"
-#include "../../shared/Version.h"
-#include "../../shared/i18n/LocalisationManager.h"
-#include <array>
-#include <memory>
 
 namespace
 {
-    // Every caption the update window shows, localised here because shared
-    // code keeps no LocalisationManager of its own - the same shape as
-    // UpdatePrompt's strings and ModuleScreenComponent's.
-    UpdateWindow::Strings updateWindowStrings (const LocalisationManager& loc)
+    LearnerEditorBase::Services servicesFor (LearnerCompProcessor& p)
     {
-        UpdateWindow::Strings s;
-        s.title          = loc.getText ("upd.title");
-        s.body           = loc.getText ("upd.body");
-        s.installedHere  = loc.getText ("upd.installedHere");
-        s.nothingFound   = loc.getText ("upd.nothingFound");
-        s.noAsset        = loc.getText ("upd.noAsset");
-        s.install        = loc.getText ("upd.install");
-        s.later          = loc.getText ("upd.later");
-        s.cancel         = loc.getText ("upd.cancel");
-        s.openPage       = loc.getText ("upd.openPage");
-        s.downloading    = loc.getText ("upd.downloading");
-        s.opening        = loc.getText ("upd.opening");
-        s.failed         = loc.getText ("upd.failed");
-        s.finishedPlugin = loc.getText ("upd.finishedPlugin");
-        s.finishedApp    = loc.getText ("upd.finishedApp");
-        s.versionUnknown = loc.getText ("upd.versionUnknown");
-        return s;
+        return { p.apvts, LearnerCompProcessor::bypassParamId, p.getSharedProperties(),
+                 p.getPracticeLibrary(), p.getPracticeSource(),
+                 [&p] (const juce::String& id, float v) { p.setCheckOverride (id, v); },
+                 [&p] { p.clearCheckOverride(); } };
     }
-}
 
-namespace
-{
-}
-
-namespace
-{
-    struct KnobSpec
+    juce::StringArray presetNames (const LocalisationManager& loc)
     {
-        const char* paramId;
-        const char* label;
-    };
+        juce::StringArray names;
 
-    const std::array<KnobSpec, 7> knobSpecs {{
-        { "threshold", "Threshold" },
-        { "ratio",     "Ratio" },
-        { "attack",    "Attack" },
-        { "release",   "Release" },
-        { "knee",      "Knee" },
-        { "makeup",    "Makeup" },
-        { "dryWet",    "Dry/Wet" }
-    }};
+        for (size_t i = 0; i < CompressorGuide::presets.size(); ++i)
+        {
+            const auto key = "preset.comp." + juce::String ((int) i) + ".name";
+            const auto text = loc.getText (key);
+            names.add (text == key ? juce::String (CompressorGuide::presets[i].name) : text);
+        }
 
-    constexpr const char* themeModeKey = "themeMode";
+        return names;
+    }
 }
 
 LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
-    : AudioProcessorEditor (&p), processor (p),
-      lessonController (p.apvts, buildVocalCompressionLesson()),
-      busGlueLessonController (p.apvts, buildBusGlueLesson()),
-      attackLessonController (p.apvts, buildAttackLesson()),
-      releaseLessonController (p.apvts, buildReleaseLesson()),
-      // Same shared "abcTrain" settings folder the language preference
-      // uses, so light/dark is one product-wide choice rather than a
-      // per-plugin one.
-      themeProperties (LocalisationManager::makeDefaultOptions())
+    : LearnerEditorBase (p, servicesFor (p),
+                         { "ABC Learner Comp", AbcTrainTheme::Family::dynamics,
+                           AppIcons::Icon::learnerComp, "lp.compressor" }),
+      compProcessor (p),
+      knobs (p.apvts, { { "threshold", t ("knob.threshold", "Threshold"), " " + t ("unit.dB", "dB"), 0 },
+                        { "ratio",     t ("knob.ratio", "Ratio"),         ":1", 1 },
+                        { "attack",    t ("knob.attack", "Attack"),       " " + t ("unit.ms", "ms"), 1 },
+                        { "release",   t ("knob.release", "Release"),     " " + t ("unit.ms", "ms"), 0 },
+                        { "knee",      t ("knob.knee", "Knee"),           " " + t ("unit.dB", "dB"), 0 },
+                        { "makeup",    t ("knob.makeup", "Makeup"),       " " + t ("unit.dB", "dB"), 1 },
+                        { "dryWet",    t ("knob.mix", "Mix"),             "%", 0 } }, decimalPoint()),
+      presets (presetNames (localisation))
 {
-    AbcTrainTheme::setMode (themeProperties.getValue (themeModeKey, "dark") == "light"
-                                ? AbcTrainTheme::Mode::light
-                                : AbcTrainTheme::Mode::dark);
-    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::dynamics);
-    refreshPresetChips();
-    lookAndFeel.refreshFromTheme (accent);
-
-    setLookAndFeel (&lookAndFeel);
-
-    // Drawn by paint() with letter-spacing rather than via the Label.
-    titleLabel.setText ("ABC Learner Comp", juce::dontSendNotification);
-    titleLabel.setVisible (false);
-
-    themeButton.onClick = [this] { toggleTheme(); };
-    addAndMakeVisible (themeButton);
-
-    addAndMakeVisible (practiceSelector);
-
-    pluginIcon.setIcon (AppIcons::Icon::learnerComp);
-    addAndMakeVisible (pluginIcon);
-
-    addAndMakeVisible (spectrum);
-
+    transferCurve.setStrings ({ t ("lp.curveIn", "in, dB"), t ("lp.curveOut", "out, dB") });
+    addAndMakeVisible (transferCurve);
     addAndMakeVisible (waveform);
-
+    gainReductionMeter.setUnits (t ("unit.dB", "dB"), decimalPoint());
     addAndMakeVisible (gainReductionMeter);
 
-    inputPeakLabel.setJustificationType (juce::Justification::centred);
-    inputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    addAndMakeVisible (inputPeakLabel);
-
-    outputPeakLabel.setJustificationType (juce::Justification::centred);
-    outputPeakLabel.setFont (AbcTrainLookAndFeel::monoFont());
-    addAndMakeVisible (outputPeakLabel);
-
-    for (size_t i = 0; i < knobs.size(); ++i)
+    for (auto* label : { &inputPeakLabel, &outputPeakLabel })
     {
-        auto& knob = knobs[i];
-        const auto& spec = knobSpecs[i];
-
-        knob.nameLabel.setText (spec.label, juce::dontSendNotification);
-        knob.nameLabel.setJustificationType (juce::Justification::centred);
-        addAndMakeVisible (knob.nameLabel);
-
-        addAndMakeVisible (knob.slider);
-
-        // Rebuild the value box now that this slider has a parent, and so
-        // resolves to this editor's LookAndFeel rather than JUCE's default.
-        // A Slider creates its text box in its own constructor - as a
-        // member, long before setLookAndFeel() - so it keeps the default
-        // LookAndFeel's bordered, filled field no matter what colours the
-        // theme sets later. This has to come *after* addAndMakeVisible:
-        // calling it first resolves getLookAndFeel() to the default one
-        // again and changes nothing, which is exactly what the first
-        // attempt at this fix did.
-        knob.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 64, 18);
-
-        knob.attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-            processor.apvts, spec.paramId, knob.slider);
-
-        const juce::String paramId (spec.paramId);
-        knob.slider.onDragStart = [this, paramId]
-        {
-            guideTooltip.setText (CompressorGuide::describe (paramId));
-        };
-        knob.slider.onDragEnd = [this]
-        {
-            // Empty text animates the card out rather than leaving a
-            // permanent "drag a knob" strip taking up layout space.
-            guideTooltip.setText ({});
-        };
+        label->setJustificationType (juce::Justification::centred);
+        label->setFont (AbcTrainLookAndFeel::monoFont());
+        addAndMakeVisible (*label);
     }
 
-    bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        processor.apvts, LearnerCompProcessor::bypassParamId, bypassButton);
-    addAndMakeVisible (bypassButton);
-
-    for (int i = 0; i < (int) CompressorGuide::presets.size(); ++i)
+    knobs.onDragStart = [this] (const juce::String& id)
     {
-        auto* button = presetButtons.add (new juce::TextButton (CompressorGuide::presets[(size_t) i].name));
-        button->onClick = [this, i]
-        {
-            processor.applyPreset (i);
-            activePreset = i;
-            refreshPresetChips();
-
-            // The knobs moving is the "what changed"; this is the "why".
-            guideTooltip.setText (juce::String (CompressorGuide::presets[(size_t) i].name) + " - "
-                                   + CompressorGuide::presets[(size_t) i].what, 9000);
-        };
-        addAndMakeVisible (button);
-    }
-
-    refreshPresetChips();
-
-    processor.setWaveformDisplay (&waveform);
-    processor.setSpectrumAnalyzer (&spectrum);
-
-    modulesButton.setTooltip ("Training modules");
-    modulesButton.onClick = [this] { moduleScreen.openShelf(); };
-    addAndMakeVisible (modulesButton);
-
-    moduleScreen.setModules (CompressorModules::all());
-    moduleScreen.setStrings ([this]
-    {
-        ModuleScreenComponent::Strings t;
-        t.match = localisation.getText ("module.match");
-        t.reference = localisation.getText ("module.reference");
-        t.mine = localisation.getText ("module.mine");
-        t.submit = localisation.getText ("module.submit");
-        t.turnKnob = localisation.getText ("module.turnKnob");
-        t.passed = localisation.getText ("module.passed");
-        t.notYet = localisation.getText ("module.notYet");
-        t.itWas = localisation.getText ("module.itWas");
-        t.youSaid = localisation.getText ("module.youSaid");
-        t.again = localisation.getText ("module.again");
-        t.done = localisation.getText ("module.done");
-        t.phaseWatch = localisation.getText ("module.phaseWatch");
-        t.phaseTry = localisation.getText ("module.phaseTry");
-        t.phaseCheck = localisation.getText ("module.phaseCheck");
-        t.phaseResult = localisation.getText ("module.phaseResult");
-        t.shelfTitle = localisation.getText ("module.shelfTitle");
-        t.shelfSubtitle = localisation.getText ("module.shelfSubtitle");
-        t.walkthroughs = localisation.getText ("module.walkthroughs");
-        t.walkthroughWhy = localisation.getText ("module.walkthroughWhy");
-        t.clips = localisation.getText ("module.clips");
-        t.pickCategory = localisation.getText ("module.pickCategory");
-        t.close = localisation.getText ("module.close");
-        t.back = localisation.getText ("module.back");
-        t.next = localisation.getText ("module.next");
-        t.ready = localisation.getText ("module.ready");
-        return t;
-    }());
-    moduleScreen.setWalkthroughs ({ "Vocal Compression", "Bus Glue Compression",
-                                    "Attack: why fast kills the punch",
-                                    "Release, and where pumping comes from" });
-    moduleScreen.onWalkthroughSelected = [this] (int which)
-    {
-        switch (which)
-        {
-            case 0:  lessonController.showAndStart();         break;
-            case 1:  busGlueLessonController.showAndStart();  break;
-            case 2:  attackLessonController.showAndStart();   break;
-            case 3:  releaseLessonController.showAndStart();  break;
-            default: break;
-        }
+        showGuide (t ("guide.comp." + id, CompressorGuide::describe (id)));
     };
-    moduleScreen.onClosed = [this] { repaint(); };
-    moduleScreen.prepare (processor.getSampleRate());
-
-    updateButton.onClick = [this]
+    knobs.onDragEnd = [this] (const juce::String&) { showGuide ({}); };
+    knobs.onValueChange = [this] (const juce::String&)
     {
-        // See CLAUDE.md's Update-checking section: without this,
-        // clicking "Updates" gave no visible reaction at all whenever no
-        // newer release was found (or this repo simply had no releases
-        // yet), since checkForUpdatesAsync's callback deliberately never
-        // fires on failure. Now every click gets some visible outcome:
-        // "Checking...", then the update prompt, a brief "Up to date",
-        // or - if nothing came back within a few seconds - "Couldn't
-        // check".
-        juce::Component::SafePointer<LearnerCompEditor> safeThis (this);
-        auto handled = std::make_shared<bool> (false);
-
-        updateButton.setEnabled (false);
-        // The button is now an icon with no room for text, so the outcome
-        // goes where there is room: the guide card that already floats in
-        // over the visualisation. ADR 014's rule still holds - every click
-        // gets a visible outcome - it just gets a better-looking one.
-        guideTooltip.setText ("Checking for updates...");
-
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
-        {
-            if (safeThis == nullptr || *handled)
-                return;
-            *handled = true;
-
-            safeThis->updateButton.setEnabled (true);
-
-            if (! foundNewer)
-            {
-                safeThis->guideTooltip.setText ("You're on the latest version ("
-                                                 + juce::String (CurrentVersion::string) + ").", 4000);
-                return;
-            }
-
-            safeThis->guideTooltip.setText ({});
-
-            // A window, not a tooltip. The progress was always real and
-            // always went somewhere nobody was looking.
-            safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
-            safeThis->updateWindow.show (release,
-                juce::JUCEApplicationBase::isStandaloneApp());
-        });
-
-        juce::Timer::callAfterDelay (6000, [safeThis, handled]
-        {
-            if (safeThis == nullptr || *handled)
-                return;
-            *handled = true;
-
-            safeThis->updateButton.setEnabled (true);
-            safeThis->guideTooltip.setText ("Couldn't reach the update server. "
-                                             "Check your connection and try again.", 5000);
-        });
+        // A preset is a claim about every knob; once one moves it is false.
+        if (! moduleScreen.isRunning() && presets.getActive() >= 0 && knobs.isMouseButtonDown (true))
+            presets.setActive (-1);
     };
-    addAndMakeVisible (updateButton);
+    addAndMakeVisible (knobs);
 
-    soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
-                            juce::Justification::centredRight);
-    addAndMakeVisible (soundkorbLink);
-
-    // After the controls (so it floats above the visualisation it covers)
-    // but before the lesson overlays, which must stay on top of everything.
-    addAndMakeVisible (guideTooltip);
-
-    // Added last, after every other child, so a shown lesson overlay
-    // actually covers the title-row buttons/link instead of them poking
-    // through on top of it - the same z-order fix as decisions/015's
-    // Training Sounds overlay and decisions/016's soundkorb.ru link.
-    addChildComponent (lessonController);
-    lessonController.onClosed = [this]
+    presets.onChosen = [this] (int i)
     {
-        // Back to "Lessons" so the same one can be started again.
-        resized();
+        compProcessor.applyPreset (i);
+        const auto what = t ("preset.comp." + juce::String (i) + ".what", CompressorGuide::presets[(size_t) i].what);
+        showGuide (what, 9000);
     };
+    addAndMakeVisible (presets);
 
-    // One shape for the rest of them rather than a copied block each.
-    for (auto* controller : { &busGlueLessonController, &attackLessonController,
-                              &releaseLessonController })
-    {
-        addChildComponent (*controller);
-        controller->onClosed = [this] { resized(); };
-    }
+    compProcessor.setWaveformDisplay (&waveform);
 
-    // Absolutely last, so it covers every other overlay. An update is the
-    // one thing that should never be behind something else.
-    addChildComponent (updateWindow);
-    updateWindow.onClosed = [this] { resized(); repaint(); };
+    auto modules = CompressorModules::all();
+    for (auto& w : CompressorModules::walkthroughs())
+        modules.push_back (std::move (w));
 
-    startTimerHz (30);
-    // Taller than before: the two section panels carry their own padding
-    // and captions, and the guide text no longer occupies a permanent
-    // strip (it floats over the visualisation on demand instead).
-    // 20 + 32 title + 28 + 460 analysis + 12 + 186 controls + 20 margin.
-    // Derived from resized() rather than guessed, which is how 132px of
-    // empty window got here in the first place.
-    // Added after every other child, including both LessonControllers,
-    // so an open module panel paints over them rather than under -
-    // the z-order mistake ADR 015, 016 and 017 each had to fix once.
-    addChildComponent (moduleScreen);
-
-    // Resizable, with a floor that keeps the layout honest rather than
-    // letting somebody squeeze it into nonsense, and a ceiling so the
-    // knobs do not end up an inch across on a 5K display.
-    setResizable (true, true);
-    setResizeLimits (688, 591, 1344, 1137);
-    getConstrainer()->setFixedAspectRatio (0.0);
-
-    setSize (840, 758);
-
-    applyTheme();
+    finishSetup (std::move (modules), 900, 830);
 }
 
-void LearnerCompEditor::applyTheme()
+void LearnerCompEditor::updateTransferCurve()
+{
+    // The knobs, never a check's hidden reference (that reaches only the
+    // DSP, and the module panel covers this view while it plays).
+    const auto value = [this] (const char* id) { return compProcessor.apvts.getRawParameterValue (id)->load(); };
+    transferCurve.setParameters (value ("threshold"), value ("ratio"), value ("knee"), value ("makeup"));
+}
+
+LearnerCompEditor::~LearnerCompEditor()
+{
+    compProcessor.setWaveformDisplay (nullptr);
+}
+
+void LearnerCompEditor::layoutAnalysis (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+
+    auto meterRow = area.removeFromBottom (48);
+    area.removeFromBottom (Spacing::medium);
+
+    // The transfer curve square on the left - level in against level out
+    // wants equal axes - and the waveform, which shows the same thing
+    // happening in time, beside it.
+    const auto curveSide = juce::jmin (area.getHeight(), area.getWidth() * 2 / 5);
+    transferCurve.setBounds (area.removeFromLeft (curveSide).reduced (1));
+    area.removeFromLeft (Spacing::medium);
+    waveform.setBounds (area.reduced (1));
+
+    // In and out on the ends, the gain-reduction bar between them.
+    inputPeakLabel.setBounds (meterRow.removeFromLeft (170));
+    outputPeakLabel.setBounds (meterRow.removeFromRight (170));
+    gainReductionMeter.setBounds (meterRow.reduced (Spacing::medium, 6));
+}
+
+void LearnerCompEditor::layoutControls (juce::Rectangle<int> area)
+{
+    knobs.setBounds (area.removeFromTop (132));
+    area.removeFromTop (8);
+    presets.setBounds (area.removeFromTop (32));
+}
+
+void LearnerCompEditor::themeChanged()
 {
     const auto& theme = AbcTrainTheme::current();
 
     inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
     outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
-    soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
-
-    for (auto& knob : knobs)
-        knob.nameLabel.setColour (juce::Label::textColourId, theme.textDim);
-
-    // The glyph cross-fades rather than cutting, so the toggle reads as
-    // one control changing state (see IconButton).
-    themeButton.setIcon (theme.mode == AbcTrainTheme::Mode::light ? AppIcons::Icon::moon
-                                                                  : AppIcons::Icon::sun);
-
-    spectrum.setAccentColour (accent);
+    transferCurve.setAccentColour (accent);
     waveform.setAccentColour (accent);
-    pluginIcon.setIconColour (accent);
-    repaint();
+    knobs.refreshColours();
+    presets.setActive (presets.getActive());
 }
 
-void LearnerCompEditor::toggleTheme()
+void LearnerCompEditor::tick()
 {
-    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
-                             ? AbcTrainTheme::Mode::dark
-                             : AbcTrainTheme::Mode::light;
-
-    AbcTrainTheme::setMode (newMode);
-    themeProperties.setValue (themeModeKey, newMode == AbcTrainTheme::Mode::light ? "light" : "dark");
-
-    // accentFor() returns a different value per mode, so it has to be
-    // asked again rather than reused from construction.
-    accent = AbcTrainTheme::accentFor (AbcTrainTheme::Family::dynamics);
-    refreshPresetChips();
-    lookAndFeel.refreshFromTheme (accent);
-    applyTheme();
-
-    for (auto* child : getChildren())
-        child->repaint();
-}
-
-LearnerCompEditor::~LearnerCompEditor()
-{
-    processor.setWaveformDisplay (nullptr);
-    processor.setSpectrumAnalyzer (nullptr);
-    setLookAndFeel (nullptr);
-}
-
-void LearnerCompEditor::paint (juce::Graphics& g)
-{
-    const auto& theme = AbcTrainTheme::current();
-
-    // Each plugin's own room, the same idea EarTrainer applies per
-    // exercise - and the same four family colours, so the trainer and the
-    // plugin that teaches the same skill read as one subject.
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat(), accent);
-
-    AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), "Analysis");
-    AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), "Compressor");
-
-    // Recessed wells behind the two data displays, so they read as cut
-    // into the panel while the controls sit on top of it.
-    AbcTrainLookAndFeel::paintDisplayWell (g, spectrum.getBounds().toFloat().expanded (1.0f));
-    AbcTrainLookAndFeel::paintDisplayWell (g, waveform.getBounds().toFloat().expanded (1.0f));
-
-    AbcTrainLookAndFeel::drawTrackedText (
-        g, titleLabel.getText(),
-        juce::Rectangle<float> (52.0f, (float) AbcTrainTheme::Spacing::medium,
-                                 (float) getWidth() * 0.4f, 32.0f),
-        AbcTrainLookAndFeel::titleFont(), theme.textBright, 1.8f,
-        juce::Justification::centredLeft);
-}
-
-void LearnerCompEditor::paintOverChildren (juce::Graphics& g)
-{
-    if (bypassVeil <= 0.004f || analysisSection.isEmpty())
-        return;
-
-    const auto& theme = AbcTrainTheme::current();
-    const auto eased = AbcTrainTheme::Ease::out (bypassVeil);
-    const auto area = analysisSection.toFloat().reduced (AbcTrainTheme::Spacing::medium);
-
-    // Desaturating the analysis rather than hiding it: you still want to
-    // see the signal going past, you just need to be able to tell at a
-    // glance that nothing is being done to it.
-    g.setColour (theme.windowBackground.withAlpha (0.62f * eased));
-    g.fillRoundedRectangle (area, AbcTrainTheme::Radius::well);
-
-    AbcTrainLookAndFeel::drawTrackedText (g, "BYPASSED", area.withHeight (20.0f)
-                                                              .withY (area.getCentreY() - 10.0f),
-                                           AbcTrainLookAndFeel::captionFont(),
-                                           theme.textDim.withAlpha (eased), 3.0f,
-                                           juce::Justification::centred);
-}
-
-void LearnerCompEditor::refreshPresetChips()
-{
-    const auto& theme = AbcTrainTheme::current();
-
-    for (int i = 0; i < presetButtons.size(); ++i)
-    {
-        // A near-transparent fill still gets the LookAndFeel's 1px border,
-        // so an unselected chip reads as an outline rather than as a
-        // disabled button.
-        presetButtons[i]->setColour (juce::TextButton::buttonColourId,
-                                      i == activePreset ? accent.withAlpha (0.85f)
-                                                        : theme.widgetBackground.withAlpha (0.25f));
-        presetButtons[i]->repaint();
-    }
-}
-
-void LearnerCompEditor::resized()
-{
-    updateWindow.setBounds (getLocalBounds());
-
-    using namespace AbcTrainTheme;
-
-    lessonController.setBounds (getLocalBounds());
-    for (auto* controller : { &busGlueLessonController, &attackLessonController,
-                              &releaseLessonController })
-        controller->setBounds (getLocalBounds());
-
-    auto area = getLocalBounds().reduced (Spacing::large);
-
-    auto titleRow = area.removeFromTop (32);
-    modulesButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
-    titleRow.removeFromRight (Spacing::small);
-    themeButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
-    titleRow.removeFromRight (Spacing::tight);
-    updateButton.setBounds (titleRow.removeFromRight (30).withSizeKeepingCentre (30, 30));
-    titleRow.removeFromRight (Spacing::small);
-    bypassButton.setBounds (titleRow.removeFromRight (96));
-    titleRow.removeFromRight (Spacing::small);
-    practiceSelector.setBounds (titleRow.removeFromRight (practiceSelector.getPreferredWidth())
-                                    .withSizeKeepingCentre (practiceSelector.getPreferredWidth(), 24));
-    pluginIcon.setBounds (titleRow.removeFromLeft (28));
-
-    area.removeFromTop (Spacing::section);
-
-    // --- analysis section: spectrum, waveform, meters ---
-    // 460, not the 390 this used to be. The old value was 14px short of
-    // what the rows inside it ask for, and removeFromTop clamps to the
-    // height available rather than overflowing - so the gain-reduction
-    // meter silently got 32px instead of 46 and drew as a token circle.
-    // Caught by rendering the editor (tools/EditorSnapshots); the window
-    // had 132px of dead space underneath at the same time, which is where
-    // the extra height comes from rather than from a bigger window.
-    // Everything below the analysis has a fixed height on purpose: a
-    // rotary that grows is a rotary that stops matching its neighbours,
-    // and a preset chip does not get more readable for being taller.
-    const auto controlsHeight = 186 + Spacing::medium + 18 + Spacing::small;
-
-    // Everything left over, but never less than what the rows inside it
-    // actually ask for.
-    //
-    // The floor is not a guess: removeFromTop *clamps* to the height
-    // available instead of overflowing, so a floor one pixel short does not
-    // produce a scrollbar or a warning - it silently shrinks whatever is
-    // last inside, which here is the gain-reduction meter. That is the same
-    // fault ADR 023 recorded, and this reintroduced it by setting the floor
-    // below the content height.
-    analysisSection = area.removeFromTop (juce::jmax (460, area.getHeight() - controlsHeight));
-    {
-        auto inner = analysisSection.reduced (Spacing::medium);
-        inner.removeFromTop (Spacing::large);
-
-        spectrum.setBounds (inner.removeFromTop (170).reduced (1));
-        inner.removeFromTop (Spacing::medium);
-        waveform.setBounds (inner.removeFromTop (170).reduced (1));
-        inner.removeFromTop (Spacing::medium);
-
-        auto meterRow = inner.removeFromTop (52);
-        inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 3));
-        outputPeakLabel.setBounds (meterRow.removeFromRight (meterRow.getWidth() / 2));
-        gainReductionMeter.setBounds (meterRow.reduced (Spacing::small, 0));
-    }
-
-    area.removeFromTop (Spacing::medium);
-
-    // --- control section: knobs and presets ---
-    controlSection = area.removeFromTop (186);
-    {
-        auto inner = controlSection.reduced (Spacing::medium);
-        inner.removeFromTop (Spacing::large);
-
-        auto knobRow = inner.removeFromTop (108);
-        const auto knobWidth = knobRow.getWidth() / (int) knobs.size();
-        for (auto& knob : knobs)
-        {
-            auto column = knobRow.removeFromLeft (knobWidth).reduced (Spacing::tight);
-            knob.nameLabel.setBounds (column.removeFromTop (18));
-            knob.slider.setBounds (column);
-        }
-
-        inner.removeFromTop (Spacing::small);
-
-        auto presetRow = inner.removeFromTop (32);
-        const auto presetWidth = presetRow.getWidth() / juce::jmax (1, presetButtons.size());
-        for (auto* button : presetButtons)
-            button->setBounds (presetRow.removeFromLeft (presetWidth).reduced (Spacing::tight, 0));
-    }
-
-    soundkorbLink.setBounds (area.removeFromBottom (18).removeFromRight (130));
-
-    // The guide card floats over the lower part of the analysis section:
-    // close to the knobs being dragged, without covering them.
-    moduleScreen.setBounds (analysisSection.withBottom (getHeight()));
-
-    guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
-                                            .withHeight (66)
-                                            .withY (analysisSection.getBottom() - 78));
-}
-
-void LearnerCompEditor::timerCallback()
-{
-    // Bypass used to change nothing on screen, so the only way to know
-    // whether you were hearing the plugin was to look at the checkbox.
-    // Eased on this timer rather than a second one - 30 Hz over ~260 ms is
-    // eight frames, plenty for a fade.
-    {
-        const auto target = processor.apvts.getRawParameterValue (LearnerCompProcessor::bypassParamId)->load() > 0.5f
-                                ? 1.0f : 0.0f;
-
-        if (! juce::approximatelyEqual (bypassVeil, target))
-        {
-            const auto step = (float) (1000.0 / 30.0 / AbcTrainTheme::Duration::release);
-
-            bypassVeil = std::abs (target - bypassVeil) <= step
-                             ? target
-                             : bypassVeil + (target > bypassVeil ? step : -step);
-            repaint();
-        }
-    }
-
-    const auto sr = processor.getSampleRate();
-    spectrum.setSampleRate (sr > 0.0 ? sr : 44100.0);
+    updateTransferCurve();
+    transferCurve.setInputLevel (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -100.0f));
 
     gainReductionMeter.setGainReductionDb (waveform.getCurrentHighlightAmount());
 
-    inputPeakLabel.setText ("In: "
-                                 + juce::String (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -60.0f), 1)
-                                 + " dB",
-                             juce::dontSendNotification);
-
-    outputPeakLabel.setText ("Out: "
-                                  + juce::String (juce::Decibels::gainToDecibels (waveform.getOutputPeak(), -60.0f), 1)
-                                  + " dB",
-                              juce::dontSendNotification);
+    inputPeakLabel.setText (peakText ("lp.in", "In", waveform.getInputPeak()), juce::dontSendNotification);
+    outputPeakLabel.setText (peakText ("lp.out", "Out", waveform.getOutputPeak()), juce::dontSendNotification);
 }

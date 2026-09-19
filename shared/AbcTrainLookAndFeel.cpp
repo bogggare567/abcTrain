@@ -58,6 +58,7 @@ void AbcTrainLookAndFeel::refreshFromTheme (juce::Colour accentOverride)
 {
     const auto& t = current();
     const auto accent = accentOverride.isTransparent() ? t.accent : accentOverride;
+    primaryFill = accent;
 
     // LookAndFeel_V4::initialiseColours() wires each of these nine slots
     // into the specific component colourIds every JUCE widget actually
@@ -441,7 +442,13 @@ void AbcTrainLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
         const auto pressP = Ease::out (stateRegistry.pressAmount (button, shouldDrawButtonAsDown));
         const auto area = button.getLocalBounds().toFloat();
 
-        g.setColour (t.accent.brighter (0.10f * hoverP).darker (0.12f * pressP));
+        // The fill is this editor's accent - the family colour in a Learner
+        // plugin, the product blue in the trainer. It used to be the
+        // palette's accent outright, so every chosen preset in Learner Verb
+        // was blue on a green plugin. Not buttonOnColourId: JUCE maps that
+        // from the scheme's warm slot, and the trainer's toggles use it.
+        const auto fill = primaryFill;
+        g.setColour (fill.brighter (0.10f * hoverP).darker (0.12f * pressP));
         g.fillRect (area);
 
         // The marks in the *label* colour, not the fill's: on a solid
@@ -736,7 +743,6 @@ void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b
         // corners) that makes a control read as part of an instrument
         // rather than as a web form field. JUCE has no letter-spacing on
         // drawText, so this cannot go through the base class.
-        const auto& t = current();
         const auto on = button.getToggleState();
 
         // A filled button gets whichever label colour actually shows up on
@@ -766,7 +772,7 @@ void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b
     // untracked capitals in a solid block read as a warning sign.
     drawTrackedText (g, toCaps (button.getButtonText()),
                      button.getLocalBounds().toFloat(),
-                     headingFont(), current().windowBackground, 1.9f,
+                     headingFont(), labelColourOn (primaryFill), 1.9f,
                      juce::Justification::centred);
 }
 

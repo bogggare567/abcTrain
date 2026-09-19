@@ -66,6 +66,7 @@ public:
 
     const juce::String& getTitle() const noexcept { return title; }
     const LessonStep& getCurrentStep() const { return steps[(size_t) currentStep]; }
+    const std::vector<LessonStep>& getSteps() const noexcept { return steps; }
 
 private:
     juce::String title;

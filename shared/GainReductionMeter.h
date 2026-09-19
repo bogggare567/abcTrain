@@ -34,7 +34,12 @@ public:
 
     void paint (juce::Graphics&) override;
 
+    // "dB" and the decimal mark in the player's language.
+    void setUnits (juce::String dbUnit, juce::String decimalMark) { unit = std::move (dbUnit); decimal = std::move (decimalMark); repaint(); }
+
 private:
+    juce::String unit { "dB" }, decimal { "." };
+
     void timerCallback() override;
 
     float targetDb = 0.0f;

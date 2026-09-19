@@ -301,6 +301,7 @@ target_sources(LearnerEQ
         shared/UpdatePrompt.cpp
         shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
+        shared/LearnerEditorBase.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -369,6 +370,7 @@ target_sources(LearnerComp
         shared/UpdatePrompt.cpp
         shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
+        shared/LearnerEditorBase.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -436,6 +438,7 @@ target_sources(LearnerVerb
         shared/UpdatePrompt.cpp
         shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
+        shared/LearnerEditorBase.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -498,6 +501,7 @@ target_sources(EarTrainerTests
         shared/UpdatePrompt.cpp
         shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
+        shared/LearnerEditorBase.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -534,6 +538,7 @@ target_sources(EarTrainerTests
         tests/HintTest.cpp
         tests/SkillBucketTest.cpp
         tests/HearingGuardTest.cpp
+        tests/LearnerRedesignTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
         Source/Achievements.cpp
@@ -619,6 +624,7 @@ set(abcTrainEditorToolSources
         shared/UpdatePrompt.cpp
         shared/UpdateWindow.cpp
         shared/ModuleScreenComponent.cpp
+        shared/LearnerEditorBase.cpp
         shared/TrainingModule.cpp
         shared/LessonAudioBed.cpp
         shared/ModuleProgress.cpp
@@ -710,6 +716,40 @@ target_link_libraries(EditorSnapshots
 # be unreachable because something transparent lies over it, or it was
 # parked at empty bounds. Both read to a player as a broken app, and
 # neither is visible in a snapshot - see tools/ClickMap.cpp.
+# Prints every English string the Learner plugins show, as i18n keys - the
+# starting point for translating them (see tools/LearnerStrings.cpp).
+juce_add_console_app(LearnerStrings
+    PRODUCT_NAME "LearnerStrings"
+)
+
+juce_generate_juce_header(LearnerStrings)
+
+target_sources(LearnerStrings
+    PRIVATE
+        tools/LearnerStrings.cpp
+        ${abcTrainEditorToolSources}
+)
+
+target_compile_definitions(LearnerStrings
+    PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+)
+
+target_link_libraries(LearnerStrings
+    PRIVATE
+        juce::juce_audio_utils
+        juce::juce_dsp
+        juce::juce_animation
+        I18nData
+        FontData
+        SampleData
+        BrandData
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags
+)
+
 juce_add_console_app(ClickMap
     PRODUCT_NAME "ClickMap"
 )
@@ -743,7 +783,7 @@ target_link_libraries(ClickMap
         juce::juce_recommended_warning_flags
 )
 
-foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests EditorSnapshots ClickMap)
+foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTests EditorSnapshots ClickMap LearnerStrings)
     target_include_directories(${abcTrainTarget} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 endforeach()
 

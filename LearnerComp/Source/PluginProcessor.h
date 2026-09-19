@@ -119,6 +119,7 @@ private:
     void updateEngineParameters();
 
     CompressorEngine engine;
+    juce::SmoothedValue<float> makeupGain { 1.0f }, mixAmount { 1.0f }, activeAmount { 1.0f };
     std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrumAnalyzer { nullptr };
 

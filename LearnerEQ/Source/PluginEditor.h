@@ -1,172 +1,60 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "../../shared/UpdateWindow.h"
-#include "../../shared/ModuleScreenComponent.h"
-#include "../../shared/ModuleProgress.h"
 #include "PluginProcessor.h"
 #include "SpectrumAnalyser.h"
+#include "../../shared/LearnerEditorBase.h"
+#include "../../shared/SegmentedChoice.h"
 #include "../../shared/WaveformDisplay.h"
-#include "../../shared/LessonController.h"
-#include "../../shared/UpdateChecker.h"
-#include "../../shared/AbcTrainLookAndFeel.h"
-#include "../../shared/AbcTrainTheme.h"
-#include "../../shared/GuideTooltip.h"
-#include "../../shared/AppIcons.h"
-#include "../../shared/PracticeSourceSelector.h"
-#include "../../shared/i18n/LocalisationManager.h"
-#include <array>
-#include <memory>
 
-class LearnerEQEditor : public juce::AudioProcessorEditor,
-                         private juce::Timer
+// Learner EQ: the curve is the instrument, and one row of controls follows
+// whichever band is selected. The shell is LearnerEditorBase's (ADR 037).
+class LearnerEQEditor : public LearnerEditorBase
 {
 public:
     explicit LearnerEQEditor (LearnerEQProcessor&);
     ~LearnerEQEditor() override;
 
-    void paint (juce::Graphics&) override;
-
-    // The bypass veil has to go over the spectrum and waveform, which are
-    // child components - paint() runs underneath them.
-    void paintOverChildren (juce::Graphics&) override;
-    void resized() override;
-
 private:
-    void timerCallback() override;
+    int analysisContentHeight() const override { return 215 + 12 + 110 + 8 + 24; }
+    int controlsContentHeight() const override { return 24 + 8 + 30 + 10 + 118; }
+    void layoutAnalysis (juce::Rectangle<int>) override;
+    void layoutControls (juce::Rectangle<int>) override;
+    void themeChanged() override;
+    void tick() override;
+    void paintOverChildren (juce::Graphics&) override;
 
-    // Pushes the active palette into widgets that colour themselves.
-    void applyTheme();
-    void toggleTheme();
-
-    // The selected band's controls - *one* set, not one per band.
-    //
-    // There used to be four columns of three knobs, permanently on
-    // screen, whether or not you were touching any of them. Twelve
-    // controls to say what is now said by the node under your pointer.
-    // These exist for the two things a curve cannot express well: the
-    // exact number, and the filter type.
-    //
-    // They follow the selection rather than owning it: no attachments,
-    // because the selected band changes and an APVTS attachment is bound
-    // to one parameter for its lifetime. The editor's 30 Hz timer pushes
-    // values in, and onValueChange writes back through the parameter -
-    // which is also what keeps host automation and undo working.
-    juce::ComboBox typeSelector;
-    juce::Slider freqSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-    juce::Slider gainSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-    juce::Slider qSlider    { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
-    juce::Label freqLabel, gainLabel, qLabel, typeLabel;
-
-    // "Boom - warmth, then mud and boxiness". One line, under the
-    // pointer's zone. The map of sensations is the thing a mixer actually
-    // carries; the numbers are how you write it down afterwards.
-    juce::Label zoneLabel;
-    juce::TextButton zonesButton { "Zones" };
-
-    // -1 when nothing is selected.
-    int selectedBand = -1;
     void selectBand (int band);
     void pushSelectedBandToControls();
     void writeParameter (const juce::String& id, float value);
     void refreshZoneLabel();
     void pushBandsToDisplay();
+    juce::String typeName (EQCoefficients::BandType) const;
 
-    // Declared first so it's constructed before, and destroyed after,
-    // every other Component below - see the class comment on
-    // AbcTrainLookAndFeel.
-    AbcTrainLookAndFeel lookAndFeel;
+    LearnerEQProcessor& eqProcessor;
 
-
-    LearnerEQProcessor& processor;
-
-    // The three Learner plugins were English-only while the trainer had
-    // twelve languages - a seam the update dialogue made obvious. Reads
-    // the same product-wide preference the trainer writes.
-    //
-    // Declared *after* `processor` deliberately: members initialise in
-    // declaration order, and the first attempt put this above it, so
-    // getSharedProperties() ran on a reference that did not exist yet.
-    LocalisationManager localisation { processor.getSharedProperties() };
     SpectrumAnalyserComponent spectrum;
-    juce::Label titleLabel;
-    AppIconComponent pluginIcon;
-    // Floating, blur-backed guide card, shown only while a band's
-    // frequency knob is being dragged - replaces the permanent strip.
-    GuideTooltip guideTooltip;
     WaveformDisplay waveform;
-    juce::Label inputPeakLabel;
-    juce::Label outputPeakLabel;
+    juce::Label inputPeakLabel, outputPeakLabel;
 
-    juce::ToggleButton bypassButton { "Bypass" };
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
+    juce::Label zoneLabel;
+    juce::TextButton zonesButton;
+    SegmentedChoice typeChoice;
+    juce::Label bandLabel;
 
-    // Two lessons (see decisions/017) means a small picker instead of one
-    // "Lesson" button - each LessonController owns its own MicroLesson, and
-    // only one is ever visible/started at a time (see lessonSelector.onChange).
-    // The same shelf Comp and Verb use, so "teach me something" is one
-    // door with one shape in all three plugins. It was a bare ComboBox
-    // here, which is a different affordance for the same act.
-    //
-    // **No knob modules, deliberately** (ADR 027, and the user's own
-    // reasoning): what an EQ teaches is judgement about where a problem
-    // lives, not hitting a number on a dial. The shelf carries the four
-    // lessons and nothing else.
-    IconButton modulesButton { AppIcons::Icon::modules };
-    ModuleProgress moduleProgress { processor.getSharedProperties() };
-    ModuleScreenComponent moduleScreen { processor.apvts, moduleProgress,
-                                          processor.getPracticeSource(),
-                                          [] (const juce::String&, float) {},
-                                          [] {} };
-    LessonController lessonController;
-    LessonController resonanceLessonController;
+    // One chip per active band, and "+" to add one: the bands as things
+    // you can count and pick, not only as dots on a curve.
+    std::array<juce::TextButton, LearnerEQProcessor::maxBands> bandChips;
+    juce::TextButton addBandChip { "+" };
+    juce::Rectangle<int> chipRow;
+    void refreshBandChips();
+    juce::String formatFrequency (double hz) const;
+    juce::Slider freqSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Slider gainSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    juce::Slider qSlider    { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    std::array<juce::Rectangle<int>, 3> knobCaptions;
 
-    // The two lessons the pass filters made possible. Learner EQ has no
-    // knob-modules by choice (ADR 027) - what it teaches is judgement
-    // about where and how much, and these are the two moves where the
-    // reflex ("high-pass everything") most often outruns the reason.
-    LessonController highPassLessonController;
-    LessonController lowPassLessonController;
-
-    // Icon buttons rather than 76px and 62px of text for two controls
-    // pressed once a session - the same treatment EarTrainer's title row
-    // already had (see decisions/022).
-    IconButton updateButton { AppIcons::Icon::download };
-
-    // Light/dark switch, persisted product-wide.
-    IconButton themeButton { AppIcons::Icon::sun };
-
-    // What this plugin listens to when there is no host feeding it -
-    // see shared/PracticeSourceSelector.h.
-    PracticeSourceSelector practiceSelector { processor.getPracticeLibrary(),
-                                              processor.getPracticeSource(),
-                                              processor.getSharedProperties(),
-                                              [this] { return processor.getSampleRate(); } };
-    juce::PropertiesFile themeProperties;
-
-    // This plugin's family colour (see AbcTrainTheme::accentFor). Held as
-    // a member because the light and dark variants differ, so it has to be
-    // recomputed and re-pushed on every theme change, not just once.
-    juce::Colour accent;
-
-    // Eased 0..1 "how bypassed does this look". Driven by the editor's
-    // existing 30 Hz timer rather than a second one: bypass used to change
-    // nothing on screen at all, so you could not tell by looking whether
-    // you were hearing the plugin.
-    float bypassVeil = 0.0f;
-
-    // Section backdrops, computed in resized() and drawn in paint().
-    juce::Rectangle<int> analysisSection;
-    juce::Rectangle<int> controlSection;
-
-    // Product site link - see decisions/016.
-    juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
-
-    // The update, as something you can watch. Added last of all the
-    // children so it paints over everything, including the lesson
-    // overlays - an update is the one thing that should not be behind
-    // anything.
-    UpdateWindow updateWindow;
+    int selectedBand = -1;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEQEditor)
 };

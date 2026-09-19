@@ -46,6 +46,10 @@ public:
     // graphic - anyone who already has the map in their head can turn
     // them off.
     void setZonesVisible (bool shouldBeVisible);
+
+    // The zone names in the player's language; the English in
+    // FrequencyZones.h when a name is empty.
+    void setZoneNames (juce::StringArray names) { zoneNames = std::move (names); repaint(); }
     bool areZonesVisible() const noexcept { return zonesVisible; }
 
     // What the pointer is currently over, for the editor's readout line.
@@ -106,6 +110,7 @@ private:
     int hoveredBandIndex = -1;
     int draggingBandIndex = -1;
     bool zonesVisible = true;
+    juce::StringArray zoneNames;
 
     float pointerFreq = -1.0f;
 

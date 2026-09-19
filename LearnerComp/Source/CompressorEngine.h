@@ -39,26 +39,7 @@ public:
     float computeGain (float detectionSample) noexcept
     {
         const auto inputDb = juce::Decibels::gainToDecibels (std::abs (detectionSample), -100.0f);
-        const auto overDb = inputDb - thresholdDb;
-
-        float targetReductionDb;
-        if (kneeDb <= 0.0f)
-        {
-            targetReductionDb = overDb > 0.0f ? overDb * (1.0f - 1.0f / ratio) : 0.0f;
-        }
-        else if (2.0f * overDb < -kneeDb)
-        {
-            targetReductionDb = 0.0f;
-        }
-        else if (2.0f * std::abs (overDb) <= kneeDb)
-        {
-            const auto x = overDb + kneeDb * 0.5f;
-            targetReductionDb = (1.0f - 1.0f / ratio) * (x * x) / (2.0f * kneeDb);
-        }
-        else
-        {
-            targetReductionDb = overDb * (1.0f - 1.0f / ratio);
-        }
+        const auto targetReductionDb = staticReductionDb (inputDb, thresholdDb, ratio, kneeDb);
 
         const auto coeff = (targetReductionDb > envelopeDb) ? attackCoeff : releaseCoeff;
         envelopeDb = coeff * envelopeDb + (1.0f - coeff) * targetReductionDb;
@@ -67,6 +48,30 @@ public:
     }
 
     float getLastGainReductionDb() const noexcept { return envelopeDb; }
+
+    // The gain computer on its own - how many dB a steady level is turned
+    // down once the envelope has settled. Public and static so the
+    // transfer curve on screen is drawn from this exact formula rather
+    // than from a copy of it.
+    static float staticReductionDb (float inputDb, float thresholdDb, float ratio, float kneeDb) noexcept
+    {
+        ratio = juce::jmax (1.0f, ratio);
+        const auto overDb = inputDb - thresholdDb;
+
+        if (kneeDb <= 0.0f)
+            return overDb > 0.0f ? overDb * (1.0f - 1.0f / ratio) : 0.0f;
+
+        if (2.0f * overDb < -kneeDb)
+            return 0.0f;
+
+        if (2.0f * std::abs (overDb) <= kneeDb)
+        {
+            const auto x = overDb + kneeDb * 0.5f;
+            return (1.0f - 1.0f / ratio) * (x * x) / (2.0f * kneeDb);
+        }
+
+        return overDb * (1.0f - 1.0f / ratio);
+    }
 
 private:
     float timeToCoefficient (float timeMs) const noexcept
