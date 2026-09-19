@@ -6,6 +6,35 @@ EarTrainerProcessor::EarTrainerProcessor()
                            .withInput ("Input", juce::AudioChannelSet::stereo(), true)
                            .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    // Before any audio device exists, so the editor (and the snapshot
+    // tool, which never has one) can already convert levels.
+    measureCalibrationNoise (48000.0);
+}
+
+void EarTrainerProcessor::measureCalibrationNoise (double sampleRate)
+{
+    // Two seconds of the exact generator the calibration row plays, once
+    // unscaled to find the gain that puts it at -20 dBFS RMS, then scaled
+    // and A-weighted to find what the meter will read for it.
+    const auto length = juce::roundToInt (sampleRate * 2.0);
+    juce::AudioBuffer<float> noise (1, length);
+
+    PinkNoiseGenerator generator { 0x5eed };
+    double sum = 0.0;
+
+    for (int i = 0; i < length; ++i)
+    {
+        const auto x = generator.nextSample();
+        noise.setSample (0, i, x);
+        sum += (double) x * x;
+    }
+
+    const auto rms = std::sqrt (sum / length);
+    calibrationGain = rms > 0.0 ? (float) (juce::Decibels::decibelsToGain ((double) calibrationLevelDbFs) / rms)
+                                : 0.0f;
+    noise.applyGain (calibrationGain);
+
+    calibrationReference = AWeightedMeter::meanSquareOf (noise, sampleRate);
 }
 
 bool EarTrainerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -27,6 +56,9 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 
     gameManager.prepare (spec);
 
+    outputMeter.prepare (sampleRate, getTotalNumOutputChannels());
+    measureCalibrationNoise (sampleRate);
+
     // 40 ms is long enough that a dragged slider never zippers and short
     // enough that the control still feels immediate.
     outputGain.reset (sampleRate, 0.04);
@@ -41,6 +73,22 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     // The trainer ignores whatever the host feeds in and generates its own test signal.
     gameManager.process (buffer);
 
+    if (calibrationNoise.load())
+    {
+        // The same noise in every channel: the player measures what both
+        // monitors together put at their head, which is what they hear.
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+        {
+            const auto x = calibrationGenerator.nextSample() * calibrationGain;
+
+            for (int ch = 0; ch < buffer.getNumChannels(); ++ch)
+                buffer.setSample (ch, i, x);
+        }
+
+        outputMeter.process (buffer);
+        return;
+    }
+
     if (! signalEnabled.load())
     {
         // Still ran the game's process() above so its internal state (burst
@@ -48,6 +96,10 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         // the output is silenced. Clearing without processing would make
         // every return from the menu start mid-burst.
         buffer.clear();
+
+        // Silence is metered too: quiet time on the menus is what makes a
+        // break count as one.
+        outputMeter.process (buffer);
         return;
     }
 
@@ -119,6 +171,9 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         for (int ch = 0; ch < numChannels; ++ch)
             buffer.getWritePointer (ch)[i] *= g;
     }
+
+    // What actually leaves, for the hearing dose.
+    outputMeter.process (buffer);
 }
 
 juce::AudioProcessorEditor* EarTrainerProcessor::createEditor()

@@ -166,8 +166,20 @@ public:
 
     bool areModesUnlockedForGame (int gameIndex) const
     {
-        return getStatsForGame (gameIndex).bestStreak >= streakToUnlockModes;
+        return allModesOpen || getStatsForGame (gameIndex).bestStreak >= streakToUnlockModes;
     }
+
+    // Pro setting: every mode open from the first visit, for someone who
+    // does not need to be walked in.
+    void setAllModesOpen (bool shouldBeOpen) noexcept { allModesOpen = shouldBeOpen; }
+
+    // Pro setting: how many right in a row take one step harder. 3 is the
+    // default and what a beginner always gets - the 3-down/1-up rule that
+    // settles near 79% correct (ADR 035). 2 settles near 71% (faster,
+    // rougher), 4 near 84% (slower, more certain). Clamped to 2..4; the
+    // current run toward a step is trimmed if it no longer fits.
+    void setStepUpAfter (int answersInARow);
+    int getStepUpAfter() const noexcept { return stepRule; }
 
     // "Trainings I'm interested in" - the player's own shortlist, pinned
     // to the top of the home screen. Persisted like everything else here,
@@ -238,6 +250,9 @@ private:
 
     GameManager& gameManager;
     std::unique_ptr<juce::PropertiesFile> properties;
+
+    int stepRule = stepUpAfter;
+    bool allModesOpen = false;
 
     // One of these per exercise. `level` moves both ways; `bestLevel`
     // only ever grows. See the class comment for why.

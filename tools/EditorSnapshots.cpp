@@ -83,7 +83,8 @@ namespace
 
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
-                       answered, survivalRun, home, homeWithRecords, hint };
+                       answered, survivalRun, home, homeWithRecords, hint,
+                       settingsPro, settingsHearing, hearingNotice };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -146,6 +147,15 @@ namespace
 
                 if (extra == Extra::settings)
                     editor.openSettingsForSnapshot();
+
+                if (extra == Extra::settingsPro)
+                    editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::training, true);
+
+                if (extra == Extra::settingsHearing)
+                    editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true);
+
+                if (extra == Extra::hearingNotice)
+                    editor.showHearingNoticeForSnapshot();
 
                 if (extra == Extra::results)
                     editor.showRunResultsForSnapshot();
@@ -248,8 +258,7 @@ int main (int argc, char* argv[])
     // and skip EarTrainer entirely if that copy fails, rather than
     // rendering anyway and risking someone's record for a screenshot.
     {
-        const auto settings = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-                                  .getChildFile ("abcTrain").getChildFile ("abcTrain.settings");
+        const auto settings = LocalisationManager::makeDefaultOptions().getDefaultFile();
         const auto backup = settings.getSiblingFile ("abcTrain.settings.snapshot-backup");
 
         const auto hadSettings = settings.existsAsFile();
@@ -301,6 +310,12 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Tour", -1, Extra::tour);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Screensaver", -1, Extra::screensaver);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Stretched", 0, Extra::stretched);
+
+            // Last, because these write Pro mode, a calibration and a week
+            // of dose into the settings file every later shot would inherit.
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingNotice", -1, Extra::hearingNotice);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsPro", -1, Extra::settingsPro);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsHearing", -1, Extra::settingsHearing);
 
             if (hadSettings)
             {

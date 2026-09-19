@@ -153,6 +153,11 @@ troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
 starts explaining a decision, it belongs in an ADR instead. The wiki git
 remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
+`docs/decisions/036-beginner-pro-and-hearing.md` (Beginner/Pro settings
+from one list in `Source/TrainerSettings.h`, and hearing protection per
+WHO / ITU-T H.870: break reminders and a tired-ear hint on time alone, and
+a weekly dose in Pa²·h once the player has measured the calibration noise;
+`shared/AWeightedMeter`, `Source/HearingGuard`, `Source/HearingNotice`).
 `docs/decisions/035-the-staircase.md` (levels as a 3-down/1-up staircase
 instead of points and a promotion test, the level shown as a threshold in
 the exercise's own units, home as a list of thresholds, 12 milestones and
@@ -412,13 +417,15 @@ full rationale.
   when `isBusy` says nothing is playing and no overlay is open. The
   welcome screen now opens **every** launch; the old `seenSupportScreen`
   flag became `tourOffered`, which is a different question.
-- `Source/SettingsScreenComponent.{h,cpp}` — a side rail (About /
-  Appearance / Background) rather than one flat card, so the screen keeps
-  working as it grows. A **Training** page briefly existed here (review
-  policy, auto-advance) and was reverted in `a83f901` as behaviour nobody
-  asked for; `docs/roadmap.md` records the pages that were discussed and
-  deliberately not started. It **opens on Appearance**, not About: a
-  licence and a version string are a reference page, not a destination.
+- `Source/SettingsScreenComponent.{h,cpp}` — a side rail with the
+  **Beginner / Pro** switch at the top and five pages (Training, Hearing,
+  Appearance, Background, About), each a column of rows: what it is, one
+  dim line on what it does to you, and a `shared/SegmentedChoice` on the
+  right. Every value lives in `Source/TrainerSettings.h` (key, default,
+  allowed values, beginner-visible); in Beginner the Training rows are
+  shown greyed at their defaults. The user asked for these explicitly
+  (ADR 036) — an earlier Training page was reverted in `a83f901` because
+  nobody had.
   Like Achievements and Training sounds, it is a **page under the
   navigation bar**, sized to `contentBounds()` — not a centred card over a
   dimmed window. All three used to be full-window overlays with their own

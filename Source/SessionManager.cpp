@@ -11,14 +11,16 @@ void SessionManager::setMode (Mode newMode)
 
 void SessionManager::startRun()
 {
+    rules = pendingRules;
+
     currentStreak = 0;
     bestStreakThisRun = 0;
 
     runActive = true;
     runScore = 0;
     roundsThisRun = 0;
-    livesRemaining = mode == Mode::survival ? survivalLives : 0;
-    secondsRemaining = mode == Mode::blitz ? blitzSeconds : 0;
+    livesRemaining = mode == Mode::survival ? rules.survivalLives : 0;
+    secondsRemaining = mode == Mode::blitz ? rules.blitzSeconds : 0;
 }
 
 void SessionManager::endRun()
@@ -74,7 +76,7 @@ bool SessionManager::registerAnswer (bool wasCorrect)
             // so a wrong answer should cost you the thing you're short of.
             if (! wasCorrect)
             {
-                secondsRemaining -= blitzPenaltySeconds;
+                secondsRemaining -= rules.blitzPenaltySeconds;
                 if (secondsRemaining <= 0)
                 {
                     secondsRemaining = 0;
@@ -90,7 +92,7 @@ bool SessionManager::registerAnswer (bool wasCorrect)
 
 bool SessionManager::spendHint()
 {
-    if (! runActive)
+    if (! runActive || ! rules.hintsAllowed)
         return false;
 
     switch (mode)
@@ -139,5 +141,6 @@ int SessionManager::getAutoAdvanceDelayMs (bool wasCorrect) const noexcept
     if (! runActive)
         return 0;
 
-    return wasCorrect ? autoAdvanceMsCorrect : autoAdvanceMsWrong;
+    return juce::roundToInt ((float) (wasCorrect ? autoAdvanceMsCorrect : autoAdvanceMsWrong)
+                             * rules.answerPauseScale);
 }

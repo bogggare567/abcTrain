@@ -50,6 +50,11 @@ public:
     // sentence.
     void setStatus (int streakDays);
 
+    // This week's hearing dose as a fraction of the limit (ADR 036), drawn
+    // as ten segments left of the streak. Hidden when `show` is false -
+    // hearing protection off, or nothing measured yet.
+    void setHearing (float weeklyFraction, bool show, juce::String caption);
+
     std::function<void (Item)> onItemChosen;
 
     // Where the editor should put the controls it already owns. The bar
@@ -83,6 +88,9 @@ private:
 
     juce::StringArray labels;
     juce::String streakTemplate;
+    float hearingFraction = 0.0f;
+    bool hearingShown = false;
+    juce::String hearingCaption;
     Item active = Item::trainings;
 
     int hovered = -1;

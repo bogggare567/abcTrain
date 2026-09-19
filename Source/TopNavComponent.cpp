@@ -76,6 +76,17 @@ void TopNavComponent::setStatus (int newStreakDays)
     repaint();
 }
 
+void TopNavComponent::setHearing (float weeklyFraction, bool show, juce::String caption)
+{
+    if (juce::approximatelyEqual (hearingFraction, weeklyFraction) && hearingShown == show && hearingCaption == caption)
+        return;
+
+    hearingFraction = weeklyFraction;
+    hearingShown = show;
+    hearingCaption = std::move (caption);
+    repaint();
+}
+
 juce::String TopNavComponent::streakCaption() const
 {
     return streakTemplate.replace ("{{days}}", juce::String (streakDays));
@@ -276,6 +287,8 @@ void TopNavComponent::paint (juce::Graphics& g)
     }
 
     // --- the streak, and its days as dots ---------------------------------
+    auto statusLeftEdge = getWidth() - pagePad - rightCluster - 20;
+
     if (streakTemplate.isNotEmpty() && streakDays > 0)
     {
         const auto font = AbcTrainLookAndFeel::labelFont();
@@ -307,6 +320,40 @@ void TopNavComponent::paint (juce::Graphics& g)
                 g.setColour (i < juce::jmin (streakDays, maxDots) ? theme.accentWarm
                                                                   : theme.outline);
                 g.fillRect (area.getX() + i * dotPitch, y, dotSize, dotSize);
+            }
+
+            statusLeftEdge = right - textWidth - 10 - dotsWidth - 24;
+        }
+    }
+
+    // --- this week's hearing dose ------------------------------------------
+    //
+    // Ten segments, calm until half, warm past it. Not red even at the
+    // limit: this is information about a week, not an alarm about now.
+    if (hearingShown)
+    {
+        const auto font = AbcTrainLookAndFeel::labelFont();
+        const auto caption = AbcTrainLookAndFeel::toCaps (hearingCaption);
+        const auto textWidth = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (caption, font, 1.68f));
+        const auto barWidth = 10 * 6 - 2;
+        auto area = juce::Rectangle<int> (statusLeftEdge - textWidth - 10 - barWidth, 0,
+                                           textWidth + 10 + barWidth, getHeight());
+
+        if (area.getX() > tabBounds (numItems - 1).getRight() + 16)
+        {
+            const auto colour = hearingFraction >= 0.5f ? theme.accentWarm : theme.textDim;
+
+            AbcTrainLookAndFeel::drawTrackedText (g, caption, area.removeFromLeft (textWidth).toFloat(),
+                                                   font, colour, 1.68f, juce::Justification::centredLeft);
+            area.removeFromLeft (10);
+
+            const auto lit = juce::jlimit (0, 10, (int) std::ceil (hearingFraction * 10.0f - 0.001f));
+            const auto y = area.getCentreY() - dotSize / 2;
+
+            for (int i = 0; i < 10; ++i)
+            {
+                g.setColour (i < lit ? colour : theme.outline);
+                g.fillRect (area.getX() + i * 6, y, 4, dotSize);
             }
         }
     }

@@ -264,7 +264,7 @@ void ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect,
     {
         // At the top step the run still counts up to full - the squares
         // stay lit - but there is nowhere further to go.
-        if (++game.stepRun >= stepUpAfter)
+        if (++game.stepRun >= stepRule)
         {
             if (game.level < maxLevel)
             {
@@ -273,7 +273,7 @@ void ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect,
             }
             else
             {
-                game.stepRun = stepUpAfter - 1;
+                game.stepRun = stepRule - 1;
             }
         }
     }
@@ -328,7 +328,15 @@ int ProgressManager::getStepRunForGame (int gameIndex) const noexcept
 
 float ProgressManager::getLevelProgressForGame (int gameIndex) const noexcept
 {
-    return (float) getStepRunForGame (gameIndex) / (float) stepUpAfter;
+    return (float) getStepRunForGame (gameIndex) / (float) stepRule;
+}
+
+void ProgressManager::setStepUpAfter (int answersInARow)
+{
+    stepRule = juce::jlimit (2, 4, answersInARow);
+
+    for (auto& game : progressPerGame)
+        game.stepRun = juce::jmin (game.stepRun, stepRule - 1);
 }
 
 int ProgressManager::getMaxLevelReached() const noexcept
@@ -482,7 +490,7 @@ void ProgressManager::loadState()
         gameProgress.level     = juce::jlimit (1, maxLevel, properties->getIntValue (prefix + "level", 1));
         gameProgress.bestLevel = juce::jlimit (gameProgress.level, maxLevel,
                                                properties->getIntValue (prefix + "bestLevel", gameProgress.level));
-        gameProgress.stepRun   = juce::jlimit (0, stepUpAfter - 1, properties->getIntValue (prefix + "stepRun", 0));
+        gameProgress.stepRun   = juce::jlimit (0, stepRule - 1, properties->getIntValue (prefix + "stepRun", 0));
 
         if (i < favouritePerGame.size())
             favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);

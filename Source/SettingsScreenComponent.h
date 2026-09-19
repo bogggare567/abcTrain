@@ -3,29 +3,30 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "../shared/i18n/LocalisationManager.h"
 #include "../shared/CompactSelector.h"
+#include "../shared/SegmentedChoice.h"
+#include "TrainerSettings.h"
 #include <functional>
 #include <memory>
 
-// One place for how the app looks, instead of four controls scattered
-// along the title row.
+// Every setting the trainer has, on one page per subject (ADR 036).
 //
-// The title row had grown a theme toggle, a window-size picker and a
-// language picker, each a different shape, none of them labelled, all
-// competing with the three that actually do something (sounds, updates,
-// support). Settings that are set once belong behind a door.
+// **Beginner / Pro** sits at the top of the side rail, because it decides
+// what the rest of the page means. In Beginner every training rule is the
+// standard one; the rows are still shown - greyed, holding the defaults -
+// so that what *could* be tuned is visible, and one click away, without
+// being a thing to fiddle with in the first week. Pro enables them.
+// Nothing is lost switching back: TrainerSettings keeps the Pro values and
+// simply stops honouring them.
 //
-// What is here is deliberately the ordinary set - theme, window size,
-// language, text size, wallpaper. Nothing about training, nothing about
-// audio: those live where they are used.
+// Each row is: what it is (one line), what it does to you (one dim line),
+// and the control on the right. The dim line is the one that matters -
+// "3 in a row" means nothing until it says "settles near 79% correct".
 //
-// **Text size is separate from window size on purpose.** The window-size
-// picker scales the entire layout through an AffineTransform, so text and
-// spacing grow together and the design is identical at every step. That is
-// right for "this window is too small on a 4K display" and useless for "I
-// can read everything except the small print". Text size scales only the
-// fonts, against a layout that stays put - which is the accessibility
-// knob, and the one people actually mean.
-class SettingsScreenComponent : public juce::Component
+// Pages: Training, Hearing, Appearance, Background, About. Appearance and
+// Background are the same for everyone; they are about the person, not
+// the game.
+class SettingsScreenComponent : public juce::Component,
+                                private juce::Timer
 {
 public:
     SettingsScreenComponent (LocalisationManager&, juce::PropertiesFile&);
@@ -37,87 +38,111 @@ public:
     // (window size, or a repaint after a theme/wallpaper change).
     std::function<void()> onSettingsChanged;
 
+    // A training or hearing setting changed: the editor re-applies
+    // TrainerSettings to the session, the staircase and the guard.
+    std::function<void()> onTrainerSettingsChanged;
+
+    // Hearing hooks, wired by the editor to the processor and HearingGuard.
+    std::function<void (bool)> onCalibrationNoise;
+    std::function<void (double hours, double levelDbA)> onAddExposure;
+
+    // "34% of the week · last second 76 dB(A)" - asked once a second while
+    // the Hearing page is open.
+    std::function<juce::String()> hearingStatus;
+
     void refresh();
+
+    enum class Page { training, hearing, appearance, background, about };
+    void selectPage (Page);
+    Page getPage() const noexcept { return currentPage; }
 
     void paint (juce::Graphics&) override;
     void resized() override;
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void visibilityChanged() override;
 
-    // Reads the persisted wallpaper (if any) and hands it to
-    // AbcTrainLookAndFeel. Called at startup, before the first paint, so a
-    // saved background is there on launch rather than after a visit here.
     static void applyStoredBackground (juce::PropertiesFile&);
-
-    static constexpr const char* textScaleKey = "textScale";
-
-    // Reads the saved typeface and hands it to AbcTrainLookAndFeel.
-    // Called at startup alongside applyStoredBackground, before the
-    // first paint - a font applied only after a visit to Settings is
-    // a font nobody sees on launch.
     static void applyStoredTypeface (juce::PropertiesFile&);
 
+    static constexpr const char* textScaleKey = "textScale";
     static constexpr const char* backgroundPathKey = "backgroundImage";
     static constexpr const char* backgroundScrimKey = "backgroundScrim";
 
 private:
-    juce::Rectangle<int> cardBounds() const;
-    void chooseBackground();
-    void clearBackground();
+    using Id = TrainerSettings::Id;
 
-    // The side rail: About / Appearance / Background, and room for the
-    // pages that are coming (see docs/roadmap.md). A settings screen that
-    // is a single flat card stops working the moment it has more than one
-    // subject in it, and this one already has three.
-    enum class Page { about, appearance, background };
+    // One row of a settings page.
+    struct Row
+    {
+        juce::String titleKey, hintKey;
+        juce::Component* control = nullptr;
+        int controlWidth = 0;              // 0 = take the rest of the row
+        bool proOnly = false;
+        Page page = Page::training;
+        juce::Rectangle<int> bounds;       // laid out in resized()
+    };
 
-    void selectPage (Page);
-    void paintSideMenu (juce::Graphics&, juce::Rectangle<int>);
+    void buildRows();
+    void timerCallback() override;
+    void syncControlsFromSettings();
+    juce::String hintFor (const Row&) const;
+
     juce::Rectangle<int> sideMenuBounds() const;
     juce::Rectangle<int> pageBounds() const;
+    juce::Rectangle<int> modeSwitchBounds() const;
+    void paintSideMenu (juce::Graphics&, juce::Rectangle<int>);
+    int menuRowAt (juce::Point<int>) const;
 
-    // Opens on Appearance. "About" is a reference page - a licence and a
-    // version string - and nobody walks into Settings to read a licence.
-    // It stays first in the rail, because that is where a person looks
-    // for it when they do want it.
-    Page currentPage = Page::appearance;
-    int hoveredMenuRow = -1;
-
-    // The licence.
-    //
-    // Still never a link out - a licence you have to leave the app to read
-    // is a licence nobody reads, which is why it is embedded at all. But
-    // opening Settings straight into sixty lines of it made the first
-    // thing this screen ever showed a legal document, and the page a
-    // person came here for was two rows down and unread.
-    //
-    // So: the part that says what you *may* do, which is the part almost
-    // everyone is actually asking about, and a button that expands the
-    // rest in place. Quoted out of the file by its own headings rather
-    // than paraphrased - a summary of a licence written by the same person
-    // who wrote the code is exactly the kind of paraphrase nobody should
-    // be relying on.
-    juce::TextEditor licenceView;
-    juce::TextButton licenceToggle;
-    bool licenceExpanded = false;
+    void chooseBackground();
+    void clearBackground();
 
     void refreshLicenceView();
     static juce::String licenceText (bool full);
 
     LocalisationManager& localisation;
     juce::PropertiesFile& properties;
+    TrainerSettings settings { properties };
 
-    juce::Label textScaleLabel, typefaceLabel, screensaverLabel, backgroundLabel, scrimLabel;
-    CompactSelector typefaceSelector;
-    CompactSelector screensaverSelector;
+    Page currentPage = Page::training;
+    int hoveredMenuRow = -1;
+
+    SegmentedChoice modeSwitch;
+
+    // Training
+    SegmentedChoice stepRule, answerPause, survivalLives, blitzSeconds, blitzPenalty, hints, allModes;
+    juce::TextButton resetButton;
+
+    // Hearing
+    SegmentedChoice hearingOn, breakMinutes, fatigueHint, weeklyLimit;
+    juce::TextButton calibrationNoiseButton, calibrationSaveButton, calibrationClearButton;
+    juce::Slider calibrationSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
+    juce::Component calibrationRow;
+    SegmentedChoice exposureHours, exposureLevel;
+    juce::TextButton exposureAddButton;
+    juce::Component exposureRow;
+    juce::String hearingStatusText;
+    bool noisePlaying = false;
+
+    // Appearance
     juce::Slider textScaleSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
+    CompactSelector typefaceSelector, screensaverSelector;
+
+    // Background
+    juce::TextButton chooseBackgroundButton, clearBackgroundButton;
+    juce::Component backgroundButtons;
     juce::Slider scrimSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
-    juce::TextButton chooseBackgroundButton, clearBackgroundButton, closeButton;
 
+    // About
+    juce::TextEditor licenceView;
+    juce::TextButton licenceToggle;
+    bool licenceExpanded = false;
+
+    juce::TextButton closeButton;
+
+    std::vector<Row> rows;
     std::unique_ptr<juce::FileChooser> fileChooser;
-
-    juce::String headingAppearance, headingBackground;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SettingsScreenComponent)
 };

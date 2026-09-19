@@ -6,6 +6,8 @@
 #include "../shared/Vectorscope.h"
 #include "../shared/SpectrumAnalyzer.h"
 #include "../shared/WaveformDisplay.h"
+#include "../shared/AWeightedMeter.h"
+#include "../shared/PinkNoiseGenerator.h"
 #include <atomic>
 
 class EarTrainerProcessor : public juce::AudioProcessor
@@ -84,6 +86,24 @@ public:
 
     float getOutputGainDb() const noexcept { return outputGainDb.load(); }
 
+    // ---- hearing (ADR 036) ----
+    //
+    // What left the processor, A-weighted, since the editor last asked.
+    AWeightedMeter::Reading drainOutputLevel() noexcept { return outputMeter.drain(); }
+
+    // Pink noise at exactly -20 dBFS RMS in each channel, replacing
+    // everything else while on - the one sound the player measures with a
+    // meter to tie dBFS to dB SPL. Plays even on menus: it is only ever
+    // switched on from the calibration row in Settings.
+    void setCalibrationNoise (bool shouldPlay) noexcept { calibrationNoise.store (shouldPlay); }
+    bool isPlayingCalibrationNoise() const noexcept { return calibrationNoise.load(); }
+
+    // The calibration noise as AWeightedMeter reads it - what a reading of
+    // "calibrationDb" corresponds to.
+    double getCalibrationReferenceMeanSquare() const noexcept { return calibrationReference; }
+
+    static constexpr float calibrationLevelDbFs = -20.0f;
+
 private:
     // Declaration order matters: gameManager must be constructed before
     // progressManager, since ProgressManager's constructor registers
@@ -109,6 +129,13 @@ private:
     // volume slider is dragged continuously, so an unsmoothed one would
     // be the loudest zipper in the product.
     juce::LinearSmoothedValue<float> outputGain { 1.0f };
+
+    AWeightedMeter outputMeter;
+    std::atomic<bool> calibrationNoise { false };
+    PinkNoiseGenerator calibrationGenerator { 0x5eed };
+    float calibrationGain = 1.0f;          // scales the generator to -20 dBFS RMS
+    double calibrationReference = 0.0;
+    void measureCalibrationNoise (double sampleRate);
 
     std::atomic<Vectorscope*> vectorscope { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrum { nullptr };

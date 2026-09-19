@@ -15,6 +15,9 @@
 #include "../shared/TourOverlay.h"
 #include "../shared/IdleScreensaver.h"
 #include "SessionManager.h"
+#include "TrainerSettings.h"
+#include "HearingGuard.h"
+#include "HearingNotice.h"
 #include "AchievementToast.h"
 #include "../shared/UpdateChecker.h"
 #include "../shared/AbcTrainLookAndFeel.h"
@@ -133,6 +136,38 @@ public:
         settingsScreen.toFront (false);
         hideContentUnderNavPage();
         refreshRailStatus();
+    }
+
+    // One shot per settings page worth seeing (ADR 036): the training rules
+    // in Beginner (greyed, at their defaults) and in Pro, and the hearing
+    // page calibrated with a week under way.
+    void openSettingsPageForSnapshot (SettingsScreenComponent::Page page, bool pro, bool calibrated = false)
+    {
+        trainerSettings.setMode (pro ? TrainerSettings::Mode::pro : TrainerSettings::Mode::beginner);
+
+        if (calibrated)
+        {
+            trainerSettings.set (TrainerSettings::Id::calibrationDb, 78);
+            applyTrainerSettings();
+
+            const auto today = HearingGuard::dayNumber (juce::Time::getCurrentTime());
+
+            if (hearingGuard.weeklyFraction (today) <= 0.0)
+                hearingGuard.addExposure (9.0, 82.0, today);
+        }
+
+        applyTrainerSettings();
+        openSettingsForSnapshot();
+        settingsScreen.selectPage (page);
+        refreshHearingIndicator();
+    }
+
+    // The strip under the bar, as it looks an hour into a session.
+    void showHearingNoticeForSnapshot()
+    {
+        openTrainingForSnapshot (0);
+        showHearingEvents ({ HearingGuard::Event::breakDue });
+        resized();
     }
 
     void openSoundsForSnapshot()
@@ -553,8 +588,11 @@ private:
     class RunHud : public juce::Component
     {
     public:
-        void set (SessionManager::Mode newMode, int newLives, int newSeconds, int newScore)
+        void set (SessionManager::Mode newMode, int newLives, int newSeconds, int newScore,
+                  int newMaxLives = SessionManager::survivalLives)
         {
+            maxLives = newMaxLives;
+
             if (newLives < lives && lives >= 0)
                 flashLostLife();
 
@@ -584,7 +622,7 @@ private:
                 auto x = area.getX() + r;
                 const auto cy = area.getCentreY();
 
-                for (int i = 0; i < SessionManager::survivalLives; ++i)
+                for (int i = 0; i < maxLives; ++i)
                 {
                     const auto alive = i < lives;
                     const auto justLost = (i == lives) && flash > 0.001f;
@@ -651,7 +689,7 @@ private:
         }
 
         SessionManager::Mode mode = SessionManager::Mode::practice;
-        int lives = -1, seconds = 0, score = 0;
+        int lives = -1, seconds = 0, score = 0, maxLives = SessionManager::survivalLives;
         float flash = 0.0f;
         juce::Animator flashAnimator = juce::ValueAnimatorBuilder{}.build();
         juce::VBlankAnimatorUpdater updater { this };
@@ -968,6 +1006,20 @@ private:
     juce::PropertiesFile localisationProperties;
     LocalisationManager localisation;
 
+    // Beginner/Pro and every rule it governs, and the ears' own clock
+    // (ADR 036). Both read and write the same settings file.
+    TrainerSettings trainerSettings { localisationProperties };
+    HearingGuard hearingGuard { localisationProperties };
+
+    // Reads TrainerSettings into the session, the staircase and the guard.
+    // Called at start-up and whenever the Settings page changes anything.
+    void applyTrainerSettings();
+
+    // Shows what HearingGuard just said, one strip at a time.
+    void showHearingEvents (const std::vector<HearingGuard::Event>&);
+    void refreshHearingIndicator();
+    HearingNotice hearingNotice;
+
     EarTrainerProcessor& processor;
 
     juce::Label titleLabel;
@@ -1152,7 +1204,10 @@ private:
     // would look like it had failed to load.
     juce::Rectangle<int> contentBounds() const
     {
-        return getLocalBounds().withTrimmedTop (railIsVisible() ? TopNavComponent::preferredHeight : 0);
+        // The hearing strip, when showing, pushes the page down rather than
+        // covering its top row - it is information, not an overlay.
+        return getLocalBounds().withTrimmedTop ((railIsVisible() ? TopNavComponent::preferredHeight : 0)
+                                                + (hearingNotice.isVisible() ? HearingNotice::height : 0));
     }
 
     // Puts the session and the three pills into whatever mode this

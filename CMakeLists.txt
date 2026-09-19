@@ -224,6 +224,7 @@ target_sources(EarTrainer
         Source/ProgressManager.cpp
         Source/Achievements.cpp
         Source/SessionManager.cpp
+        Source/HearingGuard.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
         Source/TrainingSoundsComponent.cpp
@@ -532,10 +533,12 @@ target_sources(EarTrainerTests
         tests/TestSignalGeneratorTest.cpp
         tests/HintTest.cpp
         tests/SkillBucketTest.cpp
+        tests/HearingGuardTest.cpp
         Source/GameManager.cpp
         Source/ProgressManager.cpp
         Source/Achievements.cpp
         Source/SessionManager.cpp
+        Source/HearingGuard.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
         Source/Games/EQGame.cpp
@@ -625,6 +628,7 @@ set(abcTrainEditorToolSources
         Source/ProgressManager.cpp
         Source/Achievements.cpp
         Source/SessionManager.cpp
+        Source/HearingGuard.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
         Source/ChoiceSliderComponent.cpp

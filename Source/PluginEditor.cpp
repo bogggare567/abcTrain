@@ -885,7 +885,46 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         resized();
         repaint();
     };
+    settingsScreen.onTrainerSettingsChanged = [this] { applyTrainerSettings(); };
+    settingsScreen.onCalibrationNoise = [this] (bool play) { processor.setCalibrationNoise (play); };
+    settingsScreen.onAddExposure = [this] (double hours, double levelDbA)
+    {
+        hearingGuard.addExposure (hours, levelDbA, HearingGuard::dayNumber (juce::Time::getCurrentTime()));
+        refreshHearingIndicator();
+    };
+    settingsScreen.hearingStatus = [this]
+    {
+        const auto& config = hearingGuard.getConfig();
+
+        if (! config.enabled)
+            return localisation.getText ("hear.status.off");
+
+        const auto minutes = juce::String (hearingGuard.continuousSeconds() / 60);
+
+        if (! hearingGuard.isCalibrated())
+            return localisation.getText ("hear.status.uncalibrated", { { "min", minutes } });
+
+        const auto day = HearingGuard::dayNumber (juce::Time::getCurrentTime());
+        const auto percent = juce::String (juce::roundToInt (hearingGuard.weeklyFraction (day) * 100.0));
+        const auto level = hearingGuard.lastLevelDbA();
+
+        auto text = localisation.getText ("hear.status.week", { { "pct", percent }, { "min", minutes } });
+
+        // The level only while something is playing: "now - dB" said
+        // nothing and looked broken.
+        if (level > 0.0)
+            text << " " << juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")) << " "
+                 << localisation.getText ("hear.status.now", { { "db", juce::String (juce::roundToInt (level)) } });
+
+        return text;
+    };
     addChildComponent (settingsScreen);
+
+    // The hearing strip. "Break" goes home, which is also what silences
+    // the signal; "later" moves the reminder on by fifteen minutes.
+    addChildComponent (hearingNotice);
+    hearingNotice.onShown = [this] { resized(); };
+    hearingNotice.onDismissed = [this] { resized(); };
 
     addChildComponent (trainingSounds);
 
@@ -973,6 +1012,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     applyVolumeFromSlider();
 
     applyTheme();
+    applyTrainerSettings();
     session.startRun();
     refreshHintButton();
     rebuildChoiceSlider();
@@ -1107,6 +1147,7 @@ EarTrainerEditor::~EarTrainerEditor()
     // display was added for the per-exercise hint and missed here, which
     // was the same bug the comment above it already warned about.
     processor.setSignalEnabled (false);
+    processor.setCalibrationNoise (false);
     processor.setVectorscope (nullptr);
     processor.setSpectrumAnalyzer (nullptr);
     processor.setWaveformDisplay (nullptr);
@@ -1272,6 +1313,8 @@ void EarTrainerEditor::resized()
         // in step.
         const auto navHeight = railIsVisible() ? TopNavComponent::preferredHeight : 0;
         topNav.setBounds (getLocalBounds().removeFromTop (navHeight));
+        hearingNotice.setBounds (getLocalBounds().withTrimmedTop (railIsVisible() ? navHeight : 0)
+                                                 .removeFromTop (HearingNotice::height));
 
         // Theme, updates and the output level live *on* the bar but stay
         // the editor's own widgets - see TopNavComponent for why moving
@@ -1889,7 +1932,9 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
         return;
 
     promotionPips.setVisible (true);
-    promotionPips.set (outcome.stepRun, ProgressManager::stepUpAfter);
+    promotionPips.set (outcome.stepRun, processor.getProgressManager().getStepUpAfter());
+
+    showHearingEvents (hearingGuard.noteAnswer (scoredGameIndex, outcome.level));
 
     // The one answer that opens the timed modes. Announced through the
     // same toast achievements use - one vocabulary for "something was
@@ -1947,6 +1992,16 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 void EarTrainerEditor::timerCallback()
 {
     countPracticeSecond();
+
+    // The ears' clock. Runs on every screen: time on the menus is quiet
+    // time, and a break taken there has to count as one.
+    {
+        const auto reading = processor.drainOutputLevel();
+        hearingGuard.setReferenceMeanSquare (processor.getCalibrationReferenceMeanSquare());
+        showHearingEvents (hearingGuard.tick (reading.seconds, reading.meanSquare,
+                                              HearingGuard::dayNumber (juce::Time::getCurrentTime())));
+        refreshHearingIndicator();
+    }
 
     if (session.getMode() != SessionManager::Mode::blitz || ! session.isRunActive())
         return;
@@ -2150,6 +2205,112 @@ void EarTrainerEditor::clearHint()
     applyWindowSize();
 }
 
+void EarTrainerEditor::applyTrainerSettings()
+{
+    using Id = TrainerSettings::Id;
+    const auto get = [this] (Id id) { return trainerSettings.get (id); };
+
+    SessionManager::Rules rules;
+    rules.survivalLives = get (Id::survivalLives);
+    rules.blitzSeconds = get (Id::blitzSeconds);
+    rules.blitzPenaltySeconds = get (Id::blitzPenalty);
+    const float pauses[] { 0.6f, 1.0f, 1.7f };
+    rules.answerPauseScale = pauses[juce::jlimit (0, 2, get (Id::answerPause))];
+    rules.hintsAllowed = get (Id::hints) == 1;
+    session.setRules (rules);
+
+    // Practice has no score to protect, so its rules can change at once;
+    // a timed run keeps the ones it started with.
+    if (session.getMode() == SessionManager::Mode::practice)
+        session.startRun();
+
+    auto& progress = processor.getProgressManager();
+    progress.setStepUpAfter (get (Id::stepRule));
+    progress.setAllModesOpen (get (Id::allModesOpen) == 1);
+
+    HearingGuard::Config config;
+    config.enabled = get (Id::hearingOn) == 1;
+    config.breakMinutes = get (Id::breakReminderMinutes);
+    config.fatigueHint = get (Id::fatigueHint) == 1;
+    config.weeklyLimitDb = get (Id::weeklyLimit) == 1 ? 75 : 80;
+    config.calibrationDb = get (Id::calibrationDb);
+    hearingGuard.setConfig (config);
+    hearingGuard.setReferenceMeanSquare (processor.getCalibrationReferenceMeanSquare());
+
+    if (! config.enabled && hearingNotice.isVisible())
+        hearingNotice.dismiss();
+
+    refreshHearingIndicator();
+    refreshHintButton();
+    refreshRunStatus();
+    refreshRailStatus();
+}
+
+void EarTrainerEditor::refreshHearingIndicator()
+{
+    const auto day = HearingGuard::dayNumber (juce::Time::getCurrentTime());
+    const auto fraction = hearingGuard.weeklyFraction (day);
+    const auto show = hearingGuard.getConfig().enabled && (hearingGuard.isCalibrated() || fraction > 0.0);
+
+    topNav.setHearing ((float) fraction, show,
+                       localisation.getText ("nav.hearing", { { "pct", juce::String (juce::roundToInt (fraction * 100.0)) } }));
+}
+
+void EarTrainerEditor::showHearingEvents (const std::vector<HearingGuard::Event>& events)
+{
+    if (events.empty() || currentScreen == Screen::support)
+        return;
+
+    // The most serious one wins when two arrive together.
+    auto event = events.front();
+
+    for (auto e : events)
+        if ((int) e > (int) event)
+            event = e;
+
+    const auto limit = juce::String (hearingGuard.getConfig().weeklyLimitDb);
+    hearingNotice.setLabel (localisation.getText ("nav.hearingLabel"));
+
+    const auto takeBreak = [this]
+    {
+        // Home is where the signal stops.
+        if (currentScreen == Screen::training && ! isRunHudActive())
+            showScreen (Screen::home);
+    };
+
+    switch (event)
+    {
+        case HearingGuard::Event::breakDue:
+            hearingNotice.onPrimary = takeBreak;
+            hearingNotice.onSecondary = [this] { hearingGuard.snoozeBreak (15); };
+            hearingNotice.show (localisation.getText ("hear.break.text",
+                                                      { { "min", juce::String (hearingGuard.getConfig().breakMinutes) } }),
+                                localisation.getText ("hear.takeBreak"), localisation.getText ("hear.later"));
+            break;
+
+        case HearingGuard::Event::fatigue:
+            hearingNotice.onPrimary = takeBreak;
+            hearingNotice.onSecondary = nullptr;
+            hearingNotice.show (localisation.getText ("hear.fatigue.text"),
+                                localisation.getText ("hear.takeBreak"), localisation.getText ("hear.continue"));
+            break;
+
+        case HearingGuard::Event::doseHalf:
+            hearingNotice.onPrimary = nullptr;
+            hearingNotice.onSecondary = nullptr;
+            hearingNotice.show (localisation.getText ("hear.half.text", { { "limit", limit } }),
+                                localisation.getText ("hear.ok"));
+            break;
+
+        case HearingGuard::Event::doseFull:
+            hearingNotice.onPrimary = takeBreak;
+            hearingNotice.onSecondary = nullptr;
+            hearingNotice.show (localisation.getText ("hear.full.text", { { "limit", limit } }),
+                                localisation.getText ("hear.takeBreak"), localisation.getText ("hear.ok"), true);
+            break;
+    }
+}
+
 void EarTrainerEditor::refreshRailStatus()
 {
     auto& progress = processor.getProgressManager();
@@ -2274,7 +2435,8 @@ void EarTrainerEditor::refreshRunStatus()
 
         if (hudNow)
             runHud.set (session.getMode(), session.getLivesRemaining(),
-                        session.getSecondsRemaining(), session.getRunScore());
+                        session.getSecondsRemaining(), session.getRunScore(),
+                        session.getRules().survivalLives);
 
         if (hudWasVisible != (onTraining && hudNow))
             resized();
@@ -2416,6 +2578,12 @@ void EarTrainerEditor::showScreen (Screen screen)
     // left would be worse than not starting it.
     if (onTraining)
         instructionLabel.setVisible (shouldShowInstructions());
+
+    // Hints switched off in the Pro settings: the button goes, rather than
+    // staying as a control that always says no.
+    if (onTraining && ! session.areHintsAllowed())
+        hintButton.setVisible (false);
+
     if (! onTraining)
     {
         pointsFlyup.setVisible (false);
@@ -3060,7 +3228,7 @@ void EarTrainerEditor::refreshFromGameState()
         if (currentScreen == Screen::training)
         {
             promotionPips.setVisible (true);
-            promotionPips.set (progress.getStepRunForGame (index), ProgressManager::stepUpAfter);
+            promotionPips.set (progress.getStepRunForGame (index), progress.getStepUpAfter());
 
             const auto wantInstructions = shouldShowInstructions();
             if (instructionLabel.isVisible() != wantInstructions)

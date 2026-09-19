@@ -47,6 +47,25 @@ public:
     static constexpr int autoAdvanceMsCorrect = 900;
     static constexpr int autoAdvanceMsWrong = 1900;   // longer: there's more to take in
 
+    // What a run is made of, when the player has chosen otherwise (the
+    // "Pro" settings, see TrainerSettings). The constants above are the
+    // defaults and what a beginner always gets: a rule that changes under
+    // you is not a rule you can learn to beat.
+    struct Rules
+    {
+        int survivalLives = SessionManager::survivalLives;
+        int blitzSeconds = SessionManager::blitzSeconds;
+        int blitzPenaltySeconds = SessionManager::blitzPenaltySeconds;
+        float answerPauseScale = 1.0f;     // multiplies both auto-advance delays
+        bool hintsAllowed = true;
+    };
+
+    // Takes effect at the next run, never in the middle of one: a Blitz
+    // clock that grew by a minute half-way through is a score that means
+    // nothing.
+    void setRules (const Rules& newRules) noexcept { pendingRules = newRules; }
+    const Rules& getRules() const noexcept { return rules; }
+
     void setMode (Mode newMode);
     Mode getMode() const noexcept { return mode; }
 
@@ -92,7 +111,8 @@ public:
     // Blitz.
     static constexpr int blitzHintSeconds = 10;
 
-    bool isHintFree() const noexcept { return mode == Mode::practice; }
+    bool isHintFree() const noexcept { return mode == Mode::practice && rules.hintsAllowed; }
+    bool areHintsAllowed() const noexcept { return rules.hintsAllowed; }
 
     // Pays for a hint out of the current run. Returns false if the run is
     // over or the cost can't be met, in which case nothing was spent and
@@ -104,6 +124,7 @@ public:
     std::function<void (int finalScore)> onRunEnded;
 
 private:
+    Rules rules, pendingRules;
     Mode mode = Mode::practice;
     bool runActive = true;
     int livesRemaining = survivalLives;

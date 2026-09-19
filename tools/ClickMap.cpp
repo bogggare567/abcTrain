@@ -277,8 +277,7 @@ int main (int argc, char* argv[])
     // Same care EditorSnapshots takes: this constructs a real editor,
     // which reads and writes the player's own settings file. Put it aside
     // and give it back.
-    const auto settings = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-                              .getChildFile ("abcTrain").getChildFile ("abcTrain.settings");
+    const auto settings = LocalisationManager::makeDefaultOptions().getDefaultFile();
     const auto backup = settings.getSiblingFile ("abcTrain.settings.clickmap-backup");
     const auto hadSettings = settings.existsAsFile();
 
@@ -316,6 +315,9 @@ int main (int argc, char* argv[])
             { "Run results", Expect::everythingLive, 0,               [] (auto& e) { e.showRunResultsForSnapshot(); } },
             { "Sounds", Expect::everythingLive, 0,                    [] (auto& e) { e.openSoundsForSnapshot(); } },
             { "Settings", Expect::everythingLive, 0,                  [] (auto& e) { e.openSettingsForSnapshot(); } },
+            { "Settings - Pro", Expect::everythingLive, 0,            [] (auto& e) { e.openSettingsPageForSnapshot (SettingsScreenComponent::Page::training, true); } },
+            { "Settings - Hearing", Expect::everythingLive, 0,        [] (auto& e) { e.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true); } },
+            { "Hearing notice", Expect::everythingLive, 0,            [] (auto& e) { e.showHearingNoticeForSnapshot(); } },
             { "Achievements", Expect::everythingLive, 0,              [] (auto& e) { e.openAchievementsForSnapshot(); } },
         };
 
