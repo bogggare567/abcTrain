@@ -30,13 +30,25 @@ Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
   a scrolling waveform. See
   [decisions/030](docs/decisions/030-learner-checks-speak-the-trainer-s-language.md).
 - **LearnerComp** — a real compressor processing the host's own audio,
-  with a live spectrum, a scrolling waveform highlighting where it's
-  reducing gain, a GR/peak meter row, contextual tooltips, 4 teaching
-  presets, a Bypass toggle, and a guided Lesson.
-- **LearnerVerb** — a real reverb (Room/Hall/Plate/Spring) processing the
-  host's own audio, the same live-spectrum + scrolling-waveform/peak-meter
-  view as LearnerComp, contextual tooltips, 4 teaching presets, a Bypass
-  toggle, and a guided Lesson.
+  with a **transfer curve** drawn from the engine's own gain computer (a
+  dot rides it at the input level), a scrolling waveform highlighting where
+  it's reducing gain, a segmented GR bar, contextual tooltips, 4 teaching
+  presets, and 7 knob modules + 4 walkthroughs.
+- **LearnerVerb** — a real reverb (FDN Room/Hall, Dattorro Plate, two
+  dispersive Springs) whose **Decay is measured RT60**, shown as an
+  **echogram** (the measured impulse response of the current setting)
+  above a waveform, a TYPE bar with a line saying what that type is, 4
+  presets, and 7 modules + 4 walkthroughs.
+
+**Since ADR 037 all three Learner editors are one shell**
+(`shared/LearnerEditorBase`): title row with the family word, practice
+source, **A/B slots** (`shared/ABCompare.h`, saved with the host project,
+Bypass excluded), Bypass, updates, theme and the module shelf; each plugin
+supplies only its analysis section, its controls and its modules. Modules
+are a **ten-step 3-down/1-up staircase per knob** with the accept band in
+the knob's own units, and every string is in all 12 languages. Read
+[decisions/037](docs/decisions/037-the-learner-plugins-made-honest.md)
+before the per-plugin sections below, some of which predate it.
 
 All three Learner plugins now share the same visualization shape (live
 spectrum, then waveform + peak meters) and the same Bypass/Lesson button
@@ -153,6 +165,14 @@ troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
 starts explaining a decision, it belongs in an ADR instead. The wiki git
 remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
+`docs/decisions/037-the-learner-plugins-made-honest.md` (the Learner
+plugins' claims made true: `shared/LearnerEditorBase` for all three
+editors, A/B slots, the family colour on primary buttons via a
+per-instance `primaryFill`, a ten-step staircase per module with the band
+in the knob's units and a card-grid shelf, a rewritten reverb engine
+measured by test, the echogram and the transfer curve replacing the
+spectrum in Verb and Comp, EQ modules, and all plugin strings in 12
+languages).
 `docs/decisions/036-beginner-pro-and-hearing.md` (Beginner/Pro settings
 from one list in `Source/TrainerSettings.h`, and hearing protection per
 WHO / ITU-T H.870: break reminders and a tired-ear hint on time alone, and
@@ -794,12 +814,13 @@ for why it doesn't use `juce::dsp::Compressor`.
   highlighting — that stays LearnerEQ-specific via a `paintOverlay()`
   override, see the LearnerEQ section above). Used directly, unsubclassed,
   by LearnerComp and LearnerVerb.
-- `LearnerComp/Source/PluginEditor.{h,cpp}` — a `SpectrumAnalyzerComponent`
-  above the waveform, 7 rotary knobs (one per float param), a Bypass
-  `ToggleButton` and an "Updates" button (`shared/UpdateChecker`) next to
-  the Lesson button in the title row, and 4 preset buttons, each preset
-  button just calling `processor.applyPreset(i)`. Guide label updates via
-  `onDragStart`/`onDragEnd` on each knob, same pattern as LearnerEQ.
+- `LearnerComp/Source/PluginEditor.{h,cpp}` — a `LearnerEditorBase`
+  subclass (ADR 037): `TransferCurveView` (square, left) beside the
+  waveform, the input/output peaks and the segmented `GainReductionMeter`
+  under them; a `KnobRow` of seven knobs and a `PresetRow` of four presets
+  below. `TransferCurveView.h` draws `CompressorEngine::staticReductionDb`,
+  the same static the DSP calls, so the bend on screen is the bend in the
+  audio.
 - `LearnerComp/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as LearnerEQ's.
 - `LearnerComp/Source/VocalCompressionLesson.h` — `buildVocalCompressionLesson()`,
@@ -821,18 +842,18 @@ space instead of dynamics. See
 for what was deliberately cut from the first build and why the `Decay`
 knob isn't a precise physical measurement.
 
-- `LearnerVerb/Source/ReverbEngine.h` — Room/Hall/Plate via
-  `juce::dsp::Reverb` (Freeverb-derived); Spring via a cascade of 4
-  resonant allpass filters, the same technique `EarTrainer`'s `ReverbGame`
-  uses for its Spring type, reimplemented here (not literally shared —
-  `ReverbGame`'s version is tightly coupled to its per-round game model,
-  this one needs continuous live parameter control). `Decay` (seconds) is
-  mapped onto `roomSize` by ear, since Freeverb has no literal
-  decay-in-seconds parameter — an approximation, not a physical model,
-  same "tuned, not measured" precedent as `CompressionGame`/`ReverbGame`'s
-  presets. A `juce::dsp::DelayLine` implements pre-delay ahead of whichever
-  algorithm is selected. Always renders 100% wet; `PluginProcessor` blends
-  dry/wet itself, same division of responsibility as `CompressorEngine`.
+- `LearnerVerb/Source/ReverbEngine.h` — rewritten in ADR 037: Room/Hall
+  are an 8-line Jot feedback delay network (Householder mixing, per-line
+  gains from the RT60 so **Decay is seconds**, one-pole absorption so
+  damping shortens the top first, **Size** scales delay lengths and early
+  reflections without changing the length); Plate is Dattorro's tank;
+  Spring is two dispersive allpass loops. Type switches crossfade through
+  silence; pre-delay glides; `resetTank()` never allocates on the audio
+  thread. Always renders 100% wet; `PluginProcessor` blends dry/wet.
+  `ReverbMeasure.h` renders a setting's impulse response and measures its
+  RT60 (Schroeder T30) and onset — used by both the echogram and
+  `tests/LearnerRedesignTest`, which holds Decay to within 30% of the
+  measured RT60. `EchogramView.h` is that response drawn as energy bars.
 - `LearnerVerb/Source/ReverbGuide.h` (`ReverbGuide` namespace) — tooltip
   text per parameter ID (2-4 original sentences with practical values,
   plus a "Learn more" book pointer — mirrors
@@ -858,13 +879,12 @@ knob isn't a precise physical measurement.
   registered, with `highlightAmount` left at its default (no
   gain-reduction-style concept here). `applyPreset(int)` lives here for
   the same testability reason as LearnerComp's.
-- `LearnerVerb/Source/PluginEditor.{h,cpp}` — a `SpectrumAnalyzerComponent`
-  above the waveform, a `ComboBox` for Type (`ComboBoxAttachment`, items
-  added manually to match the choice parameter — attachments don't
-  auto-populate the combo box) + 6 rotary knobs, a Bypass `ToggleButton`
-  and an "Updates" button (`shared/UpdateChecker`) next to the Lesson
-  button in the title row, and 4 preset buttons. Same guide-label/tooltip
-  pattern as the other two Learner plugins.
+- `LearnerVerb/Source/PluginEditor.{h,cpp}` — a `LearnerEditorBase`
+  subclass (ADR 037): the `EchogramView` over the waveform in the analysis
+  section; in the controls a full-width TYPE `SegmentedChoice` with a THIS
+  IS line under it (it stays in the controls because the type module is
+  answered there, and the module panel covers the analysis section during
+  a check), then six knobs and four presets.
 - `LearnerVerb/Source/PluginEntry.cpp` — just `createPluginFilter()`, same
   reason as the other two.
 - `LearnerVerb/Source/VocalSpaceLesson.h` — `buildVocalSpaceLesson()`, a
@@ -1163,10 +1183,18 @@ rationale; summary here.
   parameter is saved on entry and restored on exit. The two existing
   multi-knob lessons per plugin are listed under the modules in the same
   shelf, under a divider, rather than behind a second dropdown. Content
-  lives per-plugin in `LearnerComp/Source/CompressorModules.h` (7) and
-  `LearnerVerb/Source/ReverbModules.h` (7), English-only, same call as the
-  parameter tooltips. **Learner EQ deliberately has none** — see
-  [decisions/027](docs/decisions/027-training-modules.md).
+  lives per-plugin in `LearnerComp/Source/CompressorModules.h` (7),
+  `LearnerVerb/Source/ReverbModules.h` (7) and `LearnerEQ/Source/EQModules.h`
+  (4: frequency, gain, Q, high-pass — ADR 037 reversed ADR 027's "EQ has
+  none" once the EQ had a check-override path), each with its old lessons
+  as checkless `walkthroughs()`. Text is keyed `mod.<id>.*` in all 12
+  languages. **Since ADR 037 a module is a ten-step 3-down/1-up staircase**
+  (`ModuleProgress::recordAttempt`, old tiers migrate to `1 + 3·tier`),
+  the band narrows geometrically across the ten steps
+  (`TrainingModule::toleranceForLevel`), `acceptRange` is the band in the
+  knob's units and is exactly what the check scale draws, and the shelf is
+  a card grid (four columns at the default width) with the walkthroughs as
+  numbered cards under it.
 - `shared/DifficultyRamp.h` — the geometric and linear ramps, moved out of
   `Game.h` (which now forwards to them) once modules needed the identical
   curve. An accept band narrowing differently in the two halves of the
@@ -1399,10 +1427,13 @@ rationale; summary here.
   (same `sendChangeMessage()`-is-asynchronous reason `ProgressManager`
   exposes `registerAnswer()` directly — see Testing below).
 
-Not yet built: LearnerEQ/LearnerComp/LearnerVerb don't have a language
-selector yet (only EarTrainer, as the reference integration); parameter
-tooltips, lesson step text, and each game's dynamic `getFeedbackText()`
-are still English-only.
+The three Learner plugins follow the product-wide language (they read the
+same settings file, `LocalisationManager::makeDefaultOptions()`) and are
+fully translated since ADR 037 — knobs, guide text, presets, modules,
+units and decimal marks. `tools/LearnerStrings` lists every key they ask
+for. Every language table has every key the English one has (794 as of
+v1.6.0); keep it that way when adding strings. Still English-only: each
+game's dynamic `getFeedbackText()`.
 
 ## Testing (`tests/`, `shared/`)
 

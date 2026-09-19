@@ -1,3 +1,28 @@
+## What's new in 1.6.0
+
+**Ear Trainer**
+- **Levels are a staircase now.** Three right in a row make an exercise harder, one wrong makes it easier, so each exercise settles at your real threshold — shown in its own units ("±0.35 oct", "±1.2 dB", "Room vs Chamber"). Your record never drops. Points and the promotion test are gone.
+- **Home is a list of thresholds**, one row per exercise with a ten-step ruler.
+- **Achievements in two layers:** 12 milestones and 53 stamps. None asks for lifetime accuracy.
+- **Beginner / Pro.** Beginner keeps every rule standard; Pro opens them (step-up rule, pauses, lives, Blitz clock, hints).
+- **Hearing protection**, on by default and optional: a break reminder after an hour without ten quiet minutes, a tired-ear hint, and — after a one-time calibration — your weekly dose against the WHO / ITU-T H.870 limit.
+
+**Learner EQ · Comp · Verb**
+- **Modules climb the same staircase**, ten steps, with the band in the knob's own units; the result says how far out you were and what the staircase did. **Learner EQ has modules now** (frequency, gain, Q, high-pass).
+- **Learner Verb:** a new engine — FDN room and hall, Dattorro plate, springs. **Decay is measured seconds**, **Size** changes the room, and the screen shows the **echogram** of the current setting.
+- **Learner Comp:** the **transfer curve**, drawn by the formula the audio runs through.
+- **A/B** in all three, saved with your project. The family colour everywhere, a card-grid module shelf, and **every string in all 12 languages**.
+
+<details><summary>Что нового в 1.6.0 (по-русски)</summary>
+
+**Тренажёр:** уровень — лестница (три верных подряд — выше, ошибка — ниже), порог в единицах упражнения, рекорд не падает; главная — список порогов; достижения в два слоя (12 вех, 53 отметки); режимы «Новичок / Профи»; защита слуха по нормам ВОЗ / ITU-T H.870 — включена по умолчанию, отключается.
+
+**Обучающие плагины:** модули идут по той же лестнице с допуском в единицах ручки, у Learner EQ появились модули; у Learner Verb новый движок — затухание в измеряемых секундах, размер меняет комнату, на экране эхограмма; у Learner Comp — передаточная кривая; A/B во всех трёх; всё на 12 языках.
+
+</details>
+
+---
+
 ## Which file do I download?
 
 | Your system | Download this | |

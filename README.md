@@ -20,9 +20,10 @@ Linux, as VST3 · AU · Standalone.
 
 <br>
 
-![Opening an exercise, answering it, switching theme and language](docs/screenshots/abctrain-demo.gif)
+![The trainer and the three teaching plugins, as the app draws them](docs/screenshots/abctrain-tour.gif)
 
-<sub>The desktop build, recorded: open an exercise, answer it, switch theme, switch language.<br>
+<sub>Every frame is drawn by the app itself (<code>tools/EditorSnapshots</code>), so the pictures cannot drift from the code:
+the trainer's home and a round, hearing protection, then Learner EQ, Comp (modules, a check, a result) and Verb.<br>
 The <a href="https://bogggare567.github.io/abcTrain/">browser demo</a> is the same trainer, playable.</sub>
 
 <br>
@@ -79,16 +80,33 @@ so each exercise settles at your real threshold, shown in its own units:
 seconds where a wrong answer costs five of them. Train on pink noise, the
 built-in clips, or **your own music**.
 
+**Beginner or Pro.** Beginner keeps every rule standard; Pro opens them —
+how many right in a row step you up, pauses, lives, the Blitz clock, hints.
+**Hearing protection** is on by default and can be switched off: a break
+reminder after an hour without ten quiet minutes, a hint when the ear is
+tired, and — if you calibrate once with the built-in noise — your weekly
+dose against the WHO / ITU-T H.870 limit.
+
 ## The three teaching plugins
 
 | | |
 |---|---|
-| **Learner EQ** | A graphical EQ: up to eight bands of any type — bell, shelf, high-pass, low-pass, notch — added and removed on the curve itself. The spectrum is labelled in *sensations* as well as numbers: Sub, Bass, Boom, Body, Honk, Presence, Sibilance, Air. |
-| **Learner Comp** | A compressor with a soft-knee engine and a gain-reduction meter that fills **downward**, because that is the direction the sound goes. Seven training modules, one per control. |
-| **Learner Verb** | Room, hall, plate and spring, with decay, pre-delay, size, damping, mix and width. Seven modules of its own. |
+| **Learner EQ** | A graphical EQ: up to eight bands of any type — bell, shelf, high-pass, low-pass, notch — added and removed on the curve itself. The spectrum is labelled in *sensations* as well as numbers: Sub, Bass, Boom, Body, Honk, Presence, Sibilance, Air. Four modules: frequency, gain, Q, high-pass. |
+| **Learner Comp** | A soft-knee compressor drawn as what it is: a **transfer curve** — level in against level out — computed by the same formula the audio runs through, with a dot riding it at your signal's level. Seven modules, one per control. |
+| **Learner Verb** | A reverb whose **Decay is seconds you can measure**: a feedback-delay-network room and hall, a Dattorro plate, two springs. The screen shows the **echogram** — what the room does to one click — with the tail length measured off it. Seven modules. |
+
+<p align="center">
+<img src="docs/screenshots/LearnerEQ-dark.png" width="32%" alt="Learner EQ">
+<img src="docs/screenshots/LearnerComp-dark.png" width="32%" alt="Learner Comp">
+<img src="docs/screenshots/LearnerVerb-dark.png" width="32%" alt="Learner Verb">
+</p>
 
 Each module sets its knob to a value it does **not** show you, plays it, and
-you match it by ear.
+you match it by ear **with the plugin's own knob**. Modules climb the same
+staircase as the trainer — ten steps, the band in the knob's own units
+("±20%", "±1.5 dB", "±0.3 oct") — and each plugin keeps its old lessons as
+step-by-step walkthroughs. **A/B** holds two settings one click apart, saved
+with your project.
 
 ## Known limits
 
@@ -97,7 +115,9 @@ you match it by ear.
   is a file on your machine.
 - **No stem separation.** Imported music is sorted by measurable character,
   not by instrument.
-- Parameter tooltips, lesson text and the training modules are English-only.
+- The in-game feedback sentence after an answer is still English-only;
+  everything else — including the plugins, their modules and tooltips — is
+  in all twelve languages.
 - Of the twelve interface languages, only English and Russian are checked by
   a speaker.
 
