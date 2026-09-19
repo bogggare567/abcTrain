@@ -1,8 +1,9 @@
 // All nine exercises, as the plugin has them.
 //
 // This is not a "web version" with its own ideas. Every axis, draw range,
-// tolerance and unit is the plugin's, and where a number could drift it is
-// read out of the C++ instead of typed here (see tools/sync-from-plugin.mjs).
+// tolerance ramp and unit is the plugin's, and where a number could drift it
+// is read out of the C++ instead of typed here (see
+// tools/sync-from-plugin.mjs).
 // The four skill families and their colours are the same too, because the
 // grouping is the product's spine and a demo that regrouped them would be
 // teaching something else.
@@ -12,6 +13,23 @@
 // answer on a ruler. That split is the plugin's, from ADR 020.
 
 import facts from '../generated/plugin-facts.json';
+
+// shared/DifficultyRamp.h's geometric ramp: step 1 to step 10 in equal
+// ratios. Every accept band in the plugin narrows this way, so "step 4"
+// means the same width here as it does there.
+export const geometric = (level, atOne, atTen) => {
+  const t = (Math.min(10, Math.max(1, level)) - 1) / 9;
+  return atOne * Math.pow(atTen / atOne, t);
+};
+
+const rampOf = ({ level1, level10 }) => (level) => geometric(level, level1, level10);
+
+// Trailing zeros say nothing: 1.0 dB is 1 dB. The same trim the plugin's
+// formatLevel does.
+const trim = (v, decimals) => {
+  const text = v.toFixed(decimals);
+  return text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
+};
 
 // Paul Kellet's economy pink-noise filter - the same algorithm as
 // shared/PinkNoiseGenerator.h, so this and the plugin listen to the same
@@ -185,10 +203,8 @@ const zoned = (o) => ({ kind: 'zoned', ...o });
 // level with a single question and several levels identical to each other.
 // A window over the ranking cannot, because its size does not depend on
 // how the distances happen to cluster.
-export function drawPair(positions, level, distance) {
+function rankPairs(positions, distance) {
   const count = positions.length;
-  if (count < 2) return [0, 0];
-
   const gap = distance || ((a, b) => Math.abs(positions[a] - positions[b]));
 
   const all = [];
@@ -198,19 +214,40 @@ export function drawPair(positions, level, distance) {
 
   // Furthest apart first, so index 0 is the easiest question.
   all.sort((x, y) => y.d - x.d);
+  return all;
+}
 
-  const total = all.length;
+function windowForLevel(total, level) {
   const window = Math.max(2, Math.ceil(0.45 * total));
   const clamped = Math.min(10, Math.max(1, level));
   const start = Math.min(
     Math.max(0, total - window),
     Math.round(((clamped - 1) / 9) * (total - window)),
   );
+  return { start, length: Math.min(window, total - start) };
+}
 
-  const picked = all[start + Math.floor(Math.random() * Math.min(window, total - start))];
+export function drawPair(positions, level, distance) {
+  if (positions.length < 2) return [0, 0];
+
+  const all = rankPairs(positions, distance);
+  const { start, length } = windowForLevel(all.length, level);
+  const picked = all[start + Math.floor(Math.random() * length)];
 
   // Returned in random order, or the answer would drift to one side.
   return Math.random() < 0.5 ? [picked.a, picked.b] : [picked.b, picked.a];
+}
+
+// The closest pair a step can offer - how the plugin names a two-choice
+// exercise's level (PresetFamily::hardestPairForLevel, ADR 035): not
+// "level 6" but "Room vs Chamber".
+export function hardestPair(positions, level, distance) {
+  if (positions.length < 2) return [0, 0];
+
+  const all = rankPairs(positions, distance);
+  const { start, length } = windowForLevel(all.length, level);
+  const p = all[start + length - 1];
+  return [p.a, p.b];
 }
 
 export const EXERCISES = [
@@ -231,7 +268,9 @@ export const EXERCISES = [
     targetMin: facts.bandTargets.lowHz,
     targetMax: facts.bandTargets.highHz,
     log: true,
-    tolerance: facts.tolerances.band,
+    // ±1 octave at step 1 down to ±0.2 at step 10 (EQGame::toleranceForLevel).
+    toleranceAt: rampOf(facts.tolerances.band),
+    threshold: (tol) => `±${trim(tol, 2)} oct`,
     ticks: facts.bandTicks,
     format: hz,
     before: 'EQ off',
@@ -239,12 +278,14 @@ export const EXERCISES = [
     error: (g, t) => Math.abs(Math.log2(g / t)),
     miss: (g, t, e) => `${e.toFixed(1)} octaves too ${g > t ? 'high' : 'low'}`,
     source: (ctx) => ({ buffer: pinkBuffer(ctx), loop: true }),
-    build(ctx, target) {
+    build(ctx, target, level) {
       const f = ctx.createBiquadFilter();
       f.type = 'peaking';
       f.frequency.value = target;
       f.Q.value = 3;
-      f.gain.value = 9;
+      // The boost shrinks with the step as well, 9 dB down to 2.5 dB -
+      // EQGame::setDifficulty ramps both levers.
+      f.gain.value = geometric(level ?? 1, facts.bandBoostDb.level1, facts.bandBoostDb.level10);
       return { input: f, output: f };
     },
   }),
@@ -353,7 +394,9 @@ export const EXERCISES = [
     axisMin: -1,
     axisMax: 1,
     log: false,
-    tolerance: facts.tolerances.pan,
+    // A fraction of one side: ±35% at step 1, ±7% at step 10.
+    toleranceAt: rampOf(facts.tolerances.pan),
+    threshold: (tol) => `±${Math.round(tol * 100)}%`,
     ticks: [-1, -0.5, 0, 0.5, 1],
     format: (p) => {
       const amount = Math.round(Math.abs(p) * 100);
@@ -382,13 +425,18 @@ export const EXERCISES = [
     axisMin: 20,
     axisMax: 640,
     log: true,
-    tolerance: 0.35,          // a *ratio*: 20 ms out at 40 ms and at 500 ms differ
+    // A *ratio*: 20 ms out at 40 ms and at 500 ms are different mistakes.
+    // ±35% of the time at step 1, ±8% at step 10.
+    toleranceAt: rampOf(facts.tolerances.delay),
     toleranceIsRatio: true,
+    threshold: (tol) => `±${Math.round(tol * 100)}%`,
     ticks: [20, 50, 100, 200, 400, 640],
     format: ms,
     before: 'Dry',
     after: 'Wet',
-    error: (g, t) => Math.abs(Math.log(g / t)),
+    // How far out, as DelayGame::submitNormalisedAnswer measures it: the
+    // larger time over the smaller, minus one.
+    error: (g, t) => (g > t ? g / t : t / g) - 1,
     miss: (g, t) => `${Math.round(Math.abs(g - t))} ms too ${g > t ? 'long' : 'short'}`,
     source: (ctx) => ({ buffer: burstBuffer(ctx, 1.4, 4), loop: true }),
     build(ctx, target) {
@@ -485,7 +533,9 @@ export const EXERCISES = [
     axisMin: -9,
     axisMax: 9,
     log: false,
-    tolerance: facts.tolerances.gain,
+    // ±2.5 dB at step 1 down to ±0.8 dB at step 10.
+    toleranceAt: rampOf(facts.tolerances.gain),
+    threshold: (tol) => `±${trim(tol, 1)} dB`,
     ticks: [-9, -6, -3, 0, 3, 6, 9],
     format: (db) => `${db > 0 ? '+' : ''}${db.toFixed(1)} dB`,
     before: 'Reference',
@@ -575,8 +625,23 @@ export const drawTarget = (ex) => {
 // The accept band as a width on the 0..1 axis, which is the only form the
 // display can draw. On a log axis a tolerance in octaves (or a ratio) is a
 // constant width - which is the whole reason those axes are log.
-export const bandWidth = (ex) => {
-  if (!ex.log) return ex.tolerance / (ex.axisMax - ex.axisMin);
-  if (ex.toleranceIsRatio) return ex.tolerance / Math.log(ex.axisMax / ex.axisMin);
-  return ex.tolerance / Math.log2(ex.axisMax / ex.axisMin);
+export const bandWidth = (ex, tolerance) => {
+  if (!ex.log) return tolerance / (ex.axisMax - ex.axisMin);
+  if (ex.toleranceIsRatio) return Math.log(1 + tolerance) / Math.log(ex.axisMax / ex.axisMin);
+  return tolerance / Math.log2(ex.axisMax / ex.axisMin);
 };
+
+// What a step means in this exercise, as the plugin's formatLevel says it:
+// "±0.35 oct", "±1.2 dB", "±20%", or the closest pair - "Room vs Chamber".
+export const describeLevel = (ex, level) => {
+  if (ex.kind === 'continuous') return ex.threshold(ex.toleranceAt(level));
+
+  const [a, b] = hardestPair(ex.axis, level,
+    ex.distance ? (x, y) => ex.distance(x, y, ex.axis) : null);
+  return `${ex.choices[a]} vs ${ex.choices[b]}`;
+};
+
+// Five names, two steps each - rank.1..5 in the plugin's strings. Every
+// one says what the player *can* do.
+const RANKS = ['Hears the difference', 'Steady ear', 'Working ear', 'Mixing ear', 'Mastering ear'];
+export const rankFor = (level) => RANKS[Math.min(5, Math.max(1, Math.floor((level + 1) / 2))) - 1];

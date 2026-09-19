@@ -58,18 +58,28 @@ const familyColour = (family) =>
     (m) => `#${m[1]}`,
   );
 
-// --- level-1 accept bands, from each game's setDifficulty ---------------
+// --- accept bands, level 1 and level 10, from each game's ramp ----------
+// Since ADR 035 each ruler exercise has one `toleranceForLevel`, shared by
+// setDifficulty and describeLevel, and it is a geometric ramp between two
+// literals. Both ends are read, so the demo's staircase narrows the band
+// exactly as the plugin's does.
 const eq = read('Source/Games/EQGame.cpp');
 const eqHeader = read('Source/Games/EQGame.h');
 const db = read('Source/Games/DBGame.cpp');
 const pan = read('Source/Games/PanGame.cpp');
+const delay = read('Source/Games/DelayGame.cpp');
 
-const rampStart = (source, label, name) =>
-  grab(
+const ramp = (source, label, pattern) =>
+  grab(source, label, pattern, (m) => ({ level1: Number(m[1]), level10: Number(m[2]) }));
+
+const toleranceRamp = (source, game) =>
+  ramp(
     source,
-    label,
-    new RegExp(`${name} = rampTolerance \\(level, ([0-9.]+)f`),
-    (m) => Number(m[1]),
+    `${game}'s toleranceForLevel ramp`,
+    new RegExp(
+      `${game}::toleranceForLevel \\(int level\\) noexcept\\s*\\{\\s*` +
+        'return rampTolerance \\(level, ([0-9.]+)f, ([0-9.]+)f\\);',
+    ),
   );
 
 // --- the version the site should point at -------------------------------
@@ -92,14 +102,22 @@ const facts = {
     character: familyColour('character'),
   },
 
-  // Level 1, which is what the demo plays at. The plugin narrows these as
-  // you earn the level; the demo says so rather than pretending it is the
-  // only setting.
+  // Each ruler exercise's accept band at step 1 and at step 10, in its own
+  // units: octaves, dB, a fraction of one side (pan), a fraction of the
+  // time (delay). The steps between are DifficultyRamp::geometric.
   tolerances: {
-    band: rampStart(eq, "EQGame's level-1 tolerance", 'toleranceOctaves'),
-    gain: rampStart(db, "DBGame's level-1 tolerance", 'toleranceDb'),
-    pan: rampStart(pan, "PanGame's level-1 tolerance", 'tolerancePan'),
+    band: toleranceRamp(eq, 'EQGame'),
+    gain: toleranceRamp(db, 'DBGame'),
+    pan: toleranceRamp(pan, 'PanGame'),
+    delay: toleranceRamp(delay, 'DelayGame'),
   },
+
+  // Guess the Band's boost shrinks with the level too (EQGame::setDifficulty).
+  bandBoostDb: ramp(
+    eq,
+    "EQGame's boost ramp",
+    /gainDb = rampTolerance \(level, ([0-9.]+)f, ([0-9.]+)f\)/,
+  ),
 
   // The ISO octave centres the trainer marks its axis with.
   bandTicks: grab(

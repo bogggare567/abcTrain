@@ -100,9 +100,10 @@
 
 .tr-card__level {
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.1em;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
   color: var(--faint);
+  text-align: right;
 }
 
 .tr-card__level b { color: var(--text); font-weight: 500; }
@@ -120,19 +121,40 @@
   color: var(--dim);
 }
 
-.tr-card__bar {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--well);
-  overflow: hidden;
+/* Ten steps. Filled up to the record, a bright tick at today's step, the
+   next rank's first step dashed - the plugin's home-screen ruler. */
+.tr-ruler {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
   margin-top: var(--s-1);
 }
 
-.tr-card__bar span {
-  display: block;
-  height: 100%;
-  background: var(--hue);
-  transition: width var(--d-move) var(--ease);
+.tr-ruler span {
+  position: relative;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--well);
+}
+
+.tr-ruler span[data-filled="true"] { background: var(--hue); }
+
+.tr-ruler span[data-next="true"] {
+  background: transparent;
+  outline: 1px dashed var(--faint);
+  outline-offset: -1px;
+}
+
+.tr-ruler span[data-today="true"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--bright);
+  border-radius: 1px;
 }
 
 /* --- training -------------------------------------------------------- */
@@ -162,6 +184,19 @@
   font-size: var(--t-small);
   color: var(--dim);
 }
+
+/* The run toward the next step: three squares, lit one per right answer. */
+.tr-pips { display: inline-flex; gap: 4px; }
+
+.tr-pips span {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  border: 1px solid var(--line);
+  background: var(--well);
+}
+
+.tr-pips span[data-on="true"] { background: var(--good); border-color: var(--good); }
 
 .tr-instructions {
   color: var(--dim);

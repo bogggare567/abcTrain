@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import HintCanvas from './HintCanvas.jsx';
 import {
   EXERCISES, FAMILY_LABEL, toNorm, fromNorm, drawTarget, bandWidth, drawPair,
+  describeLevel, rankFor,
 } from './exercises.js';
 
 // ABC Ear Trainer, in a browser tab.
 //
 // Not a landing page with a toy on it: the same two screens the plugin
 // has, in the same order, with the same controls doing the same things.
-// Home lists the nine exercises as cards with their own level and record;
-// picking one starts it. The training screen is the exercise header, the
+// Home lists the nine exercises, each with its record as a threshold in
+// its own units and a ten-step ruler; picking one starts it. The training screen is the exercise header, the
 // instruction, the answer scale, and one row of controls - modes, score,
 // A/B, hint - laid out the way the plugin lays them out.
 //
@@ -24,23 +25,87 @@ import {
 
 const STORE = 'abctrain-web-progress';
 
+// The staircase, as ProgressManager::applyAnswerToProgress runs it
+// (ADR 035): three right in a row -> one step harder, one wrong -> one
+// step easier, steps 1..10. Each exercise keeps where it is now (`level`)
+// and its record (`bestLevel`), which never drops.
+const STEP_UP_AFTER = 3;
+const MAX_LEVEL = 10;
+
+const blank = () => ({ level: 1, bestLevel: 1, stepRun: 0, rounds: 0, correct: 0 });
+
+// A save from the points era has `points` and no `level`. Like the
+// plugin's migration, the level those points had earned becomes both the
+// starting step and the record, so nobody finds an exercise reset to 1.
+const migrate = (r) => {
+  if (!r) return blank();
+  if (r.level != null) return { ...blank(), ...r };
+
+  let level = 1;
+  while (level < MAX_LEVEL && (r.points ?? 0) >= ((level + 1) * level * 100) / 2) level += 1;
+  return { level, bestLevel: level, stepRun: 0, rounds: r.rounds ?? 0, correct: r.correct ?? 0 };
+};
+
 const loadProgress = () => {
   try {
-    return JSON.parse(localStorage.getItem(STORE)) || {};
+    const raw = JSON.parse(localStorage.getItem(STORE)) || {};
+    return Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, migrate(v)]));
   } catch {
     return {};
   }
 };
 
-// Level L needs 100·L points to reach L+1 - the same triangular scale as
-// ProgressManager::pointsRequiredForLevel, so a level here means what it
-// means in the plugin.
-const pointsForLevel = (level) => (level * (level - 1) * 100) / 2;
-const levelForPoints = (points) => {
-  let level = 1;
-  while (level < 10 && points >= pointsForLevel(level + 1)) level += 1;
-  return level;
+const progressOf = (progress, key) => progress[key] ?? blank();
+
+const step = (r, wasCorrect) => {
+  let { level, stepRun } = r;
+
+  if (wasCorrect) {
+    stepRun += 1;
+    if (stepRun >= STEP_UP_AFTER) {
+      if (level < MAX_LEVEL) {
+        level += 1;
+        stepRun = 0;
+      } else {
+        // At the top step the run stays full; there is nowhere further.
+        stepRun = STEP_UP_AFTER - 1;
+      }
+    }
+  } else {
+    stepRun = 0;
+    level = Math.max(1, level - 1);
+  }
+
+  return {
+    level,
+    stepRun,
+    bestLevel: Math.max(r.bestLevel, level),
+    rounds: r.rounds + 1,
+    correct: r.correct + (wasCorrect ? 1 : 0),
+  };
 };
+
+// Ten segments: filled up to the record, a tick at today's step, and the
+// next rank's first step dashed - the plugin's home-screen ruler.
+function Ruler({ level, bestLevel }) {
+  const nextRung = 2 * Math.ceil(bestLevel / 2) + 1;
+
+  return (
+    <div className="tr-ruler" aria-hidden="true">
+      {Array.from({ length: MAX_LEVEL }, (_, i) => {
+        const n = i + 1;
+        return (
+          <span
+            key={n}
+            data-filled={n <= bestLevel}
+            data-today={n === level}
+            data-next={n === nextRung}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 function Toolbar() {
   return (
@@ -54,31 +119,25 @@ function Toolbar() {
 }
 
 function Card({ exercise, record, onOpen }) {
-  const points = record?.points ?? 0;
-  const level = levelForPoints(points);
-  const rounds = record?.rounds ?? 0;
-  const correct = record?.correct ?? 0;
+  const { level, bestLevel, rounds, correct } = record;
   const accuracy = rounds > 0 ? Math.round((correct / rounds) * 100) : 0;
 
-  const floor = pointsForLevel(level);
-  const ceiling = pointsForLevel(level + 1);
-  const through = level >= 10 ? 1 : (points - floor) / Math.max(1, ceiling - floor);
-
+  // Screens lead with the record, so a wrong answer is never shown as a
+  // loss (ADR 035).
   return (
     <button type="button" className={`tr-card tr-card--${exercise.family}`} onClick={onOpen}>
       <div className="tr-card__top">
         <span className="tr-card__family">{FAMILY_LABEL[exercise.family]}</span>
-        <span className="tr-card__level">
-          LEVEL <b>{level}</b>
+        <span className="tr-card__level num">
+          <b>{describeLevel(exercise, bestLevel)}</b>
         </span>
       </div>
       <div className="tr-card__name">{exercise.name}</div>
       <div className="tr-card__stats">
-        {rounds > 0 ? `${accuracy}% correct · ${rounds} rounds` : 'not played yet'}
+        {rounds > 0 ? `${accuracy}% correct · ${rounds} rounds` : 'not started yet'}
+        {' · '}{rankFor(bestLevel)}
       </div>
-      <div className="tr-card__bar">
-        <span style={{ width: `${Math.max(0, Math.min(1, through)) * 100}%` }} />
-      </div>
+      <Ruler level={level} bestLevel={bestLevel} />
     </button>
   );
 }
@@ -101,6 +160,13 @@ export default function Trainer() {
   const [processed, setProcessed] = useState(true);
   const [playing, setPlaying] = useState(false);
   const [session, setSession] = useState({ correct: 0, played: 0 });
+  // Set when the last answer beat the record - the one staircase event
+  // the plugin announces.
+  const [newRecord, setNewRecord] = useState(false);
+  // The step this round is asked at. Held from the round's start, so the
+  // accept band drawn on the reveal is the one the answer was judged
+  // against, not the step the answer has just moved to.
+  const [roundLevel, setRoundLevel] = useState(1);
 
   // The hint is bought per round and forgotten at the next one, exactly as
   // in the plugin - a display still showing the previous round's picture
@@ -151,7 +217,7 @@ export default function Trainer() {
 
   useEffect(() => stop, [stop]);
 
-  const play = useCallback((ex, value, withProcessing) => {
+  const play = useCallback((ex, value, withProcessing, level = 1) => {
     stop();
 
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -177,7 +243,7 @@ export default function Trainer() {
     // plays the *widest* signal in the exercise under a button labelled
     // "Mono". Where an exercise defines buildBypass, that is its honest
     // untreated state.
-    const stage = withProcessing ? ex.build(ctx, value)
+    const stage = withProcessing ? ex.build(ctx, value, level)
                                  : (ex.buildBypass ? ex.buildBypass(ctx) : null);
 
     if (stage) {
@@ -246,25 +312,26 @@ export default function Trainer() {
     setHintShown(false);
     setGuess(null);
     setHover(null);
+    setNewRecord(false);
+    setRoundLevel(atLevel);
     // Each round starts *unprocessed*: you hear the clean reference first,
     // then switch. That is the order an engineer A/Bs in, and it stops the
     // treated version being the only thing ever heard.
     setProcessed(false);
-    play(ex, value, false);
+    play(ex, value, false, atLevel);
   }, [exercise, play]);
 
-  // The level is read here rather than reusing the one computed further
-  // down for rendering: that one is declared below this point, and a const
-  // referenced before its declaration is a ReferenceError, not a warning.
+  // Read when the round starts, so a step taken by the last answer applies
+  // to the very next question - as in the plugin.
   newRoundRef.current = () =>
-    newRound(exercise, levelForPoints(progress[exercise.key]?.points ?? 0));
+    newRound(exercise, progressOf(progress, exercise.key).level);
 
   const openExercise = useCallback((i) => {
     stop();
     setIndex(i);
     setScreen('training');
     setSession({ correct: 0, played: 0 });
-    newRound(EXERCISES[i], levelForPoints(progress[EXERCISES[i].key]?.points ?? 0));
+    newRound(EXERCISES[i], progressOf(progress, EXERCISES[i].key).level);
   }, [stop, newRound, progress]);
 
   const goHome = useCallback(() => {
@@ -277,25 +344,15 @@ export default function Trainer() {
     setScreen('home');
   }, [stop]);
 
-  const record = useCallback((wasCorrect, quality = 1) => {
+  const record = useCallback((wasCorrect) => {
     setSession((s) => ({ correct: s.correct + (wasCorrect ? 1 : 0), played: s.played + 1 }));
 
+    // One answer, one step of the staircase. No points, no promotion test.
+    const previous = progressOf(progress, exercise.key);
+    setNewRecord(step(previous, wasCorrect).bestLevel > previous.bestLevel);
+
     setProgress((p) => {
-      const key = exercise.key;
-      const previous = p[key] ?? { points: 0, rounds: 0, correct: 0 };
-
-      // 10 a round plus up to 5 for precision, exactly as
-      // ProgressManager::applyAnswerToProgress awards it.
-      const earned = wasCorrect ? 10 + Math.round(5 * quality) : 0;
-
-      const next = {
-        ...p,
-        [key]: {
-          points: previous.points + earned,
-          rounds: previous.rounds + 1,
-          correct: previous.correct + (wasCorrect ? 1 : 0),
-        },
-      };
+      const next = { ...p, [exercise.key]: step(progressOf(p, exercise.key), wasCorrect) };
 
       try {
         localStorage.setItem(STORE, JSON.stringify(next));
@@ -305,7 +362,7 @@ export default function Trainer() {
 
       return next;
     });
-  }, [exercise]);
+  }, [exercise, progress]);
 
   const answerContinuous = useCallback((clientX) => {
     if (revealed) return;
@@ -315,12 +372,12 @@ export default function Trainer() {
 
     const value = fromNorm(exercise, (clientX - box.left) / box.width);
     const err = exercise.error(value, target);
-    const correct = err <= exercise.tolerance;
+    const correct = err <= exercise.toleranceAt(roundLevel);
 
     setGuess({ value, err, correct });
     stop();
-    record(correct, correct ? 1 - err / exercise.tolerance : 0);
-  }, [revealed, exercise, target, stop, record]);
+    record(correct);
+  }, [revealed, exercise, target, stop, record, roundLevel]);
 
   const answerZoned = useCallback((choice) => {
     if (revealed) return;
@@ -333,8 +390,8 @@ export default function Trainer() {
 
   const setAB = useCallback((wantProcessed) => {
     setProcessed(wantProcessed);
-    play(exercise, target, wantProcessed);
-  }, [exercise, target, play]);
+    play(exercise, target, wantProcessed, roundLevel);
+  }, [exercise, target, play, roundLevel]);
 
   // Space flips A/B, the same key the plugin binds.
   useEffect(() => {
@@ -375,7 +432,7 @@ export default function Trainer() {
             <Card
               key={ex.key}
               exercise={ex}
-              record={progress[ex.key]}
+              record={progressOf(progress, ex.key)}
               onOpen={() => openExercise(i)}
             />
           ))}
@@ -387,10 +444,7 @@ export default function Trainer() {
   }
 
   // ---- training ---------------------------------------------------------
-  const points = progress[exercise.key]?.points ?? 0;
-  const level = levelForPoints(points);
-  const floor = pointsForLevel(level);
-  const ceiling = pointsForLevel(level + 1);
+  const { level, bestLevel, stepRun } = progressOf(progress, exercise.key);
 
   let verdict = '';
   if (revealed) {
@@ -403,9 +457,12 @@ export default function Trainer() {
         ? `Correct! It was ${exercise.format(target)}.`
         : `${exercise.miss(guess.value, target, guess.err)} - it was ${exercise.format(target)}.`;
     }
+    if (newRecord) verdict += ' New record.';
   }
 
-  const half = exercise.kind === 'continuous' ? bandWidth(exercise) : 0;
+  const half = exercise.kind === 'continuous'
+    ? bandWidth(exercise, exercise.toleranceAt(roundLevel))
+    : 0;
   const bandCentre = revealed && exercise.kind === 'continuous'
     ? toNorm(exercise, target)
     : hover;
@@ -425,8 +482,21 @@ export default function Trainer() {
         <span className={`tr-exercise__name tr-exercise__name--${exercise.family}`}>
           {exercise.name}
         </span>
+        {/* The step as what it means - the accept band in this exercise's
+            units - plus three squares for the run toward the next step.
+            The plugin's "Your threshold" line and its pips. */}
         <span className="tr-exercise__level num">
-          Level {level}: {points - floor} / {ceiling - floor}
+          Your threshold {describeLevel(exercise, level)}
+          {bestLevel > level && <> · record {describeLevel(exercise, bestLevel)}</>}
+        </span>
+        <span
+          className="tr-pips"
+          title={level >= MAX_LEVEL ? 'top step - keep it' : '3 in a row makes it harder'}
+          aria-label={`${stepRun} of ${STEP_UP_AFTER} in a row`}
+        >
+          {Array.from({ length: STEP_UP_AFTER }, (_, i) => (
+            <span key={i} data-on={i < stepRun} />
+          ))}
         </span>
       </div>
 
@@ -631,22 +701,22 @@ export default function Trainer() {
               // Nothing to analyse if nothing is playing, so buying the
               // hint starts the sound too - in the plugin the signal is
               // already running by the time you can press it.
-              if (!playing) play(exercise, target, processed);
+              if (!playing) play(exercise, target, processed, roundLevel);
             }}
           >
             Show the sound
           </button>
         )}
 
-        {revealed ? (
-          <button type="button" className="tr-btn tr-btn--primary" onClick={() => newRound(exercise, level)}>
-            Next round
-          </button>
-        ) : (
+        {/* No "Next round" button: rounds advance on their own, as in the
+            plugin, and a button that duplicates something automatic is a
+            button to remove. Play stays because a browser will not start
+            sound without a click. */}
+        {!revealed && (
           <button
             type="button"
             className="tr-btn tr-btn--primary"
-            onClick={() => (playing ? stop() : play(exercise, target, processed))}
+            onClick={() => (playing ? stop() : play(exercise, target, processed, roundLevel))}
           >
             {playing ? 'Stop' : 'Play'}
           </button>

@@ -5,7 +5,8 @@
 // is a page nobody can audit against it. Every string below is checkable
 // against the repository — exercise names come from GameManager.cpp, the
 // groupings from categoryForGame() in Source/PluginEditor.cpp, the module
-// counts from CompressorModules.h / ReverbModules.h.
+// counts from EQModules.h / CompressorModules.h / ReverbModules.h, the
+// staircase from ADR 035, Beginner/Pro and hearing from ADR 036.
 //
 // No user counts, no star counts, no download counts: the product is
 // pre-release and any number here would be invented.
@@ -84,29 +85,49 @@ export const FAMILIES = [
   },
 ];
 
-// The three teaching plugins. Module counts from the per-plugin module
-// files; Learner EQ deliberately has no knob modules — see ADR 027 — and
-// four lessons instead.
+// How the trainer judges you, in the terms ADR 035 and 036 use. Each line
+// is something the app does now; none of it is a promise.
+export const TRAINER_NOTES = [
+  {
+    head: 'A staircase, not points',
+    body: 'Three right in a row makes an exercise one step harder, one wrong makes it one step easier — ten steps, and a record that never drops. Your level is shown as what it means: a threshold in the exercise’s own units, like ±0.35 oct or ±1.2 dB.',
+  },
+  {
+    head: 'Beginner and Pro',
+    body: 'Beginner keeps every training rule at its default. Pro opens them: how many in a row make it harder, the pause after an answer, hints, Survival and Blitz rules.',
+  },
+  {
+    head: 'Hearing protection, optional',
+    body: 'On by default. It suggests a break after an hour of sound, and — if you calibrate against any dB(A) meter — keeps a weekly dose estimate against the WHO / ITU-T H.870 safe-listening limit. It informs; it never blocks a round.',
+  },
+];
+
+// The three teaching plugins. Module and lesson counts from EQModules.h,
+// CompressorModules.h and ReverbModules.h (ADR 037).
 export const PLUGINS = [
   {
     key: 'eq',
     name: 'ABC Learner EQ',
     body: 'A graphical EQ on your own audio: eight free bands of any type — bells, shelves, high-pass, low-pass, notch — added and moved on the curve itself, over a spectrum labelled in sensations as well as numbers.',
-    modules: '4 guided lessons',
+    modules: '4 knob modules · 4 lessons',
   },
   {
     key: 'comp',
     name: 'ABC Learner Comp',
-    body: 'A real compressor with a gain-reduction meter that fills downward, four teaching presets, and per-knob training you answer by turning the plugin’s own knob.',
+    body: 'A real compressor with a gain-reduction meter that fills downward, a transfer curve drawn from the engine’s own gain computer, and four teaching presets.',
     modules: '7 knob modules · 4 lessons',
   },
   {
     key: 'verb',
     name: 'ABC Learner Verb',
-    body: 'Room, hall, plate and a spring tank built from resonant allpass filters, with the same spectrum, meters and per-knob training.',
+    body: 'Room and hall from a feedback delay network, a Dattorro plate and two springs. Decay is measured RT60, and the display is an echogram — the plugin’s actual impulse response.',
     modules: '7 knob modules · 4 lessons',
   },
 ];
+
+// What all three share, said once rather than three times.
+export const PLUGINS_COMMON =
+  'In all three, each knob is a training module: you match a hidden setting with the plugin’s own knob, inside an accept band in that knob’s units, on the same ten-step staircase as the trainer. A/B slots for comparing two settings, and the whole interface in 12 languages.';
 
 // Straight from docs/website-brief.md's "what you must not claim". Putting
 // these on the page rather than hiding them is the whole point: an
@@ -124,6 +145,10 @@ export const LIMITS = [
   {
     head: 'Stereo width still trains on pink noise',
     body: 'Imported clips are downmixed to mono, and mono has no side signal to widen. Compression and delay are also harder to hear on a dense mix than on a synthesized stand.',
+  },
+  {
+    head: 'The hearing dose is an estimate',
+    body: 'Software sees dBFS, not what reaches your ears. The weekly figure holds only while the monitor level stays where you calibrated it, and it is not a certified H.870 measurement.',
   },
   {
     head: 'Updating is not fully automatic',

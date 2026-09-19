@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import Trainer from './trainer/Trainer.jsx';
-import { RELEASE, DOWNLOADS, FAMILIES, PLUGINS, LIMITS, FACTS } from './content.js';
+import {
+  RELEASE, DOWNLOADS, FAMILIES, TRAINER_NOTES, PLUGINS, PLUGINS_COMMON, LIMITS, FACTS,
+} from './content.js';
 
 function Masthead({ theme, onToggleTheme }) {
   return (
@@ -46,9 +48,9 @@ function Hero() {
       <Trainer />
 
       <p className="lede" style={{ marginTop: 'var(--s-3)' }}>
-        That is one exercise of nine, at level one, in a browser tab. The
-        plugins run in your DAW on your own tracks — and three of them are real
-        EQ, compressor and reverb units that teach while they process.
+        Those are the nine exercises, on the same staircase, in a browser tab.
+        The plugins run in your DAW on your own tracks — and three of them are
+        real EQ, compressor and reverb units that teach while they process.
       </p>
 
       <div className="row">
@@ -70,7 +72,7 @@ function Hero() {
 function Families() {
   return (
     <section className="wrap rack rack--tight" id="train">
-      <p className="label">The other eight exercises</p>
+      <p className="label">The nine exercises, by what they train</p>
       <div className="families">
         {FAMILIES.map((f) => (
           <article key={f.key} className={`family family--${f.key}`}>
@@ -88,6 +90,16 @@ function Families() {
           </article>
         ))}
       </div>
+      <ul className="limits__list" style={{ marginTop: 'var(--s-5)' }}>
+        {TRAINER_NOTES.map((n) => (
+          <li key={n.head}>
+            <span className="limits__mark" aria-hidden="true">—</span>
+            <span>
+              <b>{n.head}.</b> {n.body}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -148,6 +160,9 @@ function Plugins() {
           </article>
         ))}
       </div>
+      <p className="round__note" style={{ maxWidth: '72ch', marginTop: 'var(--s-4)' }}>
+        {PLUGINS_COMMON}
+      </p>
     </section>
   );
 }

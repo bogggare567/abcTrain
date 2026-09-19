@@ -1,6 +1,6 @@
 {
   "generatedBy": "website/tools/sync-from-plugin.mjs",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "families": {
     "frequency": "#4fa3c7",
     "dynamics": "#c77f4f",
@@ -8,9 +8,26 @@
     "character": "#a878c9"
   },
   "tolerances": {
-    "band": 1,
-    "gain": 2.5,
-    "pan": 0.35
+    "band": {
+      "level1": 1,
+      "level10": 0.2
+    },
+    "gain": {
+      "level1": 2.5,
+      "level10": 0.8
+    },
+    "pan": {
+      "level1": 0.35,
+      "level10": 0.07
+    },
+    "delay": {
+      "level1": 0.35,
+      "level10": 0.08
+    }
+  },
+  "bandBoostDb": {
+    "level1": 9,
+    "level10": 2.5
   },
   "bandTicks": [
     31.5,

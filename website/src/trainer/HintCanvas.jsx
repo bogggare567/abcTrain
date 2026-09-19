@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 // the reason the plugin's Game::getHintView records: one generic pair of
 // displays is right for two exercises and decoration for the rest, and
 // neither a spectrum nor a vectorscope can show compression at all. A hint
-// the player pays points for has to be able to show the thing.
+// the player asks for has to be able to show the thing.
 //
 //   spectrum  frequency, named range, distortion - where the energy sits
 //   stereo    pan, width - the field, and how far off centre
