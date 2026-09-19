@@ -122,7 +122,7 @@ void DelayGame::setDifficulty (int level)
     // milliseconds - being 20 ms out at 40 ms and at 500 ms are completely
     // different mistakes.
     burstPeriodSeconds = rampLinear (level, 1.4f, 0.55f);
-    toleranceRatio = rampTolerance (level, 0.35f, 0.08f);
+    toleranceRatio = toleranceForLevel (level);
 
     updateBurstPeriod();
 }
@@ -244,4 +244,17 @@ juce::String DelayGame::getFeedbackText() const
 
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + juce::String (juce::roundToInt (targetMs)) + " ms.";
+}
+
+float DelayGame::toleranceForLevel (int level) noexcept
+{
+    return rampTolerance (level, 0.35f, 0.08f);
+}
+
+Game::LevelMeaning DelayGame::describeLevel (int level) const
+{
+    LevelMeaning meaning;
+    meaning.unit = LevelMeaning::Unit::percent;
+    meaning.tolerance = toleranceForLevel (level) * 100.0f;
+    return meaning;
 }

@@ -8,25 +8,27 @@
 #include <vector>
 
 // Cross-session progression: **a level per exercise** (1-10, each driving
-// that game's own difficulty), a daily login streak, and one daily
+// that game's own difficulty), a daily practice streak, and one daily
 // challenge.
 //
-// Levels used to be one global number, plus a dropdown to set it directly.
-// Both are gone. Being good at spotting a reverb tail says nothing about
-// whether you can hear 400 Hz, so one number could only ever be wrong for
-// eight exercises out of nine - and a level you can pick from a menu is a
-// setting, not an achievement. Everyone now starts every exercise at 1 and
-// earns each one separately.
+// How a level moves (ADR 035): a **staircase**, the standard adaptive
+// method of psychoacoustics (Levitt 1971, "transformed up-down"). Three
+// correct in a row take one step harder; one wrong answer takes one step
+// easier. A 3-down/1-up staircase settles where the listener is right about
+// 79% of the time - which is the neighbourhood where practice teaches
+// fastest and where a round feels on the edge rather than easy or hopeless.
 //
-// How a level is earned (see promoteIfDue): points from correct answers
-// unlock the *chance* to move up, but the move itself needs a short test -
-// promotionTestLength correct in a row. Points alone would mean grinding
-// volume; a test alone would mean a lucky streak on day one. Together they
-// say "you have put the hours in, now show me" - and while the test is
-// live there is something concrete to chase, which is the point. Backed by juce::PropertiesFile. Games
-// themselves know nothing about points/levels - this class listens to
-// every game's ChangeBroadcaster and reacts to correct/incorrect answers
-// from the outside, the same way the editor listens for UI refreshes.
+// It replaced points plus a five-in-a-row promotion test. That model hit
+// the ceiling after ~360 correct answers per exercise (about an hour) and
+// then said nothing new about the player for the rest of their life; and a
+// level that only ever went up measured time served, not hearing. The
+// staircase measures: the level it hovers at *is* the player's threshold,
+// and each exercise reports it in its own units (Game::describeLevel).
+//
+// Two numbers per exercise, because the staircase moves both ways:
+// `level` is where it is now (today's form, can dip), `bestLevel` is the
+// highest step ever held (the record, never drops). Screens lead with the
+// record, so a wrong answer never reads as a loss.
 class ProgressManager : public juce::ChangeBroadcaster,
                          private juce::ChangeListener
 {
@@ -44,25 +46,16 @@ public:
     //
     // Everything here takes a game index. Out-of-range returns a harmless
     // default rather than asserting, the same rule getStatsForGame follows.
-    int getLevelForGame (int gameIndex) const noexcept;
-    int getPointsForGame (int gameIndex) const noexcept;
+    int getLevelForGame (int gameIndex) const noexcept;       // current step
+    int getBestLevelForGame (int gameIndex) const noexcept;   // record, never drops
 
-    // 0..1 through the current level, for a per-exercise indicator.
+    // Correct answers in a row toward the next step, 0..stepUpAfter-1, and
+    // the same as a 0..1 fraction. The three squares beside the exercise
+    // name are this number.
+    int getStepRunForGame (int gameIndex) const noexcept;
     float getLevelProgressForGame (int gameIndex) const noexcept;
 
-    // True while the points threshold is met and the promotion test is
-    // live. getPromotionStreakForGame is how far into it the player is,
-    // out of promotionTestLength.
-    bool isPromotionPendingForGame (int gameIndex) const noexcept;
-    int getPromotionStreakForGame (int gameIndex) const noexcept;
-
-    // Summed across every exercise - the only global number left, and only
-    // because achievements ask about totals.
-    int getTotalScore() const noexcept;
-
-    // The highest level reached in any exercise. Used to unlock training
-    // sound categories, which are a whole-account thing rather than a
-    // per-exercise one.
+    // The highest record across all exercises.
     int getMaxLevelReached() const noexcept;
 
     int getStreakDays() const noexcept { return streakDays; }
@@ -90,14 +83,11 @@ public:
     // the editor (which does know the language, and knows how to translate
     // an exercise name) writes the sentence.
     int getDailyChallengeTargetStreak() const noexcept { return dailyChallengeTargetStreak; }
-    int getDailyChallengeBonusPoints() const noexcept { return dailyChallengeBonusPoints; }
     bool isDailyChallengeComplete() const noexcept { return dailyChallengeComplete; }
     int getDailyChallengeGameIndex() const noexcept { return dailyChallengeGameIndex; }
 
-    // Pure functions, no side effects - exposed so tests can check the
-    // level/date math directly without constructing a whole ProgressManager.
-    static int pointsRequiredForLevel (int level) noexcept;
-    static int levelForScore (int score) noexcept;
+    // Pure, no side effects - exposed so tests can check the date math
+    // directly without constructing a whole ProgressManager.
     static int daysBetween (const juce::String& isoDateA, const juce::String& isoDateB);
 
     // Same logic the constructor runs against the real current date, but
@@ -115,11 +105,9 @@ public:
     // through the real listener chain would be unreliable at best and
     // could hang the test binary at worst. This is the seam tests use
     // instead.
-    // `quality` is 0..1 from Game::getAnswerQuality - how close a
-    // continuous answer landed inside its accept band. It scales the
-    // points awarded, so scraping the edge of the band and hitting the
-    // target dead on are no longer worth the same. Defaults to 1 so every
-    // existing call site and every categorical game is unaffected.
+    // `quality` is 0..1 from Game::getAnswerQuality. It no longer affects
+    // progress - there are no points to scale - and is kept so callers and
+    // tests keep one signature.
     void registerAnswer (int gameIndex, bool wasCorrect, float quality = 1.0f,
                           int skillBucket = -1);
 
@@ -132,7 +120,7 @@ public:
     int getBucketAttempts (int gameIndex, int bucket) const;
     int getBucketMisses (int gameIndex, int bucket) const;
 
-    // Lifetime per-exercise record, persisted alongside points/level.
+    // Lifetime per-exercise record, persisted alongside the level.
     // Kept separate from each Game's own getScore()/getRoundsPlayed(),
     // which are deliberately in-memory session counters that reset every
     // time the plugin is reopened - this is the "how am I doing at this
@@ -214,22 +202,17 @@ public:
     std::function<void (const juce::String&)> onAchievementEarned;
 
     // What one answer actually produced - the facts the UI needs to make
-    // the moment land. applyAnswerToProgress always *knew* these (it even
-    // returned "the level changed" as its bool), but registerAnswer
-    // discarded them, which is why a level-up used to happen with no
-    // fanfare whatsoever: the one moment the whole points system builds
-    // toward arrived as a silent label refresh.
+    // the moment land.
     struct AnswerOutcome
     {
-        int pointsAwarded = 0;              // base + precision + any daily bonus
         bool wasCorrect = false;
         bool dailyChallengeJustCompleted = false;
-        bool promotionJustOpened = false;   // points threshold crossed, test now live
-        bool promotionJustFailed = false;   // wrong answer reset a live test
-        bool leveledUp = false;
-        int level = 1;                      // after this answer
-        int promotionStreak = 0;            // progress through a live test
-        bool promotionPending = false;
+        bool leveledUp = false;      // took a step harder
+        bool steppedDown = false;    // took a step easier
+        bool newBest = false;        // the record moved - the moment worth marking
+        int level = 1;               // after this answer
+        int bestLevel = 1;
+        int stepRun = 0;             // 0..stepUpAfter-1 after this answer
     };
 
     // Fired synchronously from registerAnswer, after state is saved and
@@ -241,18 +224,10 @@ public:
     void recordBlitzScore (int gameIndex, int score);
 
     static constexpr int maxLevel = 10;
-    static constexpr int pointsPerCorrectAnswer = 10;
 
-    // Awarded on top, scaled by quality: a dead-centre answer is worth
-    // 15, the edge of the band 10. Small on purpose - precision should be
-    // worth chasing, not worth more than showing up.
-    static constexpr int precisionBonusPoints = 5;
+    // Three right in a row for a step harder, one wrong for a step easier.
+    static constexpr int stepUpAfter = 3;
 
-    // Correct answers in a row needed to actually take a level once the
-    // points have unlocked it. Short on purpose: it is a checkpoint, not a
-    // wall, and a long one would turn every promotion into a chore.
-    static constexpr int promotionTestLength = 5;
-    static constexpr int dailyChallengeBonusPoints = 50;
     static constexpr int dailyChallengeTargetStreak = 5;
 
 private:
@@ -264,25 +239,19 @@ private:
     GameManager& gameManager;
     std::unique_ptr<juce::PropertiesFile> properties;
 
-    // One of these per exercise. `points` only ever grows; `level` only
-    // ever grows; a failed promotion test costs the streak, never a level
-    // or a point. Losing a level for a bad run would make people stop
-    // playing the exercises they are worst at, which are the ones worth
-    // playing.
+    // One of these per exercise. `level` moves both ways; `bestLevel`
+    // only ever grows. See the class comment for why.
     struct GameProgress
     {
-        int points = 0;
         int level = 1;
-        bool promotionPending = false;
-        int promotionStreak = 0;
+        int bestLevel = 1;
+        int stepRun = 0;
     };
 
     std::vector<GameProgress> progressPerGame;
 
-    // Applies points, opens a promotion when the threshold is crossed, and
-    // advances or resets the test. Fills the outcome as it goes.
-    void applyAnswerToProgress (int gameIndex, bool wasCorrect, float quality,
-                                AnswerOutcome& outcome);
+    // One staircase step. Fills the outcome as it goes.
+    void applyAnswerToProgress (int gameIndex, bool wasCorrect, AnswerOutcome& outcome);
 
     int streakDays = 0;
     juce::String lastSessionDate;

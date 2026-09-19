@@ -132,6 +132,7 @@ public:
         settingsScreen.refresh();
         settingsScreen.toFront (false);
         hideContentUnderNavPage();
+        refreshRailStatus();
     }
 
     void openSoundsForSnapshot()
@@ -141,6 +142,7 @@ public:
         trainingSounds.refresh();
         trainingSounds.toFront (false);
         hideContentUnderNavPage();
+        refreshRailStatus();
     }
 
     // Snapshot seam: the hint costs points, so there is no way to
@@ -689,8 +691,8 @@ private:
             juce::String challengeLine;      // "5 in a row on Guess the Reverb"
             juce::String rewardLine;         // "+50 points for the task"
             juce::String progressCaption;    // "3 of 5"
-            juce::String levelCaption;       // "OVERALL LEVEL"
-            int level = 1;
+            juce::String levelCaption;       // "YOUR THRESHOLD"
+            juce::String levelText;          // "±0,35 oct"
             int challengeDone = 0;
             int challengeTarget = 0;
             bool challengeComplete = false;
@@ -813,8 +815,8 @@ private:
                 g.setFont (AbcTrainLookAndFeel::displayFont()
                                .withHeight (AbcTrainLookAndFeel::displayFontHeight
                                               * AbcTrainLookAndFeel::getTextScale() * 0.72f));
-                g.drawText (juce::String (state.level), stack.toNearestInt(),
-                             juce::Justification::centredLeft, false);
+                g.drawFittedText (state.levelText, stack.toNearestInt(),
+                                   juce::Justification::centredLeft, 1, 0.6f);
             }
         }
 
@@ -822,10 +824,9 @@ private:
         State state;
     };
 
-    // The promotion test, visible: one pip per required consecutive
-    // correct answer. The mechanic existed and mattered - five in a row
-    // takes the level - but lived only in a line of text, which is why a
-    // player could be two answers from a level-up and not feel it.
+    // The staircase, visible: one square per correct answer toward the
+    // next step (ADR 035). Two lit of three reads without a word - one
+    // more right and it gets harder - which a line of text never did.
     class PromotionPips : public juce::Component
     {
     public:
@@ -867,35 +868,33 @@ private:
                 return;
 
             const auto& theme = AbcTrainTheme::current();
-            const auto radius = 4.0f;
-            const auto gap = 6.0f;
-            const auto span = (float) total * radius * 2.0f + (float) (total - 1) * gap;
-            auto x = ((float) getWidth() - span) * 0.5f + radius;
-            const auto y = (float) getHeight() * 0.5f;
+            const auto size = 11.0f;
+            const auto gap = 5.0f;
+            const auto span = (float) total * size + (float) (total - 1) * gap;
+            auto x = (float) getWidth() - span;   // right-aligned, beside the verdict
+            const auto y = ((float) getHeight() - size) * 0.5f;
 
             for (int i = 0; i < total; ++i)
             {
                 const auto isNewest = (i == filled - 1);
                 const auto scale = isNewest ? 0.6f + 0.4f * pop : 1.0f;
-                const auto r = radius * scale;
+                const auto cell = juce::Rectangle<float> (x, y, size, size);
 
+                // Squares, not dots: every mark in this design is square,
+                // and a filled square next to an empty frame is the same
+                // grammar as a filled button next to a quiet one.
                 if (i < filled)
                 {
-                    // createEaseOutBack overshoots past 1.0 - that is the
-                    // pop - so anything derived from it must be clamped
-                    // before it becomes an alpha.
-                    g.setColour (theme.accent.withAlpha (juce::jlimit (0.0f, 1.0f, 0.35f * (isNewest ? pop : 1.0f))));
-                    g.fillEllipse (x - r - 2.0f, y - r - 2.0f, (r + 2.0f) * 2.0f, (r + 2.0f) * 2.0f);
-                    g.setColour (theme.accent);
-                    g.fillEllipse (x - r, y - r, r * 2.0f, r * 2.0f);
+                    g.setColour (theme.positive.withAlpha (juce::jlimit (0.0f, 1.0f, isNewest ? pop : 1.0f)));
+                    g.fillRect (cell.withSizeKeepingCentre (size * scale, size * scale));
                 }
                 else
                 {
-                    g.setColour (theme.outline);
-                    g.drawEllipse (x - radius, y - radius, radius * 2.0f, radius * 2.0f, 1.2f);
+                    g.setColour (theme.positive.withAlpha (0.55f));
+                    g.drawRect (cell, 1.0f);
                 }
 
-                x += radius * 2.0f + gap;
+                x += size + gap;
             }
         }
 

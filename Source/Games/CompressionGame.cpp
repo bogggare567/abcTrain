@@ -337,3 +337,15 @@ std::array<int, 2> CompressionGame::drawPair()
 
     return pair;
 }
+
+Game::LevelMeaning CompressionGame::describeLevel (int level) const
+{
+    // Neighbouring amounts become the usual question past the middle of
+    // the ladder (see drawPair's neighbourChance); before that the usual
+    // one is the two ends.
+    const auto neighbours = juce::jmap ((float) juce::jlimit (1, 10, level), 1.0f, 10.0f, 0.17f, 1.0f) >= 0.5f;
+    LevelMeaning meaning;
+    meaning.closerA = presets[neighbours ? 1u : 0u].label;
+    meaning.closerB = presets[2].label;
+    return meaning;
+}

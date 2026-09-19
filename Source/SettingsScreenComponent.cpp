@@ -202,6 +202,9 @@ juce::String SettingsScreenComponent::licenceText (bool full)
 void SettingsScreenComponent::refreshLicenceView()
 {
     licenceView.setText (licenceText (licenceExpanded));
+    // A TextEditor stamps its colour onto text as it is inserted, so text
+    // set under the dark theme stayed near-white after switching to light.
+    licenceView.applyColourToAllText (licenceView.findColour (juce::TextEditor::textColourId));
     licenceView.moveCaretToTop (false);
     licenceToggle.setButtonText (localisation.getText (licenceExpanded ? "ui.licenceLess"
                                                                        : "ui.licenceMore"));
@@ -244,6 +247,9 @@ void SettingsScreenComponent::refresh()
     chooseBackgroundButton.setButtonText (localisation.getText ("ui.chooseImage"));
     clearBackgroundButton.setButtonText (localisation.getText ("ui.clearImage"));
     closeButton.setButtonText (localisation.getText ("ui.close"));
+
+    licenceView.setColour (juce::TextEditor::textColourId, theme.text);
+    refreshLicenceView();
 
     for (auto* label : { &textScaleLabel, &backgroundLabel, &scrimLabel })
         label->setColour (juce::Label::textColourId, theme.text);

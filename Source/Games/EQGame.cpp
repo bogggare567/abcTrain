@@ -153,7 +153,7 @@ void EQGame::setDifficulty (int level)
     // one. The band is the real lever - it is the same *ratio* of slack at
     // 200 Hz as at 8 kHz, which a fixed number of hertz would not be.
     gainDb = rampTolerance (level, 9.0f, 2.5f);
-    toleranceOctaves = rampTolerance (level, 1.0f, 0.2f);
+    toleranceOctaves = toleranceForLevel (level);
 }
 
 void EQGame::newRound()
@@ -245,4 +245,17 @@ void EQGame::updateFilter()
     const auto freq = targetHz;
     const auto gain = juce::Decibels::decibelsToGain (isBoost ? gainDb : -gainDb);
     *peakFilter.state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (sampleRate, freq, filterQ, gain);
+}
+
+float EQGame::toleranceForLevel (int level) noexcept
+{
+    return rampTolerance (level, 1.0f, 0.2f);
+}
+
+Game::LevelMeaning EQGame::describeLevel (int level) const
+{
+    LevelMeaning meaning;
+    meaning.unit = LevelMeaning::Unit::octaves;
+    meaning.tolerance = toleranceForLevel (level) * 1.0f;
+    return meaning;
 }

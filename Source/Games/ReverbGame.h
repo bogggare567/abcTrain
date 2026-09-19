@@ -19,6 +19,10 @@
 class ReverbGame : public Game
 {
 public:
+    // The closest pair this level can offer - what the level means here.
+    LevelMeaning describeLevel (int level) const override;
+    static const std::vector<float>& characterPositions();
+
     // Five, not four. Room vs. Hall on its own is a size question and
     // nothing else - one is short and one is long, and a first-time player
     // gets it right by accident. Chamber sits deliberately *between* them,

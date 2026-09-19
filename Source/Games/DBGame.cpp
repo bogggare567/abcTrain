@@ -36,7 +36,7 @@ void DBGame::setDifficulty (int level)
     // Stops at 0.8 dB rather than going lower: below roughly that, a level
     // difference is not reliably audible at all, so a tighter band would
     // test luck instead of hearing.
-    toleranceDb = rampTolerance (level, 2.5f, 0.8f);
+    toleranceDb = toleranceForLevel (level);
 }
 
 juce::String DBGame::formatNormalisedValue (float normalised) const
@@ -145,4 +145,17 @@ juce::String DBGame::getFeedbackText() const
 
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was " + formatNormalisedValue (dbToNormalised (targetDb)) + ".";
+}
+
+float DBGame::toleranceForLevel (int level) noexcept
+{
+    return rampTolerance (level, 2.5f, 0.8f);
+}
+
+Game::LevelMeaning DBGame::describeLevel (int level) const
+{
+    LevelMeaning meaning;
+    meaning.unit = LevelMeaning::Unit::decibels;
+    meaning.tolerance = toleranceForLevel (level) * 1.0f;
+    return meaning;
 }

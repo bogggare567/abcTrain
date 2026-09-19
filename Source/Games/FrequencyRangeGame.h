@@ -19,6 +19,9 @@
 class FrequencyRangeGame : public Game
 {
 public:
+    // The closest pair this level can offer - what the level means here.
+    LevelMeaning describeLevel (int level) const override;
+
     static constexpr int numRanges = 7;
 
     struct Range

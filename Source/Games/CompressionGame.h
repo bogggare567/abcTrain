@@ -15,6 +15,9 @@
 class CompressionGame : public Game
 {
 public:
+    // The closest pair this level can offer - what the level means here.
+    LevelMeaning describeLevel (int level) const override;
+
     static constexpr int numLevels = 3;
 
     juce::String getName() const override { return "Guess the Compression"; }

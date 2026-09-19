@@ -24,6 +24,11 @@
 class EQGame : public Game
 {
 public:
+    // The accept band at a level, in this exercise's own units - one
+    // function, so setDifficulty and describeLevel cannot disagree.
+    static float toleranceForLevel (int level) noexcept;
+    LevelMeaning describeLevel (int level) const override;
+
     static constexpr int numBands = 10;
     static const std::array<float, numBands> bandFrequenciesHz;
 

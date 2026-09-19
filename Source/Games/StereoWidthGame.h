@@ -24,6 +24,9 @@
 class StereoWidthGame : public Game
 {
 public:
+    // The closest pair this level can offer - what the level means here.
+    LevelMeaning describeLevel (int level) const override;
+
     static constexpr int numWidths = 4;
 
     juce::String getName() const override { return "Guess the Stereo Width"; }

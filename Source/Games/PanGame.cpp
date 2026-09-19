@@ -55,7 +55,7 @@ void PanGame::setDifficulty (int level)
     activePositions = level <= 3 ? &easyPositions
                                  : (level <= 6 ? &mediumPositions : &hardPositions);
 
-    tolerancePan = rampTolerance (level, 0.35f, 0.07f);
+    tolerancePan = toleranceForLevel (level);
 }
 
 juce::String PanGame::formatNormalisedValue (float normalised) const
@@ -156,4 +156,17 @@ juce::String PanGame::getFeedbackText() const
 
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
            + "It was panned " + formatNormalisedValue (panToNormalised (targetPan)) + ".";
+}
+
+float PanGame::toleranceForLevel (int level) noexcept
+{
+    return rampTolerance (level, 0.35f, 0.07f);
+}
+
+Game::LevelMeaning PanGame::describeLevel (int level) const
+{
+    LevelMeaning meaning;
+    meaning.unit = LevelMeaning::Unit::percent;
+    meaning.tolerance = toleranceForLevel (level) * 100.0f;
+    return meaning;
 }

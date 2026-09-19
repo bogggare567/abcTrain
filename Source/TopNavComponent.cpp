@@ -18,7 +18,11 @@ namespace
 
     constexpr int rightCellWidth = 34;
     constexpr int rightCells     = 4;   // theme, update, size, language
-    constexpr int volumeWidth    = 96;
+    // No volume in the bar (ADR 035): in a plugin the level is the
+    // channel fader, in the standalone it is the interface and the system,
+    // and a third volume here only moved the reference the gain exercise
+    // is judged against.
+    constexpr int volumeWidth    = 0;
 
     // Everything the app's own controls occupy on the right, measured once
     // rather than guessed at three call sites. Guessing it is what put the
@@ -125,11 +129,7 @@ juce::Rectangle<int> TopNavComponent::getThemeSlot()    const { return rightCell
 
 juce::Rectangle<int> TopNavComponent::getVolumeSlot() const
 {
-    // Volume is a slider, so it needs a run rather than a cell. It keeps
-    // its place in the bar deliberately: it is the one control somebody
-    // reaches for *during* a round, and the design mockup dropped it
-    // entirely, which would have meant leaving the exercise to turn the
-    // sound down.
+    // Kept as an empty slot so the editor's wiring needs no special case.
     const auto cell = rightCell (rightCells - 1);
     return { cell.getX() - volumeWidth - 8, cell.getY(), volumeWidth, cell.getHeight() };
 }

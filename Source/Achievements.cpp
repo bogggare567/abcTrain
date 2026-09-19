@@ -1,5 +1,6 @@
 #include "Achievements.h"
 #include "../shared/AbcTrainTheme.h"
+#include <string>
 
 namespace Achievements
 {
@@ -16,76 +17,98 @@ namespace Achievements
             distortion, stereoWidth, gain, frequencyRange
         };
 
-        const std::vector<Definition> definitions
+        // Built once. Every per-exercise rule is generated for all nine
+        // exercises from one line, so a new exercise gets its stamps and its
+        // milestone by being appended to GameIndex - and an id, once
+        // shipped, never changes (it is the persistence key).
+        std::vector<Definition> makeDefinitions()
         {
-            // Bronze: reachable in a first sitting or two. These exist so
-            // the shelf is never empty, which is the only reason an easy
-            // achievement is worth having.
-            { "first.hundred",     Kind::totalCorrect,      100, Tier::bronze, -1,
-              "achv.firstHundred.name", "achv.firstHundred.desc" },
-            { "breadth.all",       Kind::breadth,             9, Tier::bronze, -1,
-              "achv.breadthAll.name", "achv.breadthAll.desc" },
-            { "streak.7days",      Kind::dayStreak,           7, Tier::bronze, -1,
-              "achv.streak7.name", "achv.streak7.desc" },
-            { "survival.25",       Kind::survivalScore,      25, Tier::bronze, -1,
-              "achv.survival25.name", "achv.survival25.desc" },
-            { "blitz.30",          Kind::blitzScore,         30, Tier::bronze, -1,
-              "achv.blitz30.name", "achv.blitz30.desc" },
+            std::vector<Definition> d;
+            const char* ids[] { "eq", "comp", "reverb", "pan", "delay", "dist", "width", "gain", "range" };
 
-            // Silver: one exercise taken seriously.
-            { "eq.rounds.200",     Kind::exerciseRounds,    200, Tier::silver, eq,
-              "achv.eqRounds.name", "achv.eqRounds.desc" },
-            { "eq.accuracy.75",    Kind::exerciseAccuracy,   75, Tier::silver, eq,
-              "achv.eqAccuracy.name", "achv.eqAccuracy.desc" },
-            { "range.accuracy.80", Kind::exerciseAccuracy,   80, Tier::silver, frequencyRange,
-              "achv.rangeAccuracy.name", "achv.rangeAccuracy.desc" },
-            { "comp.accuracy.75",  Kind::exerciseAccuracy,   75, Tier::silver, compression,
-              "achv.compAccuracy.name", "achv.compAccuracy.desc" },
-            { "gain.accuracy.80",  Kind::exerciseAccuracy,   80, Tier::silver, gain,
-              "achv.gainAccuracy.name", "achv.gainAccuracy.desc" },
-            { "delay.accuracy.70", Kind::exerciseAccuracy,   70, Tier::silver, delay,
-              "achv.delayAccuracy.name", "achv.delayAccuracy.desc" },
-            { "reverb.accuracy.75", Kind::exerciseAccuracy,  75, Tier::silver, reverb,
-              "achv.reverbAccuracy.name", "achv.reverbAccuracy.desc" },
-            { "width.accuracy.75", Kind::exerciseAccuracy,   75, Tier::silver, stereoWidth,
-              "achv.widthAccuracy.name", "achv.widthAccuracy.desc" },
-            { "dist.accuracy.75",  Kind::exerciseAccuracy,   75, Tier::silver, distortion,
-              "achv.distAccuracy.name", "achv.distAccuracy.desc" },
-            { "pan.streak.15",     Kind::answerStreak,       15, Tier::silver, pan,
-              "achv.panStreak.name", "achv.panStreak.desc" },
-
-            // Gold: months, not weeks.
+            // --- milestones: what you can hear ---------------------------
             //
-            // Level achievements are back. They were deliberately left out
-            // when level was one global number you could pick from a
-            // dropdown - an achievement earned by opening a menu. Levels
-            // are now per exercise and have to be earned through a
-            // promotion test, so "level 5 in this exercise" is once again a
-            // real claim about the player. See decisions/025.
-            { "eq.level.5",        Kind::exerciseLevel,       5, Tier::gold, eq,
-              "achv.eqLevel5.name", "achv.eqLevel5.desc" },
-            { "comp.level.5",      Kind::exerciseLevel,       5, Tier::gold, compression,
-              "achv.compLevel5.name", "achv.compLevel5.desc" },
-            { "reverb.level.5",    Kind::exerciseLevel,       5, Tier::gold, reverb,
-              "achv.reverbLevel5.name", "achv.reverbLevel5.desc" },
-            { "streak.30days",     Kind::dayStreak,          30, Tier::gold, -1,
-              "achv.streak30.name", "achv.streak30.desc" },
-            { "total.1000",        Kind::totalCorrect,     1000, Tier::gold, -1,
-              "achv.total1000.name", "achv.total1000.desc" },
-            { "every.level.3",     Kind::everyExerciseLevel,  3, Tier::gold, -1,
-              "achv.everyLevel3.name", "achv.everyLevel3.desc" },
+            // One per exercise, at step 8: the lower half of "mixing ear".
+            // The staircase only holds a step when you are right ~4 times
+            // in 5 there, so this is a measured threshold, not hours served.
+            static const char* milestoneNames[] {
+                "ms.eq.name", "ms.comp.name", "ms.reverb.name", "ms.pan.name", "ms.delay.name",
+                "ms.dist.name", "ms.width.name", "ms.gain.name", "ms.range.name" };
 
-            // Legendary: three of them, and they are supposed to look
-            // impossible from where a new player is standing. A shelf
-            // where everything is collectable in a month is a shelf nobody
-            // looks at twice.
-            { "every.level.10",    Kind::everyExerciseLevel, 10, Tier::platinum, -1,
-              "achv.everyLevel10.name", "achv.everyLevel10.desc" },
-            { "streak.365days",    Kind::dayStreak,         365, Tier::platinum, -1,
-              "achv.streak365.name", "achv.streak365.desc" },
-            { "eq.accuracy.92",    Kind::exerciseAccuracy,   92, Tier::platinum, eq,
-              "achv.eqAccuracy92.name", "achv.eqAccuracy92.desc" }
-        };
+            for (int g = 0; g < 9; ++g)
+                d.push_back ({ nullptr, Kind::exerciseLevel, 8, Tier::gold, g,
+                               milestoneNames[g], "ms.exercise.desc", Layer::milestone });
+
+            d.push_back ({ "ms.all5",   Kind::everyExerciseLevel, 5, Tier::gold,     -1, "ms.all5.name",   "ms.all5.desc",   Layer::milestone });
+            d.push_back ({ "ms.all9",   Kind::everyExerciseLevel, 9, Tier::platinum, -1, "ms.all9.name",   "ms.all9.desc",   Layer::milestone });
+            d.push_back ({ "ms.days30", Kind::dayStreak,         30, Tier::gold,     -1, "ms.days30.name", "ms.days30.desc", Layer::milestone });
+
+            // --- stamps: what you did -------------------------------------
+            for (int g = 0; g < 9; ++g)
+            {
+                d.push_back ({ nullptr, Kind::exerciseRounds,  50, Tier::bronze, g, "st.rounds.name", "st.exercise.desc" });
+                d.push_back ({ nullptr, Kind::exerciseRounds, 300, Tier::silver, g, "st.rounds.name", "st.exercise.desc" });
+                d.push_back ({ nullptr, Kind::answerStreak,    10, Tier::silver, g, "st.streak.name", "st.exercise.desc" });
+                d.push_back ({ nullptr, Kind::exerciseLevel,    4, Tier::bronze, g, "st.level.name",  "st.exercise.desc" });
+            }
+
+            for (const auto n : { 100, 500, 2000, 5000 })
+                d.push_back ({ nullptr, Kind::totalCorrect, n, n >= 5000 ? Tier::platinum : n >= 2000 ? Tier::silver : Tier::bronze, -1,
+                               "st.total.name", "st.total.desc" });
+
+            for (const auto n : { 3, 7, 14, 60, 100, 365 })
+                d.push_back ({ nullptr, Kind::dayStreak, n, n >= 365 ? Tier::platinum : n >= 60 ? Tier::silver : Tier::bronze, -1,
+                               "st.days.name", "st.days.desc" });
+
+            for (const auto n : { 10, 25, 50 })
+                d.push_back ({ nullptr, Kind::survivalScore, n, Tier::bronze, -1, "st.survival.name", "st.run.desc" });
+
+            for (const auto n : { 15, 30, 45 })
+                d.push_back ({ nullptr, Kind::blitzScore, n, Tier::bronze, -1, "st.blitz.name", "st.run.desc" });
+
+            d.push_back ({ nullptr, Kind::breadth, 9, Tier::bronze, -1, "st.breadth.name", "st.breadth.desc" });
+
+            // Ids are generated from the rule itself - "st.reverb.rounds.300",
+            // "ms.eq.level.8" - so they are stable, unique and readable in a
+            // settings file without a separate table that could drift.
+            static std::vector<std::string> idStore;
+            idStore.clear();
+            idStore.reserve (d.size());
+
+            for (auto& def : d)
+            {
+                if (def.id != nullptr)
+                    continue;
+
+                std::string kind;
+                switch (def.kind)
+                {
+                    case Kind::exerciseRounds:     kind = "rounds"; break;
+                    case Kind::answerStreak:       kind = "streak"; break;
+                    case Kind::exerciseLevel:      kind = "level";  break;
+                    case Kind::totalCorrect:       kind = "total";  break;
+                    case Kind::dayStreak:          kind = "days";   break;
+                    case Kind::survivalScore:      kind = "survival"; break;
+                    case Kind::blitzScore:         kind = "blitz";  break;
+                    case Kind::breadth:            kind = "breadth"; break;
+                    case Kind::everyExerciseLevel: kind = "all";    break;
+                    case Kind::exerciseAccuracy:   kind = "acc";    break;
+                }
+
+                const auto prefix = def.layer == Layer::milestone ? std::string ("ms.") : std::string ("st.");
+                const auto who = def.gameIndex >= 0 ? std::string (ids[def.gameIndex]) + "." : std::string();
+                idStore.push_back (prefix + who + kind + "." + std::to_string (def.threshold));
+            }
+
+            size_t next = 0;
+            for (auto& def : d)
+                if (def.id == nullptr)
+                    def.id = idStore[next++].c_str();
+
+            return d;
+        }
+
+        const std::vector<Definition> definitions = makeDefinitions();
 
         const Snapshot::PerGame* gameAt (const Snapshot& snapshot, int index)
         {

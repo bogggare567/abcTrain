@@ -153,6 +153,11 @@ troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
 starts explaining a decision, it belongs in an ADR instead. The wiki git
 remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
+`docs/decisions/035-the-staircase.md` (levels as a 3-down/1-up staircase
+instead of points and a promotion test, the level shown as a threshold in
+the exercise's own units, home as a list of thresholds, 12 milestones and
+53 stamps instead of 24 mixed achievements, the volume slider removed, and
+a label/description key collision that printed sentences as answer names).
 `docs/decisions/034-pages-not-dialogues.md` (what the renders found once
 ADR 033's grammar had landed: the three tab screens were still dialogues
 and are now pages under the bar, the answer section was taking every spare
@@ -453,21 +458,19 @@ full rationale.
   `Game::setReferenceAudioLibrary` — a non-pure-virtual, default-no-op
   hook on the `Game` interface, so every existing/future game keeps
   working unmodified unless it opts in).
-- `Source/ProgressManager.{h,cpp}` — cross-session points/level(1-10)/
-  streak/daily-challenge, backed by `juce::PropertiesFile`. Listens to
-  every game via `ChangeListener`; on a correct/incorrect answer it calls
-  its own `registerAnswer(gameIndex, wasCorrect)`, which is also the
-  direct entry point `ProgressManagerTest` uses (see the Testing section
-  below for why). On level-up, calls
-  `gameManager.setDifficultyForAllGames(level)`. Points-to-next-level is a
-  triangular scale (level *L* needs *100·L* points to reach *L+1*, so
-  each level is progressively harder). `setLevelManually(int)` lets a
-  player jump straight to a level instead of only reaching it via points
-  — it sets `totalScore` to that level's exact threshold
-  (`pointsRequiredForLevel`) rather than adding a second, independent
-  notion of "level", so the two can never disagree; wired to a
-  `levelSelector` `ComboBox` in EarTrainer's editor (see
-  [decisions/014](docs/decisions/014-eartrainer-usability-fixes.md)).
+- `Source/ProgressManager.{h,cpp}` — cross-session level/streak/daily
+  task, backed by `juce::PropertiesFile`. **Levels are a 3-down/1-up
+  staircase per exercise** (ADR 035): three correct in a row take one step
+  harder, one wrong one step easier, so the level hovers at the player's
+  threshold (~79% correct, Levitt 1971) instead of counting hours. Two
+  numbers per exercise: `level` (now) and `bestLevel` (the record, never
+  drops; screens lead with it). `stepRun` is the run toward the next step
+  (the three squares on the training screen). Points, the promotion test
+  and "overall level" are gone; a points-era save's level becomes both the
+  starting step and the record. The daily task picks the exercise with the
+  **lowest record**. Listens to every game via `ChangeListener`; on an
+  answer it calls its own `registerAnswer(gameIndex, wasCorrect)`, the
+  direct entry point `ProgressManagerTest` uses (see Testing).
   Games themselves know nothing about points or levels — kept out of the
   `Game` interface deliberately, see ADR 002 for the one thing that *did*
   need to go in (`setDifficulty`). Also keeps **lifetime per-exercise
@@ -548,7 +551,13 @@ full rationale.
   that fade *is* the scrollbar, appearing only when there is somewhere to
   go. See [docs/user-journey.md](docs/user-journey.md) for why the screen
   is shaped this way rather than as a grid of locked question marks.
-- `Source/Achievements.{h,cpp}` — the named things a player can earn, as
+- `Source/Achievements.{h,cpp}` — **two layers** since ADR 035: 12
+  milestones (step 8 per exercise, step 5/9 everywhere, 30 days; each drawn
+  as a medal with its own picture of the subject in
+  `AchievementsScreenComponent::drawArt`) and 53 stamps (rounds, streaks,
+  steps, totals, days, run scores), generated per exercise with ids built
+  from the rule. **No rule asks for lifetime accuracy** — it retreats as
+  you play. The named things a player can earn, as
   pure data plus pure rules over a `Snapshot` of what `ProgressManager`
   already records. No `Component`, no `PropertiesFile`, no message loop,
   so `tests/AchievementsTest` drives every rule directly. Ids are strings
@@ -585,15 +594,14 @@ full rationale.
   run has ended). Pure state: no `Game`, no `Component`, no message loop,
   which is why `tests/SessionManagerTest` can drive every path directly.
   See [decisions/021](docs/decisions/021-sessions-and-navigation.md).
-- `Source/HomeScreenComponent.{h,cpp}` — the screen you land on, replacing
-  the old `ComboBox` game selector entirely. Header (level, streak), then
-  trainings grouped by the **skill they build** (Frequency / Dynamics /
-  Space & stereo / Character) rather than by registration order, each as a
-  card with its icon, one line on what it gives you, and your own record.
-  A star per card pins it to a "Your focus" group above everything else —
-  the "choose what interests you" idea without a first-run questionnaire
-  whose answers go stale (see ADR 021). Lives in a `juce::Viewport`: nine
-  trainings across four categories already exceed the window.
+- `Source/HomeScreenComponent.{h,cpp}` — the screen you land on: the nine
+  exercises as **rows**, grouped by family, each with a ten-segment ruler
+  (fill = record, white tick = today, dashed = next rank) and the
+  **threshold in the exercise's own units** on the right — "±0,35 oct",
+  "±1,2 dB", or the closest pair the level offers (`Game::describeLevel`,
+  formatted by the editor's `formatLevel`), with the rank name under it
+  (ADR 035). A star pins a row to a "Your focus" group at the top. No
+  achievement strip: achievements have one page.
 - `Source/PluginEditor.{h,cpp}` — fully generic: two screens (Home ⇄
   Training, exactly one visible at a time),
   a single `ChoiceSliderComponent` rebuilt via `setChoices()` on switch

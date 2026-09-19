@@ -70,6 +70,19 @@ namespace Achievements
     // i18n key for the tier's name, resolved by the caller.
     const char* nameKeyForTier (Tier) noexcept;
 
+    // Two layers with two jobs (ADR 035). A **milestone** is rare and
+    // tied to what the player can hear - a threshold crossed in one
+    // exercise, the whole ladder - and gets a medal with its own drawing.
+    // A **stamp** is frequent and tied to what the player did - fifty
+    // rounds, ten in a row, a week - and gets a small square. Mixing the
+    // two in one list of 24 made each too many to be an event and too few
+    // to be earned often.
+    enum class Layer
+    {
+        milestone,
+        stamp
+    };
+
     struct Definition
     {
         // Stable across releases: it is the persistence key. Renaming one
@@ -88,6 +101,8 @@ namespace Achievements
         // per LocalisationManager::getText.
         const char* nameKey;
         const char* descriptionKey;
+
+        Layer layer = Layer::stamp;
     };
 
     // Everything ProgressManager knows that an achievement can ask about.

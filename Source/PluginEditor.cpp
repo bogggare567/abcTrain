@@ -195,14 +195,19 @@ namespace
     // future game gets for free.
     juce::String translateChoiceLabel (const juce::String& englishLabel, const LocalisationManager& loc)
     {
+        // "choiceLabel.", not "choice.": describeChoice builds its keys as
+        // "choice." + the lower-cased English name, so "choice.weak" was
+        // *both* this label and that description - and the description
+        // won. Every non-English build printed "A couple of dB of gain
+        // reduction..." at 52px where the word "Weak" belonged.
         static const std::array<std::pair<const char*, const char*>, 7> table {{
-            { "Weak",       "choice.weak" },
-            { "Medium",     "choice.medium" },
-            { "Strong",     "choice.strong" },
-            { "Narrow",     "choice.narrow" },
-            { "Normal",     "choice.normal" },
-            { "Wide",       "choice.wide" },
-            { "Extra Wide", "choice.extraWide" }
+            { "Weak",       "choiceLabel.weak" },
+            { "Medium",     "choiceLabel.medium" },
+            { "Strong",     "choiceLabel.strong" },
+            { "Narrow",     "choiceLabel.narrow" },
+            { "Normal",     "choiceLabel.normal" },
+            { "Wide",       "choiceLabel.wide" },
+            { "Extra Wide", "choiceLabel.extraWide" }
         }};
 
         for (const auto& entry : table)
@@ -210,6 +215,90 @@ namespace
                 return loc.getText (entry.second);
 
         return englishLabel;
+    }
+
+    // A decimal in the player's own convention - "0,35" in the languages
+    // that write it that way. A threshold is a number people quote, and a
+    // full stop in a Russian number reads as a typo.
+    juce::String localDecimal (float value, int decimals, const LocalisationManager& loc)
+    {
+        auto text = juce::String (value, decimals);
+
+        // Trailing zeros say nothing: 1.0 dB is 1 dB.
+        if (text.containsChar ('.'))
+            text = text.trimCharactersAtEnd ("0").trimCharactersAtEnd (".");
+
+        const auto lang = loc.getCurrentLanguage();
+        const auto dotLanguages = lang.startsWith ("en") || lang.startsWith ("ja")
+                                  || lang.startsWith ("ko") || lang.startsWith ("zh");
+        return dotLanguages ? text : text.replaceCharacter ('.', ',');
+    }
+
+    // What a level means in this exercise, as a sound engineer would say
+    // it: "±0,35 oct", "±1,2 dB", or the closest pair the level can offer
+    // (ADR 035). The number is the level; "level 7" is only its index.
+    juce::String formatLevel (const Game& game, int level, const LocalisationManager& loc)
+    {
+        using Unit = Game::LevelMeaning::Unit;
+        const auto meaning = game.describeLevel (level);
+
+        switch (meaning.unit)
+        {
+            case Unit::octaves:
+                return loc.getText ("unit.octaves", { { "v", localDecimal (meaning.tolerance, 2, loc) } });
+            case Unit::decibels:
+                return loc.getText ("unit.decibels", { { "v", localDecimal (meaning.tolerance, 1, loc) } });
+            case Unit::percent:
+                return loc.getText ("unit.percent", { { "v", juce::String (juce::roundToInt (meaning.tolerance)) } });
+            case Unit::none:
+            default:
+                break;
+        }
+
+        if (meaning.closerA.isNotEmpty())
+            return loc.getText ("unit.pair", { { "a", translateChoiceLabel (meaning.closerA, loc) },
+                                               { "b", translateChoiceLabel (meaning.closerB, loc) } });
+
+        return loc.getText ("ui.levelNumber", { { "level", juce::String (level) } });
+    }
+
+    // Five names for the ladder, two steps each, and every one of them a
+    // description of what the player *can* do - there is no rung called
+    // "beginner". The last is the top of this app's ladder, not a claim
+    // about anybody's career.
+    juce::String rankFor (int level, const LocalisationManager& loc)
+    {
+        const auto rung = juce::jlimit (1, 5, (juce::jlimit (1, 10, level) + 1) / 2);
+        return loc.getText ("rank." + juce::String (rung));
+    }
+
+    // "next: Mixing ear", or the top-of-ladder line.
+    juce::String nextRankLine (int level, const LocalisationManager& loc)
+    {
+        const auto rung = juce::jlimit (1, 5, (juce::jlimit (1, 10, level) + 1) / 2);
+        return rung >= 5 ? loc.getText ("ui.rankTop")
+                         : loc.getText ("ui.rankNext", { { "rank", loc.getText ("rank." + juce::String (rung + 1)) } });
+    }
+
+    // An achievement's name and description with its numbers filled in:
+    // "300 rounds", "«Guess the Reverb»", "threshold ±0,35 oct in ...".
+    // The rules are generated per exercise (Achievements.cpp), so the
+    // wording has to be too.
+    juce::String translateGameName (const juce::String& englishName, const LocalisationManager& loc);
+
+    juce::String achievementText (const char* key, const Achievements::Definition& definition,
+                                  GameManager& gameManager, const LocalisationManager& loc)
+    {
+        std::map<juce::String, juce::String> fields { { "n", juce::String (definition.threshold) } };
+
+        if (definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames())
+        {
+            auto& game = gameManager.getGame (definition.gameIndex);
+            fields["game"] = translateGameName (game.getName(), loc);
+            fields["level"] = formatLevel (game, definition.threshold, loc);
+        }
+
+        return loc.getText (key, fields);
     }
 
     // The verdict line, composed here from localised parts instead of
@@ -334,7 +423,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     volumeSlider.setDoubleClickReturnValue (true, 0.0);
     volumeSlider.setTooltip (localisation.getText ("ui.volume"));
     volumeSlider.onValueChange = [this] { applyVolumeFromSlider(); };
-    addAndMakeVisible (volumeSlider);
+    addChildComponent (volumeSlider);   // hidden: see resized()
 
     // Not Icon::sound - that is the speaker already used two slots along
     // for "which sounds you train on", and two identical glyphs meaning
@@ -601,7 +690,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     scoreLabel.setMinimumHorizontalScale (1.0f);
 
     levelProgressLabel.setJustificationType (juce::Justification::centredRight);
-    levelProgressLabel.setFont (AbcTrainLookAndFeel::labelFont());
+    // The threshold is the number this screen is about now (ADR 035), so
+    // it is set at heading size, not as a caption in the corner.
+    levelProgressLabel.setFont (AbcTrainLookAndFeel::headingFont());
     addAndMakeVisible (levelProgressLabel);
     addAndMakeVisible (scoreLabel);
 
@@ -875,8 +966,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                       (int) (logicalWidth * 2.0), (int) (logicalBaseHeight * 2.0));
 
     setUiScale (localisationProperties.getDoubleValue (uiScaleKey, 1.0));
-    volumeSlider.setValue (localisationProperties.getDoubleValue (outputGainKey, 0.0),
-                            juce::dontSendNotification);
+    // Unity, always. The slider left the bar (ADR 035); a level saved by
+    // it earlier must not keep the app quiet with no control left to undo
+    // it.
+    volumeSlider.setValue (0.0, juce::dontSendNotification);
     applyVolumeFromSlider();
 
     applyTheme();
@@ -947,7 +1040,7 @@ void EarTrainerEditor::applyTheme()
     // every one of them now reads the palette rather than a literal, which
     // is what makes the light theme possible at all.
     instructionLabel.setColour (juce::Label::textColourId, theme.textDim);
-    levelProgressLabel.setColour (juce::Label::textColourId, theme.textDim);
+    levelProgressLabel.setColour (juce::Label::textColourId, theme.text);
     scoreLabel.setColour (juce::Label::textColourId, theme.text);
     streakLabel.setColour (juce::Label::textColourId, theme.accentWarm);
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
@@ -972,6 +1065,7 @@ void EarTrainerEditor::applyTheme()
     refreshFromProgressState();
     refreshRunStatus();
     refreshBeforeAfter();
+    settingsScreen.refresh();
 
     repaint();
 }
@@ -1185,7 +1279,8 @@ void EarTrainerEditor::resized()
         // its painted background and the controls on it cannot drift.
         themeButton.setBounds (topNav.getThemeSlot());
         updateButton.setBounds (topNav.getUpdateSlot());
-        volumeSlider.setBounds (topNav.getVolumeSlot());
+        volumeSlider.setBounds ({});
+        volumeSlider.setVisible (false);
         volumeIcon.setBounds ({});   // the bar captions this itself
 
         // The two indicators go on the bar with the rest of the app
@@ -1245,10 +1340,12 @@ void EarTrainerEditor::resized()
             // rest, so "100 / 200 to level 3" has a picture of itself
             // beside it. Both go away during a run, where lives and a
             // clock matter more than distance to the next level.
-            levelProgressBarArea = running ? juce::Rectangle<int>()
-                                            : slot.removeFromRight (130)
-                                                  .withSizeKeepingCentre (130, 4);
-            slot.removeFromRight (Spacing::medium);
+            // The staircase's three squares at the right end, the
+            // threshold they move beside them (ADR 035). Both stay during a
+            // run: the staircase keeps climbing in Survival and Blitz too.
+            levelProgressBarArea = {};
+            promotionPips.setBounds (slot.removeFromRight (52));
+            slot.removeFromRight (Spacing::small);
             levelProgressLabel.setBounds (running ? juce::Rectangle<int>() : slot);
         }
 
@@ -1453,7 +1550,7 @@ void EarTrainerEditor::resized()
         // The verdict, over the scale rather than above the heading: it is
         // about the answer, so it belongs with the answer.
         auto feedbackRow = inner.removeFromTop (24);
-        promotionPips.setBounds (feedbackRow.removeFromRight (90));
+        feedbackRow.removeFromRight (90);
         feedbackRow.removeFromLeft (90);
         feedbackLabel.setBounds (feedbackRow);
         inner.removeFromTop (Spacing::tight);
@@ -1561,32 +1658,60 @@ void EarTrainerEditor::showAchievementsScreen()
     const auto snapshot = progress.makeAchievementSnapshot();
     std::vector<AchievementsScreenComponent::Entry> entries;
 
+    int milestonesEarned = 0, milestonesTotal = 0, stampsEarned = 0, stampsTotal = 0;
+
     for (const auto& definition : Achievements::all())
     {
         AchievementsScreenComponent::Entry entry;
-        entry.name = localisation.getText (definition.nameKey);
-        entry.description = localisation.getText (definition.descriptionKey);
+        entry.name = achievementText (definition.nameKey, definition, gameManager, localisation);
+        entry.description = achievementText (definition.descriptionKey, definition, gameManager, localisation);
         entry.earned = progress.hasAchievement (definition.id);
         entry.progress = Achievements::progressTowards (definition, snapshot);
-        entry.tint = Achievements::colourForTier (definition.tier);
-        entry.tierName = localisation.getText (Achievements::nameKeyForTier (definition.tier));
-        entry.icon = definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames()
-                         ? AppIcons::iconForGameName (gameManager.getGame (definition.gameIndex).getName())
-                         : AppIcons::Icon::award;
+        entry.milestone = definition.layer == Achievements::Layer::milestone;
+
+        const auto hasGame = definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames();
+
+        if (entry.milestone)
+        {
+            using Art = AchievementsScreenComponent::Art;
+            entry.art = hasGame ? (Art) definition.gameIndex
+                      : definition.kind == Achievements::Kind::dayStreak ? Art::month
+                      : definition.threshold >= 9 ? Art::allNine : Art::allFive;
+
+            // An exercise's milestone wears its family's colour; the three
+            // whole-ladder ones wear their metal.
+            entry.tint = hasGame ? tintForGame (gameManager.getGame (definition.gameIndex).getName())
+                                 : Achievements::colourForTier (definition.tier);
+            ++milestonesTotal;
+            if (entry.earned) ++milestonesEarned;
+        }
+        else
+        {
+            entry.icon = hasGame ? AppIcons::iconForGameName (gameManager.getGame (definition.gameIndex).getName())
+                                 : AppIcons::Icon::award;
+            entry.tint = hasGame ? tintForGame (gameManager.getGame (definition.gameIndex).getName())
+                                 : Achievements::colourForTier (definition.tier);
+            ++stampsTotal;
+            if (entry.earned) ++stampsEarned;
+        }
 
         entries.push_back (std::move (entry));
     }
 
     achievementsScreen.setStrings (
         localisation.getText ("ui.achievements"),
-        localisation.getText ("ui.achievementsSubtitle",
-                               { { "earned", juce::String (progress.getNumAchievementsEarned()) },
-                                 { "total", juce::String ((int) Achievements::all().size()) } }),
-        localisation.getText ("ui.close"));
+        localisation.getText ("ui.achievementsSummary",
+                               { { "ms", juce::String (milestonesEarned) },
+                                 { "msTotal", juce::String (milestonesTotal) },
+                                 { "st", juce::String (stampsEarned) },
+                                 { "stTotal", juce::String (stampsTotal) } }),
+        localisation.getText ("ui.milestones"),
+        localisation.getText ("ui.stamps"));
 
     achievementsScreen.setEntries (std::move (entries));
     achievementsScreen.setVisible (true);
     achievementsScreen.toFront (false);
+    refreshRailStatus();
 }
 
 void EarTrainerEditor::showRunResults (int finalScore)
@@ -1733,8 +1858,10 @@ void EarTrainerEditor::showRunResults (int finalScore)
 void EarTrainerEditor::showAchievementToast (const juce::String& achievementId)
 {
     if (const auto* definition = Achievements::find (achievementId))
-        achievementToast.show (localisation.getText ("ui.achievementEarned"),
-                                localisation.getText (definition->nameKey));
+        achievementToast.show (localisation.getText (definition->layer == Achievements::Layer::milestone
+                                                         ? "ui.milestones" : "ui.achievementEarned"),
+                                achievementText (definition->nameKey, *definition,
+                                                 processor.getGameManager(), localisation));
 
     // An id this build doesn't define (a save from a newer version) shows
     // nothing rather than an empty card - same graceful-miss rule as the
@@ -1761,21 +1888,8 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
         || currentScreen != Screen::training)
         return;
 
-    const auto& theme = AbcTrainTheme::current();
-
-    if (outcome.pointsAwarded > 0)
-    {
-        // "+60" with the daily bonus folded in is one fact, not two - the
-        // flyup is a number, and the daily card on Home explains itself.
-        pointsFlyup.show ("+" + juce::String (outcome.pointsAwarded),
-                          outcome.dailyChallengeJustCompleted ? theme.accentWarm : theme.positive);
-    }
-
-    // The promotion test: visible while live, gone while not. set() pops
-    // the newest pip on its own.
-    promotionPips.setVisible (outcome.promotionPending);
-    if (outcome.promotionPending)
-        promotionPips.set (outcome.promotionStreak, ProgressManager::promotionTestLength);
+    promotionPips.setVisible (true);
+    promotionPips.set (outcome.stepRun, ProgressManager::stepUpAfter);
 
     // The one answer that opens the timed modes. Announced through the
     // same toast achievements use - one vocabulary for "something was
@@ -1794,24 +1908,16 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
         }
     }
 
-    if (outcome.leveledUp)
+    // Only a new record is announced. An ordinary step either way shows
+    // itself - the accept band narrows or widens on the scale - and a toast
+    // for stepping *down* would be the one negative verdict this design
+    // refuses to give (ADR 035).
+    if (outcome.newBest)
     {
-        // The one moment the whole points system builds toward. The toast
-        // is the same furniture achievements use - one vocabulary for
-        // "something was earned".
-        achievementToast.show (localisation.getText ("ui.levelTaken"),
-                                translateGameName (processor.getGameManager().getActiveGame().getName(), localisation)
-                                    + " - " + localisation.getText ("ui.levelNumber",
-                                                                     { { "level", juce::String (outcome.level) } }));
-    }
-    else if (outcome.promotionJustOpened)
-    {
-        // The test opening is worth a beat of its own: from here, five in
-        // a row takes the level, and a player two answers in should *feel*
-        // that.
-        achievementToast.show (localisation.getText ("ui.promotionOpenedCaption"),
-                                localisation.getText ("ui.promotionOpenedTitle",
-                                                       { { "count", juce::String (ProgressManager::promotionTestLength) } }));
+        auto& game = processor.getGameManager().getActiveGame();
+        achievementToast.show (localisation.getText ("ui.newRecord"),
+                                translateGameName (game.getName(), localisation)
+                                    + "  \u00b7  " + formatLevel (game, outcome.bestLevel, localisation));
     }
 }
 
@@ -2047,11 +2153,18 @@ void EarTrainerEditor::clearHint()
 void EarTrainerEditor::refreshRailStatus()
 {
     auto& progress = processor.getProgressManager();
-    const auto index = processor.getGameManager().getActiveGameIndex();
 
     topNav.setStatus (progress.getStreakDays());
 
-    topNav.setActiveItem (TopNavComponent::Item::trainings);
+    // The lit tab follows the page actually showing. It used to be forced
+    // back to "Trainings" here, so any refresh (a streak tick, a language
+    // change) left the achievements or settings page under a bar that
+    // said you were somewhere else.
+    auto active = TopNavComponent::Item::trainings;
+    if (achievementsScreen.isVisible())   active = TopNavComponent::Item::achievements;
+    else if (trainingSounds.isVisible())  active = TopNavComponent::Item::sounds;
+    else if (settingsScreen.isVisible())  active = TopNavComponent::Item::settings;
+    topNav.setActiveItem (active);
     topNav.setVisible (railIsVisible());
 }
 
@@ -2137,7 +2250,9 @@ void EarTrainerEditor::refreshRunStatus()
         // is what made a timed mode feel like something you were stuck in.
         // Visible is not the same as live, though - see applyRunLock().
         practiceButton.setVisible (onTraining);
-        scoreLabel.setVisible (onTraining && ! hudNow);
+        // Practice has no run, so "Score 0 / 0" there counted nothing.
+        scoreLabel.setVisible (onTraining && ! hudNow
+                               && session.getMode() != SessionManager::Mode::practice);
         levelProgressLabel.setVisible (onTraining && ! hudNow);
 
         // Locked modes are *shown*, dimmed - not hidden.
@@ -2386,10 +2501,11 @@ void EarTrainerEditor::rebuildHomeSections()
         card.isFavourite = progress.isFavouriteGame (i);
 
         card.level = progress.getLevelForGame (i);
-        card.levelProgress = progress.getLevelProgressForGame (i);
-        card.promotionPending = progress.isPromotionPendingForGame (i);
-        card.promotionStreak = progress.getPromotionStreakForGame (i);
-        card.promotionTestLength = ProgressManager::promotionTestLength;
+        card.bestLevel = progress.getBestLevelForGame (i);
+        card.levelText = formatLevel (gameManager.getGame (i), card.bestLevel, localisation);
+        card.rankText = rankFor (card.bestLevel, localisation);
+        card.levelIsNumber = gameManager.getGame (i).describeLevel (card.bestLevel).unit
+                                 != Game::LevelMeaning::Unit::none;
         card.accent = tintForGame (englishName);
 
         const auto stats = progress.getStatsForGame (i);
@@ -2487,33 +2603,7 @@ void EarTrainerEditor::rebuildHomeSections()
     homeScreen.setLevelCaption (localisation.getText ("ui.levelWord"));
     homeScreen.setCards (std::move (cards));
 
-    // Achievements as badges. progressTowards() is what lets a locked one
-    // show how close it is rather than being an identical grey disc.
-    const auto snapshot = progress.makeAchievementSnapshot();
-    std::vector<HomeScreenComponent::BadgeInfo> badges;
-
-    for (const auto& definition : Achievements::all())
-    {
-        HomeScreenComponent::BadgeInfo badge;
-        badge.name = localisation.getText (definition.nameKey);
-        badge.description = localisation.getText (definition.descriptionKey);
-        badge.earned = progress.hasAchievement (definition.id);
-        badge.progress = Achievements::progressTowards (definition, snapshot);
-        badge.icon = definition.gameIndex >= 0 && definition.gameIndex < gameManager.getNumGames()
-                         ? AppIcons::iconForGameName (gameManager.getGame (definition.gameIndex).getName())
-                         : AppIcons::Icon::award;
-        badge.tint = Achievements::colourForTier (definition.tier);
-
-        badges.push_back (std::move (badge));
-    }
-
-    homeScreen.setBadges (std::move (badges));
-    homeScreen.setBadgeStripCaption (
-        localisation.getText ("ui.achievements"),
-        localisation.getText ("ui.earnedCount",
-                               { { "done", juce::String (progress.getNumAchievementsEarned()) },
-                                 { "total", juce::String ((int) Achievements::all().size()) } }),
-        localisation.getText ("ui.seeAll") + "  \u2192");
+    // No badge strip any more: achievements have their own page (ADR 035).
 }
 
 void EarTrainerEditor::refreshLocalisedText()
@@ -2951,35 +3041,11 @@ void EarTrainerEditor::refreshFromGameState()
                                                   { { "correct", juce::String (game.getScore()) },
                                                     { "total", juce::String (game.getRoundsPlayed()) } });
 
-        juce::String levelLine;
-
-        if (progress.isPromotionPendingForGame (index))
-        {
-            levelLine = localisation.getText ("ui.promotionTest",
-                                               { { "done", juce::String (progress.getPromotionStreakForGame (index)) },
-                                                 { "needed", juce::String (ProgressManager::promotionTestLength) } });
-        }
-        else if (progress.getLevelForGame (index) < ProgressManager::maxLevel)
-        {
-            const auto level = progress.getLevelForGame (index);
-            const auto have = progress.getPointsForGame (index)
-                                  - ProgressManager::pointsRequiredForLevel (level);
-            const auto need = ProgressManager::pointsRequiredForLevel (level + 1)
-                                  - ProgressManager::pointsRequiredForLevel (level);
-
-            // Both numbers. "level" is the one you have - which this screen
-            // never showed at all, so the only way to learn your own level
-            // was to go Home - and "next" is the one the points are for.
-            levelLine = localisation.getText ("ui.toNextLevel",
-                                               { { "level", juce::String (level) },
-                                                 { "next", juce::String (level + 1) },
-                                                 { "have", juce::String (juce::jmax (0, have)) },
-                                                 { "need", juce::String (need) } });
-        }
-        else
-        {
-            levelLine = localisation.getText ("ui.levelMaxed");
-        }
+        // The threshold this step stands for, in the exercise's own
+        // units - "threshold ±0,35 oct" - rather than points toward a
+        // number (ADR 035).
+        const auto levelLine = localisation.getText ("ui.thresholdCaption") + "  "
+                                   + formatLevel (game, progress.getLevelForGame (index), localisation);
 
         // Two lines, not one: at 120px the pair was ellipsised down to
         // "До уровня 2: ..." - a progress readout that will not tell you
@@ -2993,9 +3059,8 @@ void EarTrainerEditor::refreshFromGameState()
         // on it.
         if (currentScreen == Screen::training)
         {
-            promotionPips.setVisible (progress.isPromotionPendingForGame (index));
-            promotionPips.set (progress.getPromotionStreakForGame (index),
-                               ProgressManager::promotionTestLength);
+            promotionPips.setVisible (true);
+            promotionPips.set (progress.getStepRunForGame (index), ProgressManager::stepUpAfter);
 
             const auto wantInstructions = shouldShowInstructions();
             if (instructionLabel.isVisible() != wantInstructions)
@@ -3041,8 +3106,7 @@ void EarTrainerEditor::refreshFromProgressState()
     banner.challengeLine = localisation.getText (
         progress.isDailyChallengeComplete() ? "ui.dailyDone" : "ui.daily",
         { { "count", juce::String (progress.getDailyChallengeTargetStreak()) },
-          { "game", translateGameName (challengeEnglishName, localisation) },
-          { "bonus", juce::String (progress.getDailyChallengeBonusPoints()) } });
+          { "game", translateGameName (challengeEnglishName, localisation) } });
 
     banner.challengeTarget = progress.getDailyChallengeTargetStreak();
     // Capped at the target: the run that completes the challenge keeps
@@ -3051,19 +3115,20 @@ void EarTrainerEditor::refreshFromProgressState()
     banner.challengeDone = juce::jmin (banner.challengeTarget,
                                         progress.getConsecutiveCorrectForGame (challengeIndex));
 
-    if (const auto bonus = progress.getDailyChallengeBonusPoints(); bonus > 0)
-        banner.rewardLine = localisation.getText ("ui.dailyReward",
-                                                   { { "bonus", juce::String (bonus) } });
+    // Why this exercise, not what it pays: it is the one with the lowest
+    // record (ProgressManager::generateDailyChallengeForDate).
+    banner.rewardLine = localisation.getText ("ui.dailyReward2");
 
     banner.progressCaption = localisation.getText ("ui.ofCount",
                                                     { { "done", juce::String (banner.challengeDone) },
                                                       { "total", juce::String (banner.challengeTarget) } });
 
-    banner.levelCaption = localisation.getText ("home.overallLevel");
-    // The highest level any exercise has reached, which is the only
-    // honest "overall" this app has: levels are per exercise, and an
-    // average would report a number nobody is at.
-    banner.level = progress.getMaxLevelReached();
+    // The threshold on the exercise the task is about. "Overall level"
+    // was the maximum across nine exercises, which read as a total and
+    // made one well-drilled exercise look like the whole ladder done.
+    banner.levelCaption = localisation.getText ("ui.thresholdCaption");
+    banner.levelText = formatLevel (processor.getGameManager().getGame (challengeIndex),
+                                    progress.getBestLevelForGame (challengeIndex), localisation);
     banner.challengeComplete = progress.isDailyChallengeComplete();
     banner.challengeAccent = tintForGame (challengeEnglishName);
 

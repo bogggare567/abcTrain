@@ -236,3 +236,12 @@ const std::vector<float>& StereoWidthGame::axisPositions()
     static const std::vector<float> positions { 0.0f, 0.33f, 0.66f, 1.0f };
     return positions;
 }
+
+Game::LevelMeaning StereoWidthGame::describeLevel (int level) const
+{
+    const auto pair = PresetFamily::hardestPairForLevel (axisPositions(), level);
+    LevelMeaning meaning;
+    meaning.closerA = widthLabels[(size_t) pair[0]];
+    meaning.closerB = widthLabels[(size_t) pair[1]];
+    return meaning;
+}

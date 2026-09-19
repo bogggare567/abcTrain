@@ -52,15 +52,20 @@ public:
     static juce::Font labelFont();     // control labels
     static juce::Font microFont();     // counters, step markers
 
-    static constexpr float displayFontHeight = 30.0f;
-    static constexpr float headingFontHeight = 15.0f;
-    static constexpr float labelFontHeight = 12.0f;
-    static constexpr float microFontHeight = 10.0f;
+    // Raised in ADR 035. JUCE sizes a font by ascent + descent, so the old
+    // 10px micro drew capitals about 7px tall - at arm's length from a
+    // studio monitor, and with 0.16em tracking thinning them further,
+    // every tracked-capital label in the app was below what anybody can
+    // read without leaning in. The ratios between steps are kept.
+    static constexpr float displayFontHeight = 36.0f;
+    static constexpr float headingFontHeight = 17.0f;
+    static constexpr float labelFontHeight = 14.0f;
+    static constexpr float microFontHeight = 12.0f;
 
-    static constexpr float titleFontHeight = 20.0f;
-    static constexpr float bodyFontHeight = 13.0f;
-    static constexpr float monoFontHeight = 13.0f;
-    static constexpr float captionFontHeight = 11.0f;
+    static constexpr float titleFontHeight = 23.0f;
+    static constexpr float bodyFontHeight = 15.0f;
+    static constexpr float monoFontHeight = 15.0f;
+    static constexpr float captionFontHeight = 13.0f;
 
     // The value readout under a rotary knob, in the mono face - so a knob
     // sweeping through 9.8 / 10.0 / 10.2 doesn't make the whole number

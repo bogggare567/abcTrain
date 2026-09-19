@@ -132,15 +132,19 @@ float ReverbGame::confusabilityOf (int typeA, int typeB)
                           std::abs (position[(size_t) a] - position[(size_t) b]));
 }
 
+const std::vector<float>& ReverbGame::characterPositions()
+{
+    static const std::vector<float> positions { 0.15f, 0.5f, 0.9f, 0.55f, 0.35f };
+    return positions;
+}
+
 std::array<int, 2> ReverbGame::drawPair()
 {
     // The shared rule, with this game's own idea of what "far apart"
     // means passed in - see confusabilityOf. Keeping a private copy of
     // the selection logic here was how the two drifted apart the first
     // time; there is one implementation now.
-    static const std::vector<float> positions { 0.15f, 0.5f, 0.9f, 0.55f, 0.35f };
-
-    return PresetFamily::drawPair (positions, difficultyLevel, random,
+    return PresetFamily::drawPair (characterPositions(), difficultyLevel, random,
                                     [] (int a, int b) { return confusabilityOf (a, b); });
 }
 
@@ -356,4 +360,14 @@ float ReverbGame::confusabilityForTest (const juce::String& labelA, const juce::
     };
 
     return confusabilityOf (indexOf (labelA), indexOf (labelB));
+}
+
+Game::LevelMeaning ReverbGame::describeLevel (int level) const
+{
+    const auto pair = PresetFamily::hardestPairForLevel (characterPositions(), level,
+                                                          [] (int a, int b) { return confusabilityOf (a, b); });
+    LevelMeaning meaning;
+    meaning.closerA = typeLabels[(size_t) pair[0]];
+    meaning.closerB = typeLabels[(size_t) pair[1]];
+    return meaning;
 }

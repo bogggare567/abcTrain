@@ -14,6 +14,11 @@
 class PanGame : public Game
 {
 public:
+    // The accept band at a level, in this exercise's own units - one
+    // function, so setDifficulty and describeLevel cannot disagree.
+    static float toleranceForLevel (int level) noexcept;
+    LevelMeaning describeLevel (int level) const override;
+
     static constexpr int numPositions = 5;
 
     juce::String getName() const override { return "Guess the Pan Position"; }

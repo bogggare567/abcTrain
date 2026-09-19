@@ -55,50 +55,29 @@ public:
                          juce::String ("earned on a blank slate: ") + definition.id);
         }
 
-        beginTest ("accuracy needs a floor of rounds, not just a good ratio");
+        beginTest ("no achievement asks for lifetime accuracy (ADR 035)");
         {
-            const auto* definition = Achievements::find ("eq.accuracy.75");
-            expect (definition != nullptr);
-
-            // Three for three is 100% accuracy and must not earn anything:
-            // without the floor, the hardest-sounding achievements would be
-            // the first ones anyone got.
-            Achievements::Snapshot lucky;
-            lucky.games.resize (9);
-            lucky.games[0].roundsPlayed = 3;
-            lucky.games[0].correctAnswers = 3;
-
-            expect (! Achievements::isEarned (*definition, lucky));
-            expect (Achievements::progressTowards (*definition, lucky) < 1.0f);
-
-            // The same ratio over enough rounds does earn it.
-            Achievements::Snapshot earned;
-            earned.games.resize (9);
-            earned.games[0].roundsPlayed = Achievements::accuracyMinimumRounds;
-            earned.games[0].correctAnswers = Achievements::accuracyMinimumRounds;
-
-            expect (Achievements::isEarned (*definition, earned));
+            // A lifetime ratio only gets harder to move the more you play:
+            // at 60% over 8,195 rounds, 75% needed ~4,900 right in a row.
+            // An achievement that retreats as you practise is a trap.
+            for (const auto& definition : Achievements::all())
+                expect (definition.kind != Achievements::Kind::exerciseAccuracy, definition.id);
         }
 
-        beginTest ("accuracy just under the threshold is not earned");
+        beginTest ("two layers: a dozen milestones, dozens of stamps");
         {
-            const auto* definition = Achievements::find ("eq.accuracy.75");
-            expect (definition != nullptr);
+            int milestones = 0, stamps = 0;
+            for (const auto& definition : Achievements::all())
+                (definition.layer == Achievements::Layer::milestone ? milestones : stamps)++;
 
-            Achievements::Snapshot snapshot;
-            snapshot.games.resize (9);
-            snapshot.games[0].roundsPlayed = 100;
-            snapshot.games[0].correctAnswers = 74;
-            expect (! Achievements::isEarned (*definition, snapshot));
-
-            snapshot.games[0].correctAnswers = 75;
-            expect (Achievements::isEarned (*definition, snapshot));
+            expectEquals (milestones, 12);
+            expect (stamps >= 40, "stamps should be earnable often: " + juce::String (stamps));
         }
 
         beginTest ("totals add up across exercises, streaks do not");
         {
-            const auto* total = Achievements::find ("first.hundred");
-            const auto* streak = Achievements::find ("pan.streak.15");
+            const auto* total = Achievements::find ("st.total.100");
+            const auto* streak = Achievements::find ("st.pan.streak.10");
             expect (total != nullptr && streak != nullptr);
 
             Achievements::Snapshot snapshot;
@@ -113,17 +92,17 @@ public:
 
             // A best streak is per-exercise and does not accumulate: 8 in
             // one and 8 in another is not a streak of 16.
-            snapshot.games[3].bestStreak = 8;
-            snapshot.games[4].bestStreak = 8;
+            snapshot.games[3].bestStreak = 6;
+            snapshot.games[4].bestStreak = 6;
             expect (! Achievements::isEarned (*streak, snapshot));
 
-            snapshot.games[3].bestStreak = 15;
+            snapshot.games[3].bestStreak = 10;
             expect (Achievements::isEarned (*streak, snapshot));
         }
 
         beginTest ("breadth counts exercises touched, not rounds played");
         {
-            const auto* definition = Achievements::find ("breadth.all");
+            const auto* definition = Achievements::find ("st.breadth.9");
             expect (definition != nullptr);
 
             Achievements::Snapshot lopsided;
@@ -143,7 +122,7 @@ public:
 
         beginTest ("survival and blitz take the best run on any exercise");
         {
-            const auto* survival = Achievements::find ("survival.25");
+            const auto* survival = Achievements::find ("st.survival.25");
             expect (survival != nullptr);
 
             Achievements::Snapshot snapshot;
@@ -154,7 +133,7 @@ public:
 
         beginTest ("progress is monotonic and clamped to 0..1");
         {
-            const auto* definition = Achievements::find ("streak.7days");
+            const auto* definition = Achievements::find ("st.days.7");
             expect (definition != nullptr);
 
             Achievements::Snapshot snapshot;
@@ -191,7 +170,7 @@ public:
 
         beginTest ("an every-exercise rule is decided by the weakest exercise");
         {
-            const auto* definition = Achievements::find ("every.level.3");
+            const auto* definition = Achievements::find ("ms.all5");
             expect (definition != nullptr);
 
             // Eight experts and one beginner is not "most of the way
@@ -204,10 +183,10 @@ public:
 
             expect (! Achievements::isEarned (*definition, lopsided));
             expectWithinAbsoluteError (Achievements::progressTowards (*definition, lopsided),
-                                        1.0f / 3.0f, 0.001f);
+                                        1.0f / 5.0f, 0.001f);
 
             for (auto& game : lopsided.games)
-                game.level = 3;
+                game.level = 5;
 
             expect (Achievements::isEarned (*definition, lopsided));
         }

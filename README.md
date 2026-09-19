@@ -70,9 +70,14 @@ separate.
 Every answer is a **family, not a preset** — a tiled booth and a big live room
 are both rooms.
 
+**Levels measure, not count.** Three right in a row makes the exercise
+harder, one wrong makes it easier — the standard psychoacoustic staircase —
+so each exercise settles at your real threshold, shown in its own units:
+"±0.35 oct", "±1.2 dB", "Room vs Chamber". Your record never drops.
+
 **Practice** is unlimited, **Survival** gives three lives, **Blitz** is ninety
-seconds where a wrong answer costs five of them. Every exercise keeps its own
-level. Train on pink noise, the built-in clips, or **your own music**.
+seconds where a wrong answer costs five of them. Train on pink noise, the
+built-in clips, or **your own music**.
 
 ## The three teaching plugins
 

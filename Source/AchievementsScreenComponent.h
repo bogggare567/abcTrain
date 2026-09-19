@@ -5,40 +5,54 @@
 #include <functional>
 #include <vector>
 
-// The whole shelf: every achievement, earned and not, with what each one
-// asks for and how close it is.
+// The shelf, in two layers (ADR 035).
 //
-// **The locked ones are the point.** It would be easy to hide them behind
-// question marks and call it mystery; that would throw away what this
-// screen is actually for. The unearned list is a *map of the subject* -
-// it says that spotting a plate and spotting a long hall are two
-// different abilities, that accuracy and endurance are scored separately,
-// that there is such a thing as being good at delay times. Someone who
-// reads it comes away knowing more about what there is to learn than they
-// did before, whether or not they ever earn a single one.
+// **Milestones** across the top: a dozen medals, each with a drawing of
+// what it is about - an EQ bell, a compressor's knee, a decaying tail -
+// because a milestone is a claim about hearing and deserves to look like
+// its subject. Locked ones are shown dim with an arc of how far along
+// they are: the unearned row is a map of what there is to learn.
 //
-// See docs/user-journey.md for why this screen exists at all rather than
-// only the home-screen strip.
+// **Stamps** underneath: a grid of small squares for what you did - fifty
+// rounds, ten in a row, a week. Many, cheap, and meant to be collected
+// often; lit when earned, a hairline when not.
+//
+// It used to be one list of 24 rows, every one the same shape, where an
+// exercise icon in a thin metal ring was the only difference between
+// bronze and gold.
 class AchievementsScreenComponent : public juce::Component,
                                      private juce::Timer
 {
 public:
+    // What a medal's drawing depicts. The nine exercises in GameManager
+    // order, then the three whole-ladder ones.
+    enum class Art
+    {
+        eq, compression, reverb, pan, delay, distortion, width, gain, range,
+        allFive, allNine, month
+    };
+
     struct Entry
     {
         juce::String name;
         juce::String description;
-        AppIcons::Icon icon = AppIcons::Icon::eq;
-        juce::Colour tint;
-        juce::String tierName;
+        juce::Colour tint;             // family colour for a milestone, metal for a stamp
         bool earned = false;
         float progress = 0.0f;
+
+        bool milestone = false;
+        Art art = Art::eq;             // milestones
+        AppIcons::Icon icon = AppIcons::Icon::award;   // stamps
     };
 
     AchievementsScreenComponent();
     ~AchievementsScreenComponent() override;
 
     void setEntries (std::vector<Entry>);
-    void setStrings (juce::String title, juce::String subtitle, juce::String close);
+
+    // Title, the one-line count, the two section names.
+    void setStrings (juce::String title, juce::String subtitle,
+                     juce::String milestones, juce::String stamps);
 
     std::function<void()> onClosed;
 
@@ -48,24 +62,31 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
+    // The drawing inside a medal, exposed so the earned-toast and the
+    // snapshot tool can use the same one.
+    static void drawArt (juce::Graphics&, Art, juce::Rectangle<float>, juce::Colour);
+
 private:
     void timerCallback() override;
 
     juce::Rectangle<int> cardBounds() const;
-    juce::Rectangle<int> listBounds() const;
-    void paintEntry (juce::Graphics&, const Entry&, juce::Rectangle<int>, float hover);
+    void layout();
+    void paintMedal (juce::Graphics&, const Entry&, juce::Rectangle<float>, float hover);
+    void paintStamp (juce::Graphics&, const Entry&, juce::Rectangle<float>, float hover);
+    void paintSectionCaption (juce::Graphics&, const juce::String&, juce::Rectangle<float>);
 
     std::vector<Entry> entries;
+    std::vector<juce::Rectangle<float>> cells;   // content space, before scroll
     std::vector<float> hoverAmounts;
-    int hoveredRow = -1;
+    int hovered = -1;
 
+    juce::Rectangle<float> milestoneCaption, stampCaption;
+    float contentHeight = 0.0f;
     float scrollOffset = 0.0f;
     float maxScroll = 0.0f;
 
-    juce::String titleText, subtitleText;
+    juce::String titleText, subtitleText, milestonesText, stampsText;
     juce::TextButton closeButton;
-
-    static constexpr int rowHeight = 54;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AchievementsScreenComponent)
 };

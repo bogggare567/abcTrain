@@ -309,3 +309,12 @@ const std::vector<float>& DistortionGame::axisPositions()
     static const std::vector<float> positions { 0.28f, 0.95f, 0.14f, 0.55f };
     return positions;
 }
+
+Game::LevelMeaning DistortionGame::describeLevel (int level) const
+{
+    const auto pair = PresetFamily::hardestPairForLevel (axisPositions(), level);
+    LevelMeaning meaning;
+    meaning.closerA = types[(size_t) pair[0]].label;
+    meaning.closerB = types[(size_t) pair[1]].label;
+    return meaning;
+}

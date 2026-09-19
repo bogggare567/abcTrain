@@ -207,3 +207,12 @@ const std::vector<float>& FrequencyRangeGame::axisPositions()
     };
     return positions;
 }
+
+Game::LevelMeaning FrequencyRangeGame::describeLevel (int level) const
+{
+    const auto pair = PresetFamily::hardestPairForLevel (axisPositions(), level);
+    LevelMeaning meaning;
+    meaning.closerA = ranges[(size_t) pair[0]].label;
+    meaning.closerB = ranges[(size_t) pair[1]].label;
+    return meaning;
+}

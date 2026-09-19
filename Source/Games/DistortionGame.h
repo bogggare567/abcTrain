@@ -17,6 +17,9 @@
 class DistortionGame : public Game
 {
 public:
+    // The closest pair this level can offer - what the level means here.
+    LevelMeaning describeLevel (int level) const override;
+
     static constexpr int numTypes = 4;
     enum class Type { softClip, hardClip, tapeSaturation, overdrive };
 

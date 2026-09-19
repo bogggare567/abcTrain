@@ -230,6 +230,26 @@ public:
     // exactly what it drew before.
     virtual juce::String getChoiceKey (int index) const { return getChoiceLabel (index); }
 
+    // What a level *means* in this exercise, in the exercise's own terms -
+    // the number a sound engineer would actually quote (ADR 035). A ruler
+    // exercise answers with its accept band in real units; a
+    // two-alternative one with the closest pair that level can offer.
+    // The editor formats and translates; this only reports.
+    struct LevelMeaning
+    {
+        enum class Unit { none, octaves, decibels, percent };
+
+        Unit unit = Unit::none;
+        float tolerance = 0.0f;           // +/- in `unit`
+        juce::String closerA, closerB;    // English labels, categorical only
+    };
+
+    virtual LevelMeaning describeLevel (int level) const
+    {
+        juce::ignoreUnused (level);
+        return {};
+    }
+
     // What a hint should do on a ruler exercise: narrow the search, not
     // answer the question.
     //

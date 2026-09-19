@@ -17,25 +17,6 @@ public:
 
     void runTest() override
     {
-        beginTest ("level thresholds are a triangular scale (level L needs 100*L to reach L+1)");
-        {
-            expectEquals (ProgressManager::pointsRequiredForLevel (1), 0);
-            expectEquals (ProgressManager::pointsRequiredForLevel (2), 100);
-            expectEquals (ProgressManager::pointsRequiredForLevel (3), 300);
-            expectEquals (ProgressManager::pointsRequiredForLevel (4), 600);
-
-            expectEquals (ProgressManager::levelForScore (0), 1);
-            expectEquals (ProgressManager::levelForScore (99), 1);
-            expectEquals (ProgressManager::levelForScore (100), 2);
-            expectEquals (ProgressManager::levelForScore (299), 2);
-            expectEquals (ProgressManager::levelForScore (300), 3);
-        }
-
-        beginTest ("level never exceeds maxLevel even with a huge score");
-        {
-            expectEquals (ProgressManager::levelForScore (1000000), ProgressManager::maxLevel);
-        }
-
         beginTest ("daysBetween counts whole days");
         {
             expectEquals (ProgressManager::daysBetween ("2026-01-01", "2026-01-02"), 1);
@@ -73,7 +54,7 @@ public:
             expectEquals (progress.getStreakDays(), 1);
         }
 
-        beginTest ("points and levels are per exercise, and everyone starts at 1");
+        beginTest ("levels are per exercise, and everyone starts at 1");
         {
             GameManager gameManager;
             ProgressManager progress (gameManager, makeTempOptions ("perexercise"));
@@ -81,121 +62,105 @@ public:
             for (int i = 0; i < gameManager.getNumGames(); ++i)
             {
                 expectEquals (progress.getLevelForGame (i), 1);
-                expectEquals (progress.getPointsForGame (i), 0);
+                expectEquals (progress.getBestLevelForGame (i), 1);
+                expectEquals (progress.getStepRunForGame (i), 0);
             }
 
-            for (int i = 0; i < 10; ++i)
-                progress.registerAnswer (0, true);
-
-            // A correct answer is worth pointsPerCorrectAnswer plus the
-            // precision bonus scaled by quality; registerAnswer defaults
-            // quality to 1, so these are full marks.
-            expectEquals (progress.getPointsForGame (0),
-                           10 * (ProgressManager::pointsPerCorrectAnswer
-                                  + ProgressManager::precisionBonusPoints));
-            expectEquals (progress.getPointsForGame (1), 0);
-            expectEquals (progress.getLevelForGame (1), 1);
-        }
-
-        beginTest ("points open the promotion, the test closes it");
-        {
-            GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("promotion"));
-
-            // Interleave a wrong answer so nothing is a lucky run: points
-            // accumulate, the promotion opens on the answer that crosses
-            // the threshold, and the test starts counting from there.
-            for (int i = 0; i < 10; ++i)
-            {
-                progress.registerAnswer (0, true);
-                progress.registerAnswer (0, false);
-            }
-
-            expect (progress.isPromotionPendingForGame (0), "promotion should be open");
-            expectEquals (progress.getLevelForGame (0), 1, "the test has not been passed yet");
-            expectEquals (progress.getPromotionStreakForGame (0), 0);
-
-            // Four in a row is not five.
-            for (int i = 0; i < ProgressManager::promotionTestLength - 1; ++i)
-                progress.registerAnswer (0, true);
-
-            expectEquals (progress.getLevelForGame (0), 1);
-            expectEquals (progress.getPromotionStreakForGame (0),
-                           ProgressManager::promotionTestLength - 1);
-
-            // One wrong answer costs the run, not the level or the points.
-            const auto pointsBefore = progress.getPointsForGame (0);
-            progress.registerAnswer (0, false);
-            expectEquals (progress.getPromotionStreakForGame (0), 0);
-            expectEquals (progress.getLevelForGame (0), 1);
-            expectEquals (progress.getPointsForGame (0), pointsBefore);
-            expect (progress.isPromotionPendingForGame (0), "the promotion stays open");
-
-            for (int i = 0; i < ProgressManager::promotionTestLength; ++i)
+            for (int i = 0; i < ProgressManager::stepUpAfter; ++i)
                 progress.registerAnswer (0, true);
 
             expectEquals (progress.getLevelForGame (0), 2);
-            expect (! progress.isPromotionPendingForGame (0));
-            expectEquals (progress.getPromotionStreakForGame (0), 0);
+            expectEquals (progress.getLevelForGame (1), 1, "another exercise is untouched");
         }
 
-        beginTest ("onAnswerScored reports what each answer produced (ADR 029)");
+        beginTest ("the staircase: three right is a step harder, one wrong a step easier");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("staircase"));
+
+            // Two right: the run counts, the step does not move yet.
+            progress.registerAnswer (0, true);
+            progress.registerAnswer (0, true);
+            expectEquals (progress.getLevelForGame (0), 1);
+            expectEquals (progress.getStepRunForGame (0), 2);
+
+            // A wrong answer at the bottom step clears the run but cannot
+            // go below 1.
+            progress.registerAnswer (0, false);
+            expectEquals (progress.getLevelForGame (0), 1);
+            expectEquals (progress.getStepRunForGame (0), 0);
+
+            for (int i = 0; i < 3 * ProgressManager::stepUpAfter; ++i)
+                progress.registerAnswer (0, true);
+
+            expectEquals (progress.getLevelForGame (0), 4);
+            expectEquals (progress.getBestLevelForGame (0), 4);
+
+            progress.registerAnswer (0, false);
+            expectEquals (progress.getLevelForGame (0), 3, "one wrong answer is one step easier");
+            expectEquals (progress.getBestLevelForGame (0), 4, "the record never drops");
+        }
+
+        beginTest ("the top step holds, and the run stays full there");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("topstep"));
+
+            for (int i = 0; i < 100; ++i)
+                progress.registerAnswer (0, true);
+
+            expectEquals (progress.getLevelForGame (0), ProgressManager::maxLevel);
+            expectEquals (progress.getStepRunForGame (0), ProgressManager::stepUpAfter - 1);
+        }
+
+        beginTest ("a staircase settles near 79% correct");
+        {
+            // The whole reason for 3-down/1-up (Levitt 1971): a listener
+            // whose accuracy falls as the step rises ends up hovering where
+            // p^3 = 0.5, i.e. p ~= 0.794. Simulated here with a listener
+            // who is perfect at step 1 and drops 6% a step.
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("converge"));
+            juce::Random random (1234);
+
+            int correct = 0, counted = 0;
+            for (int i = 0; i < 4000; ++i)
+            {
+                const auto p = 1.0f - 0.06f * (float) (progress.getLevelForGame (0) - 1);
+                const auto right = random.nextFloat() < p;
+                progress.registerAnswer (0, right);
+
+                if (i >= 500) { ++counted; if (right) ++correct; }
+            }
+
+            const auto rate = (float) correct / (float) counted;
+            expect (rate > 0.74f && rate < 0.85f, "settled at " + juce::String (rate, 3));
+        }
+
+        beginTest ("onAnswerScored reports each step (ADR 035)");
         {
             GameManager gameManager;
             ProgressManager progress (gameManager, makeTempOptions ("outcome"));
 
             ProgressManager::AnswerOutcome last;
-            int lastIndex = -1;
-            progress.onAnswerScored = [&] (int index, const ProgressManager::AnswerOutcome& outcome)
-            {
-                lastIndex = index;
-                last = outcome;
-            };
+            int calls = 0;
+            progress.onAnswerScored = [&] (int, const ProgressManager::AnswerOutcome& o) { last = o; ++calls; };
 
-            // A dead-centre correct answer is worth base + full precision.
-            progress.registerAnswer (0, true, 1.0f);
-            expectEquals (lastIndex, 0);
-            expect (last.wasCorrect);
-            expectEquals (last.pointsAwarded,
-                           ProgressManager::pointsPerCorrectAnswer + ProgressManager::precisionBonusPoints);
-            expect (! last.leveledUp);
-            expect (! last.promotionJustOpened);
+            progress.registerAnswer (0, true);
+            expectEquals (calls, 1);
+            expect (last.wasCorrect && ! last.leveledUp && ! last.steppedDown);
+            expectEquals (last.stepRun, 1);
 
-            // A wrong answer awards nothing and, with no test live, fails
-            // nothing either.
+            progress.registerAnswer (0, true);
+            progress.registerAnswer (0, true);
+            expect (last.leveledUp && last.newBest);
+            expectEquals (last.level, 2);
+            expectEquals (last.bestLevel, 2);
+
             progress.registerAnswer (0, false);
-            expect (! last.wasCorrect);
-            expectEquals (last.pointsAwarded, 0);
-            expect (! last.promotionJustFailed, "no test was live to fail");
-
-            // Grind to the threshold: the answer that crosses it reports
-            // the promotion opening; the fifth in a row after that reports
-            // the level-up, exactly once.
-            auto sawOpen = false;
-            auto sawLevelUp = false;
-
-            for (int i = 0; i < 40 && ! sawLevelUp; ++i)
-            {
-                progress.registerAnswer (0, true, 1.0f);
-                sawOpen = sawOpen || last.promotionJustOpened;
-                sawLevelUp = sawLevelUp || last.leveledUp;
-            }
-
-            expect (sawOpen, "crossing the threshold should report the test opening");
-            expect (sawLevelUp, "passing the test should report the level-up");
-            expectEquals (last.level, 2, "the outcome carries the level after the answer");
-            expect (! last.promotionPending, "the test closed with the level");
-
-            // A wrong answer during a live test reports the failure.
-            for (int i = 0; i < 30 && ! progress.isPromotionPendingForGame (0); ++i)
-                progress.registerAnswer (0, true, 1.0f);
-
-            if (progress.isPromotionPendingForGame (0))
-            {
-                progress.registerAnswer (0, true, 1.0f);   // one into the test
-                progress.registerAnswer (0, false);
-                expect (last.promotionJustFailed, "a wrong answer mid-test should say so");
-            }
+            expect (last.steppedDown && ! last.newBest);
+            expectEquals (last.level, 1);
+            expectEquals (last.bestLevel, 2);
         }
 
         beginTest ("levelling one exercise does not touch another's difficulty");
@@ -216,60 +181,6 @@ public:
             expect (gameManager.getGame (2).getNumChoices() == 2);
         }
 
-        beginTest ("a wrong answer costs no points");
-        {
-            GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("wronganswer"));
-
-            progress.registerAnswer (0, true);
-            progress.registerAnswer (0, false);
-
-            const auto full = ProgressManager::pointsPerCorrectAnswer
-                                  + ProgressManager::precisionBonusPoints;
-
-            expectEquals (progress.getPointsForGame (0), full);
-            expectEquals (progress.getTotalScore(), full);
-        }
-
-        beginTest ("precision scales the points a correct answer is worth");
-        {
-            GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("precision"));
-
-            // Dead on the target is worth the full rate; scraping the edge
-            // of the accept band is worth the base rate and nothing more.
-            progress.registerAnswer (0, true, 1.0f);
-            expectEquals (progress.getPointsForGame (0),
-                           ProgressManager::pointsPerCorrectAnswer
-                               + ProgressManager::precisionBonusPoints);
-
-            progress.registerAnswer (1, true, 0.0f);
-            expectEquals (progress.getPointsForGame (1),
-                           ProgressManager::pointsPerCorrectAnswer);
-
-            // Out-of-range quality is clamped rather than trusted - it
-            // comes from a Game, and a game with a bug should not be able
-            // to award itself a thousand points.
-            progress.registerAnswer (2, true, 9.0f);
-            expectEquals (progress.getPointsForGame (2),
-                           ProgressManager::pointsPerCorrectAnswer
-                               + ProgressManager::precisionBonusPoints);
-        }
-
-        beginTest ("getTotalScore sums every exercise");
-        {
-            GameManager gameManager;
-            ProgressManager progress (gameManager, makeTempOptions ("totalscore"));
-
-            progress.registerAnswer (0, true);
-            progress.registerAnswer (3, true);
-            progress.registerAnswer (7, true);
-
-            expectEquals (progress.getTotalScore(),
-                           3 * (ProgressManager::pointsPerCorrectAnswer
-                                 + ProgressManager::precisionBonusPoints));
-        }
-
         beginTest ("an out-of-range game index is a harmless miss, not a crash");
         {
             GameManager gameManager;
@@ -278,10 +189,9 @@ public:
             progress.registerAnswer (999, true);
             progress.registerAnswer (-1, true);
 
-            expectEquals (progress.getTotalScore(), 0);
             expectEquals (progress.getLevelForGame (999), 1);
-            expectEquals (progress.getPointsForGame (-1), 0);
-            expect (! progress.isPromotionPendingForGame (999));
+            expectEquals (progress.getBestLevelForGame (-1), 1);
+            expectEquals (progress.getStepRunForGame (999), 0);
         }
 
         beginTest ("daily challenge completes after the target streak on its own game");
@@ -339,14 +249,34 @@ public:
             {
                 GameManager gameManager;
                 ProgressManager progress (gameManager, options);
-                progress.registerAnswer (0, true);
+                for (int i = 0; i < 2 * ProgressManager::stepUpAfter + 1; ++i)
+                    progress.registerAnswer (0, true);
+                progress.registerAnswer (0, false);
             } // destructor saves state
 
             GameManager gameManager2;
             ProgressManager reloaded (gameManager2, options);
-            expectEquals (reloaded.getTotalScore(),
-                           ProgressManager::pointsPerCorrectAnswer
-                               + ProgressManager::precisionBonusPoints);
+            expectEquals (reloaded.getLevelForGame (0), 2);
+            expectEquals (reloaded.getBestLevelForGame (0), 3);
+            expectEquals (reloaded.getStepRunForGame (0), 0);
+        }
+
+        beginTest ("a points-era save keeps its level as both step and record");
+        {
+            const auto options = makeTempOptions ("migrate");
+            {
+                juce::PropertiesFile old (options);
+                old.setValue ("game0.points", 1200);
+                old.setValue ("game0.level", 5);
+                old.setValue ("game0.promotionPending", true);
+                old.saveIfNeeded();
+            }
+
+            GameManager gameManager;
+            ProgressManager progress (gameManager, options);
+            expectEquals (progress.getLevelForGame (0), 5);
+            expectEquals (progress.getBestLevelForGame (0), 5);
+            expectEquals (progress.getLevelForGame (1), 1);
         }
 
         beginTest ("each exercise remembers its own mode, and it survives a reload");
