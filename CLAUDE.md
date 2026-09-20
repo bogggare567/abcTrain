@@ -1465,8 +1465,8 @@ The three Learner plugins follow the product-wide language (they read the
 same settings file, `LocalisationManager::makeDefaultOptions()`) and are
 fully translated since ADR 037 — knobs, guide text, presets, modules,
 units and decimal marks. `tools/LearnerStrings` lists every key they ask
-for. Every language table has every key the English one has (794 as of
-v1.6.0); keep it that way when adding strings. Still English-only: each
+for. Every language table has every key the English one has (804 as of
+v1.7.0); keep it that way when adding strings. Still English-only: each
 game's dynamic `getFeedbackText()`.
 
 ## Testing (`tests/`, `shared/`)

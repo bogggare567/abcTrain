@@ -1,6 +1,6 @@
 {
   "generatedBy": "website/tools/sync-from-plugin.mjs",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "families": {
     "frequency": "#4fa3c7",
     "dynamics": "#c77f4f",
