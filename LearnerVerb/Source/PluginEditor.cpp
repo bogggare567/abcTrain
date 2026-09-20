@@ -166,23 +166,23 @@ void LearnerVerbEditor::layoutControls (juce::Rectangle<int> area)
     // TYPE, a full-width bar, and one line under it saying what that
     // type is - the first reverb decision, stated before any knob.
     {
-        auto row = area.removeFromTop (34);
+        auto row = area.removeFromTop (isCompact() ? 30 : 34);
         typeCaptionArea = row.removeFromLeft (96);
         typeChoice.setBounds (row);
     }
 
-    area.removeFromTop (8);
+    area.removeFromTop (rowGap());
 
     {
-        auto row = area.removeFromTop (30);
+        auto row = area.removeFromTop (isCompact() ? 26 : 30);
         thisIsCaptionArea = row.removeFromLeft (96);
         thisIsTextArea = row;
     }
 
-    area.removeFromTop (10);
-    knobs.setBounds (area.removeFromTop (132));
-    area.removeFromTop (8);
-    presets.setBounds (area.removeFromTop (32));
+    area.removeFromTop (rowGap());
+    knobs.setBounds (area.removeFromTop (knobRowHeight()));
+    area.removeFromTop (rowGap());
+    presets.setBounds (area.removeFromTop (presetRowHeight()));
 }
 
 void LearnerVerbEditor::updateEchogram (bool immediately)

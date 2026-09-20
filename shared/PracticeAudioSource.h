@@ -60,12 +60,16 @@ public:
     // panel's destructor does not help: the block is already in flight.
     //
     // Beds now live here instead, in the *processor*, which the host only
-    // destroys after it has stopped calling processBlock. Every bed is
-    // kept for the processor's lifetime rather than freed when the next
-    // one arrives - the same accepted memory tradeoff as
-    // ReferenceAudioLibrary::loadedBuffers, for the same reason: there is
-    // no safe moment on the message thread to know the audio thread has
-    // finished with one.
+    // destroys after it has stopped calling processBlock.
+    //
+    // They used to be kept for the processor's whole lifetime, because
+    // there was no safe moment to know the audio thread had finished with
+    // one - which meant memory that only grew over a long session of
+    // modules (ADR 038). Now the audio thread announces the buffer it is
+    // about to read in `hazard` and re-checks it is still the published
+    // one before touching it; the message thread frees every older bed
+    // that is neither published nor announced. A buffer is only ever freed
+    // when no block can be reading it.
     //
     // Message thread only for the caller; the audio thread only ever loads
     // the atomic.
@@ -73,12 +77,17 @@ public:
     {
         auto* owned = ownedOverrides.add (new juce::AudioBuffer<float> (std::move (buffer)));
         override.store (owned);
+        reclaimRetiredOverrides();
     }
 
     void clearOverrideBuffer() noexcept
     {
         override.store (nullptr);
+        reclaimRetiredOverrides();
     }
+
+    // How many beds are held right now - for tests.
+    int getNumHeldOverrides() const noexcept { return ownedOverrides.size(); }
 
     // Replaces the block with the library's current clip, looped, and
     // returns true if it actually played anything.
@@ -96,7 +105,26 @@ public:
         // so a block could decide it had a clip and then decide it wanted
         // no audio - an audible stutter at exactly the moment a check
         // ends.
-        const auto* overrideClip = override.load();
+        // Announce, then confirm: the message thread never frees what is
+        // announced here, and a pointer is only used once it is confirmed
+        // to still be the published one (hazard-pointer protocol; bounded
+        // - a second change inside this window just means one more pass).
+        const juce::AudioBuffer<float>* overrideClip = nullptr;
+
+        for (int attempt = 0; attempt < 4; ++attempt)
+        {
+            overrideClip = override.load();
+            hazard.store (overrideClip);
+
+            if (override.load() == overrideClip)
+                break;
+        }
+
+        if (override.load() != overrideClip)
+        {
+            overrideClip = nullptr;   // still changing: play the library this block
+            hazard.store (nullptr);
+        }
         const auto* clip = overrideClip != nullptr ? overrideClip : library.getActiveBuffer();
 
         const auto wantsAudio = (enabled.load() || overrideClip != nullptr)
@@ -171,6 +199,22 @@ private:
     // Owned here so they outlive every editor. Never emptied while this
     // object is alive - see publishOverrideBuffer.
     juce::OwnedArray<juce::AudioBuffer<float>> ownedOverrides;
+    std::atomic<const juce::AudioBuffer<float>*> hazard { nullptr };
+
+    // Message thread: free every bed that is neither published nor in use.
+    void reclaimRetiredOverrides() noexcept
+    {
+        const auto* published = override.load();
+        const auto* inUse = hazard.load();
+
+        for (int i = ownedOverrides.size(); --i >= 0;)
+        {
+            const auto* b = ownedOverrides.getUnchecked (i);
+
+            if (b != published && b != inUse)
+                ownedOverrides.remove (i);
+        }
+    }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PracticeAudioSource)
 };

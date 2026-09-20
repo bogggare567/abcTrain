@@ -26,7 +26,10 @@ public:
 
 private:
     int analysisContentHeight() const override { return 200 + 12 + 120 + 8 + 22; }
-    int controlsContentHeight() const override { return 34 + 8 + 30 + 10 + 132 + 8 + 32; }
+    int controlsContentHeight() const override
+    {
+        return (isCompact() ? 30 + 26 : 34 + 30) + 3 * rowGap() + knobRowHeight() + presetRowHeight();
+    }
     void paint (juce::Graphics&) override;
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;

@@ -30,14 +30,25 @@ By measurable character, into five folders:
 | **Bright** | cymbals, air, bright synths | the top end |
 | **Full range** | broad, even, usually wide - a finished mix | the realistic and hardest case |
 
-### It does not separate stems
+### Split into stems
 
-It cannot tell a vocal from a mix, and it does not pretend to. That is
-source separation - a trained-model problem - and a heuristic pretending to
-do it would mislabel most real music while sounding confident. A lead vocal
-in a sparse arrangement usually lands in *mid range*; the same vocal over a
-dense mix lands in *full range*, correctly, because that is what the audio
-is.
+**Add music** sorts whole slices by character and never separates
+anything. **Split into stems** does: each track is divided into four stems
+and each stem is cut into loops of its own.
+
+| Stem | How it is found |
+|---|---|
+| **Drums** | the percussive part of a harmonic/percussive split (what changes fast in time, not in pitch) |
+| **Bass** | the harmonic part below about 180 Hz |
+| **Centre (vocal)** | the rest of the harmonic part that sits in the middle of the stereo image |
+| **Sides (wide)** | what is left: the harmonic part that is not in the middle |
+
+The four always add back up to the original. It is an estimate from the
+signal itself, **not a trained model**, and it says so: "centre" means "in
+the middle of the image", so a centred synth lands with the vocal, and a
+snare's tail or a strummed guitar can split between stems. On a mono file
+there are no sides. Tracks longer than eight minutes are separated up to
+the eighth minute.
 
 ## Choosing what to train on
 

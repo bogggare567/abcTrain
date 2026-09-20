@@ -1,102 +1,137 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_basics/juce_audio_basics.h>
 #include <array>
+#include <atomic>
+#include <cmath>
 
-// Scrolling peak-based dual waveform: input trace (gray) and output trace
-// (blue, tinted toward red proportional to `highlightAmount`), updated via
-// a 30 Hz UI timer - the same FIFO-accumulate/timer-flush pattern
-// LearnerEQ's SpectrumAnalyserComponent uses for its FFT, just without the
-// FFT. Each column shows the peak absolute value seen during that ~33 ms
-// window, not a true sample-accurate waveform - enough to see level and
-// processing activity over the last few seconds without storing/
-// downsampling every raw sample.
+// Scrolling dual waveform: the input as a dim silhouette, the output
+// filled in the plugin's colour and tinted toward red by `highlightAmount`
+// (LearnerComp passes its gain reduction in dB; 0 means no tint).
 //
-// `highlightAmount` means whatever the caller wants tinted red: LearnerComp
-// passes the current gain-reduction in dB; a plugin with no such concept
-// can just pass 0 (or omit it) to disable tinting. Shared between
-// LearnerComp and LearnerVerb - extracted here once a second consumer
-// needed the same shape, rather than guessing the abstraction from one.
+// Threading (ADR 038). The audio thread accumulates one *column* - the
+// peak and the RMS of `samplesPerColumn` samples - in members only it
+// touches, and hands each finished column to the message thread through a
+// lock-free SPSC FIFO. The first version accumulated into floats the
+// timer also read and zeroed, unsynchronised: a data race, "visually
+// harmless" only until a compiler decided otherwise. The readouts
+// (getInputPeak and friends) are message-thread values derived from the
+// drained columns.
 //
-// pushSample() is called from the audio thread; the column accumulators
-// and the last-peak values it produces are read from the message thread
-// with no lock. The only race is "a repaint uses a still-accumulating
-// column," which is visually harmless for a meter/waveform display - same
-// reasoning as SpectrumAnalyserComponent's FIFO.
+// Why it looks smooth now: 400 columns of 256 samples (about 2.3 s at
+// 44.1 kHz) arrive about 170 times a second and are drained 60 times a
+// second, so the picture scrolls a few pixels at a time instead of
+// jumping a 33 ms column at once; and each column carries its RMS as well
+// as its peak, drawn as a brighter body inside the peak outline - the
+// body is what you hear as loudness, the outline is what the meter sees.
 class WaveformDisplay : public juce::Component,
                          private juce::Timer
 {
 public:
-    WaveformDisplay() { startTimerHz (30); }
+    WaveformDisplay() { startTimerHz (60); }
 
-    static constexpr int numColumns = 100;
+    static constexpr int numColumns = 400;
+    static constexpr int samplesPerColumn = 256;
     static constexpr float highlightRangeDb = 24.0f;
 
+    // Audio thread. Real-time safe: arithmetic on audio-thread-only
+    // members, and one lock-free FIFO write per 256 samples.
     void pushSample (float inputSample, float outputSample, float highlightAmount = 0.0f) noexcept
     {
-        columnInputPeak = juce::jmax (columnInputPeak, std::abs (inputSample));
-        columnOutputPeak = juce::jmax (columnOutputPeak, std::abs (outputSample));
-        columnMaxHighlight = juce::jmax (columnMaxHighlight, highlightAmount);
+        if (resetRequested.exchange (false))
+            accumulator = {};
+
+        const auto in = std::abs (inputSample);
+        const auto out = std::abs (outputSample);
+        accumulator.inputPeak = juce::jmax (accumulator.inputPeak, in);
+        accumulator.outputPeak = juce::jmax (accumulator.outputPeak, out);
+        accumulator.inputSquares += in * in;
+        accumulator.outputSquares += out * out;
+        accumulator.highlight = juce::jmax (accumulator.highlight, highlightAmount);
+
+        if (++accumulator.count < samplesPerColumn)
+            return;
+
+        Column column;
+        column.inputPeak = accumulator.inputPeak;
+        column.outputPeak = accumulator.outputPeak;
+        column.inputRms = std::sqrt (accumulator.inputSquares / (float) accumulator.count);
+        column.outputRms = std::sqrt (accumulator.outputSquares / (float) accumulator.count);
+        column.highlight = accumulator.highlight;
+        accumulator = {};
+
+        if (fifo.getFreeSpace() > 0)
+        {
+            const auto scope = fifo.write (1);
+            columns[(size_t) (scope.blockSize1 > 0 ? scope.startIndex1 : scope.startIndex2)] = column;
+        }
     }
 
-    float getInputPeak() const noexcept { return lastInputPeak; }
-    float getOutputPeak() const noexcept { return lastOutputPeak; }
-    float getCurrentHighlightAmount() const noexcept { return lastHighlight; }
+    // Message thread: the readouts, with a meter's release so the numbers
+    // can be read rather than flicker.
+    float getInputPeak() const noexcept { return inputPeakReadout; }
+    float getOutputPeak() const noexcept { return outputPeakReadout; }
+    float getCurrentHighlightAmount() const noexcept { return highlightReadout; }
 
-
-    // Per-instance accent, so a host with two Learner plugins open shows
-    // each in its own family colour. The palette itself is deliberately
-    // process-wide (see AbcTrainTheme::current) and so cannot carry this;
-    // transparent means "just use the palette's accent".
     void setAccentColour (juce::Colour newAccent) { accentOverride = newAccent; repaint(); }
 
     // Wipe the scroll history. The trainer buys its hint per round, and a
     // display still holding the previous round's shape would be showing
-    // the answer to a question already scored.
+    // the answer to a question already scored. Message thread; the audio
+    // thread drops its half-built column when it next runs.
     void reset() noexcept
     {
-        inputHistory.fill (0.0f);
-        outputHistory.fill (0.0f);
-        highlightHistory.fill (0.0f);
-        columnInputPeak = columnOutputPeak = columnMaxHighlight = 0.0f;
-        lastInputPeak = lastOutputPeak = lastHighlight = 0.0f;
+        resetRequested = true;
+        fifo.reset();
+        inputPeaks.fill (0.0f);
+        outputPeaks.fill (0.0f);
+        inputRms.fill (0.0f);
+        outputRms.fill (0.0f);
+        highlights.fill (0.0f);
+        inputPeakReadout = outputPeakReadout = highlightReadout = 0.0f;
         repaint();
     }
+
+    // For tests: drain whatever the audio side has produced.
+    int drainForTest() { return drain(); }
 
     void paint (juce::Graphics&) override;
 
 private:
+    struct Column
+    {
+        float inputPeak = 0.0f, outputPeak = 0.0f, inputRms = 0.0f, outputRms = 0.0f, highlight = 0.0f;
+    };
+
+    struct Accumulator
+    {
+        float inputPeak = 0.0f, outputPeak = 0.0f, inputSquares = 0.0f, outputSquares = 0.0f, highlight = 0.0f;
+        int count = 0;
+    };
+
     juce::Colour effectiveAccent() const;
     void timerCallback() override;
+    int drain();
+
+    juce::Path buildEnvelope (const std::array<float, numColumns>& values, juce::Rectangle<float> bounds) const;
 
     juce::Colour accentOverride { juce::Colours::transparentBlack };
 
+    // Audio thread only.
+    Accumulator accumulator;
+    std::atomic<bool> resetRequested { false };
 
-    // One peak column's screen position. `mirrored` picks the bottom half
-    // of the symmetric envelope. Static because buildEnvelopeShape needs it
-    // while walking the columns backwards.
-    static juce::Point<float> envelopePoint (const std::array<float, numColumns>& history,
-                                             juce::Rectangle<float> bounds, int index, bool mirrored);
+    // Audio -> message thread.
+    static constexpr int fifoCapacity = 1024;
+    juce::AbstractFifo fifo { fifoCapacity };
+    std::array<Column, (size_t) fifoCapacity> columns {};
 
-    // Open path along one edge of the envelope, for stroking an outline.
-    juce::Path buildEnvelopePath (const std::array<float, numColumns>& history,
-                                  juce::Rectangle<float> bounds, bool mirrored) const;
-
-    // Closed path around the whole symmetric envelope, for filling.
-    juce::Path buildEnvelopeShape (const std::array<float, numColumns>& history,
-                                   juce::Rectangle<float> bounds) const;
-
-    std::array<float, numColumns> inputHistory {};
-    std::array<float, numColumns> outputHistory {};
-    std::array<float, numColumns> highlightHistory {};
-
-    float columnInputPeak = 0.0f;
-    float columnOutputPeak = 0.0f;
-    float columnMaxHighlight = 0.0f;
-
-    float lastInputPeak = 0.0f;
-    float lastOutputPeak = 0.0f;
-    float lastHighlight = 0.0f;
+    // Message thread only.
+    std::array<float, numColumns> inputPeaks {}, outputPeaks {}, inputRms {}, outputRms {}, highlights {};
+    float inputPeakReadout = 0.0f, outputPeakReadout = 0.0f, highlightReadout = 0.0f;
+    double lastTick = 0.0;
+    bool quiet = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveformDisplay)
 };

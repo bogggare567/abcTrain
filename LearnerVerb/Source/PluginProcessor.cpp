@@ -74,7 +74,9 @@ void LearnerVerbProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
     engine.prepare (spec);
     engine.reset();
 
-    wetBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock);
+    // Headroom: a host sending a larger block than it announced must not
+    // make makeCopyOf reallocate on the audio thread.
+    wetBuffer.setSize (juce::jmax (2, getTotalNumOutputChannels()), juce::jmax (samplesPerBlock, 8192));
     wetAmount.reset (sampleRate, 0.03);
     wetAmount.setCurrentAndTargetValue (valueOf (bypassParamId) > 0.5f ? 0.0f : valueOf (dryWetParamId) / 100.0f);
 

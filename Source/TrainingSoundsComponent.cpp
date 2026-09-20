@@ -1,3 +1,4 @@
+#include "../shared/StemSeparator.h"
 #include "TrainingSoundsComponent.h"
 #include "../shared/AbcTrainTheme.h"
 #include "../shared/AbcTrainLookAndFeel.h"
@@ -41,6 +42,9 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
     importButton.onClick = [this] { importAndSort(); };
     addAndMakeVisible (importButton);
+
+    separateButton.onClick = [this] { chooseFilesToImport (true); };
+    addAndMakeVisible (separateButton);
 
     rootFolderLabel.setJustificationType (juce::Justification::centred);
     rootFolderLabel.setFont (AbcTrainLookAndFeel::captionFont());
@@ -90,6 +94,8 @@ void TrainingSoundsComponent::setStrings (Strings strings)
         text.importHint = keptHint;
 
     importButton.setButtonText (text.importAndSort);
+    separateButton.setButtonText (text.separateStems);
+    separateButton.setTooltip (text.separateHint);
     titleLabel.setText (text.title, juce::dontSendNotification);
     chooseFolderButton.setButtonText (text.chooseFolder);
     revealButton.setButtonText (text.openFolder);
@@ -104,6 +110,12 @@ juce::String TrainingSoundsComponent::displayNameForCategory (const juce::String
 {
     if (rawName == "Built-in Percussive") return text.builtInPercussive;
     if (rawName == "Built-in Sustained")  return text.builtInSustained;
+
+    // The stem folders are this app's too (StemSeparator::folderNameFor).
+    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::drums))  return text.stemDrums;
+    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::bass))   return text.stemBass;
+    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::centre)) return text.stemCentre;
+    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::sides))  return text.stemSides;
 
     // Anything else is a folder somebody made. Its name is theirs.
     return rawName;
@@ -574,8 +586,11 @@ void TrainingSoundsComponent::resized()
         // card was a sensible 400px and on a full page is a button
         // fifteen hundred pixels wide - a control whose size claims it is
         // the most important thing in the product.
-        importButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth(), 220))
+        importButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth() / 2, 220))
                                     .reduced (0, 6));
+        row.removeFromLeft (Spacing::small);
+        separateButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth(), 240))
+                                      .reduced (0, 6));
     }
 
     rootFolderLabel.setVisible (false);
@@ -589,8 +604,9 @@ void TrainingSoundsComponent::resized()
 class TrainingSoundsComponent::ImportJob : public juce::Thread
 {
 public:
-    ImportJob (TrainingSoundsComponent& ownerToUse, juce::Array<juce::File> filesToImport)
-        : juce::Thread ("abcTrain import"), owner (ownerToUse), files (std::move (filesToImport))
+    ImportJob (TrainingSoundsComponent& ownerToUse, juce::Array<juce::File> filesToImport, bool separateToUse)
+        : juce::Thread ("abcTrain import"), owner (ownerToUse), files (std::move (filesToImport)),
+          separate (separateToUse)
     {
     }
 
@@ -606,26 +622,28 @@ public:
     {
         juce::Component::SafePointer<TrainingSoundsComponent> safeOwner (&owner);
 
-        const auto written = owner.processor.getGameManager().getReferenceAudioLibrary()
-                                 .importAndSliceMany (
-                                     files,
-                                     [safeOwner] (float progress, juce::String fileName)
-                                     {
-                                         if (safeOwner == nullptr)
-                                             return;
+        const auto onProgress = [safeOwner] (float progress, juce::String fileName)
+        {
+            if (safeOwner == nullptr)
+                return;
 
-                                         safeOwner->importProgress.store (progress);
+            safeOwner->importProgress.store (progress);
 
-                                         juce::MessageManager::callAsync ([safeOwner, fileName]
-                                         {
-                                             if (safeOwner != nullptr)
-                                             {
-                                                 safeOwner->importProgressFile = fileName;
-                                                 safeOwner->repaint();
-                                             }
-                                         });
-                                     },
-                                     [this] { return threadShouldExit(); });
+            juce::MessageManager::callAsync ([safeOwner, fileName]
+            {
+                if (safeOwner != nullptr)
+                {
+                    safeOwner->importProgressFile = fileName;
+                    safeOwner->repaint();
+                }
+            });
+        };
+
+        auto& library = owner.processor.getGameManager().getReferenceAudioLibrary();
+        const auto shouldStop = [this] { return threadShouldExit(); };
+
+        const auto written = separate ? library.importAndSeparateMany (files, onProgress, shouldStop)
+                                      : library.importAndSliceMany (files, onProgress, shouldStop);
 
         juce::MessageManager::callAsync ([safeOwner, written]
         {
@@ -637,9 +655,15 @@ public:
 private:
     TrainingSoundsComponent& owner;
     juce::Array<juce::File> files;
+    bool separate = false;
 };
 
 void TrainingSoundsComponent::importAndSort()
+{
+    chooseFilesToImport (false);
+}
+
+void TrainingSoundsComponent::chooseFilesToImport (bool separate)
 {
     if (importRunning)
         return;
@@ -649,7 +673,7 @@ void TrainingSoundsComponent::importAndSort()
     // the player answer a question about storage layout before they could
     // find out whether the feature was any good.
     fileChooser = std::make_unique<juce::FileChooser> (
-        importButton.getButtonText(),
+        separate ? separateButton.getButtonText() : importButton.getButtonText(),
         juce::File::getSpecialLocation (juce::File::userMusicDirectory),
         "*.wav;*.aiff;*.aif;*.flac;*.mp3");
 
@@ -659,7 +683,7 @@ void TrainingSoundsComponent::importAndSort()
         juce::FileBrowserComponent::openMode
             | juce::FileBrowserComponent::canSelectFiles
             | juce::FileBrowserComponent::canSelectMultipleItems,
-        [safeThis] (const juce::FileChooser& chooser)
+        [safeThis, separate] (const juce::FileChooser& chooser)
         {
             if (safeThis == nullptr)
                 return;
@@ -669,11 +693,11 @@ void TrainingSoundsComponent::importAndSort()
             if (chosen.isEmpty())
                 return;
 
-            safeThis->startImport (chosen);
+            safeThis->startImport (chosen, separate);
         });
 }
 
-void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files)
+void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files, bool separate)
 {
     importJob.reset();
 
@@ -682,9 +706,11 @@ void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files)
     importProgressFile = {};
 
     importButton.setEnabled (false);
+    separateButton.setEnabled (false);
     chooseFolderButton.setEnabled (false);
+    separateRunning = separate;
 
-    importJob = std::make_unique<ImportJob> (*this, files);
+    importJob = std::make_unique<ImportJob> (*this, files, separate);
     importJob->startThread();
 
     repaint();
@@ -693,7 +719,9 @@ void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files)
 void TrainingSoundsComponent::finishImport (int clipsWritten)
 {
     importRunning = false;
+    separateRunning = false;
     importButton.setEnabled (true);
+    separateButton.setEnabled (true);
     chooseFolderButton.setEnabled (true);
 
     auto& library = processor.getGameManager().getReferenceAudioLibrary();
@@ -713,7 +741,7 @@ void TrainingSoundsComponent::finishImport (int clipsWritten)
 
     for (const auto& category : library.getCategories())
         if (! category.name.startsWith ("Built-in") && ! category.files.isEmpty())
-            parts.add (juce::String (category.files.size()) + " " + category.name.toLowerCase());
+            parts.add (juce::String (category.files.size()) + " " + displayNameForCategory (category.name).toLowerCase());
 
     text.importHint = text.importedClips.replace ("{{count}}", juce::String (clipsWritten))
                    + (parts.isEmpty() ? juce::String() : "  -  " + parts.joinIntoString (", "));

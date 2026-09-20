@@ -764,7 +764,12 @@ private:
             g.setColour (theme.panelBackground);
             g.fillRect (area);
 
-            const auto splitX = area.getX() + area.getWidth() * 0.68f;
+            // The right side holds the threshold and the 190px button, and
+            // needs room for both: a fixed 32% of a 940px window left the
+            // threshold 86px and cut "Low-mids vs Presence" to "Low-m...".
+            const auto rightWidth = juce::jlimit (area.getWidth() * 0.32f, area.getWidth() * 0.46f,
+                                                  190.0f + 14.0f + 210.0f + 2.0f * AbcTrainTheme::Spacing::large);
+            const auto splitX = area.getRight() - rightWidth;
             g.setColour (theme.divider);
             g.fillRect (splitX, area.getY() + 14.0f, 1.0f, area.getHeight() - 28.0f);
 
@@ -1130,6 +1135,12 @@ private:
     static constexpr int logicalWidth = 1180;
     static constexpr int logicalBaseHeight = 880;
 
+    // The smallest window the layout is built to work at (ADR 038): a
+    // 13-inch laptop at 100% text. The design size above is what a window
+    // prefers; this is what it may shrink to.
+    static constexpr int minLogicalWidth = 940;
+    static constexpr int minLogicalHeight = 620;
+
     // Wider than it was, because the rail takes 156 from the left and the
     // training screen's control row genuinely needs about 640: pills,
     // session tally, the A/B pair and the hint button, side by side. 840
@@ -1159,9 +1170,9 @@ private:
     // which grows for the panel and then can never come back down, because
     // the current height *is* the grown one. Remembering the height
     // separately is what lets both be true.
-    int heightWithoutHint = logicalBaseHeight;
+    int heightWithoutHint = minLogicalHeight;
 
-    void setUiScale (float newScale);
+    void setUiScale (float newScale, bool remember = true);
     float uiScale = 1.0f;
     CompactSelector sizeSelector;
 

@@ -792,5 +792,15 @@
   "module.stepsCount": "{{n}}단계",
   "module.checkHint": "레퍼런스는 {{knob}}의 한 값을 재생합니다. 플러그인의 {{knob}} 노브를 돌려 같은 소리가 나게 한 다음 {{submit}} 버튼을 누르세요.",
   "unit.kHz": "kHz",
-  "eq.addBand": "1 kHz에 밴드 추가"
+  "eq.addBand": "1 kHz에 밴드 추가",
+  "ui.hintRegion": "정답은 이 안에",
+  "ui.hintNarrowFree": "범위 좁히기",
+  "ui.hintNarrowCostLife": "범위 좁히기 (−1 라이프)",
+  "ui.hintNarrowCostSeconds": "범위 좁히기 (−{{seconds}}초)",
+  "ui.separateStems": "스템으로 분리…",
+  "ui.separateHint": "각 트랙을 드럼, 베이스, 센터(보통 보컬), 사이드로 나눈 뒤 각 스템을 루프로 자릅니다. 학습된 모델이 아니라 신호 자체로 추정하므로, 가운데에 놓인 신스는 보컬 쪽에 들어갑니다.",
+  "ui.stemDrums": "스템: 드럼",
+  "ui.stemBass": "스템: 베이스",
+  "ui.stemCentre": "스템: 센터(보컬)",
+  "ui.stemSides": "스템: 사이드(와이드)"
 }

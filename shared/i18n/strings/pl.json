@@ -792,5 +792,15 @@
   "module.stepsCount": "Kroki: {{n}}",
   "module.checkHint": "Referencja odtwarza jedną wartość {{knob}}. Kręć gałką {{knob}} we wtyczce, aż twój dźwięk zabrzmi tak samo, a potem naciśnij {{submit}}.",
   "unit.kHz": "kHz",
-  "eq.addBand": "Dodaj pasmo na 1 kHz"
+  "eq.addBand": "Dodaj pasmo na 1 kHz",
+  "ui.hintRegion": "Odpowiedź jest gdzieś tu",
+  "ui.hintNarrowFree": "Zawęź skalę",
+  "ui.hintNarrowCostLife": "Zawęź skalę (−1 życie)",
+  "ui.hintNarrowCostSeconds": "Zawęź skalę (−{{seconds}} s)",
+  "ui.separateStems": "Rozdziel na stemy…",
+  "ui.separateHint": "Dzieli każdy utwór na perkusję, bas, środek (zwykle wokal) i boki, a potem tnie każdy stem na pętle. To szacunek na podstawie samego sygnału, a nie wytrenowany model: synth ustawiony w środku trafi razem z wokalem.",
+  "ui.stemDrums": "Stem: perkusja",
+  "ui.stemBass": "Stem: bas",
+  "ui.stemCentre": "Stem: środek (wokal)",
+  "ui.stemSides": "Stem: boki (szerokie)"
 }

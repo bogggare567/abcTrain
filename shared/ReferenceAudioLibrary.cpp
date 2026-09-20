@@ -1,5 +1,6 @@
 #include "ReferenceAudioLibrary.h"
 #include "AudioSliceAnalyzer.h"
+#include "StemSeparator.h"
 #include "SampleBinaryData.h"
 #include <array>
 
@@ -18,6 +19,101 @@ namespace
         // I point this" a question the player had to answer before they
         // could find out whether the feature was worth anything.
         return ReferenceAudioLibrary::getManagedLibraryFolder();
+    }
+
+    // Reads a file for import. False when it is not audio or cannot be
+    // read, which the importers treat as "skip it and carry on".
+    bool decodeForImport (juce::AudioFormatManager& formats, const juce::File& file,
+                          juce::AudioBuffer<float>& audio, double& sampleRate,
+                          double maxMinutes = 20.0)
+    {
+        std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+
+        if (reader == nullptr || reader->lengthInSamples <= 0)
+            return false;
+
+        // Guard against a file so long it would not fit in memory. Twenty
+        // minutes is more than any reasonable source and well inside what
+        // a float buffer can hold.
+        const auto maxSamples = (juce::int64) (reader->sampleRate * maxMinutes * 60.0);
+        const auto length = (int) juce::jmin (reader->lengthInSamples, maxSamples);
+
+        audio.setSize ((int) juce::jmax (1u, reader->numChannels), length);
+
+        if (! reader->read (&audio, 0, length, 0, true, true))
+            return false;
+
+        sampleRate = reader->sampleRate;
+        return true;
+    }
+
+    // Writes each slice of `audio` as a faded WAV clip in the folder
+    // `folderFor` picks for it, named after the source. Returns how many
+    // were written. Shared by the plain slice import and the stem import,
+    // so both get the same fades, bit depth and naming.
+    int writeClips (const juce::AudioBuffer<float>& audio,
+                    double sampleRate,
+                    const std::vector<AudioSliceAnalyzer::Slice>& slices,
+                    const juce::String& baseName,
+                    const std::function<juce::File (const AudioSliceAnalyzer::Slice&)>& folderFor,
+                    const std::function<bool()>& shouldStop)
+    {
+        auto written = 0;
+
+        for (size_t i = 0; i < slices.size(); ++i)
+        {
+            if (shouldStop != nullptr && shouldStop())
+                break;
+
+            const auto& slice = slices[i];
+
+            const auto folder = folderFor (slice);
+
+            if (! folder.createDirectory())
+                continue;
+
+            const auto destination = folder.getChildFile (
+                baseName + " " + juce::String ((int) i + 1) + ".wav")
+                    .getNonexistentSibling();
+
+            std::unique_ptr<juce::FileOutputStream> stream (destination.createOutputStream());
+
+            if (stream == nullptr)
+                continue;
+
+            juce::WavAudioFormat wav;
+            std::unique_ptr<juce::AudioFormatWriter> writer (
+                // 16-bit, not 24: these are training loops, not masters.
+                // The exercises hide changes of a decibel or more in them,
+                // and 24-bit buys nothing against that while costing half
+                // as much disk again.
+                wav.createWriterFor (stream.get(), sampleRate,
+                                      (unsigned int) audio.getNumChannels(), 16, {}, 0));
+
+            if (writer == nullptr)
+                continue;
+
+            stream.release();   // the writer owns it now
+
+            juce::AudioBuffer<float> clip (audio.getNumChannels(), slice.numSamples);
+
+            for (int channel = 0; channel < audio.getNumChannels(); ++channel)
+                clip.copyFrom (channel, 0, audio, channel, slice.startSample, slice.numSamples);
+
+            // A short fade at each end. Every clip here is going to be
+            // looped, and a loop that starts or ends mid-waveform clicks on
+            // every repeat - which the ear locks onto instead of the thing
+            // being trained.
+            const auto fadeSamples = juce::jmin (slice.numSamples / 8,
+                                                  (int) (sampleRate * 0.01));
+            clip.applyGainRamp (0, fadeSamples, 0.0f, 1.0f);
+            clip.applyGainRamp (slice.numSamples - fadeSamples, fadeSamples, 1.0f, 0.0f);
+
+            if (writer->writeFromAudioSampleBuffer (clip, 0, clip.getNumSamples()))
+                ++written;
+        }
+
+        return written;
     }
 }
 
@@ -274,74 +370,116 @@ int ReferenceAudioLibrary::importAndSlice (const juce::File& source)
 
     for (const auto& file : sources)
     {
-        std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (file));
+        juce::AudioBuffer<float> audio;
+        double sampleRate = 0.0;
 
-        if (reader == nullptr || reader->lengthInSamples <= 0)
+        if (! decodeForImport (formats, file, audio, sampleRate))
             continue;   // not audio, or unreadable - skip it and carry on
 
-        // Guard against a file so long it would not fit in memory. Twenty
-        // minutes is more than any reasonable source and well inside what
-        // a float buffer can hold.
-        const auto maxSamples = (juce::int64) (reader->sampleRate * 20.0 * 60.0);
-        const auto length = (int) juce::jmin (reader->lengthInSamples, maxSamples);
+        const auto slices = AudioSliceAnalyzer::analyse (audio, sampleRate);
 
-        juce::AudioBuffer<float> audio ((int) juce::jmax (1u, reader->numChannels), length);
+        written += writeClips (audio, sampleRate, slices, file.getFileNameWithoutExtension(),
+                               [this] (const AudioSliceAnalyzer::Slice& slice)
+                               {
+                                   return rootFolder.getChildFile (AudioSliceAnalyzer::folderNameFor (slice.character));
+                               },
+                               nullptr);
+    }
 
-        if (! reader->read (&audio, 0, length, 0, true, true))
+    return written;
+}
+
+int ReferenceAudioLibrary::importAndSeparateMany (const juce::Array<juce::File>& sources,
+                                                   std::function<void (float, juce::String)> onProgress,
+                                                   std::function<bool()> shouldStop)
+{
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+
+    const auto stopRequested = [&shouldStop] { return shouldStop != nullptr && shouldStop(); };
+    const auto perFile = 1.0f / (float) juce::jmax (1, sources.size());
+
+    auto written = 0;
+
+    for (int i = 0; i < sources.size(); ++i)
+    {
+        if (stopRequested())
+            break;
+
+        const auto& file = sources.getReference (i);
+        const auto fileStart = (float) i * perFile;
+
+        if (onProgress != nullptr)
+            onProgress (fileStart, file.getFileName());
+
+        // A folder is not a song. importAndSlice accepts one; this does
+        // not, because the caller hands over what the player picked in a
+        // file chooser and a folder there is a mistake, not a batch.
+        if (! file.existsAsFile())
             continue;
 
-        const auto slices = AudioSliceAnalyzer::analyse (audio, reader->sampleRate);
+        juce::AudioBuffer<float> audio;
+        double sampleRate = 0.0;
 
-        for (size_t i = 0; i < slices.size(); ++i)
+        // Eight minutes for separation, not twenty: separating holds the
+        // mix and four stems of the same length at once, and five copies of
+        // a twenty-minute stereo file is gigabytes. Eight minutes covers
+        // nearly every song and keeps the peak under a gigabyte at 48 kHz.
+        if (! decodeForImport (formats, file, audio, sampleRate, 8.0))
+            continue;
+
+        // Separation is most of the work - give it most of the bar.
+        auto separated = StemSeparator::separate (
+            audio, sampleRate, {},
+            [&] (float p)
+            {
+                if (onProgress != nullptr)
+                    onProgress (fileStart + perFile * 0.8f * p, file.getFileName());
+            },
+            stopRequested);
+
+        // The decoded mix is no longer needed, and holding it alongside
+        // four stems of the same length is the peak of this whole import.
+        audio.setSize (0, 0);
+
+        if (! separated.completed)
+            break;
+
+        for (int s = 0; s < StemSeparator::numStems; ++s)
         {
-            const auto& slice = slices[i];
+            if (stopRequested())
+                break;
 
-            const auto folder = rootFolder.getChildFile (AudioSliceAnalyzer::folderNameFor (slice.character));
+            const auto stem = (StemSeparator::Stem) s;
+            auto& stemAudio = separated.stems[(size_t) s];
 
-            if (! folder.createDirectory())
-                continue;
+            // The sides of a mono file are silence by construction - and a
+            // stem can also just be empty (an a-cappella has no drums).
+            // The slicer would drop every slice as too quiet anyway; this
+            // only saves it the work.
+            auto peak = 0.0f;
+            for (int channel = 0; channel < stemAudio.getNumChannels(); ++channel)
+                peak = juce::jmax (peak, stemAudio.getMagnitude (channel, 0, stemAudio.getNumSamples()));
 
-            const auto destination = folder.getChildFile (
-                file.getFileNameWithoutExtension() + " " + juce::String ((int) i + 1) + ".wav")
-                    .getNonexistentSibling();
+            if (peak > 1.0e-4f)
+            {
+                const auto slices = AudioSliceAnalyzer::analyse (stemAudio, sampleRate);
+                const auto folder = rootFolder.getChildFile (StemSeparator::folderNameFor (stem));
 
-            std::unique_ptr<juce::FileOutputStream> stream (destination.createOutputStream());
+                written += writeClips (stemAudio, sampleRate, slices, file.getFileNameWithoutExtension(),
+                                       [folder] (const AudioSliceAnalyzer::Slice&) { return folder; },
+                                       stopRequested);
+            }
 
-            if (stream == nullptr)
-                continue;
+            stemAudio.setSize (0, 0);
 
-            juce::WavAudioFormat wav;
-            std::unique_ptr<juce::AudioFormatWriter> writer (
-                // 16-bit, not 24: these are training loops, not masters.
-                // The exercises hide changes of a decibel or more in them,
-                // and 24-bit buys nothing against that while costing half
-                // as much disk again.
-                wav.createWriterFor (stream.get(), reader->sampleRate,
-                                      (unsigned int) audio.getNumChannels(), 16, {}, 0));
-
-            if (writer == nullptr)
-                continue;
-
-            stream.release();   // the writer owns it now
-
-            juce::AudioBuffer<float> clip (audio.getNumChannels(), slice.numSamples);
-
-            for (int channel = 0; channel < audio.getNumChannels(); ++channel)
-                clip.copyFrom (channel, 0, audio, channel, slice.startSample, slice.numSamples);
-
-            // A short fade at each end. Every clip here is going to be
-            // looped, and a loop that starts or ends mid-waveform clicks on
-            // every repeat - which the ear locks onto instead of the thing
-            // being trained.
-            const auto fadeSamples = juce::jmin (slice.numSamples / 8,
-                                                  (int) (reader->sampleRate * 0.01));
-            clip.applyGainRamp (0, fadeSamples, 0.0f, 1.0f);
-            clip.applyGainRamp (slice.numSamples - fadeSamples, fadeSamples, 1.0f, 0.0f);
-
-            if (writer->writeFromAudioSampleBuffer (clip, 0, clip.getNumSamples()))
-                ++written;
+            if (onProgress != nullptr)
+                onProgress (fileStart + perFile * (0.8f + 0.05f * (float) (s + 1)), file.getFileName());
         }
     }
+
+    if (onProgress != nullptr)
+        onProgress (1.0f, {});
 
     return written;
 }

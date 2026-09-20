@@ -637,21 +637,26 @@ void SettingsScreenComponent::resized()
     // Composite rows lay out their own children.
     {
         auto r = calibrationRow.getLocalBounds();
-        calibrationNoiseButton.setBounds (r.removeFromLeft (170));
+        const auto w = (float) r.getWidth();
+        calibrationNoiseButton.setBounds (r.removeFromLeft (juce::jmin (170, (int) (w * 0.34f))));
         r.removeFromLeft (8);
-        calibrationClearButton.setBounds (r.removeFromRight (110));
+        calibrationClearButton.setBounds (r.removeFromRight (juce::jmin (110, (int) (w * 0.22f))));
         r.removeFromRight (8);
-        calibrationSaveButton.setBounds (r.removeFromRight (120));
+        calibrationSaveButton.setBounds (r.removeFromRight (juce::jmin (120, (int) (w * 0.24f))));
         r.removeFromRight (8);
         calibrationSlider.setBounds (r);
     }
     {
+        // Shares of whatever width the row has, not fixed pixels: 170 + 310
+        // + 130 was wider than the row on a laptop-sized window, and the
+        // level choice drew "85 dB(A)90 dB(A)95..." into itself.
         auto r = exposureRow.getLocalBounds();
-        exposureHours.setBounds (r.removeFromLeft (170));
+        const auto w = (float) juce::jmax (0, r.getWidth() - 16);
+        exposureHours.setBounds (r.removeFromLeft ((int) (w * 0.28f)));
         r.removeFromLeft (8);
-        exposureLevel.setBounds (r.removeFromLeft (310));
+        exposureLevel.setBounds (r.removeFromLeft ((int) (w * 0.50f)));
         r.removeFromLeft (8);
-        exposureAddButton.setBounds (r.removeFromLeft (130));
+        exposureAddButton.setBounds (r);
     }
     {
         auto r = backgroundButtons.getLocalBounds();

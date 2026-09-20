@@ -792,5 +792,15 @@
   "module.stepsCount": "{{n}} etapas",
   "module.checkHint": "A referência toca um valor de {{knob}}. Gire o botão {{knob}} do próprio plugin até o seu soar igual e então pressione {{submit}}.",
   "unit.kHz": "kHz",
-  "eq.addBand": "Adicionar banda em 1 kHz"
+  "eq.addBand": "Adicionar banda em 1 kHz",
+  "ui.hintRegion": "A resposta está aqui",
+  "ui.hintNarrowFree": "Estreitar a escala",
+  "ui.hintNarrowCostLife": "Estreitar a escala (−1 vida)",
+  "ui.hintNarrowCostSeconds": "Estreitar a escala (−{{seconds}} s)",
+  "ui.separateStems": "Separar em stems…",
+  "ui.separateHint": "Separa cada faixa em bateria, baixo, centro (geralmente o vocal) e laterais, depois corta cada stem em loops. É uma estimativa feita a partir do próprio sinal, não um modelo treinado: um synth centralizado acaba junto com o vocal.",
+  "ui.stemDrums": "Stem: bateria",
+  "ui.stemBass": "Stem: baixo",
+  "ui.stemCentre": "Stem: centro (vocal)",
+  "ui.stemSides": "Stem: laterais (aberto)"
 }

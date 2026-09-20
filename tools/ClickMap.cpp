@@ -1,3 +1,4 @@
+#include <cstdlib>
 // What can actually be pressed.
 //
 // EditorSnapshots answers "what does this look like". It cannot answer
@@ -270,6 +271,9 @@ namespace
 
 int main (int argc, char* argv[])
 {
+    // Always the design size, whatever the virtual display is (shared/WindowFit.h).
+    setenv ("ABC_DESIGN_SIZE", "1", 1);
+
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
 
     juce::ignoreUnused (argc, argv);

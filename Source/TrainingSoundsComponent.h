@@ -63,6 +63,8 @@ public:
         juce::String importAndSort, importing, importedClips, importedNothing, importHint;
         juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
         juce::String builtInPercussive, builtInSustained;
+        juce::String separateStems, separateHint;
+        juce::String stemDrums, stemBass, stemCentre, stemSides;
     };
 
     void setStrings (Strings);
@@ -87,6 +89,14 @@ private:
     void importAndSort();
     juce::TextButton importButton;
 
+    // The same import, through shared/StemSeparator first: each track is
+    // split into drums / bass / centre / sides and each stem sliced into
+    // its own category (ADR 038). A second button rather than a checkbox
+    // because it is a different promise about what you get back.
+    void chooseFilesToImport (bool separate);
+    juce::TextButton separateButton;
+    bool separateRunning = false;
+
     // The import runs on its own thread: decoding and analysing a handful
     // of full-length tracks takes real seconds, and a window that freezes
     // for them reads as a crash. The thread only touches the library and
@@ -99,7 +109,7 @@ private:
     juce::String importProgressFile;
     bool importRunning = false;
 
-    void startImport (const juce::Array<juce::File>& files);
+    void startImport (const juce::Array<juce::File>& files, bool separate = false);
     void finishImport (int clipsWritten);
     void paintImportProgress (juce::Graphics&, juce::Rectangle<int>);
 

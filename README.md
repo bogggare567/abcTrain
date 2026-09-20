@@ -113,8 +113,11 @@ with your project.
 - Builds are **not code-signed** — your system will warn you (see below).
 - **Nothing connects anywhere**: no account, no server, no telemetry. Progress
   is a file on your machine.
-- **No stem separation.** Imported music is sorted by measurable character,
-  not by instrument.
+- **Stems are an estimate, not a trained model.** "Split into stems" divides a
+  track into drums, bass, centre and sides from the signal itself
+  (harmonic/percussive split, a bass crossover and stereo position): a
+  centred synth lands with the vocal, a snare tail can split. Good material
+  for training; not a Demucs.
 - The in-game feedback sentence after an answer is still English-only;
   everything else — including the plugins, their modules and tooltips — is
   in all twelve languages.

@@ -10,6 +10,7 @@
 #include "ModuleScreenComponent.h"
 #include "PracticeSourceSelector.h"
 #include "UpdateWindow.h"
+#include "WindowFit.h"
 #include "i18n/LocalisationManager.h"
 #include <functional>
 #include <memory>
@@ -71,6 +72,15 @@ protected:
     // paint over everything, then the window size.
     void finishSetup (std::vector<TrainingModule::Definition> modules,
                       int width, int height);
+
+    // Short windows (a laptop, ADR 038): the controls take their compact
+    // metrics - smaller knobs, tighter rows - and the analysis section may
+    // shrink below its preferred height. Subclasses read this in
+    // controlsContentHeight() and layoutControls().
+    bool isCompact() const noexcept { return getHeight() < designSize.y - 40; }
+    int knobRowHeight() const noexcept { return isCompact() ? 104 : 132; }
+    int presetRowHeight() const noexcept { return isCompact() ? 28 : 32; }
+    int rowGap() const noexcept { return isCompact() ? 6 : 8; }
 
     // Heights the subclass needs; the analysis section gets at least its
     // own and everything left over.
@@ -150,6 +160,7 @@ private:
     UpdateWindow updateWindow;
 
     float bypassVeil = 0.0f;
+    juce::Point<int> designSize { 900, 830 };
     int familyLimit = 10000;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEditorBase)

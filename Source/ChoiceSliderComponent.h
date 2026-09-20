@@ -70,6 +70,9 @@ public:
     void setHintRegion (float centreNormalised, float halfWidthNormalised);
     void clearHintRegion() { setHintRegion (0.0f, 0.0f); }
 
+    // The line written over the hint region ("the answer is in here").
+    void setHintCaption (juce::String text) { hintCaption = std::move (text); repaint(); }
+
     void setContinuousScale (std::vector<Game::GridMark> marks,
                              float toleranceNormalised,
                              std::function<juce::String (float)> formatter);
@@ -159,6 +162,7 @@ private:
     float toleranceNormalised = 0.0f;
     float hintCentre = 0.0f;
     float hintHalfWidth = 0.0f;
+    juce::String hintCaption;
     float targetNormalised = -1.0f;
     std::vector<Game::GridMark> gridMarks;
     std::function<juce::String (float)> valueFormatter;

@@ -61,7 +61,12 @@ void HomeScreenComponent::rebuildLayout()
     const auto rowHeight = juce::jlimit (minRowHeight, maxRowHeight,
                                          (area.getHeight() - chrome) / juce::jmax (1, (int) cards.size()));
 
-    auto y = area.getY();
+    // The whole list's height at this row height; anything past the
+    // bottom is reached by scrolling rather than cut off.
+    maxScroll = juce::jmax (0.0f, (float) (chrome + rowHeight * (int) cards.size() - area.getHeight()));
+    scroll = juce::jlimit (0.0f, maxScroll, scroll);
+
+    auto y = area.getY() - juce::roundToInt (scroll);
 
     for (size_t i = 0; i < cards.size(); ++i)
     {
@@ -275,6 +280,35 @@ void HomeScreenComponent::paint (juce::Graphics& g)
 
     for (size_t i = 0; i < rowBounds.size() && i < cards.size(); ++i)
         paintRow (g, cards[i], rowBounds[i], i < hoverAmounts.size() ? hoverAmounts[i] : 0.0f);
+
+    // The fade is the scrollbar: it appears only where there is more.
+    const auto& theme = AbcTrainTheme::current();
+    const auto fade = [&] (juce::Rectangle<float> r, bool top)
+    {
+        juce::ColourGradient grad (theme.windowBackground.withAlpha (top ? 1.0f : 0.0f), r.getX(), r.getY(),
+                                   theme.windowBackground.withAlpha (top ? 0.0f : 1.0f), r.getX(), r.getBottom(), false);
+        g.setGradientFill (grad);
+        g.fillRect (r);
+    };
+
+    if (scroll > 0.5f)
+        fade (getLocalBounds().toFloat().withHeight (24.0f), true);
+
+    if (scroll < maxScroll - 0.5f)
+        fade (getLocalBounds().toFloat().removeFromBottom (28.0f), false);
+}
+
+void HomeScreenComponent::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+{
+    if (maxScroll <= 0.0f)
+    {
+        Component::mouseWheelMove (e, wheel);
+        return;
+    }
+
+    scroll = juce::jlimit (0.0f, maxScroll, scroll - wheel.deltaY * 140.0f);
+    rebuildLayout();
+    repaint();
 }
 
 juce::Rectangle<int> HomeScreenComponent::starHitBox (juce::Rectangle<int> row) const

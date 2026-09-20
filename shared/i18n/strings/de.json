@@ -792,5 +792,15 @@
   "module.stepsCount": "{{n}} Schritte",
   "module.checkHint": "Die Referenz spielt einen bestimmten Wert von {{knob}}. Dreh am {{knob}}-Regler des Plugins, bis deins gleich klingt, und drück dann {{submit}}.",
   "unit.kHz": "kHz",
-  "eq.addBand": "Band bei 1 kHz hinzufügen"
+  "eq.addBand": "Band bei 1 kHz hinzufügen",
+  "ui.hintRegion": "Die Antwort liegt hier",
+  "ui.hintNarrowFree": "Skala eingrenzen",
+  "ui.hintNarrowCostLife": "Skala eingrenzen (−1 Leben)",
+  "ui.hintNarrowCostSeconds": "Skala eingrenzen (−{{seconds}} s)",
+  "ui.separateStems": "In Stems aufteilen…",
+  "ui.separateHint": "Teilt jeden Track in Drums, Bass, Mitte (meist der Gesang) und Seiten auf und schneidet dann jeden Stem in Loops. Eine Schätzung aus dem Signal selbst, kein trainiertes Modell: Ein mittig platzierter Synth landet beim Gesang.",
+  "ui.stemDrums": "Stem: Drums",
+  "ui.stemBass": "Stem: Bass",
+  "ui.stemCentre": "Stem: Mitte (Gesang)",
+  "ui.stemSides": "Stem: Seiten (breit)"
 }

@@ -183,10 +183,18 @@ void LearnerEditorBase::finishSetup (std::vector<TrainingModule::Definition> mod
     addChildComponent (updateWindow);
     updateWindow.onClosed = [this] { resized(); repaint(); };
 
+    // The design size is what the window prefers; it opens at whatever
+    // part of that the screen can show, down to a floor the compact layout
+    // is built for (shared/WindowFit.h, ADR 038).
+    designSize = { width, height };
+    const juce::Point<int> minimum { juce::jmin (width, 820), 600 };
+
     setResizable (true, true);
-    setResizeLimits ((int) (width * 0.82f), (int) (height * 0.8f), (int) (width * 1.6f), (int) (height * 1.5f));
+    setResizeLimits (minimum.x, minimum.y, (int) (width * 1.6f), (int) (height * 1.5f));
     getConstrainer()->setFixedAspectRatio (0.0);
-    setSize (width, height);
+
+    const auto fitted = WindowFit::fit (designSize, minimum);
+    setSize (fitted.x, fitted.y);
 
     applyTheme();
     tick();
@@ -277,8 +285,22 @@ void LearnerEditorBase::paint (juce::Graphics& g)
         row.removeFromLeft (38);
 
         const auto font = AbcTrainLookAndFeel::titleFont();
-        const auto nameWidth = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (identity.title, font, 1.6f)) + 4;
-        AbcTrainLookAndFeel::drawTrackedText (g, identity.title, row.removeFromLeft (nameWidth).toFloat(),
+        const auto room = familyLimit - row.getX();
+
+        // "ABC Learner Comp" where there is room, "Learner Comp" where
+        // there is not - the prefix is for sorting in a plugin list, and
+        // this window is already open.
+        auto title = identity.title;
+        auto nameWidth = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (title, font, 1.6f)) + 4;
+
+        if (nameWidth > room - 120 && title.startsWith ("ABC "))
+        {
+            title = title.substring (4);
+            nameWidth = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (title, font, 1.6f)) + 4;
+        }
+
+        nameWidth = juce::jmin (nameWidth, juce::jmax (0, room));
+        AbcTrainLookAndFeel::drawTrackedText (g, title, row.removeFromLeft (nameWidth).toFloat(),
                                               font, theme.textBright, 1.6f);
 
         row.removeFromLeft (12);
@@ -364,7 +386,10 @@ void LearnerEditorBase::resized()
     const auto captionSpace = Spacing::large + 6;
     const auto controlsHeight = controlsContentHeight() + captionSpace + Spacing::medium;
 
-    analysisSection = area.removeFromTop (juce::jmax (analysisContentHeight() + captionSpace + Spacing::medium,
+    // In a short window the analysis section gives way first: a spectrum
+    // 180 px tall still reads, a knob too small to grab does not.
+    const auto analysisFloor = isCompact() ? 180 : analysisContentHeight();
+    analysisSection = area.removeFromTop (juce::jmax (analysisFloor + captionSpace + Spacing::medium,
                                                       area.getHeight() - controlsHeight - Spacing::medium));
     area.removeFromTop (Spacing::medium);
     controlSection = area.removeFromTop (controlsHeight);

@@ -123,9 +123,9 @@ void LearnerCompEditor::layoutAnalysis (juce::Rectangle<int> area)
 
 void LearnerCompEditor::layoutControls (juce::Rectangle<int> area)
 {
-    knobs.setBounds (area.removeFromTop (132));
-    area.removeFromTop (8);
-    presets.setBounds (area.removeFromTop (32));
+    knobs.setBounds (area.removeFromTop (knobRowHeight()));
+    area.removeFromTop (rowGap());
+    presets.setBounds (area.removeFromTop (presetRowHeight()));
 }
 
 void LearnerCompEditor::themeChanged()

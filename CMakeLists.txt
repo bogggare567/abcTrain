@@ -227,6 +227,7 @@ target_sources(EarTrainer
         Source/HearingGuard.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
+        shared/StemSeparator.cpp
         Source/TrainingSoundsComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -308,6 +309,7 @@ target_sources(LearnerEQ
         shared/PracticeSourceSelector.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
+        shared/StemSeparator.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
@@ -377,6 +379,7 @@ target_sources(LearnerComp
         shared/PracticeSourceSelector.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
+        shared/StemSeparator.cpp
         LearnerComp/Source/PluginProcessor.cpp
         LearnerComp/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
@@ -445,6 +448,7 @@ target_sources(LearnerVerb
         shared/PracticeSourceSelector.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
+        shared/StemSeparator.cpp
         LearnerVerb/Source/PluginProcessor.cpp
         LearnerVerb/Source/PluginEditor.cpp
         shared/WaveformDisplay.cpp
@@ -524,6 +528,8 @@ target_sources(EarTrainerTests
         tests/SessionManagerTest.cpp
         tests/AchievementsTest.cpp
         tests/AudioSliceAnalyzerTest.cpp
+        tests/StemSeparatorTest.cpp
+    tests/RealtimeSafetyTest.cpp
         tests/PracticeAudioSourceTest.cpp
         tests/TrainingModuleTest.cpp
         tests/LessonAudioBedTest.cpp
@@ -546,6 +552,7 @@ target_sources(EarTrainerTests
         Source/HearingGuard.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
+        shared/StemSeparator.cpp
         Source/Games/EQGame.cpp
         Source/Games/CompressionGame.cpp
         Source/Games/ReverbGame.cpp
@@ -637,6 +644,7 @@ set(abcTrainEditorToolSources
         Source/HearingGuard.cpp
         shared/ReferenceAudioLibrary.cpp
         shared/AudioSliceAnalyzer.cpp
+        shared/StemSeparator.cpp
         Source/ChoiceSliderComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -794,7 +802,8 @@ target_sources(RoundBench PRIVATE
     Source/Games/ReverbGame.cpp Source/Games/DelayGame.cpp
     Source/Games/EQGame.cpp Source/Games/CompressionGame.cpp
     Source/Games/DistortionGame.cpp Source/Games/FrequencyRangeGame.cpp
-    shared/ReferenceAudioLibrary.cpp shared/AudioSliceAnalyzer.cpp)
+    shared/ReferenceAudioLibrary.cpp shared/AudioSliceAnalyzer.cpp
+    shared/StemSeparator.cpp)
 target_compile_definitions(RoundBench PRIVATE JUCE_STANDALONE_APPLICATION=1)
 target_link_libraries(RoundBench PRIVATE juce::juce_dsp juce::juce_audio_formats
     juce::juce_audio_basics juce::juce_core juce::juce_events

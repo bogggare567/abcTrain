@@ -74,6 +74,26 @@ public:
                             std::function<void (float, juce::String)> onProgress,
                             std::function<bool()> shouldStop);
 
+    // Splits each file into four stems - drums, bass, centre (vocals &
+    // leads), sides (wide & ambience) - with StemSeparator, then slices
+    // *each stem* into loop clips the same way importAndSlice does, and
+    // files them under one folder per stem ("Stem - Drums", ...; the names
+    // live in StemSeparator::folderNameFor).
+    //
+    // Classic DSP, not a trained model - see StemSeparator.h for what the
+    // stems honestly are. Silent stems and quiet clips are skipped, so a
+    // mono file gives no "sides" clips at all.
+    //
+    // Same contract as importAndSliceMany: safe on a background thread,
+    // writes into rootFolder only, never touches the sources, polls
+    // `shouldStop` (within separation too, not only between files), and
+    // does **not** rescan. Returns how many clips were written. Far slower
+    // than slicing - several seconds per song - and holds about five times
+    // the decoded song in memory at its peak.
+    int importAndSeparateMany (const juce::Array<juce::File>& sources,
+                               std::function<void (float, juce::String)> onProgress,
+                               std::function<bool()> shouldStop);
+
     // Where imported clips go. The app's own storage, not somewhere the
     // player has to find and pick: the folder-choosing step was a question
     // nobody wanted to answer before they could try the feature. A folder

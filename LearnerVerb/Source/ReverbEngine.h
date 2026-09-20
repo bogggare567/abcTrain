@@ -48,6 +48,7 @@ public:
     void prepare (const juce::dsp::ProcessSpec& spec)
     {
         sampleRate = spec.sampleRate > 0.0 ? spec.sampleRate : 44100.0;
+        coefficientsValid = false;   // lengths and gains depend on the rate
 
         const auto seconds = [this] (double s) { return (int) std::ceil (s * sampleRate) + 4; };
 
@@ -124,11 +125,26 @@ public:
             switching = true;
         }
 
-        rt60 = juce::jlimit (0.1f, 10.0f, decaySeconds);
+        const auto newRt60 = juce::jlimit (0.1f, 10.0f, decaySeconds);
+        const auto newSize = juce::jlimit (0.0f, 1.0f, size);
+        const auto newDamping = juce::jlimit (0.0f, 1.0f, damping);
+        const auto newWidth = juce::jlimit (0.0f, 1.0f, width);
+
         preDelaySmoothed.setTargetValue ((float) (juce::jlimit (0.0f, 250.0f, preDelayMs) * 0.001 * sampleRate));
-        sizeAmount = juce::jlimit (0.0f, 1.0f, size);
-        dampingAmount = juce::jlimit (0.0f, 1.0f, damping);
-        widthAmount = juce::jlimit (0.0f, 1.0f, width);
+
+        // The processor calls this every block. Recomputing the gains and
+        // absorption filters (pow/exp per delay line) is only needed when
+        // something they depend on moved - the review in ADR 038 was right
+        // that doing it unconditionally is wasted work on the audio thread.
+        if (coefficientsValid && newRt60 == rt60 && newSize == sizeAmount
+            && newDamping == dampingAmount && newWidth == widthAmount)
+            return;
+
+        rt60 = newRt60;
+        sizeAmount = newSize;
+        dampingAmount = newDamping;
+        widthAmount = newWidth;
+        coefficientsValid = true;
 
         updateCoefficients();
     }
@@ -465,6 +481,7 @@ private:
     bool switching = false;
     float fadeGain = 1.0f;
 
+    bool coefficientsValid = false;
     float rt60 = 1.5f, sizeAmount = 0.5f, dampingAmount = 0.4f, widthAmount = 1.0f;
 
     std::vector<float> preDelay;

@@ -601,12 +601,11 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         const auto left = xFor (hintCentre - hintHalfWidth);
         const auto right = xFor (hintCentre + hintHalfWidth);
 
-        // The shadow colour, not the well's own: filling the well with the
-        // well's colour changes nothing, which is exactly what the first
-        // version did and the render showed. This one is black on the dark
-        // theme and a cool grey on the light one, so the dimming reads on
-        // both.
-        g.setColour (theme.shadow.withAlpha (0.55f * theme.shadowStrength));
+        // Outside the region is pushed well back - the first two versions
+        // dimmed it so gently that players pressed the hint, saw nothing
+        // change, and reported it as broken. The page colour at high
+        // alpha, so it reads the same on both themes.
+        g.setColour (theme.windowBackground.withAlpha (0.72f));
 
         if (left > scaleArea.getX())
             g.fillRect (scaleArea.withRight (left));
@@ -614,16 +613,32 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         if (right < scaleArea.getRight())
             g.fillRect (scaleArea.withLeft (right));
 
-        // And the live stretch lifts very slightly, so the region reads as
-        // the part that is still in play rather than as a hole in a mask.
-        g.setColour (theme.accent.withAlpha (0.05f));
-        g.fillRect (scaleArea.withLeft (left).withRight (right));
+        // The live stretch is tinted, framed, and says what it is.
+        const auto region = scaleArea.withLeft (left).withRight (right);
+        juce::ColourGradient lift (theme.accent.withAlpha (0.20f), region.getX(), region.getY(),
+                                   theme.accent.withAlpha (0.04f), region.getX(), region.getBottom(), false);
+        g.setGradientFill (lift);
+        g.fillRect (region);
 
-        // Two soft edges rather than two hard walls: the boundary is not
-        // information, the region is.
-        g.setColour (theme.accent.withAlpha (0.38f));
-        g.fillRect (left - 1.0f, scaleArea.getY(), 1.5f, scaleArea.getHeight());
-        g.fillRect (right, scaleArea.getY(), 1.5f, scaleArea.getHeight());
+        g.setColour (theme.accent.withAlpha (0.9f));
+        g.fillRect (left - 1.0f, scaleArea.getY(), 2.0f, scaleArea.getHeight());
+        g.fillRect (right - 1.0f, scaleArea.getY(), 2.0f, scaleArea.getHeight());
+
+        if (hintCaption.isNotEmpty())
+        {
+            const auto caps = AbcTrainLookAndFeel::toCaps (hintCaption);
+            const auto font = AbcTrainLookAndFeel::microFont();
+            const auto width = AbcTrainLookAndFeel::trackedTextWidth (caps, font, 1.4f) + 16.0f;
+            auto tag = juce::Rectangle<float> (width, 20.0f)
+                           .withCentre ({ region.getCentreX(), scaleArea.getY() + 16.0f });
+            tag.setX (juce::jlimit (scaleArea.getX() + 2.0f, scaleArea.getRight() - width - 2.0f, tag.getX()));
+
+            g.setColour (theme.accent);
+            g.fillRect (tag);
+            AbcTrainLookAndFeel::drawTrackedText (g, caps, tag, font,
+                                                  AbcTrainLookAndFeel::labelColourOn (theme.accent), 1.4f,
+                                                  juce::Justification::centred);
+        }
     }
 
     for (const auto& mark : gridMarks)

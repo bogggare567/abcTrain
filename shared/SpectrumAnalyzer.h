@@ -3,29 +3,46 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <array>
+#include <atomic>
 #include <cmath>
 
-// Generic live-spectrum display, used directly by LearnerComp/LearnerVerb
-// (a plain input spectrum, no overlay) and as a base class by LearnerEQ's
-// SpectrumAnalyserComponent (LearnerEQ/Source/SpectrumAnalyser.h), which
-// layers a response-curve + highlighted-band overlay on top via
-// paintOverlay(). This is the same extraction shared/WaveformDisplay.h
-// already went through: it started as LearnerEQ-only, and once a second
-// and third consumer needed the identical FIFO-accumulate/30 Hz-timer/FFT
-// shape, it was pulled out here rather than copied - see
-// decisions/006-unified-visualization.md.
+// Generic live-spectrum display, used directly by the trainer's hint and
+// as a base class by LearnerEQ's SpectrumAnalyserComponent
+// (LearnerEQ/Source/SpectrumAnalyser.h), which layers a response curve and
+// highlighted band on top via paintOverlay(). See decisions/006 and 038.
 //
-// Deliberately knows nothing about EQ bands, filter coefficients, or
-// highlighting - that stays in LearnerEQ/Source/SpectrumAnalyser.h.
+// Threading (ADR 038). The audio thread only ever writes samples into a
+// lock-free single-producer/single-consumer FIFO (juce::AbstractFifo) -
+// no flag shared with the message thread, no copy the timer might be
+// reading at the same moment. The first version handed a whole FFT block
+// across with a plain bool, which is a data race: undefined behaviour in
+// C++, however harmless it looked on one machine.
+//
+// What makes it look smooth:
+//   - a 4096-point FFT recomputed on every 60 Hz frame over the latest
+//     samples, so consecutive frames overlap by ~95% rather than jumping
+//     from one block to the next;
+//   - every display point takes the loudest bin across the band of
+//     frequencies it covers (a single bin per point aliased the top
+//     octaves into a comb) and interpolates between bins where the point
+//     is narrower than a bin (the bottom octaves were a staircase);
+//   - a +3 dB/octave tilt about 1 kHz, the usual analyser convention, so
+//     pink noise and a balanced mix draw level instead of as a slope;
+//   - time-based ballistics - fast attack, slow release - and a thin peak
+//     line that holds and then falls, so what was loud a moment ago is
+//     still readable.
 class SpectrumAnalyzerComponent : public juce::Component,
                                    private juce::Timer
 {
 public:
     SpectrumAnalyzerComponent();
 
-    static constexpr int fftOrder = 11;
+    static constexpr int fftOrder = 12;
     static constexpr int fftSize = 1 << fftOrder;
 
+    // Audio thread. Real-time safe: a store into a local batch, and every
+    // 64 samples one lock-free FIFO write. Never allocates, never blocks;
+    // if the display falls behind, samples are dropped, not waited for.
     void pushNextSampleIntoFifo (float sample) noexcept;
 
     // Message thread only - keeps the frequency axis accurate. A plugin
@@ -33,35 +50,39 @@ public:
     // default) rather than garbage.
     void setSampleRate (double newSampleRate) noexcept { sampleRate = newSampleRate; }
 
-
     // Per-instance accent, so a host with two Learner plugins open shows
-    // each in its own family colour. The palette itself is deliberately
-    // process-wide (see AbcTrainTheme::current) and so cannot carry this;
-    // transparent means "just use the palette's accent".
+    // each in its own family colour. Transparent means the palette's.
     void setAccentColour (juce::Colour newAccent) { accentOverride = newAccent; repaint(); }
 
     void paint (juce::Graphics&) override;
 
+    // Tilt applied to the display, in dB per octave about 1 kHz.
+    static constexpr float tiltDbPerOctave = 3.0f;
+    static constexpr float floorDb = -90.0f;
+    static constexpr float ceilingDb = 0.0f;
+
+    // For tests: the displayed level (0..1) at a frequency, after
+    // smoothing. Message thread.
+    float getDisplayedLevelAt (float frequency) const noexcept;
+
+    // For tests and snapshots: pull whatever the FIFO holds and run the
+    // analysis now, with `seconds` of ballistics applied at once.
+    void processPendingForTest (double seconds) { analyse (seconds); }
+
 protected:
     juce::Colour effectiveAccent() const;
 
-    // Hook for a subclass that wants to draw something on top of the
-    // spectrum, in the same bounds. Default does nothing - LearnerComp and
-    // LearnerVerb use this class as-is, with no overlay.
+    // Hook for a subclass that wants to draw on top of the spectrum, in the
+    // same bounds.
     virtual void paintOverlay (juce::Graphics&, juce::Rectangle<float>) {}
 
 private:
     void timerCallback() override;
-    void drawNextFrameOfSpectrum();
+    void analyse (double elapsedSeconds);
 
     juce::Colour accentOverride { juce::Colours::transparentBlack };
 
-
-    // Builds the smoothed spectrum outline once per paint. Split out so
-    // the curve and its gradient fill are guaranteed to be the same shape -
-    // drawing them from two separately-built paths is how a fill and its
-    // outline end up a pixel apart.
-    juce::Path buildSpectrumPath (juce::Rectangle<float> bounds) const;
+    juce::Path buildSpectrumPath (const std::array<float, 512>& levels, juce::Rectangle<float> bounds) const;
     void paintGrid (juce::Graphics&, juce::Rectangle<float> bounds) const;
 
     static constexpr float minFreq = 20.0f;
@@ -69,28 +90,32 @@ private:
     static float proportionToFrequency (float proportion) noexcept;
     static float frequencyToProportion (float frequency) noexcept;
 
-    // Per-bin attack/release smoothing of the displayed magnitude. Raw FFT
-    // output flickers frame to frame even on steady material; easing the
-    // *display* (fast attack so transients still read, slow release so the
-    // curve settles rather than strobes) is what makes it look like a
-    // considered instrument instead of noise. Purely cosmetic - the
-    // underlying analysis is untouched.
-    static constexpr float displayAttack = 0.5f;
-    static constexpr float displayRelease = 0.12f;
+    // Audio -> message thread.
+    static constexpr int fifoCapacity = 1 << 15;
+    static constexpr int batchSize = 64;
+    juce::AbstractFifo fifo { fifoCapacity };
+    std::array<float, (size_t) fifoCapacity> fifoStorage {};
+    std::array<float, (size_t) batchSize> batch {};   // audio thread only
+    int batchCount = 0;                               // audio thread only
+
+    // Message thread only from here down.
+    std::array<float, (size_t) fftSize> history {};
+    int historyWrite = 0;
+    int pendingNew = 0;
 
     juce::dsp::FFT forwardFFT;
     juce::dsp::WindowingFunction<float> window;
-
-    std::array<float, (size_t) fftSize> fifo {};
     std::array<float, (size_t) fftSize * 2> fftData {};
-    int fifoIndex = 0;
-    bool nextFFTBlockReady = false;
 
     static constexpr int scopeSize = 512;
-    std::array<float, (size_t) scopeSize> scopeData {};
-    std::array<float, (size_t) scopeSize> smoothedScope {};
+    std::array<float, (size_t) scopeSize> target {};
+    std::array<float, (size_t) scopeSize> smoothed {};
+    std::array<float, (size_t) scopeSize> peak {};
+    std::array<float, (size_t) scopeSize> peakHold {};   // seconds left before the peak falls
 
     double sampleRate = 44100.0;
+    double lastTick = 0.0;
+    bool idle = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectrumAnalyzerComponent)
 };

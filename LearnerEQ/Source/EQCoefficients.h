@@ -56,6 +56,36 @@ namespace EQCoefficients
         return (BandType) juce::jlimit (0, numTypes - 1, index);
     }
 
+    // The same filter as make(), as six plain numbers on the stack.
+    //
+    // This is the one the audio thread uses. make() returns a
+    // reference-counted object built with `new`, and the processor was
+    // calling it every 32 samples per gliding band - a heap allocation on
+    // the audio thread, the one thing a plugin must never do (found by the
+    // external review in ADR 038, confirmed by tests/RealtimeSafetyTest).
+    // Assigning an array into the filter's existing coefficients object
+    // copies six floats and allocates nothing.
+    inline std::array<float, 6> makeArray (BandType type, double sampleRate,
+                                           float freqHz, float gainDb, float q)
+    {
+        const auto freq = juce::jlimit (10.0f, (float) (sampleRate * 0.49), freqHz);
+        const auto safeQ = juce::jmax (0.05f, q);
+        const auto gain = juce::Decibels::decibelsToGain (gainDb);
+
+        using A = juce::dsp::IIR::ArrayCoefficients<float>;
+
+        switch (type)
+        {
+            case BandType::lowShelf:  return A::makeLowShelf (sampleRate, freq, safeQ, gain);
+            case BandType::highShelf: return A::makeHighShelf (sampleRate, freq, safeQ, gain);
+            case BandType::highPass:  return A::makeHighPass (sampleRate, freq, safeQ);
+            case BandType::lowPass:   return A::makeLowPass (sampleRate, freq, safeQ);
+            case BandType::notch:     return A::makeNotch (sampleRate, freq, safeQ);
+            case BandType::bell:
+            default:                  return A::makePeakFilter (sampleRate, freq, safeQ, gain);
+        }
+    }
+
     inline juce::dsp::IIR::Coefficients<float>::Ptr make (BandType type, double sampleRate,
                                                            float freqHz, float gainDb, float q)
     {

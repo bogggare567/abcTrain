@@ -101,7 +101,13 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
     spec.numChannels = (juce::uint32) getTotalNumOutputChannels();
 
     for (auto& filter : filters)
+    {
+        // Give each filter a full biquad's worth of coefficient storage now,
+        // on the message thread: the default object holds fewer, and the
+        // first in-place assignment on the audio thread would grow it.
+        *filter.state = EQCoefficients::makeArray (EQCoefficients::BandType::bell, sampleRate, 1000.0f, 0.0f, 0.7f);
         filter.prepare (spec);
+    }
 
     for (auto& g : glide)
     {
@@ -114,7 +120,10 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
     activeAmount.reset (sampleRate, 0.02);
     activeAmount.setCurrentAndTargetValue (bypassParam->load() > 0.5f ? 0.0f : 1.0f);
 
-    dryBuffer.setSize (getTotalNumOutputChannels(), samplesPerBlock);
+    // Headroom over the promised block size: some hosts send larger blocks
+    // than they announced (offline bounces), and makeCopyOf would then
+    // reallocate on the audio thread.
+    dryBuffer.setSize (juce::jmax (2, getTotalNumOutputChannels()), juce::jmax (samplesPerBlock, 8192));
 
     updateFilters();
 }
@@ -256,7 +265,7 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
                 const auto type = EQCoefficients::typeFromIndex ((int) read (bandParams[(size_t) band].type));
 
                 if (start == 0 || g.freq.isSmoothing() || g.q.isSmoothing() || g.gain.isSmoothing())
-                    *filters[(size_t) band].state = *EQCoefficients::make (type, sampleRate,
+                    *filters[(size_t) band].state = EQCoefficients::makeArray (type, sampleRate,
                                                                        g.freq.getCurrentValue(),
                                                                        g.gain.getCurrentValue(),
                                                                        g.q.getCurrentValue());

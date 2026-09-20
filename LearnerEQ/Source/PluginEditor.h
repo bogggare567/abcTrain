@@ -17,7 +17,7 @@ public:
 
 private:
     int analysisContentHeight() const override { return 215 + 12 + 110 + 8 + 24; }
-    int controlsContentHeight() const override { return 24 + 8 + 30 + 10 + 118; }
+    int controlsContentHeight() const override { return 24 + 30 + 2 * rowGap() + (isCompact() ? 96 : 118); }
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;
     void themeChanged() override;

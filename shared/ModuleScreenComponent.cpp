@@ -832,6 +832,30 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
             paintModuleCard (g, i, card);
         }
     }
+
+    // The fade *is* the scrollbar (same rule as the achievements shelf):
+    // at either end that still has cards past it. On a short window the
+    // walkthroughs sit below the fold and nothing used to say so.
+    const auto panelColour = theme.panelBackground;
+    const auto overflowBelow = (float) shelfContentHeight() - shelfScroll > (float) list.getHeight() + 1.0f;
+    const auto overflowAbove = shelfScroll > 1.0f;
+    const auto fade = 36.0f;
+
+    if (overflowBelow)
+    {
+        const auto r = list.toFloat().removeFromBottom (fade);
+        g.setGradientFill (juce::ColourGradient (panelColour.withAlpha (0.0f), r.getX(), r.getY(),
+                                                 panelColour, r.getX(), r.getBottom(), false));
+        g.fillRect (r);
+    }
+
+    if (overflowAbove)
+    {
+        const auto r = list.toFloat().removeFromTop (fade);
+        g.setGradientFill (juce::ColourGradient (panelColour, r.getX(), r.getY(),
+                                                 panelColour.withAlpha (0.0f), r.getX(), r.getBottom(), false));
+        g.fillRect (r);
+    }
 }
 
 void ModuleScreenComponent::paintModuleCard (juce::Graphics& g, int index, juce::Rectangle<int> card)
@@ -1142,20 +1166,34 @@ void ModuleScreenComponent::paintCheckScale (juce::Graphics& g, juce::Rectangle<
         }
     }
 
+    // The sentence gives way before the scale does: on a short window the
+    // scale used to be squeezed to nothing under two lines of instruction,
+    // and the readout sat on top of the buttons.
     if (text.checkHint.isNotEmpty())
     {
-        const auto knob = textFor (*definition, "name", definition->name);
-        g.setColour (theme.text);
-        g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawFittedText (fill (text.checkHint, { { "knob", knob }, { "submit", text.submit } }),
-                          area.removeFromTop (46), juce::Justification::topLeft, 2, 1.0f);
+        const auto lines = area.getHeight() >= 190 ? 2 : area.getHeight() >= 130 ? 1 : 0;
+
+        if (lines > 0)
+        {
+            const auto knob = textFor (*definition, "name", definition->name);
+            g.setColour (theme.text);
+            g.setFont (AbcTrainLookAndFeel::bodyFont());
+            g.drawFittedText (fill (text.checkHint, { { "knob", knob }, { "submit", text.submit } }),
+                              area.removeFromTop (lines * 23), juce::Justification::topLeft, lines, 0.85f);
+        }
     }
 
     area.removeFromTop (AbcTrainTheme::Spacing::medium);
 
     auto band = area.withSizeKeepingCentre (area.getWidth(), juce::jmin (area.getHeight(), 170));
-    auto readoutRow = band.removeFromTop (34);
-    band.removeFromTop (4);
+
+    // The readout shrinks with the room: its own row when there is height
+    // for one, otherwise it rides in the top right of the scale.
+    const auto roomy = band.getHeight() >= 96;
+    auto readoutRow = roomy ? band.removeFromTop (34) : band.withTrimmedLeft (band.getWidth() / 2).removeFromTop (20);
+
+    if (roomy)
+        band.removeFromTop (4);
     auto well = band.toFloat();
 
     AbcTrainLookAndFeel::paintRecessedWell (g, well, 0.0f);
@@ -1253,7 +1291,7 @@ void ModuleScreenComponent::paintCheckScale (juce::Graphics& g, juce::Rectangle<
 
     {
         const auto readoutText = formatValue (value);
-        const auto font = AbcTrainLookAndFeel::titleFont();
+        const auto font = roomy ? AbcTrainLookAndFeel::titleFont() : AbcTrainLookAndFeel::headingFont();
         const auto width = AbcTrainLookAndFeel::trackedTextWidth (readoutText, font, 1.0f) + 18.0f;
         const auto centreX = juce::jlimit (well.getX() + width * 0.5f, well.getRight() - width * 0.5f, xFor (here));
 

@@ -792,5 +792,15 @@
   "module.stepsCount": "{{n}} étapes",
   "module.checkHint": "La référence joue une valeur de {{knob}}. Tourne le bouton {{knob}} du plugin jusqu'à ce que le tien sonne pareil, puis appuie sur {{submit}}.",
   "unit.kHz": "kHz",
-  "eq.addBand": "Ajouter une bande à 1 kHz"
+  "eq.addBand": "Ajouter une bande à 1 kHz",
+  "ui.hintRegion": "La réponse est ici",
+  "ui.hintNarrowFree": "Resserrer l’échelle",
+  "ui.hintNarrowCostLife": "Resserrer l’échelle (−1 vie)",
+  "ui.hintNarrowCostSeconds": "Resserrer l’échelle (−{{seconds}} s)",
+  "ui.separateStems": "Séparer en stems…",
+  "ui.separateHint": "Sépare chaque piste en batterie, basse, centre (généralement la voix) et côtés, puis découpe chaque stem en boucles. C’est une estimation tirée du signal lui-même, pas un modèle entraîné : un synthé centré se retrouve avec la voix.",
+  "ui.stemDrums": "Stem : batterie",
+  "ui.stemBass": "Stem : basse",
+  "ui.stemCentre": "Stem : centre (voix)",
+  "ui.stemSides": "Stem : côtés (large)"
 }

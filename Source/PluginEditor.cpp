@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "../shared/WindowFit.h"
 #include <algorithm>
 #include "../shared/UpdatePrompt.h"
 #include "Achievements.h"
@@ -234,6 +235,94 @@ namespace
         return dotLanguages ? text : text.replaceCharacter ('.', ',');
     }
 
+    // A value the game wrote in English - "632 Hz", "1.4kHz", "-3.5 dB",
+    // "120 ms" - in this language's units and decimal mark. The games
+    // format their own axes (they own the mapping), so the translation
+    // happens here, once, on the way to the screen.
+    juce::String localiseValueText (const juce::String& english, const LocalisationManager& loc)
+    {
+        const auto unit = [&loc] (const char* key, const char* fallback)
+        {
+            const auto t = loc.getText (key);
+            return t == key ? juce::String (fallback) : t;
+        };
+
+        const auto lang = loc.getCurrentLanguage();
+        const auto dot = lang.startsWith ("en") || lang.startsWith ("ja")
+                      || lang.startsWith ("ko") || lang.startsWith ("zh");
+
+        juce::String out;
+        const auto n = english.length();
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto c = english[i];
+
+            // A decimal point only between two digits: "L50" and "C" stay.
+            if (c == '.' && ! dot && i > 0 && i + 1 < n
+                && juce::CharacterFunctions::isDigit ((juce::juce_wchar) english[i - 1])
+                && juce::CharacterFunctions::isDigit ((juce::juce_wchar) english[i + 1]))
+            {
+                out << ',';
+                continue;
+            }
+
+            out << c;
+        }
+
+        // Longest first, and only whole unit tokens after a number.
+        struct Swap { const char* en; const char* key; };
+        static const Swap swaps[] = { { "kHz", "unit.kHz" }, { "Hz", "unit.Hz" },
+                                      { "ms", "unit.ms" }, { "dB", "unit.dB" } };
+
+        for (const auto& s : swaps)
+        {
+            const auto local = unit (s.key, s.en);
+
+            if (local == s.en)
+                continue;
+
+            juce::String rebuilt;
+            int from = 0;
+
+            for (;;)
+            {
+                const auto at = out.indexOf (from, s.en);
+
+                if (at < 0)
+                    break;
+
+                const juce::juce_wchar before = at > 0 ? out[at - 1] : (juce::juce_wchar) ' ';
+                const auto afterIndex = at + (int) strlen (s.en);
+                const juce::juce_wchar after = afterIndex < out.length() ? out[afterIndex] : (juce::juce_wchar) ' ';
+                const auto numberBefore = juce::CharacterFunctions::isDigit (before) || before == ' ';
+                const auto tokenEnds = ! juce::CharacterFunctions::isLetter (after);
+
+                rebuilt << out.substring (from, at);
+
+                if (numberBefore && tokenEnds && ! (juce::String (s.en) == "Hz" && at > 0 && out[at - 1] == 'k'))
+                {
+                    // "1.4kHz" reads better as "1,4 кГц" once it is Cyrillic.
+                    if (juce::CharacterFunctions::isDigit (before))
+                        rebuilt << ' ';
+
+                    rebuilt << local;
+                }
+                else
+                {
+                    rebuilt << s.en;
+                }
+
+                from = afterIndex;
+            }
+
+            rebuilt << out.substring (from);
+            out = rebuilt;
+        }
+
+        return out;
+    }
+
     // What a level means in this exercise, as a sound engineer would say
     // it: "±0,35 oct", "±1,2 dB", or the closest pair the level can offer
     // (ADR 035). The number is the level; "level 7" is only its index.
@@ -312,10 +401,10 @@ namespace
         const auto prefix = loc.getText (game.wasLastAnswerCorrect() ? "ui.fbCorrect" : "ui.fbWrong");
 
         auto answer = game.usesContinuousScale()
-                        ? game.formatNormalisedValue (game.getCorrectNormalised())
+                        ? localiseValueText (game.formatNormalisedValue (game.getCorrectNormalised()), loc)
                         : translateChoiceLabel (game.getChoiceLabel (game.getCorrectChoiceIndex()), loc);
 
-        const auto detail = game.getAnswerDetail();
+        const auto detail = localiseValueText (game.getAnswerDetail(), loc);
         const auto direction = game.getAnswerDirection();
 
         // With a direction, the number is the subject and the name is the
@@ -1001,10 +1090,21 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the height the sections actually need, and the ceiling stops a 5K
     // display leaving nine tiles the size of postage stamps.
     setResizable (true, true);
-    setResizeLimits (logicalWidth, logicalBaseHeight,
+    setResizeLimits (minLogicalWidth, minLogicalHeight,
                       (int) (logicalWidth * 2.0), (int) (logicalBaseHeight * 2.0));
 
-    setUiScale (localisationProperties.getDoubleValue (uiScaleKey, 1.0));
+    // Open at the design size where the screen has room for it, and at
+    // whatever part of it the screen can show where it has not
+    // (shared/WindowFit.h). The saved text scale is capped the same way:
+    // chosen on a big monitor, it must not push the window off a laptop.
+    {
+        const auto wanted = (float) localisationProperties.getDoubleValue (uiScaleKey, 1.0);
+        const auto scale = WindowFit::fitScale (wanted, { minLogicalWidth, minLogicalHeight });
+        const auto fitted = WindowFit::fit ({ logicalWidth, logicalBaseHeight },
+                                            { minLogicalWidth, minLogicalHeight }, scale);
+        setSize (fitted.x, fitted.y);
+        setUiScale (scale, juce::approximatelyEqual (scale, wanted));
+    }
     // Unity, always. The slider left the bar (ADR 035); a level saved by
     // it earlier must not keep the app quiet with no control left to undo
     // it.
@@ -1276,7 +1376,7 @@ void EarTrainerEditor::resized()
     // a scale change, or the initial size - all of them the height to come
     // back to when the hint closes again.
     if (! hintRevealed)
-        heightWithoutHint = juce::jmax (logicalBaseHeight, getHeight());
+        heightWithoutHint = juce::jmax (minLogicalHeight, getHeight());
 
     // The home screen owns everything under the title row; the training
     // screen's own layout below only runs when it's the visible one.
@@ -1412,12 +1512,22 @@ void EarTrainerEditor::resized()
     // you use it in.
     if (hintRevealed && ! hintNarrowsTheScale())
     {
-        hintSection = area.removeFromTop (hintPanelHeight);
+        // Shorter on a short window rather than pushing the answers under
+        // the control bar: at 620px the two answer cards used to lose
+        // their lower half behind the mode pills the moment a hint was
+        // bought. The answers are what the round is for; the picture can
+        // give up height first.
+        constexpr int answerFloor = 230;
+        const auto spare = area.getHeight() - (controlBarHeight + 22 + Spacing::medium) - answerFloor - Spacing::large;
+        const auto panelHeight = juce::jlimit (56, hintPanelHeight, spare);
+        const auto rowHeight = panelHeight - (hintPanelHeight - hintRowHeight);
+
+        hintSection = area.removeFromTop (panelHeight);
 
         auto inner = hintSection;
         inner.removeFromTop (Spacing::small);
 
-        auto hintRow = inner.removeFromTop (hintRowHeight).reduced (Spacing::small, 0);
+        auto hintRow = inner.removeFromTop (juce::jmax (40, rowHeight)).reduced (Spacing::small, 0);
 
         // Whichever view this exercise's question is actually visible in
         // gets the whole row - see Game::getHintView. A stereo exercise
@@ -2154,7 +2264,7 @@ void EarTrainerEditor::applyVolumeFromSlider()
     localisationProperties.saveIfNeeded();
 }
 
-void EarTrainerEditor::setUiScale (float newScale)
+void EarTrainerEditor::setUiScale (float newScale, bool remember)
 {
     uiScale = juce::jlimit (0.8f, 1.4f, newScale);
 
@@ -2166,15 +2276,18 @@ void EarTrainerEditor::setUiScale (float newScale)
     // Keep whatever size the window has been dragged to - scaling is a
     // separate axis from sizing, and resetting the width here would undo a
     // deliberate drag every time somebody changed the text size.
-    setSize (juce::jmax (logicalWidth, getWidth()),
-              juce::jmax (logicalBaseHeight, getHeight()));
+    setSize (juce::jmax (minLogicalWidth, getWidth()),
+              juce::jmax (minLogicalHeight, getHeight()));
 
     // Keep the picker in step with the actual scale, including on the
     // restore path - without this it came up blank on launch.
     const auto id = uiScale < 0.93f ? 1 : uiScale < 1.08f ? 2 : uiScale < 1.23f ? 3 : 4;
     sizeSelector.setSelectedId (id, juce::dontSendNotification);
 
-    localisationProperties.setValue (uiScaleKey, (double) uiScale);
+    // Not when the scale was only capped to fit this screen: the choice
+    // made on a bigger one should come back there.
+    if (remember)
+        localisationProperties.setValue (uiScaleKey, (double) uiScale);
 }
 
 void EarTrainerEditor::applyWindowSize()
@@ -2182,8 +2295,8 @@ void EarTrainerEditor::applyWindowSize()
     // The height a hint is showing and the height it is not are the same
     // height. Only the width floor and whatever the player has dragged to
     // are honoured here.
-    setSize (juce::jmax (logicalWidth, getWidth()),
-              juce::jmax (logicalBaseHeight, getHeight()));
+    setSize (juce::jmax (minLogicalWidth, getWidth()),
+              juce::jmax (minLogicalHeight, getHeight()));
     resized();
     repaint();
 }
@@ -2804,6 +2917,12 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.shuffling          = localisation.getText ("ui.soundsShuffling");
         sounds.builtInPercussive  = localisation.getText ("ui.soundsBuiltInPercussive");
         sounds.builtInSustained   = localisation.getText ("ui.soundsBuiltInSustained");
+        sounds.separateStems      = localisation.getText ("ui.separateStems");
+        sounds.separateHint       = localisation.getText ("ui.separateHint");
+        sounds.stemDrums          = localisation.getText ("ui.stemDrums");
+        sounds.stemBass           = localisation.getText ("ui.stemBass");
+        sounds.stemCentre         = localisation.getText ("ui.stemCentre");
+        sounds.stemSides          = localisation.getText ("ui.stemSides");
 
         trainingSounds.setStrings (std::move (sounds));
     }
@@ -2895,6 +3014,11 @@ bool EarTrainerEditor::choiceSliderMatchesGame (Game& game) const
 
 void EarTrainerEditor::rebuildChoiceSlider()
 {
+    // A new exercise may hint differently (narrow the scale / show the
+    // sound), and the button says which.
+    if (! hintRevealed)
+        refreshHintButton();
+
     auto& game = processor.getGameManager().getActiveGame();
 
     juce::StringArray labels;
@@ -2936,9 +3060,17 @@ void EarTrainerEditor::rebuildChoiceSlider()
     {
         // The ruler and its tolerance both come from the game, so the
         // widget needs no idea what a frequency or a decibel is.
-        choiceSlider.setContinuousScale (game.getGridMarks(),
+        // The game writes its axis in English; the scale shows it in the
+        // player's units ("632 Гц", "1,4 кГц").
+        auto marks = game.getGridMarks();
+
+        for (auto& mark : marks)
+            mark.label = localiseValueText (mark.label, localisation);
+
+        choiceSlider.setContinuousScale (std::move (marks),
                                           game.getToleranceNormalised(),
-                                          [&game] (float t) { return game.formatNormalisedValue (t); });
+                                          [&game, this] (float t)
+                                          { return localiseValueText (game.formatNormalisedValue (t), localisation); });
     }
     else
     {
@@ -3053,6 +3185,7 @@ void EarTrainerEditor::requestHint()
         // you still have to find it.
         hintCentreForRound = Game::hintCentreFor (game.getCorrectNormalised(), halfWidth,
                                                    hintRandom.nextFloat());
+        choiceSlider.setHintCaption (localisation.getText ("ui.hintRegion"));
         choiceSlider.setHintRegion (hintCentreForRound, halfWidth);
     }
     else
@@ -3085,17 +3218,24 @@ void EarTrainerEditor::refreshHintButton()
 
     hintButton.setEnabled (session.isRunActive());
 
+    // Say what the hint will do. On a ruler exercise it narrows the scale -
+    // there is no picture of the sound - and a button promising "show the
+    // sound" that then only shaded the scale read as a hint that did
+    // nothing (reported on Guess the Band).
+    const auto narrows = processor.getGameManager().getActiveGame().getHintHalfWidthNormalised() > 0.0f;
+    const juce::String stem = narrows ? "ui.hintNarrow" : "ui.hint";
+
     switch (session.getMode())
     {
         case SessionManager::Mode::survival:
-            hintButton.setButtonText (localisation.getText ("ui.hintCostLife"));
+            hintButton.setButtonText (localisation.getText (stem + "CostLife"));
             break;
         case SessionManager::Mode::blitz:
-            hintButton.setButtonText (localisation.getText ("ui.hintCostSeconds",
+            hintButton.setButtonText (localisation.getText (stem + "CostSeconds",
                                                             { { "seconds", juce::String (SessionManager::blitzHintSeconds) } }));
             break;
         default:
-            hintButton.setButtonText (localisation.getText ("ui.hintFree"));
+            hintButton.setButtonText (localisation.getText (stem + "Free"));
             break;
     }
 }

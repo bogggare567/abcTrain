@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <vector>
 // Renders every editor in the project to a PNG, with no plugin host and
 // no window server involvement beyond what JUCE needs to lay out fonts.
 //
@@ -92,7 +94,18 @@ namespace
     {
         int failures = 0;
 
-        for (const auto mode : { AbcTrainTheme::Mode::dark, AbcTrainTheme::Mode::light })
+        std::vector<AbcTrainTheme::Mode> modes { AbcTrainTheme::Mode::dark, AbcTrainTheme::Mode::light };
+
+        // SNAP_DARK=1: one theme, for quick layout passes.
+        if (std::getenv ("SNAP_DARK") != nullptr)
+            modes = { AbcTrainTheme::Mode::dark };
+
+        // SNAP_ONLY=substring: render only screens whose name contains it.
+        if (const auto* only = std::getenv ("SNAP_ONLY"))
+            if (! name.containsIgnoreCase (only))
+                return 0;
+
+        for (const auto mode : modes)
         {
             // Every editor reads the *persisted* preference in its own
             // constructor and calls setMode() from that, so setting the
@@ -203,6 +216,16 @@ namespace
                 editor.setSize ((int) (editor.getWidth() * 1.35),
                                  (int) (editor.getHeight() * 1.3));
 
+            // SNAP_SIZE=WxH renders every screen at that window size instead
+            // of the design size - how a laptop display actually sees it.
+            if (const auto* size = std::getenv ("SNAP_SIZE"))
+            {
+                const auto parts = juce::StringArray::fromTokens (size, "x", "");
+
+                if (parts.size() == 2)
+                    editor.setSize (parts[0].getIntValue(), parts[1].getIntValue());
+            }
+
             if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
                 editor.completeScreenFade();   // after every screen change above
 
@@ -227,6 +250,9 @@ namespace
 
 int main (int argc, char* argv[])
 {
+    // Always the design size, whatever the virtual display is (shared/WindowFit.h).
+    setenv ("ABC_DESIGN_SIZE", "1", 1);
+
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
 
     const auto outputDir = argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile (argv[1])

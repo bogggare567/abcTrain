@@ -88,8 +88,25 @@ public:
             const auto textColour = selected ? AbcTrainLookAndFeel::labelColourOn (accent)
                                              : (isEnabled() ? theme.text : theme.textDim);
 
-            AbcTrainLookAndFeel::drawTrackedText (g, shown (labels[(int) i]), r,
-                                                  font, textColour, 1.2f, juce::Justification::centred);
+            // A label wider than its cell gives up its tracking, then its
+            // size, down to three quarters - never its neighbour's space
+            // ("85 dB(A)90 dB(A)" on a narrow window).
+            const auto text = shown (labels[(int) i]);
+            auto cellFont = font;
+            auto tracking = 1.2f;
+            const auto room = r.getWidth() - 6.0f;
+
+            if (AbcTrainLookAndFeel::trackedTextWidth (text, cellFont, tracking) > room)
+            {
+                tracking = 0.0f;
+                const auto natural = AbcTrainLookAndFeel::trackedTextWidth (text, cellFont, 0.0f);
+
+                if (natural > room && natural > 0.0f)
+                    cellFont = cellFont.withHeight (cellFont.getHeight() * juce::jmax (0.75f, room / natural));
+            }
+
+            AbcTrainLookAndFeel::drawTrackedText (g, text, r, cellFont, textColour, tracking,
+                                                  juce::Justification::centred);
         }
 
         g.setColour (theme.outline);

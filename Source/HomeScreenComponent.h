@@ -98,6 +98,7 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:
     struct Section
@@ -112,6 +113,10 @@ private:
     std::vector<juce::Rectangle<int>> rowBounds;
     std::vector<float> hoverAmounts;
     int hoveredRow = -1;
+
+    // Scrolls only when even the shortest rows do not fit (a small laptop
+    // window, ADR 038); the fade at the cut edge says there is more.
+    float scroll = 0.0f, maxScroll = 0.0f;
     bool hoveredStar = false;
 
     void timerCallback() override;
@@ -126,7 +131,7 @@ private:
 
     static constexpr int headerHeight = 30;
     static constexpr int sectionGap = 10;
-    static constexpr int minRowHeight = 42;
+    static constexpr int minRowHeight = 36;
     static constexpr int maxRowHeight = 58;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (HomeScreenComponent)

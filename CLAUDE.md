@@ -165,6 +165,16 @@ troubleshooting, FAQ. Deliberately does *not* duplicate the rest of
 starts explaining a decision, it belongs in an ADR instead. The wiki git
 remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
+`docs/decisions/038-fit-finish-and-the-audio-thread.md` (every window
+opens at what the display can show, down to a floor its layout works at -
+`shared/WindowFit.h`, 940×620 trainer / 820×600 plugins; what rendering
+every screen at that floor found and fixed; the ruler hint made visible and
+its button renamed "Narrow the scale"; the spectrum and waveform rebuilt to
+be smooth and to hand data across threads through lock-free FIFOs instead
+of shared plain variables; `shared/StemSeparator` and "Split into stems";
+and **the audio-thread rule** - no allocation, lock, I/O, String or GUI
+call inside processBlock - enforced by `tests/RealtimeSafetyTest`, which
+found EQCoefficients::make allocating every 32 samples).
 `docs/decisions/037-the-learner-plugins-made-honest.md` (the Learner
 plugins' claims made true: `shared/LearnerEditorBase` for all three
 editors, A/B slots, the family colour on primary buttons via a
@@ -407,10 +417,14 @@ full rationale.
   bass / mid range / bright / full mix). Pure DSP over a buffer: no
   Component, no file I/O, no message loop, so `tests/AudioSliceAnalyzerTest`
   drives it with synthesized signals whose right answer is known by
-  construction. **It deliberately does not separate stems** — telling a
-  vocal from a mix is source separation, a trained-model problem, and a
-  heuristic pretending to do it would mislabel most real music
-  confidently. `ReferenceAudioLibrary::importAndSlice` is the file-writing
+  construction. **It does not separate stems itself**; since ADR 038
+  `shared/StemSeparator` does, behind a separate "Split into stems…"
+  button (`ReferenceAudioLibrary::importAndSeparateMany`): a
+  harmonic/percussive median-filter split, a 180 Hz bass curve and an L/R
+  similarity mask give drums / bass / centre / sides whose masks sum to one
+  (the stems add back to the input), named after what they measure rather
+  than claiming "vocal", and documented everywhere as an estimate, not a
+  trained model. `ReferenceAudioLibrary::importAndSlice` is the file-writing
   half: it decodes, slices, fades each clip's edges (a loop that starts
   mid-waveform clicks on every repeat) and files them under the character's
   folder in the library root, never touching the source. Two bugs were
@@ -669,8 +683,10 @@ full rationale.
   been unlabelled icons along the bottom, where a *status* bar goes) by
   spending 156px of an 840px window on five words; across the top the same
   five cost 59px of height and the content gets the width back, which is
-  what makes four exercise cards fit a row. The window is **1180 x 880**,
-  the size the design mockup is drawn at - see
+  what makes four exercise cards fit a row. The window's *design* size is
+  **1180 x 880** (it opens at whatever part of that the display can show,
+  down to 940 x 620 - `shared/WindowFit.h`, ADR 038), the size the design
+  mockup is drawn at - see
   [decisions/033](docs/decisions/033-the-redesign-made-real.md) and the
   measured spec in [docs/design/redesign-spec.md](docs/design/redesign-spec.md),
   an "Updates" button (`shared/UpdateChecker`, see
@@ -800,14 +816,32 @@ for why it doesn't use `juce::dsp::Compressor`.
   engine entirely and passes audio through unchanged. `applyPreset(int)`
   lives here (not just in the editor's button handler) specifically so
   it's unit-testable without constructing a `Component`.
-- `shared/WaveformDisplay.{h,cpp}` — FIFO-accumulate/30 Hz-timer-flush
+- `shared/WaveformDisplay.{h,cpp}` — since ADR 038: 400 columns of 256
+  samples, each with peak *and* RMS (drawn as the brighter body), handed
+  over through a lock-free FIFO and drained at 60 Hz; the paragraph below
+  describes the first version. FIFO-accumulate/30 Hz-timer-flush
   pattern (same shape `shared/SpectrumAnalyzer` uses for its FFT), for a
   scrolling peak-based dual waveform: gray input trace, output trace
   tinted from blue to red proportional to a generic `highlightAmount`
   (LearnerComp passes gain reduction) in that ~33 ms column. Also the
   source of the peak-meter readouts (via `getInputPeak`/`getOutputPeak`/
   `getCurrentHighlightAmount`). Used by all three Learner plugins.
-- `shared/SpectrumAnalyzer.{h,cpp}` — `SpectrumAnalyzerComponent`: the
+- **The audio-thread rule (ADR 038):** inside `processBlock` and anything
+  it calls - no allocation or free, no lock, no file I/O, no `String`
+  building, no `ValueTree` edit, no GUI call, no waiting. Data leaves
+  through atomics or lock-free FIFOs into memory allocated in
+  `prepareToPlay`. `tests/RealtimeSafetyTest` counts heap allocations made
+  by the thread inside `processBlock` (the test binary replaces the global
+  allocation functions, switched on per thread) across 5 sample rates × 7
+  block sizes with every parameter automated, and fails on one. Filter
+  coefficients on the audio thread come from
+  `EQCoefficients::makeArray` (stack), never `make` (heap).
+- `shared/SpectrumAnalyzer.{h,cpp}` — since ADR 038: samples cross from the
+  audio thread in batches of 64 through a `juce::AbstractFifo`; a 4096-point
+  FFT is recomputed on every 60 Hz frame (≈95% overlap), each display point
+  takes the loudest bin in its band (interpolating below one bin), a +3
+  dB/oct tilt about 1 kHz, time-based ballistics and a falling peak line,
+  and no repaint while idle. `SpectrumAnalyzerComponent`: the
   live-spectrum FFT/FIFO/30 Hz-timer machinery, extracted from what used
   to be LearnerEQ-only `SpectrumAnalyserComponent` once LearnerComp and
   LearnerVerb both wanted a plain live spectrum too (no response curve, no
@@ -1545,6 +1579,16 @@ checks it in every handler of its own.
   challenge, and a persistence round-trip, all via `registerAnswer`/
   `updateStreakForDate`/`generateDailyChallengeForDate` called directly
   rather than through the real `ChangeListener` wiring (see below).
+- `tests/RealtimeSafetyTest.cpp` — the audio-thread rule, measured (see
+  the Look-and-feel section's rule entry and ADR 038); also that a block
+  longer than announced does not allocate and that training beds are
+  freed once no block can be reading them.
+- `tests/StemSeparatorTest.cpp` — each stem gets what it should from
+  signals whose answer is known (click train → drums, 60 Hz → bass, one
+  tone in both channels → centre, different tones per side → sides), the
+  stems sum back to the input at −138 dB, mono has no sides, degenerate
+  input is harmless, and `importAndSeparateMany` writes readable clips
+  into the four stem folders without touching the source.
 - `tests/AudioSliceAnalyzerTest.cpp` — the slicer and classifier against
   synthesized signals: audio shorter than one slice yields nothing rather
   than a runt, an empty/silent/zero-sample-rate input is a harmless miss,

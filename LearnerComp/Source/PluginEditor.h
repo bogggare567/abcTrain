@@ -27,7 +27,7 @@ public:
 
 private:
     int analysisContentHeight() const override { return 240 + 12 + 48; }
-    int controlsContentHeight() const override { return 132 + 8 + 32; }
+    int controlsContentHeight() const override { return knobRowHeight() + rowGap() + presetRowHeight(); }
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;
     void themeChanged() override;

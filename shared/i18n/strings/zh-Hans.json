@@ -792,5 +792,15 @@
   "module.stepsCount": "{{n}} 步",
   "module.checkHint": "参考音播放的是 {{knob}} 的某个值。转动插件自身的 {{knob}} 旋钮，直到你的声音与之相同，然后按 {{submit}}。",
   "unit.kHz": "kHz",
-  "eq.addBand": "在 1 kHz 处添加频段"
+  "eq.addBand": "在 1 kHz 处添加频段",
+  "ui.hintRegion": "答案就在这里",
+  "ui.hintNarrowFree": "缩小范围",
+  "ui.hintNarrowCostLife": "缩小范围（−1 条命）",
+  "ui.hintNarrowCostSeconds": "缩小范围（−{{seconds}} 秒）",
+  "ui.separateStems": "分离为分轨…",
+  "ui.separateHint": "将每条音轨分离为鼓、贝斯、中置（通常是人声）和两侧，再把每个分轨切成循环。这是根据信号本身做的估算，并非训练好的模型：居中的合成器会被归入人声。",
+  "ui.stemDrums": "分轨：鼓",
+  "ui.stemBass": "分轨：贝斯",
+  "ui.stemCentre": "分轨：中置（人声）",
+  "ui.stemSides": "分轨：两侧（宽声场）"
 }

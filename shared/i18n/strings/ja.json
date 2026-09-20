@@ -792,5 +792,15 @@
   "module.stepsCount": "{{n}} ステップ",
   "module.checkHint": "リファレンスは{{knob}}のある値で再生されます。プラグインの{{knob}}ノブを回して同じ音にし、{{submit}}を押してください。",
   "unit.kHz": "kHz",
-  "eq.addBand": "1 kHzにバンドを追加"
+  "eq.addBand": "1 kHzにバンドを追加",
+  "ui.hintRegion": "答えはこの辺り",
+  "ui.hintNarrowFree": "範囲を絞る",
+  "ui.hintNarrowCostLife": "範囲を絞る（−1ライフ）",
+  "ui.hintNarrowCostSeconds": "範囲を絞る（−{{seconds}}秒）",
+  "ui.separateStems": "ステムに分割…",
+  "ui.separateHint": "各トラックをドラム、ベース、センター（通常はボーカル）、サイドに分け、各ステムをループに切り分けます。学習済みモデルではなく信号そのものからの推定なので、センターに定位したシンセはボーカル側に入ります。",
+  "ui.stemDrums": "ステム：ドラム",
+  "ui.stemBass": "ステム：ベース",
+  "ui.stemCentre": "ステム：センター（ボーカル）",
+  "ui.stemSides": "ステム：サイド（ワイド）"
 }

@@ -321,17 +321,17 @@ void LearnerEQEditor::layoutControls (juce::Rectangle<int> area)
     zoneRow.removeFromRight (Spacing::small);
     zoneLabel.setBounds (zoneRow);
 
-    area.removeFromTop (8);
+    area.removeFromTop (rowGap());
 
     auto typeRow = area.removeFromTop (30);
-    bandLabel.setBounds (typeRow.removeFromRight (110));
+    bandLabel.setBounds (typeRow.removeFromRight (typeRow.getWidth() > 860 ? 110 : 0));
     typeRow.removeFromRight (Spacing::small);
     chipRow = typeRow.removeFromRight (juce::jmin (typeRow.getWidth() / 3, 9 * 36));
     typeRow.removeFromRight (Spacing::medium);
     refreshBandChips();
     typeChoice.setBounds (typeRow.removeFromLeft (juce::jmin (typeRow.getWidth(), juce::jmax (typeChoice.getPreferredWidth(), 520))));
 
-    area.removeFromTop (10);
+    area.removeFromTop (rowGap());
 
     const auto width = area.getWidth() / 3;
     juce::Slider* sliders[] { &freqSlider, &gainSlider, &qSlider };
