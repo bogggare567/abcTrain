@@ -1,6 +1,6 @@
 #include <juce_core/juce_core.h>
 #include "../LearnerVerb/Source/PluginProcessor.h"
-#include "../shared/TestUtils.h"
+#include "TestUtils.h"
 
 // Reverb has no clean closed-form target the way LearnerComp's compression
 // math does, so these are behavioral/smoke tests: does a tail persist

@@ -1,6 +1,6 @@
 #include <juce_core/juce_core.h>
 #include "../LearnerEQ/Source/PluginProcessor.h"
-#include "../shared/TestUtils.h"
+#include "TestUtils.h"
 
 // The one test in this project that touches real DSP output rather than
 // just game-logic state: it exists specifically to catch a broken filter

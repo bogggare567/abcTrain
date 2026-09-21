@@ -318,7 +318,6 @@ target_sources(LearnerEQ
         shared/WaveformDisplay.cpp
         shared/GainReductionMeter.cpp
         shared/GuideTooltip.cpp
-        shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainFonts.cpp
@@ -386,7 +385,6 @@ target_sources(LearnerComp
         shared/GainReductionMeter.cpp
         shared/GuideTooltip.cpp
         shared/SpectrumAnalyzer.cpp
-        shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainFonts.cpp
@@ -455,7 +453,6 @@ target_sources(LearnerVerb
         shared/GainReductionMeter.cpp
         shared/GuideTooltip.cpp
         shared/SpectrumAnalyzer.cpp
-        shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainFonts.cpp
@@ -574,7 +571,6 @@ target_sources(EarTrainerTests
         shared/GainReductionMeter.cpp
         shared/GuideTooltip.cpp
         shared/SpectrumAnalyzer.cpp
-        shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainFonts.cpp
@@ -674,7 +670,6 @@ set(abcTrainEditorToolSources
         shared/GainReductionMeter.cpp
         shared/GuideTooltip.cpp
         shared/SpectrumAnalyzer.cpp
-        shared/LessonController.cpp
         shared/UpdateChecker.cpp
         shared/AbcTrainLookAndFeel.cpp
         shared/AbcTrainFonts.cpp

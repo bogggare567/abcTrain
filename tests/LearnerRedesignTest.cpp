@@ -8,7 +8,7 @@
 #include "../LearnerComp/Source/PluginProcessor.h"
 #include "../LearnerComp/Source/CompressorEngine.h"
 #include "../shared/ABCompare.h"
-#include "../shared/TestUtils.h"
+#include "TestUtils.h"
 
 // ADR 037: the Learner plugins made honest - a staircase per module, an
 // accept band in the knob's own units, a reverb whose Decay is seconds and

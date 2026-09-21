@@ -1,6 +1,6 @@
 #include <juce_core/juce_core.h>
 #include "../LearnerComp/Source/PluginProcessor.h"
-#include "../shared/TestUtils.h"
+#include "TestUtils.h"
 
 // DSP-level regression tests, following the same closed-form-math
 // approach as LearnerEQTest: known input, deterministic processing,

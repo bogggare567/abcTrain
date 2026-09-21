@@ -157,7 +157,7 @@ logic is not, and can only be checked by actually running the plugin.
   that testing them is worth the setup cost.
 - **Golden-file audio regression tests**: rendering a fixed input through
   a plugin and diffing against a saved reference output (via
-  `shared/TestUtils.h`'s `rms`, or a tighter per-sample comparison) would
+  `tests/TestUtils.h`'s `rms`, or a tighter per-sample comparison) would
   catch DSP regressions during refactors that the current logic-only tests
   can't see. There are now three DSP-heavy plugins (LearnerEQ, LearnerComp,
   LearnerVerb), each with only steady-state or behavioral assertions and

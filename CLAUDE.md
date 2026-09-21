@@ -59,7 +59,7 @@ timer) that checks GitHub for a newer release — see
 downloadable build artifact per OS on every push, and publishes a GitHub
 Release when a `vX.Y.Z` tag is pushed — see
 [docs/diagrams/ci-pipeline.md](docs/diagrams/ci-pipeline.md). All four
-editors, plus `shared/LessonController`, now share one dark theme
+editors now share one dark theme
 (`shared/AbcTrainLookAndFeel`) instead of each Learner plugin picking its
 own one-off accent colour — see
 [decisions/009](docs/decisions/009-look-and-feel.md).
@@ -768,8 +768,8 @@ restore with the session (`getStateInformation`/`setStateInformation`).
   below for why).
 - `LearnerEQ/Source/VocalEqLesson.h` — `buildVocalEqLesson()`, a
   `MicroLesson` (flat → boost 60 Hz low shelf warmth → boost 3 kHz
-  presence → cut 250 Hz mud → boost 10 kHz air → compare) driving a
-  `lessonSelector`/`LessonController` overlay in the editor.
+  presence → cut 250 Hz mud → boost 10 kHz air → compare) shown as a
+  walkthrough card on the module shelf.
   `LearnerEQ/Source/FindResonanceLesson.h` — `buildFindResonanceLesson()`,
   a second lesson (boost narrow at 400 Hz to find a resonance → flip it
   into a cut → widen the Q). See the Microlessons section below.
@@ -945,41 +945,21 @@ for the full rationale; summary here.
   (`start`/`nextStep`/`previousStep`). This is what `tests/MicroLessonTest.cpp`
   exercises directly, with none of the message-loop/GUI-instantiation
   concerns documented in the Testing section below.
-- `shared/LessonController.{h,cpp}` — the only thing that touches APVTS or
-  draws anything. A `juce::Component` owning one `MicroLesson` and an
-  `AudioProcessorValueTreeState&`; on every step change it calls
-  `setValueNotifyingHost` for that step's target parameters (same pattern
-  `applyPreset` already uses) and updates its text/progress labels.
-  Meant to be added as a full-size child of a Learner editor — every
-  editor's `resized()` sets its bounds to `getLocalBounds()`
-  unconditionally, whether visible or not.
-- Each Learner plugin now has **four** lessons (two workflow walkthroughs
-  and two that explain a knob rather than a recipe — see
-  [decisions/030](docs/decisions/030-learner-checks-speak-the-trainer-s-language.md):
-  EQ gets high-pass/low-pass, Comp gets attack/release, Verb gets
-  pre-delay/size-and-damping),
-  so each editor owns two `LessonController` members (one per lesson,
-  since one `LessonController` instance only ever holds one `MicroLesson`)
-  and a small `lessonSelector` `ComboBox` — replacing the old single
-  "Lesson" button — picks which one to `showAndStart()`; only the
-  selected one is ever visible. Both `LessonController`s'
-  `addChildComponent()` calls are the *last* thing each constructor does,
-  after every other child (including the "Updates" button and the
-  soundkorb.ru link) — a real bug, found while restructuring this exact
-  code for the second lesson: the original single-lesson wiring added it
-  *before* those controls, so a shown lesson would paint underneath them
-  instead of covering them, the same z-order mistake ADR 015/016 already
-  had to fix once each for other overlays.
+- **Lessons are shown by `ModuleScreenComponent`** as walkthrough cards on
+  the module shelf ("Modules first, then walkthroughs"): a `MicroLesson`
+  whose steps carry no graded check. The old overlay, `shared/LessonController`,
+  lost its last includer when ADR 037 turned lessons into pages, and was
+  deleted in ADR 039 — it had been compiled into five targets while nothing
+  used it. The history of why it sat *last* in each constructor (z-order,
+  ADR 015/016) is in those ADRs.
 - Lesson **content** (the `build...Lesson()` files listed in each
   plugin's section above — two per plugin now) lives per-plugin, not in
   `shared/` — only the machinery is shared, since the content is
   inherently tied to that plugin's own parameter IDs. Same reasoning as
   `CompressorGuide`/`ReverbGuide`'s preset tables.
-- **Per-control highlighting was cut from this pass.** Every target
-  parameter already has a `SliderAttachment`/`ComboBoxAttachment`, so
-  setting it via `LessonController` makes the matching knob visibly move
-  on its own — that motion is the highlight. No highlight-drawing code
-  was added to any of the three editors for this.
+- **Per-control highlighting was cut.** Every target parameter already has a
+  `SliderAttachment`/`ComboBoxAttachment`, so setting it makes the matching
+  knob visibly move on its own — that motion is the highlight.
 
 ## Architecture — Update checking (`shared/`, all four plugins)
 
@@ -1363,9 +1343,6 @@ rationale; summary here.
   replaced by `ChoiceSliderComponent` (decisions/015) — a single
   persistent component being re-labelled doesn't need a fade the way
   freshly created buttons did.
-- `shared/LessonController.cpp` picked up the same font migration and
-  background/border colours as the four editors, so the lesson overlay
-  matches the rest of the theme.
 - `shared/AppIcons.h/.cpp` — programmatic `juce::Path` line icons (no
   external asset pipeline) for the 9 EarTrainer games plus LearnerEQ/
   LearnerComp/LearnerVerb, scaled via `Path::scaleToFit()`.
@@ -1530,7 +1507,7 @@ does **not** stop `mouseDown` reaching a plain `Component`; only `Button`,
 `Slider` and friends check the flag, which is why `TopNavComponent`
 checks it in every handler of its own.
 
-- `shared/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
+- `tests/TestUtils.h` — `generateSineBuffer`/`rms` helpers for
   audio-domain assertions.
 - `tests/EQGameTest.cpp`, `tests/CompressionGameTest.cpp`,
   `tests/ReverbGameTest.cpp`, `tests/PanGameTest.cpp`,
@@ -1835,10 +1812,8 @@ too, only Windows needed the fix (see
   behavioral assertions, no golden-file comparison).
 - Integration test for the real `Game → ProgressManager` `ChangeListener`
   wiring (needs a pumped message loop, not set up yet — see Testing), and
-  similarly no automated test of `LessonController`'s actual
-  APVTS-setting behavior (see ADR 005), `SpectrumAnalyzerComponent`'s
-  FFT/timer logic directly (see ADR 006), or `UpdateChecker`'s real
-  network call/`AlertWindow` (see ADR 007) — all four would need
+  similarly no automated test of `UpdateChecker`'s real network
+  call/`AlertWindow` (see ADR 007) — these would need
   `juce::ScopedJuceInitialiser_GUI` plus a pumped message loop, which is a
   real but deliberately deferred setup cost (see `docs/testing-strategy.md`).
 - Background daily update-check timer, trimmed from the initial

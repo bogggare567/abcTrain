@@ -28,3 +28,11 @@ out/
 
 # Font sources, re-downloadable; see tools/build_fonts.py
 tools/.fontcache/
+
+# The full screen gallery (ADR 039). tools/EditorSnapshots renders every
+# screen in both themes into editor-snapshots/ by default - about 30 MB a
+# pass, and committing it grew the repository by that much every time the
+# look changed. Only the images a page actually shows (README, wiki, the
+# website brief) live in docs/screenshots/; render the rest when you need
+# to look.
+/editor-snapshots/

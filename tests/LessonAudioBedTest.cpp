@@ -1,6 +1,6 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include "../shared/LessonAudioBed.h"
-#include "../shared/TestUtils.h"
+#include "TestUtils.h"
 #include <cmath>
 
 // The beds are synthesized, so what a test can honestly check is not "does
