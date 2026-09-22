@@ -1,5 +1,5 @@
 #include "DelayGame.h"
-#include "../../shared/PinkNoiseGenerator.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 #include <limits>
 #include <cmath>

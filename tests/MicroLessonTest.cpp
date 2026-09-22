@@ -1,5 +1,5 @@
 #include <juce_core/juce_core.h>
-#include "../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 
 // MicroLesson is deliberately pure logic (no APVTS/Component dependency),
 // so this is directly testable without a processor, an editor, or the

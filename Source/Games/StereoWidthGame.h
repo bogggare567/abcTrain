@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Game.h"
-#include "../../shared/GainMatch.h"
-#include "../../shared/PinkNoiseGenerator.h"
+#include "shared/audio/GainMatch.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <array>
 #include <atomic>
 #include <vector>
-#include "../../shared/PresetFamily.h"
+#include "shared/audio/PresetFamily.h"
 
 // "Guess the stereo width" exercise: two independent PinkNoiseGenerator
 // instances (naturally decorrelated - each owns its own juce::Random

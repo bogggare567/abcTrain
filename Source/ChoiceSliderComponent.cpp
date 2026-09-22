@@ -1,6 +1,6 @@
 #include "ChoiceSliderComponent.h"
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
 #include <cmath>
 
 namespace

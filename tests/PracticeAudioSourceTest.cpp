@@ -1,5 +1,5 @@
 #include <juce_audio_basics/juce_audio_basics.h>
-#include "../shared/PracticeAudioSource.h"
+#include "shared/learning/PracticeAudioSource.h"
 
 // What matters here is that a plugin cannot start making noise on its own,
 // and that turning it on and off does not click. Both are things a user

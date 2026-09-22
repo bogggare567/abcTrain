@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "../../shared/WaveformDisplay.h"
-#include "../../shared/SpectrumAnalyzer.h"
+#include "shared/analysis/WaveformDisplay.h"
+#include "shared/analysis/SpectrumAnalyzer.h"
 #include "ParameterGuide.h"
 
 LearnerCompProcessor::LearnerCompProcessor()
@@ -105,7 +105,7 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     juce::ScopedNoDenormals noDenormals;
 
     // When no host is feeding us, play the practice clip instead - see
-    // shared/PracticeAudioSource.h. Off by default.
+    // shared/learning/PracticeAudioSource.h. Off by default.
     practiceSource.fillBlock (buffer);
 
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)

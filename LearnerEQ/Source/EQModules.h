@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/TrainingModule.h"
+#include "shared/learning/TrainingModule.h"
 #include "EQSetup.h"
 #include <vector>
 #include "VocalEqLesson.h"

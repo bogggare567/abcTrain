@@ -1,5 +1,5 @@
 #include <juce_core/juce_core.h>
-#include "../shared/UpdateChecker.h"
+#include "shared/updates/UpdateChecker.h"
 
 // Only the pure logic (isNewerVersion/parseReleaseJson) is exercised here -
 // checkForUpdatesAsync's real network call to GitHub is deliberately not

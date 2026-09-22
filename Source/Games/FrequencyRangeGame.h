@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Game.h"
-#include "../../shared/GainMatch.h"
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/GainMatch.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 #include <vector>
-#include "../../shared/PresetFamily.h"
+#include "shared/audio/PresetFamily.h"
 
 // "Name the range" exercise: plays pink noise through a peak filter
 // boosting or cutting a random frequency inside one of 7 standard named

@@ -48,7 +48,7 @@ function grab(source, label, pattern, transform = (m) => m[1]) {
 }
 
 // --- the four skill-family colours, from AbcTrainTheme::accentFor --------
-const theme = read('shared/AbcTrainTheme.cpp');
+const theme = read('shared/ui/AbcTrainTheme.cpp');
 
 const familyColour = (family) =>
   grab(

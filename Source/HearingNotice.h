@@ -1,8 +1,8 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
 #include <functional>
 
 // A slim strip under the navigation bar for what HearingGuard has to say:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "../../shared/PracticeAudioSource.h"
+#include "shared/learning/PracticeAudioSource.h"
 #include "CompressorEngine.h"
 #include <atomic>
 
@@ -64,7 +64,7 @@ public:
 
     // Practice audio: the shared reference library, played through this
     // plugin so it is not silent outside a DAW. Off by default - see
-    // shared/PracticeAudioSource.h.
+    // shared/learning/PracticeAudioSource.h.
     // While a training module's check is auditioning its hidden reference,
     // one parameter is processed at a value the *knob does not show*.
     //

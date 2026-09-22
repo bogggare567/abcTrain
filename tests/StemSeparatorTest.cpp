@@ -1,7 +1,7 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_formats/juce_audio_formats.h>
-#include "../shared/StemSeparator.h"
-#include "../shared/ReferenceAudioLibrary.h"
+#include "shared/audio/StemSeparator.h"
+#include "shared/audio/ReferenceAudioLibrary.h"
 #include <cmath>
 
 // Drives the separator with signals whose right answer is known by

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "PluginProcessor.h"
 
 // Second LearnerComp lesson (see decisions/017): the "glue" bus-compression

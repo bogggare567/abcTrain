@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
-#include "../../shared/WaveformDisplay.h"
-#include "../../shared/SpectrumAnalyzer.h"
+#include "shared/analysis/WaveformDisplay.h"
+#include "shared/analysis/SpectrumAnalyzer.h"
 #include "ReverbGuide.h"
 
 LearnerVerbProcessor::LearnerVerbProcessor()
@@ -115,7 +115,7 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // Practice audio replaces the host's input before anything else
     // touches it, so every meter, curve and knob downstream behaves
     // exactly as it would on a real track. Off unless someone asked for
-    // it; see shared/PracticeAudioSource.h.
+    // it; see shared/learning/PracticeAudioSource.h.
     practiceSource.fillBlock (buffer);
 
 

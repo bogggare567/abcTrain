@@ -1,9 +1,9 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../shared/AbcTrainTheme.h"
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/AppIcons.h"
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AppIcons.h"
 
 // The one thing that appears on the training screen without being asked
 // for: a card that slides down from the top edge when an achievement is

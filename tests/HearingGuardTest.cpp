@@ -2,7 +2,7 @@
 #include "../Source/HearingGuard.h"
 #include "../Source/TrainerSettings.h"
 #include "../Source/SessionManager.h"
-#include "../shared/AWeightedMeter.h"
+#include "shared/analysis/AWeightedMeter.h"
 
 // ADR 036: the hearing guard, the A curve it relies on, and the settings
 // model that turns it (and every Pro rule) on and off.

@@ -2,11 +2,11 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
-#include "../../shared/LearnerEditorBase.h"
-#include "../../shared/KnobRow.h"
-#include "../../shared/WaveformDisplay.h"
+#include "shared/learning/LearnerEditorBase.h"
+#include "shared/ui/KnobRow.h"
+#include "shared/analysis/WaveformDisplay.h"
 #include "TransferCurveView.h"
-#include "../../shared/GainReductionMeter.h"
+#include "shared/analysis/GainReductionMeter.h"
 
 // Learner Comp: a real compressor with the analysis above and seven knobs
 // below. Everything else - title row, theme, language, updates, bypass,

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/TrainingModule.h"
+#include "shared/learning/TrainingModule.h"
 #include <vector>
 #include "VocalCompressionLesson.h"
 #include "BusGlueLesson.h"

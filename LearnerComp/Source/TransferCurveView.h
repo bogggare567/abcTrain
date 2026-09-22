@@ -2,8 +2,8 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "CompressorEngine.h"
-#include "../../shared/AbcTrainLookAndFeel.h"
-#include "../../shared/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
 
 // Level in against level out: the one picture that *is* a compressor.
 // Below the threshold the line runs at 45 degrees; above it, it bends

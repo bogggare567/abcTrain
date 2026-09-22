@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../shared/DifficultyRamp.h"
-#include "../../shared/PinkNoiseGenerator.h"
+#include "shared/learning/DifficultyRamp.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <juce_dsp/juce_dsp.h>
 #include <juce_events/juce_events.h>
 #include <vector>

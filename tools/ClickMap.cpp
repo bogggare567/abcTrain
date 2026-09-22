@@ -22,8 +22,8 @@
 
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
-#include "../shared/AbcTrainTheme.h"
-#include "../shared/i18n/LocalisationManager.h"
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/i18n/LocalisationManager.h"
 
 #include <iostream>
 #include <vector>
@@ -271,7 +271,7 @@ namespace
 
 int main (int argc, char* argv[])
 {
-    // Always the design size, whatever the virtual display is (shared/WindowFit.h).
+    // Always the design size, whatever the virtual display is (shared/ui/WindowFit.h).
     setenv ("ABC_DESIGN_SIZE", "1", 1);
 
     juce::ScopedJuceInitialiser_GUI juceInitialiser;

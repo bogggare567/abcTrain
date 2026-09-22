@@ -133,7 +133,7 @@ public:
         }
 
         // Note on what this does NOT test: SpectrumAnalyzerComponent
-        // (shared/SpectrumAnalyzer.h) is a juce::Component with a
+        // (shared/analysis/SpectrumAnalyzer.h) is a juce::Component with a
         // juce::Timer, so constructing one here would need a running JUCE
         // message loop - this console test binary deliberately doesn't run
         // one (see docs/testing-strategy.md's "no Component in the console

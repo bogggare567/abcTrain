@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "SpectrumAnalyser.h"
-#include "../../shared/WaveformDisplay.h"
+#include "shared/analysis/WaveformDisplay.h"
 
 LearnerEQProcessor::LearnerEQProcessor()
     : AudioProcessor (BusesProperties()
@@ -230,7 +230,7 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     // Practice audio replaces the host's input before anything else
     // touches it, so every meter, curve and knob downstream behaves
     // exactly as it would on a real track. Off unless someone asked for
-    // it; see shared/PracticeAudioSource.h.
+    // it; see shared/learning/PracticeAudioSource.h.
     practiceSource.fillBlock (buffer);
 
 

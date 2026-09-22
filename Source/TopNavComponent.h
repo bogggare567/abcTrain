@@ -2,9 +2,9 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 
-#include "../shared/AbcTrainTheme.h"
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/AppIcons.h"
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AppIcons.h"
 
 #include <array>
 #include <functional>

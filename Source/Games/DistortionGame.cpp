@@ -1,5 +1,5 @@
 #include "DistortionGame.h"
-#include "../../shared/PinkNoiseGenerator.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 
 const std::array<DistortionGame::TypeInfo, DistortionGame::numTypes> DistortionGame::types {{

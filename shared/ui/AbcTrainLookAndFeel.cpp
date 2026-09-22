@@ -1,0 +1,1310 @@
+#include "shared/ui/AbcTrainLookAndFeel.h"
+
+#include "shared/ui/AbcTrainFonts.h"
+#include <cmath>
+
+namespace
+{
+    // Process-wide, like the palette and the wallpaper, and for the same
+    // reason: two editors open at once must agree.
+    float sharedTextScale = 1.0f;
+}
+
+namespace
+{
+    using namespace AbcTrainTheme;
+
+    // Shadow helper: every elevated surface in the UI casts its shadow
+    // through here, so the tint/strength difference between dark mode
+    // (tight and near-black) and light mode (wide, soft, cool grey) is
+    // applied once rather than at a dozen call sites.
+    void dropShadowForPath (juce::Graphics& g, const juce::Path& path, float alpha, int radius,
+                            juce::Point<int> offset)
+    {
+        const auto& theme = current();
+        juce::DropShadow shadow (theme.shadow.withAlpha (alpha * theme.shadowStrength),
+                                  radius, offset);
+        shadow.drawForPath (g, path);
+    }
+
+    // Layered fake blur: N progressively wider, fainter strokes of the same
+    // path. Cheaper than a real convolution and, for a thin bright arc on a
+    // dark ground, visually indistinguishable from one.
+    void glowPath (juce::Graphics& g, const juce::Path& path, juce::Colour colour,
+                   float baseThickness, float intensity)
+    {
+        if (intensity <= 0.001f)
+            return;
+
+        constexpr int layers = 3;
+        for (int i = layers; i >= 1; --i)
+        {
+            const auto spread = 2.5f * (float) i;
+            const auto alpha = 0.16f * intensity / (float) i;
+            g.setColour (colour.withAlpha (alpha));
+            g.strokePath (path, juce::PathStrokeType (baseThickness + spread,
+                                                       juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
+        }
+    }
+}
+
+AbcTrainLookAndFeel::AbcTrainLookAndFeel()
+{
+    refreshFromTheme();
+}
+
+void AbcTrainLookAndFeel::refreshFromTheme (juce::Colour accentOverride)
+{
+    const auto& t = current();
+    const auto accent = accentOverride.isTransparent() ? t.accent : accentOverride;
+    primaryFill = accent;
+
+    // LookAndFeel_V4::initialiseColours() wires each of these nine slots
+    // into the specific component colourIds every JUCE widget actually
+    // reads (Slider::rotarySliderFillColourId and TextButton::buttonOnColourId
+    // both come from highlightedFill, Slider::thumbColourId from
+    // defaultFill, etc.) - setting the scheme is what makes the accent
+    // colours apply uniformly everywhere, instead of needing a setColour()
+    // call on every individual slider in every editor.
+    setColourScheme (juce::LookAndFeel_V4::ColourScheme (
+        t.windowBackground, t.widgetBackground, t.panelBackground,
+        t.outline, t.text, accent,
+        t.text, t.accentWarm, t.text));
+
+    setColour (juce::ResizableWindow::backgroundColourId, t.windowBackground);
+    setColour (juce::TextEditor::backgroundColourId, t.widgetBackground);
+    setColour (juce::TextEditor::outlineColourId, t.outline);
+    setColour (juce::Label::textColourId, t.text);
+    setColour (juce::ComboBox::backgroundColourId, t.widgetBackground);
+    setColour (juce::ComboBox::outlineColourId, t.outline);
+    setColour (juce::ComboBox::textColourId, t.text);
+    setColour (juce::ComboBox::arrowColourId, t.textDim);
+    setColour (juce::PopupMenu::backgroundColourId, t.panelBackground);
+    setColour (juce::PopupMenu::textColourId, t.text);
+    setColour (juce::PopupMenu::highlightedBackgroundColourId, accent.withAlpha (0.25f));
+    setColour (juce::PopupMenu::highlightedTextColourId, t.textBright);
+    setColour (juce::TextButton::buttonColourId, t.widgetBackground);
+    setColour (juce::TextButton::textColourOffId, t.text);
+    setColour (juce::TextButton::textColourOnId, t.textBright);
+    setColour (juce::ToggleButton::textColourId, t.text);
+    setColour (juce::ToggleButton::tickColourId, t.accentWarm);
+    setColour (juce::HyperlinkButton::textColourId, accent);
+
+    // The rotary value arc, explicitly.
+    //
+    // Found by rendering the editors (tools/EditorSnapshots): every knob in
+    // all three Learner plugins drew its arc in amber, including LearnerEQ,
+    // whose whole identity is blue. LookAndFeel_V4 maps
+    // Slider::rotarySliderFillColourId from the scheme's *highlightedFill*
+    // slot, which this class fills with accentWarm - the "you are touching
+    // this" colour - not with the accent. So the family colour reached the
+    // spectrum, the waveform, the icon and the backdrop, and stopped
+    // exactly at the controls. Setting the id directly is narrower than
+    // moving accent into highlightedFill, which would also have restyled
+    // every TextButton's on-state across all four plugins.
+    setColour (juce::Slider::rotarySliderFillColourId, accent);
+    setColour (juce::Slider::rotarySliderOutlineColourId, t.outline);
+    setColour (juce::Slider::thumbColourId, accent);
+    setColour (juce::Slider::trackColourId, accent.withAlpha (0.55f));
+
+    // The value readout under every rotary knob. JUCE's default draws it
+    // as a bordered, filled text field, which puts eighteen little boxes
+    // across a Learner editor and makes the numbers read as inputs rather
+    // than as part of the knob. Transparent well and border; the number
+    // itself gets the bright text colour, because in a plugin whose job is
+    // teaching, the *value* is the thing you are supposed to be learning
+    // to associate with a sound.
+    setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
+    setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    setColour (juce::Slider::textBoxTextColourId, t.textBright);
+    setColour (juce::Slider::textBoxHighlightColourId, accent.withAlpha (0.35f));
+}
+
+// ---------------------------------------------------------------- fonts
+
+juce::Label* AbcTrainLookAndFeel::createSliderTextBox (juce::Slider& slider)
+{
+    auto* label = juce::LookAndFeel_V4::createSliderTextBox (slider);
+    label->setFont (monoFont().withHeight (13.0f));
+    label->setJustificationType (juce::Justification::centred);
+    return label;
+}
+
+void AbcTrainLookAndFeel::setTextScale (float newScale) noexcept
+{
+    sharedTextScale = juce::jlimit (0.8f, 1.4f, newScale);
+}
+
+
+// The interface typeface.
+//
+// Everything here used to ask JUCE for the best face the *machine* had,
+// which meant the same window was SF Pro on one desk, Segoe on another
+// and DejaVu on a third - three products wearing one design. The faces
+// now travel with the binary (see shared/ui/AbcTrainFonts.h): Barlow at
+// three widths for the Latin, a Cyrillic companion pinned out of Roboto
+// at the same three widths, every one of them subset to the single script
+// it is there for.
+//
+// The three widths are a real part of the design, not a flourish. A
+// heading is condensed, a meta line is semi-condensed and body copy is
+// neither - which is how a dense screen keeps a hierarchy without needing
+// four sizes and three greys to say the same thing.
+static juce::String chosenTypefaceOverride;
+
+void AbcTrainLookAndFeel::setTypefaceName (const juce::String& name)
+{
+    chosenTypefaceOverride = name;
+}
+
+juce::String AbcTrainLookAndFeel::getTypefaceName()
+{
+    return chosenTypefaceOverride;
+}
+
+juce::StringArray AbcTrainLookAndFeel::availableTypefaceNames()
+{
+    static const juce::StringArray all = []
+    {
+        // "System" is still offered, and still means the machine's own
+        // face - somebody who cannot read a condensed grotesque should be
+        // able to leave it behind without leaving the app.
+        juce::StringArray names { "Barlow", "System" };
+        names.addArray (juce::Font::findAllTypefaceNames());
+        names.removeDuplicates (true);
+        return names;
+    }();
+
+    return all;
+}
+
+// Whether the embedded faces are in play at all. False when somebody has
+// picked a specific system font in Settings, in which case every role
+// below collapses onto that one family - a chosen font is a chosen font,
+// and silently keeping the headings in Barlow would ignore the choice.
+static bool usingEmbeddedFonts()
+{
+    if (chosenTypefaceOverride.isNotEmpty()
+        && chosenTypefaceOverride != "System"
+        && chosenTypefaceOverride != "Barlow")
+        return false;
+
+    return AbcTrainFonts::areEmbeddedFontsAvailable();
+}
+
+static juce::String interfaceTypefaceName()
+{
+    if (chosenTypefaceOverride.isNotEmpty()
+        && chosenTypefaceOverride != "System"
+        && chosenTypefaceOverride != "Barlow")
+        return chosenTypefaceOverride;
+
+    if (AbcTrainFonts::areEmbeddedFontsAvailable())
+        return AbcTrainFonts::Family::body;
+
+    // findAllTypefaceNames() enumerates the whole system font book, which
+    // is slow enough to matter in a paint callback - so it happens once.
+    static const juce::String chosen = []
+    {
+        const juce::StringArray preferred
+        {
+           #if JUCE_MAC
+            "SF Pro Text", "SF Pro Display", ".AppleSystemUIFont", "Helvetica Neue", "Avenir Next",
+           #elif JUCE_WINDOWS
+            "Segoe UI Variable Text", "Segoe UI",
+           #else
+            "Inter", "Ubuntu", "Noto Sans", "Cantarell", "DejaVu Sans",
+           #endif
+        };
+
+        const auto available = juce::Font::findAllTypefaceNames();
+
+        for (const auto& name : preferred)
+            if (available.contains (name))
+                return name;
+
+        return juce::Font::getDefaultSansSerifFontName();
+    }();
+
+    return chosen;
+}
+
+// One fallback for every role when the embedded faces are not in use: the
+// chosen family at the requested height, bold or not.
+static juce::Font systemFallback (float height, bool bold)
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(), height,
+                                           bold ? juce::Font::bold : juce::Font::plain));
+}
+
+float AbcTrainLookAndFeel::getTextScale() noexcept
+{
+    return sharedTextScale;
+}
+
+juce::Font AbcTrainLookAndFeel::displayFont()
+{
+    // The wordmark and the welcome headline. Condensed and bold: at this
+    // size a normal-width face has to be tracked in tighter to stop
+    // reading as body text scaled up, and a condensed one is already
+    // there.
+    const auto h = displayFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::condensed (h, "Bold")
+                                : systemFallback (h, true);
+}
+
+juce::Font AbcTrainLookAndFeel::headingFont()
+{
+    const auto h = headingFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::condensed (h, "SemiBold")
+                                : systemFallback (h, true);
+}
+
+juce::Font AbcTrainLookAndFeel::bodyFont()
+{
+    const auto h = bodyFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::body (h, "Regular")
+                                : systemFallback (h, false);
+}
+
+juce::Font AbcTrainLookAndFeel::labelFont()
+{
+    // Meta lines - "58% accuracy, 26 rounds". Semi-condensed, because
+    // these sit under something and must not compete with it for width.
+    const auto h = labelFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Regular")
+                                : systemFallback (h, false);
+}
+
+juce::Font AbcTrainLookAndFeel::microFont()
+{
+    // The tracked small caps. Medium rather than Regular: letter-spacing
+    // thins a line optically, and at this size Regular disappears.
+    const auto h = microFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Medium")
+                                : systemFallback (h, false);
+}
+
+juce::Font AbcTrainLookAndFeel::titleFont()
+{
+    const auto h = titleFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::condensed (h, "SemiBold")
+                                : systemFallback (h, true);
+}
+
+juce::Font AbcTrainLookAndFeel::monoFont()
+{
+    // Monospaced for every numeric readout: peak meters, dB values and
+    // scores all change continuously, and a proportional font makes them
+    // jitter horizontally as digits change width. This is the closest JUCE
+    // gets to tabular figures without shipping a licensed typeface.
+    return juce::Font (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(),
+                                           monoFontHeight * sharedTextScale, juce::Font::plain));
+}
+
+juce::Font AbcTrainLookAndFeel::captionFont()
+{
+    const auto h = captionFontHeight * sharedTextScale;
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Regular")
+                                : systemFallback (h, false);
+}
+
+juce::Font AbcTrainLookAndFeel::getLabelFont (juce::Label& label)
+{
+    // Honour a font the label was actually given.
+    //
+    // This returned bodyFont() unconditionally, which is not "a default" -
+    // JUCE's drawLabel asks the LookAndFeel for the font and uses whatever
+    // comes back, so returning one colour of font here *discarded* every
+    // explicit setFont in the product. There are 87 of them across four
+    // plugins, every one from this same type ladder, and all 87 were being
+    // thrown away: the training screen's exercise title asked for the
+    // title size and drew at body size, and so did everything else.
+    //
+    // A label whose font is not one of ours has never been styled, and
+    // that is the case bodyFont() is for - it stops an unstyled label
+    // falling back to JUCE's default sans, which was the original point.
+    const auto own = label.getFont();
+    const auto name = own.getTypefaceName();
+
+    if (name == AbcTrainFonts::Family::body
+        || name == AbcTrainFonts::Family::semiCondensed
+        || name == AbcTrainFonts::Family::condensed
+        || name == interfaceTypefaceName()
+        || name == juce::Font::getDefaultMonospacedFontName())
+        return own;
+
+    return bodyFont();
+}
+
+juce::Font AbcTrainLookAndFeel::getTextButtonFont (juce::TextButton&, int)
+{
+    return bodyFont();
+}
+
+juce::Font AbcTrainLookAndFeel::getComboBoxFont (juce::ComboBox&)
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+}
+
+juce::Font AbcTrainLookAndFeel::getPopupMenuFont()
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+}
+
+juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
+{
+    return titleFont();
+}
+
+juce::Font AbcTrainLookAndFeel::getAlertWindowMessageFont()
+{
+    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
+                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+}
+
+// -------------------------------------------------------------- buttons
+
+namespace
+{
+    constexpr const char* primaryButtonProperty = "abcTrainPrimary";
+}
+
+// Whether a button's background colour is a *fill* or a wash.
+//
+// A wash is what an unselected chip uses: the surface colour at a low
+// alpha, which the blueprint grammar draws as an outline with nothing in
+// it. A fill is something a caller deliberately coloured - a selected
+// mode, a chosen preset - and those are the ones that get a solid block.
+bool AbcTrainLookAndFeel::buttonIsFilled (juce::Colour background)
+{
+    if (background.getFloatAlpha() < 0.5f)
+        return false;
+
+    const auto& t = current();
+    const auto flat = background.withAlpha (1.0f);
+
+    // Either it is a colour (an accent) or it is clearly lighter or darker
+    // than the surface it sits on. Matching the surface is not a fill.
+    return flat.getSaturation() > 0.18f
+            || std::abs (flat.getPerceivedBrightness()
+                          - t.panelBackground.getPerceivedBrightness()) > 0.10f;
+}
+
+// Which of the two label colours reads on a given background. Not "the
+// page colour if filled": a dark fill needs the bright label, and only
+// contrast knows which is which.
+juce::Colour AbcTrainLookAndFeel::labelColourOn (juce::Colour background)
+{
+    const auto& t = current();
+
+    if (! buttonIsFilled (background))
+        return t.text;
+
+    const auto flat = t.panelBackground.overlaidWith (background);
+    const auto onDark  = t.textBright;
+    const auto onLight = t.windowBackground;
+
+    const auto b = flat.getPerceivedBrightness();
+
+    return std::abs (b - onLight.getPerceivedBrightness())
+             > std::abs (b - onDark.getPerceivedBrightness()) ? onLight : onDark;
+}
+
+void AbcTrainLookAndFeel::makePrimary (juce::Button& button, bool shouldBePrimary)
+{
+    button.getProperties().set (primaryButtonProperty, shouldBePrimary);
+    button.repaint();
+}
+
+bool AbcTrainLookAndFeel::isPrimary (const juce::Button& button)
+{
+    return (bool) button.getProperties().getWithDefault (primaryButtonProperty, false);
+}
+
+void AbcTrainLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button,
+                                                 const juce::Colour& backgroundColour,
+                                                 bool shouldDrawButtonAsHighlighted,
+                                                 bool shouldDrawButtonAsDown)
+{
+    const auto& t = current();
+
+    if (isPrimary (button))
+    {
+        // Flat, square and unshaded. Everything else on screen is a drawn
+        // outline, so a filled rectangle is already the loudest thing
+        // available - adding a gradient, a bevel and a shadow on top would
+        // be shouting through a megaphone.
+        const auto hoverP = Ease::out (stateRegistry.hoverAmount (button, shouldDrawButtonAsHighlighted));
+        const auto pressP = Ease::out (stateRegistry.pressAmount (button, shouldDrawButtonAsDown));
+        const auto area = button.getLocalBounds().toFloat();
+
+        // The fill is this editor's accent - the family colour in a Learner
+        // plugin, the product blue in the trainer. It used to be the
+        // palette's accent outright, so every chosen preset in Learner Verb
+        // was blue on a green plugin. Not buttonOnColourId: JUCE maps that
+        // from the scheme's warm slot, and the trainer's toggles use it.
+        const auto fill = primaryFill;
+        g.setColour (fill.brighter (0.10f * hoverP).darker (0.12f * pressP));
+        g.fillRect (area);
+
+        // The marks in the *label* colour, not the fill's: on a solid
+        // block they are a cut-out rather than an outline.
+        drawRegistrationMarks (g, area, t.windowBackground.withAlpha (0.5f));
+        return;
+    }
+
+    // Eased hover/press, not JUCE's raw booleans - this is what makes the
+    // lift and settle feel weighted. See WidgetStateRegistry.h.
+    const auto hover = Ease::out (stateRegistry.hoverAmount (button, shouldDrawButtonAsHighlighted));
+    const auto press = Ease::out (stateRegistry.pressAmount (button, shouldDrawButtonAsDown));
+
+    // The button visually sinks by up to 1px while held, and its shadow
+    // collapses underneath it: the two together read as the surface being
+    // pushed toward the panel rather than just changing colour.
+    const auto sink = press * 1.0f;
+    const auto bounds = button.getLocalBounds().toFloat().reduced (1.0f).translated (0.0f, sink);
+
+    // `backgroundColour` already folds in TextButton::buttonColourId (or
+    // buttonOnColourId when toggled on) - starting from it rather than a
+    // hardcoded fill is what lets EarTrainer's per-choice colours (set via
+    // setColour() at answer time) still show through, instead of every
+    // button looking identical regardless of what a caller asked for.
+    //
+    // What changed with the blueprint grammar is the *default*: a button
+    // nobody has coloured is now a hairline frame with nothing in it,
+    // not a raised gradient slab. The slab was the single loudest thing
+    // on a screen otherwise made of drawn outlines, and a row of them
+    // read as a toolbar from an operating system nobody uses any more.
+    // A button somebody *has* coloured - a selected mode, an answered
+    // choice - still fills, and now that filling is rare it means
+    // something again.
+    const auto isFilled = buttonIsFilled (backgroundColour);
+
+    if (isFilled)
+    {
+        const auto fill = backgroundColour.brighter (0.10f * hover).darker (0.12f * press);
+        g.setColour (fill);
+        g.fillRect (bounds);
+    }
+    else
+    {
+        // Hover tints from the accent rather than lightening the surface:
+        // a frame that fills grey on hover looks like it is loading.
+        if (hover > 0.01f || press > 0.01f)
+        {
+            g.setColour (t.accent.withAlpha (0.08f * hover + 0.06f * press));
+            g.fillRect (bounds);
+        }
+
+        g.setColour (t.outline.interpolatedWith (t.accent, 0.45f * hover));
+        g.drawRect (bounds, 1.0f);
+    }
+}
+
+void AbcTrainLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button,
+                                             bool shouldDrawButtonAsHighlighted,
+                                             bool shouldDrawButtonAsDown)
+{
+    const auto& t = current();
+    const auto hover = Ease::out (stateRegistry.hoverAmount (button, shouldDrawButtonAsHighlighted));
+    juce::ignoreUnused (shouldDrawButtonAsDown);
+
+    // A sliding pill switch rather than JUCE's stock tickbox: this is the
+    // Bypass control on all three Learner plugins, where "is it on right
+    // now" needs to read at a glance from across a room.
+    const auto bounds = button.getLocalBounds().toFloat();
+    const auto switchHeight = juce::jmin (18.0f, bounds.getHeight());
+    const auto switchWidth = switchHeight * 1.85f;
+    const auto switchBounds = juce::Rectangle<float> (switchWidth, switchHeight)
+                                   .withY (bounds.getCentreY() - switchHeight * 0.5f)
+                                   .withX (bounds.getX());
+
+    const auto on = button.getToggleState();
+    const auto trackColour = on ? t.accentWarm.withAlpha (0.85f)
+                                : t.widgetBackground.darker (0.15f);
+
+    juce::Path track;
+    track.addRoundedRectangle (switchBounds, switchHeight * 0.5f);
+    dropShadowForPath (g, track, 0.22f, 4, { 0, 1 });
+
+    g.setColour (trackColour);
+    g.fillRoundedRectangle (switchBounds, switchHeight * 0.5f);
+    g.setColour (t.outline.withAlpha (0.8f));
+    g.drawRoundedRectangle (switchBounds, switchHeight * 0.5f, 1.0f);
+
+    const auto knobDiameter = switchHeight - 4.0f;
+    const auto travel = switchBounds.getWidth() - knobDiameter - 4.0f;
+    const auto knobX = switchBounds.getX() + 2.0f + (on ? travel : 0.0f);
+    const auto knobBounds = juce::Rectangle<float> (knobX, switchBounds.getY() + 2.0f,
+                                                     knobDiameter, knobDiameter);
+
+    juce::Path knob;
+    knob.addEllipse (knobBounds);
+    dropShadowForPath (g, knob, 0.35f + 0.15f * hover, 4, { 0, 1 });
+
+    juce::ColourGradient knobGradient (t.textBright, knobBounds.getX(), knobBounds.getY(),
+                                        t.textBright.darker (0.18f), knobBounds.getX(), knobBounds.getBottom(), false);
+    g.setGradientFill (knobGradient);
+    g.fillEllipse (knobBounds);
+
+    const auto textArea = bounds.withTrimmedLeft (switchWidth + (float) Spacing::small);
+    g.setColour (button.findColour (juce::ToggleButton::textColourId)
+                       .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
+    g.setFont (juce::Font (juce::FontOptions (bodyFontHeight)));
+    g.drawText (button.getButtonText(), textArea, juce::Justification::centredLeft, true);
+}
+
+// -------------------------------------------------------------- sliders
+
+void AbcTrainLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height,
+                                             float sliderPosProportional, float rotaryStartAngle,
+                                             float rotaryEndAngle, juce::Slider& slider)
+{
+    const auto& t = current();
+    const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (4.0f);
+    const auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
+    const auto centre = bounds.getCentre();
+    // The drawn position lags the real one, so a value that arrives on its
+    // own - a lesson step, a preset, a check revealing its answer - is a
+    // knob you watch *travel* rather than a number that teleported. While
+    // the pointer is on it the position snaps: lag under your own hand is
+    // not weight, it is latency.
+    const auto drawnPosition = stateRegistry.trackValue (slider, 0, sliderPosProportional,
+                                                          Duration::transition,
+                                                          slider.isMouseButtonDown());
+    const auto angle = rotaryStartAngle + drawnPosition * (rotaryEndAngle - rotaryStartAngle);
+
+    const auto touch = Ease::out (stateRegistry.hoverAmount (slider, slider.isMouseOverOrDragging()));
+
+    // The knob swells very slightly under the cursor - about 3% - and its
+    // value arc thickens. Both are below the threshold of being noticed as
+    // motion, and above the threshold of the control feeling alive.
+    const auto scale = 1.0f + 0.03f * touch;
+    const auto ringRadius = radius * scale;
+    const auto trackThickness = 2.5f + 0.9f * touch;
+
+    const auto fillColour = slider.findColour (juce::Slider::rotarySliderFillColourId);
+
+    juce::Path track;
+    track.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f,
+                         rotaryStartAngle, rotaryEndAngle, true);
+    g.setColour (t.outline);
+    g.strokePath (track, juce::PathStrokeType (trackThickness, juce::PathStrokeType::curved,
+                                                juce::PathStrokeType::rounded));
+
+    juce::Path valueArc;
+    valueArc.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f,
+                            rotaryStartAngle, angle, true);
+
+    glowPath (g, valueArc, fillColour, trackThickness, touch);
+
+    // The value arc is a gradient across the knob rather than one flat
+    // colour - it picks up the warm accent toward the top of its travel,
+    // so "how far up is this" is readable from colour as well as angle.
+    juce::ColourGradient arcGradient (fillColour.darker (0.25f), bounds.getX(), bounds.getBottom(),
+                                       fillColour.brighter (0.15f), bounds.getRight(), bounds.getY(), false);
+    g.setGradientFill (arcGradient);
+    g.strokePath (valueArc, juce::PathStrokeType (trackThickness, juce::PathStrokeType::curved,
+                                                   juce::PathStrokeType::rounded));
+
+    // Knob cap: a gradient disc lit from the top-left, over its own
+    // shadow, so it reads as a domed physical cap rather than a flat disc.
+    const auto capDiameter = radius * 1.28f * scale;
+    const auto capBounds = juce::Rectangle<float> (capDiameter, capDiameter).withCentre (centre);
+
+    juce::Path capPath;
+    capPath.addEllipse (capBounds);
+    dropShadowForPath (g, capPath, 0.34f + 0.12f * touch, 5 + (int) (3.0f * touch), { 0, 2 });
+
+    juce::ColourGradient capGradient (t.widgetBackground.brighter (0.20f),
+                                       capBounds.getX() + capBounds.getWidth() * 0.25f, capBounds.getY(),
+                                       t.widgetBackground.darker (0.22f),
+                                       capBounds.getCentreX(), capBounds.getBottom(), false);
+    g.setGradientFill (capGradient);
+    g.fillEllipse (capBounds);
+
+    g.setColour (t.outline.withAlpha (0.7f));
+    g.drawEllipse (capBounds, 1.0f);
+
+    // Pointer stops short of the cap edge instead of starting at dead
+    // centre - a full-radius spoke looks like a clock hand, a short
+    // indicator at the rim looks like a control surface.
+    juce::Path pointer;
+    const auto capRadius = capDiameter * 0.5f;
+    pointer.startNewSubPath (centre.getPointOnCircumference (capRadius * 0.45f, angle));
+    pointer.lineTo (centre.getPointOnCircumference (capRadius * 0.88f, angle));
+    g.setColour (t.textBright.withAlpha (0.9f));
+    g.strokePath (pointer, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved,
+                                                  juce::PathStrokeType::rounded));
+}
+
+void AbcTrainLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height,
+                                             float sliderPos, float minSliderPos, float maxSliderPos,
+                                             juce::Slider::SliderStyle style, juce::Slider& slider)
+{
+    juce::ignoreUnused (minSliderPos, maxSliderPos);
+
+    const auto& t = current();
+    const auto touch = Ease::out (stateRegistry.hoverAmount (slider, slider.isMouseOverOrDragging()));
+    const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat();
+    const auto isHorizontal = (style == juce::Slider::LinearHorizontal
+                               || style == juce::Slider::LinearBar);
+
+    const auto trackThickness = 5.0f + 1.5f * touch;
+    const auto fillColour = slider.findColour (juce::Slider::thumbColourId);
+
+    juce::Rectangle<float> track;
+    if (isHorizontal)
+        track = juce::Rectangle<float> (bounds.getX(), bounds.getCentreY() - trackThickness * 0.5f,
+                                         bounds.getWidth(), trackThickness);
+    else
+        track = juce::Rectangle<float> (bounds.getCentreX() - trackThickness * 0.5f, bounds.getY(),
+                                         trackThickness, bounds.getHeight());
+
+    // Recessed track: dark at the top edge, lighter at the bottom, i.e.
+    // the opposite gradient direction from a raised button. That inversion
+    // is what makes a groove read as cut into the surface.
+    juce::ColourGradient trackGradient (t.displayBackground.darker (0.2f), track.getX(), track.getY(),
+                                         t.widgetBackground.brighter (0.05f), track.getX(), track.getBottom(), false);
+    g.setGradientFill (trackGradient);
+    g.fillRoundedRectangle (track, trackThickness * 0.5f);
+
+    auto filled = track;
+    if (isHorizontal)
+        filled = filled.withRight (sliderPos);
+    else
+        filled = filled.withTop (sliderPos);
+
+    juce::ColourGradient fillGradient (fillColour.darker (0.2f), filled.getX(), filled.getBottom(),
+                                        fillColour.brighter (0.12f), filled.getRight(), filled.getY(), false);
+    g.setGradientFill (fillGradient);
+    g.fillRoundedRectangle (filled, trackThickness * 0.5f);
+
+    // A cap, not a dot.
+    //
+    // It was a circle of radius 6 sitting on a 5px track - barely larger
+    // than the groove it rides in, which is a dot marking a position
+    // rather than a handle you take hold of. Every hardware fader and
+    // every plugin that imitates one has a cap that is clearly wider
+    // across the travel than the track is thick, and clearly longer
+    // across the other axis: that shape is what says "grab here", and it
+    // is also what your finger or cursor actually has to hit.
+    const auto capThickness = 13.0f + 2.0f * touch;   // across the travel
+    const auto capLength = 22.0f + 3.0f * touch;      // across the track
+    const auto thumbCentre = isHorizontal ? juce::Point<float> (sliderPos, track.getCentreY())
+                                          : juce::Point<float> (track.getCentreX(), sliderPos);
+
+    const auto thumbBounds = (isHorizontal
+                                  ? juce::Rectangle<float> (capThickness, capLength)
+                                  : juce::Rectangle<float> (capLength, capThickness))
+                                 .withCentre (thumbCentre);
+
+    const auto capRadius = 3.5f;
+
+    if (touch > 0.001f)
+    {
+        g.setColour (fillColour.withAlpha (0.20f * touch));
+        g.fillRoundedRectangle (thumbBounds.expanded (4.0f), capRadius + 3.0f);
+    }
+
+    juce::Path thumbPath;
+    thumbPath.addRoundedRectangle (thumbBounds, capRadius);
+    dropShadowForPath (g, thumbPath, 0.38f, 6, { 0, 2 });
+
+    juce::ColourGradient thumbGradient (t.textBright, thumbBounds.getX(), thumbBounds.getY(),
+                                         t.textBright.darker (0.26f), thumbBounds.getX(), thumbBounds.getBottom(), false);
+    g.setGradientFill (thumbGradient);
+    g.fillRoundedRectangle (thumbBounds, capRadius);
+
+    // One line across the cap, where a fader's grip line goes. It is also
+    // the only thing that tells you which way the cap is oriented.
+    g.setColour (t.displayBackground.withAlpha (0.35f));
+
+    if (isHorizontal)
+        g.fillRect (thumbBounds.getCentreX() - 0.5f, thumbBounds.getY() + 5.0f, 1.0f, thumbBounds.getHeight() - 10.0f);
+    else
+        g.fillRect (thumbBounds.getX() + 5.0f, thumbBounds.getCentreY() - 0.5f, thumbBounds.getWidth() - 10.0f, 1.0f);
+}
+
+// ----------------------------------------------------------- combo/menu
+
+void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& button,
+                                           bool shouldDrawButtonAsHighlighted,
+                                           bool shouldDrawButtonAsDown)
+{
+    if (! isPrimary (button))
+    {
+        // Tracked capitals for every button in the product, not just the
+        // primary one: it is one of the two things (with the square
+        // corners) that makes a control read as part of an instrument
+        // rather than as a web form field. JUCE has no letter-spacing on
+        // drawText, so this cannot go through the base class.
+        const auto on = button.getToggleState();
+
+        // A filled button gets whichever label colour actually shows up on
+        // it - decided by contrast against the fill, not by asking whether
+        // the button "is" a special one.
+        //
+        // The first version tested identity (is this colour the panel
+        // colour?), and a caller passing the panel colour at 25% alpha
+        // slipped through as "filled" - so the preset chips in Learner
+        // Comp drew a near-black label on a near-black chip and vanished.
+        // Contrast cannot be fooled that way.
+        const auto background = button.findColour (on ? juce::TextButton::buttonOnColourId
+                                                      : juce::TextButton::buttonColourId);
+        const auto colour = labelColourOn (background)
+                                .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f);
+
+        juce::ignoreUnused (shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
+
+        drawTrackedText (g, toCaps (button.getButtonText()),
+                         button.getLocalBounds().toFloat().reduced (6.0f, 0.0f),
+                         labelFont(), colour, 1.4f, juce::Justification::centred);
+        return;
+    }
+
+    // Tracked capitals in the page colour. Drawn here rather than left to
+    // the base class because JUCE has no letter-spacing on drawText, and
+    // untracked capitals in a solid block read as a warning sign.
+    drawTrackedText (g, toCaps (button.getButtonText()),
+                     button.getLocalBounds().toFloat(),
+                     headingFont(), labelColourOn (primaryFill), 1.9f,
+                     juce::Justification::centred);
+}
+
+void AbcTrainLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool isButtonDown,
+                                         int buttonX, int buttonY, int buttonW, int buttonH,
+                                         juce::ComboBox& box)
+{
+    juce::ignoreUnused (isButtonDown, buttonX, buttonY, buttonW, buttonH);
+
+    const auto& t = current();
+    const auto hover = Ease::out (stateRegistry.hoverAmount (box, box.isMouseOver()));
+    const auto bounds = juce::Rectangle<int> (0, 0, width, height).toFloat().reduced (1.0f);
+
+    juce::Path shape;
+    shape.addRoundedRectangle (bounds, Radius::button);
+    dropShadowForPath (g, shape, 0.20f + 0.14f * hover, 5 + (int) (3.0f * hover), { 0, 2 });
+
+    const auto fill = t.widgetBackground.brighter (0.10f * hover);
+    juce::ColourGradient gradient (fill.brighter (0.06f), bounds.getX(), bounds.getY(),
+                                    fill.darker (0.05f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (gradient);
+    g.fillRoundedRectangle (bounds, Radius::button);
+
+    g.setColour (t.outline.brighter (0.25f * hover));
+    g.drawRoundedRectangle (bounds, Radius::button, 1.0f);
+
+    // Chevron rather than JUCE's filled triangle: lighter visual weight,
+    // and it matches the line-art vocabulary of shared/ui/AppIcons.
+    const auto arrowArea = juce::Rectangle<float> (bounds.getRight() - 22.0f, bounds.getY(),
+                                                    16.0f, bounds.getHeight());
+    const auto cx = arrowArea.getCentreX();
+    const auto cy = arrowArea.getCentreY();
+
+    juce::Path chevron;
+    chevron.startNewSubPath (cx - 4.0f, cy - 2.0f);
+    chevron.lineTo (cx, cy + 2.5f);
+    chevron.lineTo (cx + 4.0f, cy - 2.0f);
+    g.setColour (t.textDim.brighter (0.4f * hover));
+    g.strokePath (chevron, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved,
+                                                  juce::PathStrokeType::rounded));
+}
+
+void AbcTrainLookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width, int height)
+{
+    const auto& t = current();
+    const auto bounds = juce::Rectangle<float> (0.0f, 0.0f, (float) width, (float) height).reduced (1.0f);
+
+    g.fillAll (juce::Colours::transparentBlack);
+
+    juce::Path shape;
+    shape.addRoundedRectangle (bounds, Radius::panel);
+    dropShadowForPath (g, shape, 0.5f, 14, { 0, 5 });
+
+    g.setColour (t.panelBackground);
+    g.fillRoundedRectangle (bounds, Radius::panel);
+    overlayTexture (g, bounds, 0.7f);
+
+    g.setColour (t.outline);
+    g.drawRoundedRectangle (bounds, Radius::panel, 1.0f);
+}
+
+// ------------------------------------------------------ shared painters
+
+void AbcTrainLookAndFeel::paintPanelBackground (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                                 juce::Colour tint)
+{
+    const auto& t = current();
+
+    // A player-supplied image wins over everything below: if someone has
+    // gone to the trouble of choosing a background, the app's own gradient
+    // is not what they want to look at. Drawn to fill and then damped by a
+    // scrim, because a photograph at full strength under 12px labels is
+    // unreadable no matter how nice the photograph is.
+    if (const auto& custom = customBackground(); custom.isValid())
+    {
+        g.drawImage (custom, bounds, juce::RectanglePlacement::fillDestination);
+
+        g.setColour (t.windowBackground.withAlpha (customBackgroundScrim()));
+        g.fillRect (bounds);
+
+        overlayTexture (g, bounds, 0.5f);
+        return;
+    }
+
+    // Each exercise's own room.
+    //
+    // The two modes need very different amounts, and matching them was a
+    // mistake worth recording: 26% of amber mixed into a warm off-white
+    // turns the whole window tan - it reads as a stain rather than as a
+    // room - while the same 26% of the same colour against a near-black is
+    // barely a tilt. A light page has far less headroom before a tint
+    // becomes the subject.
+    // Cut hard from 0.32. At a third of the family colour the whole page
+    // went blue behind a blue exercise, which was legible as "each
+    // training has its own room" only if you already knew that was the
+    // intention - otherwise it reads as a wash over a design, and it is
+    // exactly what made the window look washed beside the mockup. A tenth
+    // is still a room; it is just no longer painted.
+    const auto tintStrength = t.mode == Mode::light ? 0.05f : 0.11f;
+    const auto base = tint.isTransparent() ? t.windowBackground
+                                           : t.windowBackground.interpolatedWith (tint.withAlpha (1.0f), tintStrength);
+
+    // A gentle radial gradient centred above the title row, so the top of
+    // the window feels lit and the corners fall away.
+    const auto centre = juce::Point<float> (bounds.getCentreX(), bounds.getY() + bounds.getHeight() * 0.15f);
+    const auto radius = juce::jmax (bounds.getWidth(), bounds.getHeight()) * 0.9f;
+
+    const auto lift = t.mode == Mode::light ? 0.5f : 0.06f;
+    juce::ColourGradient gradient (base.brighter (lift), centre.x, centre.y,
+                                    base.darker (t.mode == Mode::light ? 0.05f : 0.06f),
+                                    centre.x, centre.y + radius, true);
+    g.setGradientFill (gradient);
+    g.fillRect (bounds);
+
+    overlayTexture (g, bounds);
+}
+
+namespace
+{
+    // Process-wide, like the palette itself and for the same reason: two
+    // editors open at once must not disagree about the wallpaper. Message
+    // thread only.
+    juce::Image sharedCustomBackground;
+    float sharedCustomScrim = 0.55f;
+}
+
+const juce::Image& AbcTrainLookAndFeel::customBackground()
+{
+    return sharedCustomBackground;
+}
+
+float AbcTrainLookAndFeel::customBackgroundScrim()
+{
+    return sharedCustomScrim;
+}
+
+void AbcTrainLookAndFeel::setCustomBackground (juce::Image image, float scrim)
+{
+    sharedCustomBackground = std::move (image);
+    sharedCustomScrim = juce::jlimit (0.0f, 0.95f, scrim);
+}
+
+void AbcTrainLookAndFeel::paintSectionPanel (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                              const juce::String& caption)
+{
+    const auto& t = current();
+
+    // One implementation of "a raised card", used here and by every other
+    // panel in the four plugins. Two near-identical hand-rolled versions of
+    // this is how the sections stopped matching each other.
+    paintRaisedCard (g, bounds);
+
+    if (caption.isNotEmpty())
+    {
+        // Small, dim, wide-tracked, uppercase: a section label should be
+        // findable when looked for and invisible when not.
+        const auto captionArea = bounds.reduced ((float) Spacing::medium, 0.0f)
+                                        .withHeight (16.0f)
+                                        .withY (bounds.getY() + (float) Spacing::small);
+        drawTrackedText (g, caption.toUpperCase(), captionArea, captionFont(),
+                         t.textDim.withAlpha (0.75f), 1.2f, juce::Justification::centredLeft);
+
+        const auto lineY = captionArea.getBottom() + 3.0f;
+        g.setColour (t.divider);
+        g.drawLine (bounds.getX() + (float) Spacing::medium, lineY,
+                    bounds.getRight() - (float) Spacing::medium, lineY, 1.0f);
+    }
+}
+
+void AbcTrainLookAndFeel::paintRaisedCard (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                            float elevation)
+{
+    const auto& t = current();
+
+    juce::Path shape;
+    shape.addRoundedRectangle (bounds, AbcTrainTheme::Radius::panel);
+
+    // The shadow scales with elevation and stays *under* the shape, never
+    // around it: a shadow on all four sides reads as a glow, and a glow
+    // says "selected", not "raised".
+    dropShadowForPath (g, shape, 0.34f * t.shadowStrength * elevation,
+                        (int) (14.0f * elevation), { 0, (int) (3.0f * elevation) });
+
+    // Lit from above. Two stops rather than a flat fill, and the difference
+    // is small enough that it reads as light rather than as a gradient.
+    juce::ColourGradient face (t.panelBackground.brighter (0.045f * elevation),
+                                bounds.getCentreX(), bounds.getY(),
+                                t.panelBackground.darker (0.03f * elevation),
+                                bounds.getCentreX(), bounds.getBottom(), false);
+    g.setGradientFill (face);
+    g.fillPath (shape);
+
+    // A one-pixel highlight along the top edge only. This is the cheapest
+    // convincing depth cue there is and the one most often left out.
+    g.setColour (t.textBright.withAlpha (0.06f * elevation));
+    g.drawLine (bounds.getX() + AbcTrainTheme::Radius::panel, bounds.getY() + 0.5f,
+                 bounds.getRight() - AbcTrainTheme::Radius::panel, bounds.getY() + 0.5f, 1.0f);
+
+    g.setColour (t.outline.withAlpha (0.9f));
+    g.strokePath (shape, juce::PathStrokeType (1.0f));
+}
+
+void AbcTrainLookAndFeel::paintRecessedWell (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                              float radius)
+{
+    const auto& t = current();
+
+    // Dark at the top, lighter at the bottom - the exact inverse of the
+    // card above, which is what makes one read as cut in and the other as
+    // sitting on top.
+    //
+    // How *much* darker has to differ by mode. On the dark page an 18%
+    // step is a subtle shading; on the light page the same step is a grey
+    // slab, and the whole analysis area read as a wash. On paper the depth
+    // comes almost entirely from the inner shadow along the lip, which is
+    // how it works on real paper too.
+    const auto light = t.mode == AbcTrainTheme::Mode::light;
+    const auto topStep = light ? 0.05f : 0.18f;
+    const auto bottomStep = light ? 0.02f : 0.04f;
+
+    juce::ColourGradient inside (t.displayBackground.darker (topStep),
+                                  bounds.getCentreX(), bounds.getY(),
+                                  t.displayBackground.brighter (bottomStep),
+                                  bounds.getCentreX(), bounds.getBottom(), false);
+    g.setGradientFill (inside);
+    g.fillRoundedRectangle (bounds, radius);
+
+    // An inner shadow along the top lip only, drawn as a clipped stroke so
+    // it follows the corner radius instead of stopping at the corners.
+    {
+        juce::Graphics::ScopedSaveState clipped (g);
+
+        juce::Path shape;
+        shape.addRoundedRectangle (bounds, radius);
+        g.reduceClipRegion (shape);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            g.setColour (t.shadow.withAlpha ((light ? 0.16f : 0.10f)
+                                              * t.shadowStrength * (float) (3 - i) / 3.0f));
+            g.drawLine (bounds.getX(), bounds.getY() + 0.5f + (float) i,
+                         bounds.getRight(), bounds.getY() + 0.5f + (float) i, 1.0f);
+        }
+    }
+
+    g.setColour (t.outline.withAlpha (0.7f));
+    g.drawRoundedRectangle (bounds, radius, 1.0f);
+}
+
+void AbcTrainLookAndFeel::paintSectionHeading (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                                const juce::String& caption)
+{
+    if (caption.isEmpty())
+        return;
+
+    const auto& t = current();
+
+    const auto captionArea = bounds.withHeight (14.0f).withTrimmedLeft (2.0f);
+    drawTrackedText (g, caption.toUpperCase(), captionArea, captionFont(),
+                     t.textDim.withAlpha (0.7f), 1.2f, juce::Justification::centredLeft);
+
+    // The rule starts past the caption rather than under it, so the
+    // heading reads as sitting *on* the line rather than being boxed by
+    // it.
+    const auto captionWidth = trackedTextWidth (caption.toUpperCase(), captionFont(), 1.2f);
+    const auto lineY = captionArea.getCentreY();
+    const auto lineStart = captionArea.getX() + captionWidth + 10.0f;
+
+    if (lineStart < bounds.getRight())
+    {
+        g.setColour (t.divider.withAlpha (0.7f));
+        g.drawLine (lineStart, lineY, bounds.getRight(), lineY, 1.0f);
+    }
+}
+
+void AbcTrainLookAndFeel::paintDisplayWell (juce::Graphics& g, juce::Rectangle<float> bounds)
+{
+    const auto& t = current();
+
+    g.setColour (t.displayBackground);
+    g.fillRoundedRectangle (bounds, Radius::well);
+
+    // Inner shadow along the top edge, faked with a short gradient strip:
+    // the cue that says "recessed" rather than "raised".
+    juce::ColourGradient inner (t.shadow.withAlpha (0.35f * t.shadowStrength), bounds.getX(), bounds.getY(),
+                                 juce::Colours::transparentBlack, bounds.getX(), bounds.getY() + 10.0f, false);
+    g.setGradientFill (inner);
+    g.fillRoundedRectangle (bounds, Radius::well);
+
+    // A hairline, not a frame.
+    //
+    // At 0.75 this was a drawn box around every display in the product,
+    // and a box around everything is what made the interface read as a
+    // grid of cells rather than as a place. The recess above already says
+    // "this is inset"; the outline only has to keep the shape from
+    // dissolving into the panel, and 0.28 does that. Compare any current
+    // reference - Pro-Q's analyser has no border at all, and its grid sits
+    // at a few per cent, because everything that is not the signal is
+    // supposed to disappear.
+    g.setColour (t.outline.withAlpha (0.28f));
+    g.drawRoundedRectangle (bounds, Radius::well, 1.0f);
+}
+
+const juce::Image& AbcTrainLookAndFeel::noiseTexture()
+{
+    // Built once, tiled forever. 128x128 is large enough that the tiling
+    // never reads as a repeat at these sizes, small enough to be trivial.
+    static const juce::Image texture = []
+    {
+        constexpr int size = 128;
+        juce::Image image (juce::Image::ARGB, size, size, true);
+        juce::Random random (0x9e3779b9);   // fixed seed: identical grain every run
+
+        juce::Image::BitmapData data (image, juce::Image::BitmapData::writeOnly);
+        for (int y = 0; y < size; ++y)
+        {
+            for (int x = 0; x < size; ++x)
+            {
+                // Signed noise around mid-grey so the overlay both darkens
+                // and lightens; a purely additive grain would slowly wash
+                // the whole surface lighter.
+                const auto value = (juce::uint8) random.nextInt (256);
+                data.setPixelColour (x, y, juce::Colour (value, value, value, (juce::uint8) 255));
+            }
+        }
+        return image;
+    }();
+
+    return texture;
+}
+
+void AbcTrainLookAndFeel::overlayTexture (juce::Graphics& g, juce::Rectangle<float> bounds, float strength)
+{
+    const auto& t = current();
+    const auto alpha = 0.022f * strength * t.textureStrength;
+
+    if (alpha <= 0.001f)
+        return;
+
+    juce::Graphics::ScopedSaveState saved (g);
+    g.reduceClipRegion (bounds.toNearestInt());
+    g.setTiledImageFill (noiseTexture(), 0, 0, alpha);
+    g.fillRect (bounds);
+}
+
+float AbcTrainLookAndFeel::trackedTextWidth (const juce::String& text, const juce::Font& font, float trackingPx)
+{
+    if (text.isEmpty())
+        return 0.0f;
+
+    juce::GlyphArrangement arrangement;
+    arrangement.addLineOfText (font, text, 0.0f, 0.0f);
+    const auto glyphs = arrangement.getNumGlyphs();
+
+    // JUCE 8 moved string measurement off Font onto GlyphArrangement.
+    return juce::GlyphArrangement::getStringWidth (font, text)
+               + trackingPx * (float) juce::jmax (0, glyphs - 1);
+}
+
+juce::String AbcTrainLookAndFeel::toCaps (const juce::String& text)
+{
+    juce::String out;
+    out.preallocateBytes ((size_t) text.getNumBytesAsUTF8() + 8);
+
+    for (auto c : text)
+    {
+        const auto u = (juce::juce_wchar) c;
+
+        if (u >= 'a' && u <= 'z')
+            out << (juce::juce_wchar) (u - 32);
+        else if (u >= 0x00E0 && u <= 0x00FE && u != 0x00F7)      // Latin-1: à-þ, minus ÷
+            out << (juce::juce_wchar) (u - 32);
+        else if (u == 0x00FF)                                     // ÿ -> Ÿ, which is not adjacent
+            out << (juce::juce_wchar) 0x0178;
+        else if (u >= 0x0100 && u <= 0x017F)
+        {
+            // Latin Extended-A is laid out as upper/lower pairs, with
+            // three runs where the parity flips. Getting the parity wrong
+            // here would turn Polish "ł" into the letter above it rather
+            // than into "Ł", so the runs are spelled out.
+            if (u <= 0x0137 || (u >= 0x014A && u <= 0x0177))
+                out << (juce::juce_wchar) ((u % 2 == 1) ? u - 1 : u);
+            else if (u >= 0x0139 && u <= 0x0148)
+                out << (juce::juce_wchar) ((u % 2 == 0) ? u - 1 : u);
+            else if (u >= 0x0179 && u <= 0x017E)
+                out << (juce::juce_wchar) ((u % 2 == 0) ? u - 1 : u);
+            else
+                out << c;
+        }
+        else if (u >= 0x0430 && u <= 0x044F)                       // а-я
+            out << (juce::juce_wchar) (u - 32);
+        else if (u >= 0x0450 && u <= 0x045F)                       // ё and the rest of the extras
+            out << (juce::juce_wchar) (u - 80);
+        else if (u >= 0x0460 && u <= 0x052F)                       // Cyrillic supplement, in pairs
+            out << (juce::juce_wchar) ((u % 2 == 1) ? u - 1 : u);
+        else
+            out << c;
+    }
+
+    return out;
+}
+
+void AbcTrainLookAndFeel::drawRegistrationMarks (juce::Graphics& g, juce::Rectangle<float> frame,
+                                                  juce::Colour colour, float inset, float arm,
+                                                  float thickness)
+{
+    if (frame.getWidth() < inset * 4.0f || frame.getHeight() < inset * 4.0f)
+        return;
+
+    g.setColour (colour);
+
+    const float xs[] { frame.getX() + inset, frame.getRight()  - inset };
+    const float ys[] { frame.getY() + inset, frame.getBottom() - inset };
+
+    for (auto x : xs)
+        for (auto y : ys)
+        {
+            g.fillRect (x - arm, y - thickness * 0.5f, arm * 2.0f, thickness);
+            g.fillRect (x - thickness * 0.5f, y - arm, thickness, arm * 2.0f);
+        }
+}
+
+void AbcTrainLookAndFeel::drawSegmentedBar (juce::Graphics& g, juce::Rectangle<float> track,
+                                             int segments, float progress,
+                                             juce::Colour done, juce::Colour remaining,
+                                             float gap)
+{
+    segments = juce::jmax (1, segments);
+    progress = juce::jlimit (0.0f, 1.0f, progress);
+
+    const auto width = (track.getWidth() - gap * (float) (segments - 1)) / (float) segments;
+
+    if (width < 1.0f)
+    {
+        // Too narrow to be segments at all. One fill is more honest here
+        // than a row of slivers a pixel wide, which reads as noise rather
+        // than as a count.
+        g.setColour (remaining);
+        g.fillRect (track);
+        g.setColour (done);
+        g.fillRect (track.withWidth (track.getWidth() * progress));
+        return;
+    }
+
+    // Rounding up, so any progress at all lights the first segment: a bar
+    // that still reads as empty after a correct answer is a bar reporting
+    // the wrong thing.
+    const auto lit = progress <= 0.0f ? 0
+                                      : (int) std::ceil (progress * (float) segments);
+
+    for (int i = 0; i < segments; ++i)
+    {
+        g.setColour (i < lit ? done : remaining);
+        g.fillRect (track.withWidth (width).withX (track.getX() + (float) i * (width + gap)));
+    }
+}
+
+void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String& text,
+                                            juce::Rectangle<float> area, const juce::Font& font,
+                                            juce::Colour colour, float trackingPx,
+                                            juce::Justification justification)
+{
+    if (text.isEmpty())
+        return;
+
+    // JUCE has no tracking/letter-spacing control on Font or drawText, so
+    // the only way to set type wider is to lay the glyphs out and shift
+    // each one by hand. GlyphArrangement gives the natural positions (with
+    // the font's own kerning already applied); each glyph then gets an
+    // extra cumulative offset and is drawn through its own transform.
+    juce::GlyphArrangement arrangement;
+    arrangement.addLineOfText (font, text, 0.0f, 0.0f);
+
+    const auto numGlyphs = arrangement.getNumGlyphs();
+    const auto totalWidth = trackedTextWidth (text, font, trackingPx);
+
+    auto startX = area.getX();
+    if (justification.testFlags (juce::Justification::horizontallyCentred))
+        startX = area.getCentreX() - totalWidth * 0.5f;
+    else if (justification.testFlags (juce::Justification::right))
+        startX = area.getRight() - totalWidth;
+
+    // GlyphArrangement lays out on a baseline at y=0, so shifting by the
+    // wanted baseline puts the line where we asked for it.
+    const auto baselineY = area.getCentreY() + (font.getAscent() - font.getDescent()) * 0.5f;
+
+    g.setColour (colour);
+
+    for (int i = 0; i < numGlyphs; ++i)
+    {
+        const auto& glyph = arrangement.getGlyph (i);
+        if (glyph.isWhitespace())
+            continue;
+
+        glyph.draw (g, juce::AffineTransform::translation (startX + trackingPx * (float) i, baselineY));
+    }
+}
+
+juce::Image AbcTrainLookAndFeel::blurredSnapshot (juce::Component& sourceComponent,
+                                                   juce::Rectangle<int> sourceArea, float blurRadius)
+{
+    if (sourceArea.isEmpty())
+        return {};
+
+    // A genuine Gaussian blur, not a fake: render whatever is behind this
+    // area into an offscreen image and convolve it.
+    // juce::ImageConvolutionKernel is the one real blur primitive JUCE
+    // ships, and this is the one place in the UI where the
+    // layered-translucency trick used elsewhere wouldn't do - a tooltip
+    // needs the content behind it genuinely diffused, not tinted.
+    auto snapshot = sourceComponent.createComponentSnapshot (sourceArea, false);
+    if (! snapshot.isValid())
+        return {};
+
+    juce::ImageConvolutionKernel kernel ((int) juce::jmax (3.0f, blurRadius));
+    kernel.createGaussianBlur (blurRadius);
+    kernel.applyToImage (snapshot, snapshot, snapshot.getBounds());
+    return snapshot;
+}
+
+void AbcTrainLookAndFeel::paintBlurredBackdrop (juce::Graphics& g, juce::Component& sourceComponent,
+                                                 juce::Rectangle<int> bounds, float blurRadius,
+                                                 float cornerRadius)
+{
+    const auto snapshot = blurredSnapshot (sourceComponent, bounds, blurRadius);
+    if (! snapshot.isValid())
+        return;
+
+    juce::Path clip;
+    clip.addRoundedRectangle (bounds.toFloat(), cornerRadius);
+
+    juce::Graphics::ScopedSaveState saved (g);
+    g.reduceClipRegion (clip);
+    g.drawImageAt (snapshot, bounds.getX(), bounds.getY());
+}

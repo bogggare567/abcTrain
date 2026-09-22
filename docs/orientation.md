@@ -10,29 +10,35 @@ doc kept for its rationale.
 Four plugins share one CMake build and one `shared/` folder. **Ear
 Trainer** generates its own test signal and quizzes you on it. **Learner
 EQ / Comp / Verb** process the host's real audio and teach while you use
-them. Everything visual comes from `shared/AbcTrainTheme` and
-`shared/AbcTrainLookAndFeel`. Everything that persists goes through
+them. Everything visual comes from `shared/ui/AbcTrainTheme` and
+`shared/ui/AbcTrainLookAndFeel`. Everything that persists goes through
 `juce::PropertiesFile`.
 
 ```
-                    ┌────────────────────────────┐
-                    │        shared/             │
-                    │  theme · look&feel · icons │
-                    │  scopes · meters · i18n    │
-                    │  lessons · update checker  │
-                    └────┬──────┬──────┬─────┬───┘
-                         │      │      │     │
-              ┌──────────┘      │      │     └──────────┐
-        ┌─────▼─────┐    ┌──────▼──┐ ┌─▼───────┐ ┌──────▼────┐
-        │ EarTrainer│    │LearnerEQ│ │LearnerC.│ │ LearnerV. │
-        └─────┬─────┘    └─────────┘ └─────────┘ └───────────┘
-              │
-   ┌──────────┼──────────┬───────────────┐
-┌──▼───┐ ┌────▼────┐ ┌───▼──────┐ ┌──────▼──────┐
-│ Game │ │ Session │ │ Progress │ │ Reference   │
-│  x9  │ │ Manager │ │ Manager  │ │ AudioLibrary│
-└──────┘ └─────────┘ └──────────┘ └─────────────┘
+ EarTrainer ───────────────┐          LearnerEQ · LearnerComp · LearnerVerb
+   │                       │                          │
+   ▼                       │                          ▼
+ abc_trainer_engine        │                   shared/learning
+ (Source/Games ×9,         │                   modules · lessons · A/B ·
+  Session · Progress ·     │                   Learner editor base
+  Achievements · Hearing)  │                          │
+   │  no GUI               │          ┌───────────────┼──────────────┐
+   │                       ▼          ▼               ▼              ▼
+   │               shared/analysis   shared/audio   shared/updates
+   │               spectrum ·        library ·      version ·
+   │               waveform ·        slicer ·       update check
+   │               meters            stems
+   │                       │                               │
+   └──────────────► shared/ui ◄────────────────────────────┘
+                    theme · look&feel · fonts · widgets · window fit
+                           │
+                    shared/i18n   (12 languages, one table each)
 ```
+
+Each `shared/` folder is one CMake library that lists its sources once
+([ADR 039](decisions/039-structure-for-growth.md)). Includes are written
+from the repository root: `#include "shared/ui/AbcTrainTheme.h"`.
+Nothing in `shared/` includes a product's code.
 
 ## The four load-bearing ideas
 
@@ -65,7 +71,7 @@ tolerance unit differs per game (octaves, a ratio, dB).
 
 ### 3. Everything visual reads the theme; nothing hardcodes a colour
 
-`shared/AbcTrainTheme::current()` returns the active palette. A hex
+`shared/ui/AbcTrainTheme::current()` returns the active palette. A hex
 literal in a `paint()` is a bug — it will be wrong in one of the two
 themes.
 
@@ -92,9 +98,12 @@ person. Don't mix them.
 | Change how answering feels | `Source/ChoiceSliderComponent.cpp` |
 | Change run rules (lives, timing, hints) | `Source/SessionManager.{h,cpp}` |
 | Change what's saved about a player | `Source/ProgressManager.{h,cpp}` |
-| Change a colour, spacing, duration, easing | `shared/AbcTrainTheme.cpp` — **only** here |
-| Change how a JUCE widget is drawn | `shared/AbcTrainLookAndFeel.cpp` |
+| Change a colour, spacing, duration, easing | `shared/ui/AbcTrainTheme.cpp` — **only** here |
+| Change how a JUCE widget is drawn | `shared/ui/AbcTrainLookAndFeel.cpp` |
 | Add or fix a translation | `shared/i18n/strings/<code>.json` |
+| Add a shared widget, meter or audio helper | the matching `shared/<group>/`, and its `.cpp` into that group's library in `CMakeLists.txt` — nowhere else |
+| Add a Learner plugin | its own folder like `LearnerVerb/`, linking `abc_learning` |
+| Build something for teachers or a live seminar | [design/education-and-live.md](design/education-and-live.md) first — Teaching is files, Live is `website/` |
 | Change a Learner plugin's DSP | `Learner*/Source/*Engine.h` |
 | Change the home screen or navigation | `Source/HomeScreenComponent.{h,cpp}` |
 
@@ -111,8 +120,8 @@ person. Don't mix them.
 4. Add it to `categoryForGame()` and `tintForGame()` in
    `Source/PluginEditor.cpp` so it lands in a home-screen group with its
    own colour. Anything unrecognised falls back to "Character".
-5. Add the `.cpp` to `CMakeLists.txt` — both the `EarTrainer` target and
-   `EarTrainerTests`.
+5. Add the `.cpp` to the `abc_trainer_engine` library in `CMakeLists.txt`
+   — one list; the trainer, the tests and the editor tools all link it.
 6. i18n keys in `en.json` and `ru.json`: `game.<id>.name`,
    `.instructions`, `.benefit`. Other languages fall back to English.
 7. A test in `tests/`, following the template the other games use. A

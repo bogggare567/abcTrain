@@ -1,9 +1,9 @@
 #pragma once
 
 #include "Game.h"
-#include "../../shared/GainMatch.h"
+#include "shared/audio/GainMatch.h"
 #include <atomic>
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 
 // "Guess the delay time" exercise: a percussive noise burst through a

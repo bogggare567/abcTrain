@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "EQSetup.h"
 
 // The boost-and-sweep technique, and why the fix is wider than the search.

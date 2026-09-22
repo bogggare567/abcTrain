@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../shared/i18n/LocalisationManager.h"
+#include "shared/i18n/LocalisationManager.h"
 #include <array>
 #include <functional>
 

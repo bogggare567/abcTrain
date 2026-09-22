@@ -113,7 +113,7 @@ juce_add_binary_data(I18nData SOURCES
 
 # Embeds a handful of short, originally-synthesized (not recorded/sampled
 # from any third-party source) WAV files so EarTrainer's opt-in "Built-in
-# Samples" training category (see shared/ReferenceAudioLibrary.cpp) works
+# Samples" training category (see) works
 # out of the box, with no external folder required - same "can't rely on
 # a filesystem path relative to the plugin binary" reasoning as I18nData
 # above. See decisions/018 for why these are programmatically generated
@@ -193,6 +193,123 @@ juce_add_binary_data(BrandData
 # missing. There is no migration path for that - a rename is a rename. Done
 # now, at two stars and one tagged release, because the cost only grows.
 
+# ---------------------------------------------------------------------------
+# shared/ as libraries (ADR 039).
+#
+# Every product used to list the shared .cpp files it compiled, by hand -
+# seven copies of the same twenty-odd lines (four plugins, the tests, the
+# editor tools, RoundBench), and a file added to one list and not another
+# was a link error at best and a silently stale tool at worst. Now each
+# folder of shared/ is one INTERFACE library that lists its sources once,
+# and a product links the groups it uses. Linking a group pulls in the
+# groups it depends on.
+#
+# They are INTERFACE libraries, not static ones, on purpose: JUCE code has to
+# be compiled with each product's own configuration (plugin name, codes,
+# JucePlugin_* defines), so the sources are compiled into every consumer,
+# exactly as before - one list, same build. Link them PRIVATE: a PUBLIC link
+# would hand the sources on to the VST3/AU/Standalone wrappers as well and
+# define every symbol twice.
+#
+# Includes are written from the repository root - "shared/ui/AbcTrainTheme.h"
+# - so a file can move without its includers counting ../ segments.
+#
+#   ui        theme, look-and-feel, fonts, icons, the small widgets, window fit
+#   analysis  what the screen draws from audio: spectrum, waveform, meters
+#   audio     sound that is not a plugin's processing: the training library,
+#             the slicer, stems, generators
+#   learning  modules, lessons and the Learner editor they live in
+#   updates   version, update check, the installed-plugins list
+#   i18n      the localisation manager (string tables are I18nData)
+# ---------------------------------------------------------------------------
+set(abcShared ${CMAKE_CURRENT_SOURCE_DIR}/shared)
+
+add_library(abc_i18n INTERFACE)
+target_sources(abc_i18n INTERFACE ${abcShared}/i18n/LocalisationManager.cpp)
+target_include_directories(abc_i18n INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_library(abc_ui INTERFACE)
+target_sources(abc_ui INTERFACE
+    ${abcShared}/ui/AbcTrainTheme.cpp
+    ${abcShared}/ui/AbcTrainLookAndFeel.cpp
+    ${abcShared}/ui/AbcTrainFonts.cpp
+    ${abcShared}/ui/AppIcons.cpp
+    ${abcShared}/ui/CompactSelector.cpp
+    ${abcShared}/ui/WidgetStateRegistry.cpp
+    ${abcShared}/ui/GuideTooltip.cpp
+    ${abcShared}/ui/TourOverlay.cpp
+    ${abcShared}/ui/IdleScreensaver.cpp
+)
+target_link_libraries(abc_ui INTERFACE abc_i18n)
+
+add_library(abc_analysis INTERFACE)
+target_sources(abc_analysis INTERFACE
+    ${abcShared}/analysis/SpectrumAnalyzer.cpp
+    ${abcShared}/analysis/WaveformDisplay.cpp
+    ${abcShared}/analysis/GainReductionMeter.cpp
+    ${abcShared}/analysis/Vectorscope.cpp
+)
+target_link_libraries(abc_analysis INTERFACE abc_ui)
+
+add_library(abc_audio INTERFACE)
+target_sources(abc_audio INTERFACE
+    ${abcShared}/audio/ReferenceAudioLibrary.cpp
+    ${abcShared}/audio/AudioSliceAnalyzer.cpp
+    ${abcShared}/audio/StemSeparator.cpp
+)
+target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_library(abc_updates INTERFACE)
+target_sources(abc_updates INTERFACE
+    ${abcShared}/updates/UpdateChecker.cpp
+    ${abcShared}/updates/UpdatePrompt.cpp
+    ${abcShared}/updates/UpdateWindow.cpp
+)
+target_link_libraries(abc_updates INTERFACE abc_ui)
+
+add_library(abc_learning INTERFACE)
+target_sources(abc_learning INTERFACE
+    ${abcShared}/learning/TrainingModule.cpp
+    ${abcShared}/learning/ModuleProgress.cpp
+    ${abcShared}/learning/ModuleScreenComponent.cpp
+    ${abcShared}/learning/LearnerEditorBase.cpp
+    ${abcShared}/learning/LessonAudioBed.cpp
+    ${abcShared}/learning/PracticeSourceSelector.cpp
+)
+target_link_libraries(abc_learning INTERFACE abc_ui abc_analysis abc_audio abc_updates)
+
+# Everything, for the test binary and the editor tools, which exercise all
+# four products at once.
+add_library(abc_shared INTERFACE)
+target_link_libraries(abc_shared INTERFACE abc_ui abc_analysis abc_audio abc_updates abc_learning)
+
+# The trainer's engine (ADR 039): the nine exercises and the rules around
+# them - which round comes next, the staircase, what is saved, achievements,
+# the hearing dose. None of it draws anything, and that is the seam the
+# Teaching and Live layers will need: an exercise that can be asked and
+# graded without the trainer's window. The trainer, the tests and the
+# editor tools link it instead of listing the same fourteen files three
+# times. (RoundBench keeps its own short list: it times six games and must
+# not pull in the managers.)
+add_library(abc_trainer_engine INTERFACE)
+target_sources(abc_trainer_engine INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/GameManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/SessionManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/ProgressManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Achievements.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/HearingGuard.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/EQGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/CompressionGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/ReverbGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/PanGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/DelayGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/DistortionGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/StereoWidthGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/DBGame.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/FrequencyRangeGame.cpp
+)
+target_link_libraries(abc_trainer_engine INTERFACE abc_audio abc_i18n)
+
 juce_add_plugin(EarTrainer
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
@@ -213,21 +330,9 @@ juce_add_plugin(EarTrainer
 
 target_sources(EarTrainer
     PRIVATE
-        shared/IdleScreensaver.cpp
-        shared/TourOverlay.cpp
-        shared/UpdatePrompt.cpp
-        shared/UpdateWindow.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
         Source/ChoiceSliderComponent.cpp
-        Source/GameManager.cpp
-        Source/ProgressManager.cpp
-        Source/Achievements.cpp
-        Source/SessionManager.cpp
-        Source/HearingGuard.cpp
-        shared/ReferenceAudioLibrary.cpp
-        shared/AudioSliceAnalyzer.cpp
-        shared/StemSeparator.cpp
         Source/TrainingSoundsComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -235,26 +340,6 @@ target_sources(EarTrainer
         Source/RunResultsComponent.cpp
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
-        shared/Vectorscope.cpp
-        shared/SpectrumAnalyzer.cpp
-        shared/WaveformDisplay.cpp
-        Source/Games/EQGame.cpp
-        Source/Games/CompressionGame.cpp
-        Source/Games/ReverbGame.cpp
-        Source/Games/PanGame.cpp
-        Source/Games/DelayGame.cpp
-        Source/Games/DistortionGame.cpp
-        Source/Games/StereoWidthGame.cpp
-        Source/Games/DBGame.cpp
-        Source/Games/FrequencyRangeGame.cpp
-        shared/UpdateChecker.cpp
-        shared/AbcTrainLookAndFeel.cpp
-        shared/AbcTrainFonts.cpp
-        shared/AbcTrainTheme.cpp
-        shared/WidgetStateRegistry.cpp
-        shared/CompactSelector.cpp
-        shared/AppIcons.cpp
-        shared/i18n/LocalisationManager.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -265,6 +350,11 @@ target_compile_definitions(EarTrainer
 
 target_link_libraries(EarTrainer
     PRIVATE
+        abc_trainer_engine
+        abc_ui
+        abc_analysis
+        abc_audio
+        abc_updates
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation
@@ -298,34 +388,10 @@ juce_add_plugin(LearnerEQ
 
 target_sources(LearnerEQ
     PRIVATE
-        shared/TourOverlay.cpp
-        shared/UpdatePrompt.cpp
-        shared/UpdateWindow.cpp
-        shared/ModuleScreenComponent.cpp
-        shared/LearnerEditorBase.cpp
-        shared/TrainingModule.cpp
-        shared/LessonAudioBed.cpp
-        shared/ModuleProgress.cpp
-        shared/PracticeSourceSelector.cpp
-        shared/ReferenceAudioLibrary.cpp
-        shared/AudioSliceAnalyzer.cpp
-        shared/StemSeparator.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
         LearnerEQ/Source/PluginEntry.cpp
-        shared/SpectrumAnalyzer.cpp
-        shared/WaveformDisplay.cpp
-        shared/GainReductionMeter.cpp
-        shared/GuideTooltip.cpp
-        shared/UpdateChecker.cpp
-        shared/AbcTrainLookAndFeel.cpp
-        shared/AbcTrainFonts.cpp
-        shared/AbcTrainTheme.cpp
-        shared/WidgetStateRegistry.cpp
-        shared/CompactSelector.cpp
-        shared/AppIcons.cpp
-        shared/i18n/LocalisationManager.cpp
 )
 
 target_compile_definitions(LearnerEQ
@@ -336,6 +402,7 @@ target_compile_definitions(LearnerEQ
 
 target_link_libraries(LearnerEQ
     PRIVATE
+        abc_learning
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -367,32 +434,8 @@ juce_add_plugin(LearnerComp
 
 target_sources(LearnerComp
     PRIVATE
-        shared/TourOverlay.cpp
-        shared/UpdatePrompt.cpp
-        shared/UpdateWindow.cpp
-        shared/ModuleScreenComponent.cpp
-        shared/LearnerEditorBase.cpp
-        shared/TrainingModule.cpp
-        shared/LessonAudioBed.cpp
-        shared/ModuleProgress.cpp
-        shared/PracticeSourceSelector.cpp
-        shared/ReferenceAudioLibrary.cpp
-        shared/AudioSliceAnalyzer.cpp
-        shared/StemSeparator.cpp
         LearnerComp/Source/PluginProcessor.cpp
         LearnerComp/Source/PluginEditor.cpp
-        shared/WaveformDisplay.cpp
-        shared/GainReductionMeter.cpp
-        shared/GuideTooltip.cpp
-        shared/SpectrumAnalyzer.cpp
-        shared/UpdateChecker.cpp
-        shared/AbcTrainLookAndFeel.cpp
-        shared/AbcTrainFonts.cpp
-        shared/AbcTrainTheme.cpp
-        shared/WidgetStateRegistry.cpp
-        shared/CompactSelector.cpp
-        shared/AppIcons.cpp
-        shared/i18n/LocalisationManager.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
 
@@ -404,6 +447,7 @@ target_compile_definitions(LearnerComp
 
 target_link_libraries(LearnerComp
     PRIVATE
+        abc_learning
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -435,32 +479,8 @@ juce_add_plugin(LearnerVerb
 
 target_sources(LearnerVerb
     PRIVATE
-        shared/TourOverlay.cpp
-        shared/UpdatePrompt.cpp
-        shared/UpdateWindow.cpp
-        shared/ModuleScreenComponent.cpp
-        shared/LearnerEditorBase.cpp
-        shared/TrainingModule.cpp
-        shared/LessonAudioBed.cpp
-        shared/ModuleProgress.cpp
-        shared/PracticeSourceSelector.cpp
-        shared/ReferenceAudioLibrary.cpp
-        shared/AudioSliceAnalyzer.cpp
-        shared/StemSeparator.cpp
         LearnerVerb/Source/PluginProcessor.cpp
         LearnerVerb/Source/PluginEditor.cpp
-        shared/WaveformDisplay.cpp
-        shared/GainReductionMeter.cpp
-        shared/GuideTooltip.cpp
-        shared/SpectrumAnalyzer.cpp
-        shared/UpdateChecker.cpp
-        shared/AbcTrainLookAndFeel.cpp
-        shared/AbcTrainFonts.cpp
-        shared/AbcTrainTheme.cpp
-        shared/WidgetStateRegistry.cpp
-        shared/CompactSelector.cpp
-        shared/AppIcons.cpp
-        shared/i18n/LocalisationManager.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
 
@@ -472,6 +492,7 @@ target_compile_definitions(LearnerVerb
 
 target_link_libraries(LearnerVerb
     PRIVATE
+        abc_learning
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -497,15 +518,6 @@ juce_add_console_app(EarTrainerTests
 
 target_sources(EarTrainerTests
     PRIVATE
-        shared/IdleScreensaver.cpp
-        shared/TourOverlay.cpp
-        shared/UpdatePrompt.cpp
-        shared/UpdateWindow.cpp
-        shared/ModuleScreenComponent.cpp
-        shared/LearnerEditorBase.cpp
-        shared/TrainingModule.cpp
-        shared/LessonAudioBed.cpp
-        shared/ModuleProgress.cpp
         tests/TestRunner.cpp
         tests/EQGameTest.cpp
         tests/CompressionGameTest.cpp
@@ -542,43 +554,13 @@ target_sources(EarTrainerTests
         tests/SkillBucketTest.cpp
         tests/HearingGuardTest.cpp
         tests/LearnerRedesignTest.cpp
-        Source/GameManager.cpp
-        Source/ProgressManager.cpp
-        Source/Achievements.cpp
-        Source/SessionManager.cpp
-        Source/HearingGuard.cpp
-        shared/ReferenceAudioLibrary.cpp
-        shared/AudioSliceAnalyzer.cpp
-        shared/StemSeparator.cpp
-        Source/Games/EQGame.cpp
-        Source/Games/CompressionGame.cpp
-        Source/Games/ReverbGame.cpp
-        Source/Games/PanGame.cpp
-        Source/Games/DelayGame.cpp
-        Source/Games/DistortionGame.cpp
-        Source/Games/StereoWidthGame.cpp
-        Source/Games/DBGame.cpp
-        Source/Games/FrequencyRangeGame.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
         LearnerComp/Source/PluginProcessor.cpp
         LearnerComp/Source/PluginEditor.cpp
         LearnerVerb/Source/PluginProcessor.cpp
-        shared/PracticeSourceSelector.cpp
         LearnerVerb/Source/PluginEditor.cpp
-        shared/WaveformDisplay.cpp
-        shared/GainReductionMeter.cpp
-        shared/GuideTooltip.cpp
-        shared/SpectrumAnalyzer.cpp
-        shared/UpdateChecker.cpp
-        shared/AbcTrainLookAndFeel.cpp
-        shared/AbcTrainFonts.cpp
-        shared/AbcTrainTheme.cpp
-        shared/WidgetStateRegistry.cpp
-        shared/CompactSelector.cpp
-        shared/AppIcons.cpp
-        shared/i18n/LocalisationManager.cpp
 )
 
 # JUCE_USE_CURL is deliberately left at its default (0) here: this test
@@ -594,6 +576,8 @@ target_compile_definitions(EarTrainerTests
 
 target_link_libraries(EarTrainerTests
     PRIVATE
+        abc_trainer_engine
+        abc_shared
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -606,10 +590,10 @@ target_link_libraries(EarTrainerTests
         juce::juce_recommended_warning_flags
 )
 
-# shared/Version.h #includes the generated shared/VersionInfo.h (see the
+# shared/updates/Version.h #includes the generated shared/VersionInfo.h (see the
 # configure_file() call above) via a path that only resolves through this
 # include directory, not a relative one - every target that pulls in
-# shared/Version.h (all four plugin editors, hence all four plugins plus
+# shared/updates/Version.h (all four plugin editors, hence all four plugins plus
 # this test binary) needs it.
 
 # ---------------------------------------------------------------------------
@@ -622,25 +606,8 @@ target_link_libraries(EarTrainerTests
 # fifty files. One list, because two would drift the first time a
 # screen was added to only one of them.
 set(abcTrainEditorToolSources
-        shared/IdleScreensaver.cpp
-        shared/TourOverlay.cpp
-        shared/UpdatePrompt.cpp
-        shared/UpdateWindow.cpp
-        shared/ModuleScreenComponent.cpp
-        shared/LearnerEditorBase.cpp
-        shared/TrainingModule.cpp
-        shared/LessonAudioBed.cpp
-        shared/ModuleProgress.cpp
         Source/PluginProcessor.cpp
         Source/PluginEditor.cpp
-        Source/GameManager.cpp
-        Source/ProgressManager.cpp
-        Source/Achievements.cpp
-        Source/SessionManager.cpp
-        Source/HearingGuard.cpp
-        shared/ReferenceAudioLibrary.cpp
-        shared/AudioSliceAnalyzer.cpp
-        shared/StemSeparator.cpp
         Source/ChoiceSliderComponent.cpp
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
@@ -649,16 +616,6 @@ set(abcTrainEditorToolSources
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/TrainingSoundsComponent.cpp
-        Source/Games/EQGame.cpp
-        Source/Games/CompressionGame.cpp
-        Source/Games/ReverbGame.cpp
-        Source/Games/PanGame.cpp
-        Source/Games/DelayGame.cpp
-        Source/Games/DistortionGame.cpp
-        Source/Games/StereoWidthGame.cpp
-        Source/Games/DBGame.cpp
-        Source/Games/FrequencyRangeGame.cpp
-        shared/Vectorscope.cpp
         LearnerEQ/Source/PluginProcessor.cpp
         LearnerEQ/Source/PluginEditor.cpp
         LearnerEQ/Source/SpectrumAnalyser.cpp
@@ -666,19 +623,6 @@ set(abcTrainEditorToolSources
         LearnerComp/Source/PluginEditor.cpp
         LearnerVerb/Source/PluginProcessor.cpp
         LearnerVerb/Source/PluginEditor.cpp
-        shared/WaveformDisplay.cpp
-        shared/GainReductionMeter.cpp
-        shared/GuideTooltip.cpp
-        shared/SpectrumAnalyzer.cpp
-        shared/UpdateChecker.cpp
-        shared/AbcTrainLookAndFeel.cpp
-        shared/AbcTrainFonts.cpp
-        shared/AbcTrainTheme.cpp
-        shared/WidgetStateRegistry.cpp
-        shared/PracticeSourceSelector.cpp
-        shared/CompactSelector.cpp
-        shared/AppIcons.cpp
-        shared/i18n/LocalisationManager.cpp
 )
 
 juce_add_console_app(EditorSnapshots
@@ -701,6 +645,8 @@ target_compile_definitions(EditorSnapshots
 
 target_link_libraries(EditorSnapshots
     PRIVATE
+        abc_trainer_engine
+        abc_shared
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation
@@ -741,6 +687,8 @@ target_compile_definitions(LearnerStrings
 
 target_link_libraries(LearnerStrings
     PRIVATE
+        abc_trainer_engine
+        abc_shared
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation
@@ -773,6 +721,8 @@ target_compile_definitions(ClickMap
 
 target_link_libraries(ClickMap
     PRIVATE
+        abc_trainer_engine
+        abc_shared
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation
@@ -797,10 +747,9 @@ target_sources(RoundBench PRIVATE
     Source/Games/ReverbGame.cpp Source/Games/DelayGame.cpp
     Source/Games/EQGame.cpp Source/Games/CompressionGame.cpp
     Source/Games/DistortionGame.cpp Source/Games/FrequencyRangeGame.cpp
-    shared/ReferenceAudioLibrary.cpp shared/AudioSliceAnalyzer.cpp
-    shared/StemSeparator.cpp)
+)
 target_compile_definitions(RoundBench PRIVATE JUCE_STANDALONE_APPLICATION=1)
-target_link_libraries(RoundBench PRIVATE juce::juce_dsp juce::juce_audio_formats
+target_link_libraries(RoundBench PRIVATE abc_audio juce::juce_dsp juce::juce_audio_formats
     juce::juce_audio_basics juce::juce_core juce::juce_events
     juce::juce_data_structures SampleData
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags)

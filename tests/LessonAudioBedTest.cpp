@@ -1,5 +1,5 @@
 #include <juce_audio_basics/juce_audio_basics.h>
-#include "../shared/LessonAudioBed.h"
+#include "shared/learning/LessonAudioBed.h"
 #include "TestUtils.h"
 #include <cmath>
 

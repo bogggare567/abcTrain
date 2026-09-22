@@ -2,7 +2,7 @@
 #include "../LearnerEQ/Source/PluginProcessor.h"
 #include "../LearnerComp/Source/PluginProcessor.h"
 #include "../LearnerVerb/Source/PluginProcessor.h"
-#include "../shared/PracticeAudioSource.h"
+#include "shared/learning/PracticeAudioSource.h"
 #include <cstdlib>
 #include <new>
 

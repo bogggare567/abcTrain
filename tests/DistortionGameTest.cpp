@@ -3,7 +3,7 @@
 #include <functional>
 #include <cmath>
 #include "../Source/Games/DistortionGame.h"
-#include "../shared/PinkNoiseGenerator.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 
 class DistortionGameTest : public juce::UnitTest

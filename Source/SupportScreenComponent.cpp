@@ -1,7 +1,7 @@
 #include "SupportScreenComponent.h"
-#include "../shared/AmbientInstruments.h"
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/AbcTrainTheme.h"
+#include "shared/audio/AmbientInstruments.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
 #include <BrandBinaryData.h>
 
 namespace

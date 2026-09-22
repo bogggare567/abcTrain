@@ -1,5 +1,5 @@
 #include <juce_core/juce_core.h>
-#include "../shared/TrainingModule.h"
+#include "shared/learning/TrainingModule.h"
 
 // The grading rules for a module's check, driven directly. Everything here
 // is pure, so none of the message-loop concerns in docs/testing-strategy.md

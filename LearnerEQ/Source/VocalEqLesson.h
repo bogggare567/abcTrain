@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "EQSetup.h"
 
 // Four moves on a vocal, each band built explicitly (see EQSetup.h).

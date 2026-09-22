@@ -22,8 +22,8 @@ flowchart LR
     subgraph Editor["LearnerEQ Editor"]
         Edit["PluginEditor"]
         Sliders["4 columns of freq/gain/Q rotary sliders"]
-        Spectrum["SpectrumAnalyserComponent\n(extends shared/SpectrumAnalyzer)"]
-        Waveform["shared/WaveformDisplay"]
+        Spectrum["SpectrumAnalyserComponent\n(extends shared/analysis/SpectrumAnalyzer)"]
+        Waveform["shared/analysis/WaveformDisplay"]
         Guide["guideLabel (contextual tooltip)"]
         BypassBtn["Bypass toggle"]
         LessonBtn["Lesson button"]
@@ -87,8 +87,8 @@ flowchart LR
     subgraph Editor["LearnerComp Editor"]
         Edit["PluginEditor"]
         Knobs["7 rotary knobs"]
-        Spectrum2["SpectrumAnalyzerComponent\n(shared/SpectrumAnalyzer, no overlay)"]
-        Waveform["shared/WaveformDisplay"]
+        Spectrum2["SpectrumAnalyzerComponent\n(shared/analysis/SpectrumAnalyzer, no overlay)"]
+        Waveform["shared/analysis/WaveformDisplay"]
         Presets["4 preset buttons"]
         Guide2["guideLabel (contextual tooltip)"]
         BypassBtn2["Bypass toggle"]
@@ -145,8 +145,8 @@ flowchart LR
     subgraph Editor["LearnerVerb Editor"]
         Edit["PluginEditor"]
         TypeBox["Type ComboBox + 6 rotary knobs"]
-        Spectrum3["SpectrumAnalyzerComponent\n(shared/SpectrumAnalyzer, no overlay)"]
-        Waveform2["shared/WaveformDisplay"]
+        Spectrum3["SpectrumAnalyzerComponent\n(shared/analysis/SpectrumAnalyzer, no overlay)"]
+        Waveform2["shared/analysis/WaveformDisplay"]
         Presets2["4 preset buttons"]
         Guide3["guideLabel (contextual tooltip)"]
         BypassBtn3["Bypass toggle"]
@@ -195,7 +195,7 @@ that doesn't need the highlight feature.
 
 ## Shared code
 
-`shared/WaveformDisplay.{h,cpp}` — the scrolling peak-based dual-waveform
+`shared/analysis/WaveformDisplay.{h,cpp}` — the scrolling peak-based dual-waveform
 component — is now used by all three Learner plugins. It started as
 LearnerComp-only; once LearnerVerb needed the identical FIFO-accumulate/
 30 Hz-timer/scrolling-columns shape, it was extracted rather than copied a
@@ -203,7 +203,7 @@ second time (see [decisions/004](../decisions/004-learnerverb-scope.md)),
 and LearnerEQ picked it up later once all three plugins' visualizations
 were unified (see [decisions/006](../decisions/006-unified-visualization.md)).
 
-`shared/SpectrumAnalyzer.{h,cpp}` — the FIFO-accumulate/FFT/30 Hz-timer
+`shared/analysis/SpectrumAnalyzer.{h,cpp}` — the FIFO-accumulate/FFT/30 Hz-timer
 live spectrum, extracted from what used to be LearnerEQ's standalone
 `SpectrumAnalyserComponent` once LearnerComp and LearnerVerb both wanted a
 plain live spectrum too (see [decisions/006](../decisions/006-unified-visualization.md)).
@@ -217,7 +217,7 @@ while LearnerEQ's own already-shipped `SpectrumAnalyserComponent`/
 being renamed for cosmetic consistency — both appear side by side in
 `LearnerEQ/Source/SpectrumAnalyser.h` intentionally.
 
-`shared/MicroLesson.h` + `shared/LessonController.{h,cpp}` — the guided-
+`shared/learning/MicroLesson.h` + `shared/LessonController.{h,cpp}` — the guided-
 lesson machinery used by all three editors above, one lesson each. See
 [decisions/005](../decisions/005-microlesson-architecture.md).
 `MicroLesson` is pure step-sequence data/state with no APVTS or UI

@@ -1,7 +1,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <cmath>
 
-#include "../shared/PinkNoiseGenerator.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 
 // The three noise colours have to be genuinely different in *tilt* and
 // genuinely the same in *level*.

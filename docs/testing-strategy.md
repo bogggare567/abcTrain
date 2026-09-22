@@ -62,7 +62,7 @@ handler specifically so it's testable without constructing an editor — see
 `docs/diagrams/learner-plugin.md` for why constructing a `Component` in
 this console test binary was avoided as a matter of policy, not just for
 this one case. That policy is also why the test added for
-`shared/SpectrumAnalyzer.h`'s integration (once all three Learner plugins
+`shared/analysis/SpectrumAnalyzer.h`'s integration (once all three Learner plugins
 gained a live spectrum — see
 [decisions/006-unified-visualization.md](decisions/006-unified-visualization.md))
 doesn't construct a `SpectrumAnalyzerComponent` directly: it's a

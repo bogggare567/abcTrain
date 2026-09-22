@@ -1,5 +1,5 @@
 #include <juce_core/juce_core.h>
-#include "../shared/i18n/LocalisationManager.h"
+#include "shared/i18n/LocalisationManager.h"
 
 class LocalisationManagerTest : public juce::UnitTest
 {

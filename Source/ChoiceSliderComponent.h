@@ -195,7 +195,7 @@ private:
     // over or dragging the track, easing rather than snapping. Driven by
     // this component's own 60 Hz timer instead of an Animator, since it's a
     // continuously-retargeted state rather than a one-shot transition -
-    // the same split shared/WidgetStateRegistry makes for LookAndFeel
+    // the same split shared/ui/WidgetStateRegistry makes for LookAndFeel
     // widgets, applied to a component that draws itself.
     float touchAmount = 0.0f;
     float touchTarget = 0.0f;

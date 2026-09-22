@@ -3,11 +3,11 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "GameManager.h"
 #include "ProgressManager.h"
-#include "../shared/Vectorscope.h"
-#include "../shared/SpectrumAnalyzer.h"
-#include "../shared/WaveformDisplay.h"
-#include "../shared/AWeightedMeter.h"
-#include "../shared/PinkNoiseGenerator.h"
+#include "shared/analysis/Vectorscope.h"
+#include "shared/analysis/SpectrumAnalyzer.h"
+#include "shared/analysis/WaveformDisplay.h"
+#include "shared/analysis/AWeightedMeter.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <atomic>
 
 class EarTrainerProcessor : public juce::AudioProcessor

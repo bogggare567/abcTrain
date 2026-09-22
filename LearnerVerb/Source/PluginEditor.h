@@ -2,10 +2,10 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
-#include "../../shared/LearnerEditorBase.h"
-#include "../../shared/KnobRow.h"
-#include "../../shared/SegmentedChoice.h"
-#include "../../shared/WaveformDisplay.h"
+#include "shared/learning/LearnerEditorBase.h"
+#include "shared/ui/KnobRow.h"
+#include "shared/ui/SegmentedChoice.h"
+#include "shared/analysis/WaveformDisplay.h"
 #include "EchogramView.h"
 
 // Learner Verb: four reverb types, six knobs, and the same shell as the

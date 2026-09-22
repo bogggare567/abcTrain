@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../../shared/SpectrumAnalyzer.h"
+#include "shared/analysis/SpectrumAnalyzer.h"
 #include "EQCoefficients.h"
 #include <functional>
 #include <vector>
 
 // The EQ's working surface, not a picture of one.
 //
-// The live spectrum comes from shared/SpectrumAnalyzer (see
+// The live spectrum comes from shared/analysis/SpectrumAnalyzer (see
 // decisions/006-unified-visualization.md for why it was extracted). This
 // class adds everything that makes the display the *instrument*: the
 // combined response curve, a draggable node per active band, and the

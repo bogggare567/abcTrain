@@ -41,8 +41,8 @@ Four JUCE plugins in one repo/CMake build, all VST3/AU/Standalone:
   presets, and 7 modules + 4 walkthroughs.
 
 **Since ADR 037 all three Learner editors are one shell**
-(`shared/LearnerEditorBase`): title row with the family word, practice
-source, **A/B slots** (`shared/ABCompare.h`, saved with the host project,
+(`shared/learning/LearnerEditorBase`): title row with the family word, practice
+source, **A/B slots** (`shared/learning/ABCompare.h`, saved with the host project,
 Bypass excluded), Bypass, updates, theme and the module shelf; each plugin
 supplies only its analysis section, its controls and its modules. Modules
 are a **ten-step 3-down/1-up staircase per knob** with the accept band in
@@ -60,7 +60,7 @@ downloadable build artifact per OS on every push, and publishes a GitHub
 Release when a `vX.Y.Z` tag is pushed — see
 [docs/diagrams/ci-pipeline.md](docs/diagrams/ci-pipeline.md). All four
 editors now share one dark theme
-(`shared/AbcTrainLookAndFeel`) instead of each Learner plugin picking its
+(`shared/ui/AbcTrainLookAndFeel`) instead of each Learner plugin picking its
 own one-off accent colour — see
 [decisions/009](docs/decisions/009-look-and-feel.md).
 
@@ -121,7 +121,7 @@ game's button row, the opt-in `ReferenceAudioLibrary`/`TestSignalGenerator`
 infrastructure for training on user-supplied reference audio instead of
 pink noise, and why that infrastructure never fetches, bundles, or vets
 the legality of any audio file itself, 016 is the programmatic
-`shared/AppIcons` vector icon set for every game/plugin, a soundkorb.ru
+`shared/ui/AppIcons` vector icon set for every game/plugin, a soundkorb.ru
 site link added to all four editors, and why a full design-system/Figma
 pass from the user's UI-overhaul brief is explicitly out of scope for
 this codebase to produce on its own, 017 is folding a user-supplied
@@ -139,8 +139,8 @@ read or embedded, 020 is the optional continuous-answer mode on the
 its unit differs per game), 021 is training runs having a shape
 (Practice/Survival/Blitz, lives, auto-advance) plus the Home->Training
 screen split and why "what interests you" is a star rather than a
-first-run questionnaire, 019 is the `shared/AbcTrainTheme` design-token layer, a
-genuinely designed (not inverted) light theme, `shared/WidgetStateRegistry`
+first-run questionnaire, 019 is the `shared/ui/AbcTrainTheme` design-token layer, a
+genuinely designed (not inverted) light theme, `shared/ui/WidgetStateRegistry`
 solving the eased-hover problem ADR 018 recorded as unsolvable, tracked
 typography, gradient-filled visualisations, the `GainReductionMeter`,
 the blur-backed `GuideTooltip`, and two more bugs found only by running
@@ -167,16 +167,16 @@ remote only exists once a first page has been created in the browser,
 which is why these live in the repo and are pushed from here).
 `docs/decisions/038-fit-finish-and-the-audio-thread.md` (every window
 opens at what the display can show, down to a floor its layout works at -
-`shared/WindowFit.h`, 940×620 trainer / 820×600 plugins; what rendering
+`shared/ui/WindowFit.h`, 940×620 trainer / 820×600 plugins; what rendering
 every screen at that floor found and fixed; the ruler hint made visible and
 its button renamed "Narrow the scale"; the spectrum and waveform rebuilt to
 be smooth and to hand data across threads through lock-free FIFOs instead
-of shared plain variables; `shared/StemSeparator` and "Split into stems";
+of shared plain variables; `shared/audio/StemSeparator` and "Split into stems";
 and **the audio-thread rule** - no allocation, lock, I/O, String or GUI
 call inside processBlock - enforced by `tests/RealtimeSafetyTest`, which
 found EQCoefficients::make allocating every 32 samples).
 `docs/decisions/037-the-learner-plugins-made-honest.md` (the Learner
-plugins' claims made true: `shared/LearnerEditorBase` for all three
+plugins' claims made true: `shared/learning/LearnerEditorBase` for all three
 editors, A/B slots, the family colour on primary buttons via a
 per-instance `primaryFill`, a ten-step staircase per module with the band
 in the knob's units and a card-grid shelf, a rewritten reverb engine
@@ -187,7 +187,7 @@ languages).
 from one list in `Source/TrainerSettings.h`, and hearing protection per
 WHO / ITU-T H.870: break reminders and a tired-ear hint on time alone, and
 a weekly dose in Pa²·h once the player has measured the calibration noise;
-`shared/AWeightedMeter`, `Source/HearingGuard`, `Source/HearingNotice`).
+`shared/analysis/AWeightedMeter`, `Source/HearingGuard`, `Source/HearingNotice`).
 `docs/decisions/035-the-staircase.md` (levels as a 3-down/1-up staircase
 instead of points and a promotion test, the level shown as a threshold in
 the exercise's own units, home as a list of thresholds, 12 milestones and
@@ -223,6 +223,42 @@ unauthenticated request even on a public repo). All four `juce_add_plugin`
 targets pass `NEEDS_CURL TRUE` (needed on Linux only, for the update
 checker's HTTPS call — see the same ADR); `EarTrainerTests` deliberately
 doesn't, since it never makes the real network call.
+
+## Structure (ADR 039)
+
+`shared/` is folders by responsibility, and each folder is one CMake
+INTERFACE library that lists its sources **once**. A product links the
+groups it uses; a group links the groups it depends on. Read
+[decisions/039](docs/decisions/039-structure-for-growth.md) before moving
+anything.
+
+```
+shared/ui/        abc_ui        theme, look-and-feel, fonts, icons, widgets, window fit
+shared/analysis/  abc_analysis  spectrum, waveform, meters, vectorscope     → ui
+shared/audio/     abc_audio     training library, slicer, stems, generators → (nothing)
+shared/learning/  abc_learning  modules, lessons, Learner editor base, A/B  → ui analysis audio updates
+shared/updates/   abc_updates   version, update check, installed plugins    → ui
+shared/i18n/      abc_i18n      localisation manager (tables: I18nData)
+Source/Games + managers         abc_trainer_engine  the nine exercises and their rules, no GUI
+```
+
+- **Includes are from the repository root:** `#include "shared/ui/AbcTrainTheme.h"`,
+  from anywhere. Never count `../`.
+- **A new shared `.cpp` goes in its group's `target_sources` and nowhere
+  else.** A new exercise goes in `abc_trainer_engine`. Link libraries
+  `PRIVATE` — `PUBLIC` hands the sources to the VST3/AU/Standalone wrappers
+  and defines every symbol twice.
+- **INTERFACE, not static, on purpose:** JUCE code compiles with each
+  product's own `JucePlugin_*` configuration, so the sources are compiled
+  into each consumer, as before.
+- **Layer rule:** nothing in `shared/` includes `Source/` or `Learner*/`;
+  `abc_audio` depends on nothing; the engine draws nothing. Kept by review.
+- `shared/` means "may be used by any product", not "is used by two" —
+  Vectorscope and TourOverlay are trainer-only today and stay (the roadmap
+  puts them in the plugins).
+- **Live (the seminar layer) is not C++.** It belongs in `website/`, next
+  to the browser demo that already ports the exercises; the installed
+  product keeps no account, no server, no telemetry.
 
 ## Architecture — EarTrainer (`Source/`)
 
@@ -274,9 +310,9 @@ full rationale.
   one is; it never changes the count. Adding a button makes a round
   harder by asking you to read more and lowering the odds of a lucky
   guess, not by asking more of the ear. Both halves live in
-  `shared/PresetFamily.h` — see
+  `shared/audio/PresetFamily.h` — see
   [decisions/031](docs/decisions/031-two-alternatives-and-preset-families.md).
-- `shared/PresetFamily.h` — `drawPair (positions, level, random, distance)`
+- `shared/audio/PresetFamily.h` — `drawPair (positions, level, random, distance)`
   (each game writes down where its categories sit on one axis of
   character; the pairs are **ranked** by distance and a level sees a
   sliding window over that ranking, far end to near end — ranked rather
@@ -382,11 +418,11 @@ full rationale.
   middle of Bass, a hard one boosts the boundary with Low-mids. Filter Q
   is the second axis (0.7 → 2.4) — a broad lift is what a named range
   sounds like, a narrow one is a single tone that happens to live there.
-- `shared/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
+- `shared/audio/PinkNoiseGenerator.h` — shared pink-noise source (Paul Kellet
   economy algorithm) used by `StereoWidthGame`'s two channels directly;
   each instance owns its own `juce::Random`, which is what lets that game
   use two decorrelated instances for a real side signal.
-- `shared/TestSignalGenerator.h` — drop-in replacement for
+- `shared/audio/TestSignalGenerator.h` — drop-in replacement for
   `PinkNoiseGenerator` (identical `nextSample()` shape) used by the other
   8 games. Plays looped audio from `ReferenceAudioLibrary::getActiveBuffer()`
   when a player has selected a reference file (see below), otherwise falls
@@ -395,7 +431,7 @@ full rationale.
   instead, since a single recorded file can't provide the two
   independently-decorrelated sources its mid/side processing needs. See
   [decisions/015](docs/decisions/015-choice-slider-and-training-sounds.md).
-- `shared/ReferenceAudioLibrary.{h,cpp}` — scans a root folder (default:
+- `shared/audio/ReferenceAudioLibrary.{h,cpp}` — scans a root folder (default:
   the user's own music folder + `/ABCTrain`) for one subfolder per
   category, each holding audio files the *user* supplies; loads a
   selection (resampled/downmixed, message-thread only) and publishes it
@@ -412,13 +448,13 @@ full rationale.
   ahead of anything found on disk — a real non-noise training option with
   zero setup, and the reason the file-chooser button below exists. See
   [decisions/018](docs/decisions/018-ui-polish-and-builtin-samples.md).
-- `shared/AudioSliceAnalyzer.{h,cpp}` — cuts an imported file into
+- `shared/audio/AudioSliceAnalyzer.{h,cpp}` — cuts an imported file into
   loop-length clips and sorts each by measurable character (percussive /
   bass / mid range / bright / full mix). Pure DSP over a buffer: no
   Component, no file I/O, no message loop, so `tests/AudioSliceAnalyzerTest`
   drives it with synthesized signals whose right answer is known by
   construction. **It does not separate stems itself**; since ADR 038
-  `shared/StemSeparator` does, behind a separate "Split into stems…"
+  `shared/audio/StemSeparator` does, behind a separate "Split into stems…"
   button (`ReferenceAudioLibrary::importAndSeparateMany`): a
   harmonic/percussive median-filter split, a 180 Hz bass curve and an L/R
   similarity mask give drums / bass / centre / sides whose masks sum to one
@@ -435,7 +471,7 @@ full rationale.
   cycle), which is what actually separates a drum loop from a mix that
   contains drums. See
   [decisions/025](docs/decisions/025-audio-slicing.md).
-- `shared/TourOverlay.{h,cpp}` + `shared/IdleScreensaver.{h,cpp}` — the
+- `shared/ui/TourOverlay.{h,cpp}` + `shared/ui/IdleScreensaver.{h,cpp}` — the
   first-run walkthrough and the DVD screensaver. The tour dims the window
   and punches a hole (one `Path` with `setUsingNonZeroWinding(false)`, not
   a ring drawn on top — a ring leaves the control as dark as its
@@ -454,7 +490,7 @@ full rationale.
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail with the
   **Beginner / Pro** switch at the top and five pages (Training, Hearing,
   Appearance, Background, About), each a column of rows: what it is, one
-  dim line on what it does to you, and a `shared/SegmentedChoice` on the
+  dim line on what it does to you, and a `shared/ui/SegmentedChoice` on the
   right. Every value lives in `Source/TrainerSettings.h` (key, default,
   allowed values, beginner-visible); in Beginner the Training rows are
   shown greyed at their defaults. The user asked for these explicitly
@@ -685,11 +721,11 @@ full rationale.
   five cost 59px of height and the content gets the width back, which is
   what makes four exercise cards fit a row. The window's *design* size is
   **1180 x 880** (it opens at whatever part of that the display can show,
-  down to 940 x 620 - `shared/WindowFit.h`, ADR 038), the size the design
+  down to 940 x 620 - `shared/ui/WindowFit.h`, ADR 038), the size the design
   mockup is drawn at - see
   [decisions/033](docs/decisions/033-the-redesign-made-real.md) and the
   measured spec in [docs/design/redesign-spec.md](docs/design/redesign-spec.md),
-  an "Updates" button (`shared/UpdateChecker`, see
+  an "Updates" button (`shared/updates/UpdateChecker`, see
   [decisions/007](docs/decisions/007-update-checker.md)) that now always
   shows "Checking..." → a result → (on no response within 6s) "Couldn't
   check" (see decisions/014), and a "Training Sounds" button toggling
@@ -699,8 +735,9 @@ full rationale.
 
 Adding a new exercise: create `Source/Games/NewGame.{h,cpp}` implementing
 `Game` (including a real `setDifficulty` — there's no default),
-**append** it to `GameManager`'s constructor, add the two files to
-`CMakeLists.txt`, and add it to `categoryForGame()` in
+**append** it to `GameManager`'s constructor, add the `.cpp` to the
+`abc_trainer_engine` library in `CMakeLists.txt` (one list since ADR 039 —
+the trainer, the tests and the editor tools all link it), and add it to `categoryForGame()` in
 `Source/PluginEditor.cpp` so it lands in a home-screen group (anything
 unrecognised falls into "Character"). Append rather than insert:
 `ProgressManager`'s per-exercise stats and favourites are keyed by index,
@@ -751,11 +788,11 @@ restore with the session (`getStateInformation`/`setStateInformation`).
   + `Coefficients::getMagnitudeForFrequency`) and a translucent highlighted
   region for whichever band is being dragged, both drawn via an overridden
   `paintOverlay()`. The FFT/FIFO/30 Hz-timer spectrum itself now lives in
-  `shared/SpectrumAnalyzer.{h,cpp}`.
+  `shared/analysis/SpectrumAnalyzer.{h,cpp}`.
 - `LearnerEQ/Source/PluginEditor.{h,cpp}` — 4 columns of freq/gain/Q
   rotary sliders bound with `SliderAttachment`, a `WaveformDisplay` +
   input/output peak labels below the spectrum, a Bypass `ToggleButton`
-  (`ButtonAttachment`), and an "Updates" button (`shared/UpdateChecker`) —
+  (`ButtonAttachment`), and an "Updates" button (`shared/updates/UpdateChecker`) —
   both placed next to the Lesson button in the title row.
   `onDragStart`/`onValueChange`/`onDragEnd` on each band's freq slider
   drive the guide label text (via `FrequencyGuide::describe`) and
@@ -816,11 +853,11 @@ for why it doesn't use `juce::dsp::Compressor`.
   engine entirely and passes audio through unchanged. `applyPreset(int)`
   lives here (not just in the editor's button handler) specifically so
   it's unit-testable without constructing a `Component`.
-- `shared/WaveformDisplay.{h,cpp}` — since ADR 038: 400 columns of 256
+- `shared/analysis/WaveformDisplay.{h,cpp}` — since ADR 038: 400 columns of 256
   samples, each with peak *and* RMS (drawn as the brighter body), handed
   over through a lock-free FIFO and drained at 60 Hz; the paragraph below
   describes the first version. FIFO-accumulate/30 Hz-timer-flush
-  pattern (same shape `shared/SpectrumAnalyzer` uses for its FFT), for a
+  pattern (same shape `shared/analysis/SpectrumAnalyzer` uses for its FFT), for a
   scrolling peak-based dual waveform: gray input trace, output trace
   tinted from blue to red proportional to a generic `highlightAmount`
   (LearnerComp passes gain reduction) in that ~33 ms column. Also the
@@ -836,7 +873,7 @@ for why it doesn't use `juce::dsp::Compressor`.
   block sizes with every parameter automated, and fails on one. Filter
   coefficients on the audio thread come from
   `EQCoefficients::makeArray` (stack), never `make` (heap).
-- `shared/SpectrumAnalyzer.{h,cpp}` — since ADR 038: samples cross from the
+- `shared/analysis/SpectrumAnalyzer.{h,cpp}` — since ADR 038: samples cross from the
   audio thread in batches of 64 through a `juce::AbstractFifo`; a 4096-point
   FFT is recomputed on every 60 Hz frame (≈95% overlap), each display point
   takes the loudest bin in its band (interpolating below one bin), a +3
@@ -939,7 +976,7 @@ more than one lesson.
 See [decisions/005-microlesson-architecture.md](docs/decisions/005-microlesson-architecture.md)
 for the full rationale; summary here.
 
-- `shared/MicroLesson.h` — pure state machine, no APVTS/UI dependency:
+- `shared/learning/MicroLesson.h` — pure state machine, no APVTS/UI dependency:
   a title, a `std::vector<LessonStep>` (`explanationText` +
   `(parameterID, value)` pairs, a plain aggregate), and a step cursor
   (`start`/`nextStep`/`previousStep`). This is what `tests/MicroLessonTest.cpp`
@@ -966,7 +1003,7 @@ for the full rationale; summary here.
 See [decisions/007-update-checker.md](docs/decisions/007-update-checker.md)
 for the full rationale; summary here.
 
-- `shared/UpdateChecker.h/cpp` — `isNewerVersion(latest, current)` (dotted-
+- `shared/updates/UpdateChecker.h/cpp` — `isNewerVersion(latest, current)` (dotted-
   integer version comparison, with or without a leading `v`),
   `parseReleaseJson(json)` (pulls `tag_name`/`html_url` out of GitHub's
   "get latest release" API response), and `parseReleaseListJson(json,
@@ -988,7 +1025,7 @@ for the full rationale; summary here.
   calls the 3-argument overload or exposes a channel/auto-check setting;
   the fetching logic is real and tested, the UI to pick a channel isn't
   wired up yet.
-- `shared/Version.h`/`shared/VersionInfo.h` (the latter CMake-generated
+- `shared/updates/Version.h`/`shared/VersionInfo.h` (the latter CMake-generated
   into the build dir, never committed) — `CurrentVersion::string` is
   derived from `git describe --tags --dirty --always` at CMake configure
   time (see decisions/012), not a hand-bumped literal. Still a plain
@@ -998,12 +1035,12 @@ for the full rationale; summary here.
   `EarTrainerTests`, where `JucePlugin_*` macros aren't defined — the same
   reason `LearnerEQProcessor::getName()` returns a literal instead of
   `JucePlugin_Name` (see `docs/diagrams/ci-pipeline.md`, bug 1).
-- `shared/VersionChannel.h` — `detect(version)` turns a `"vX.Y.Z"`-shaped
+- `shared/updates/VersionChannel.h` — `detect(version)` turns a `"vX.Y.Z"`-shaped
   string into `stable`/`beta`/`dev` via `std::regex` (JUCE has no
   general-purpose regex class) — pure, CMake-independent, so
   `tests/VersionChannelTest.cpp` exercises it with hand-written example
   strings, no real tagged build needed.
-- `shared/UpdatePrompt.{h,cpp}` — what happens *after* "a newer version
+- `shared/updates/UpdatePrompt.{h,cpp}` — what happens *after* "a newer version
   exists". It used to be a dialogue whose only button opened a web page,
   which is a notification with homework: find the right file among six
   assets, download it, find it again in Finder. It now offers to fetch
@@ -1016,7 +1053,7 @@ for the full rationale; summary here.
   `UpdateChecker.h` stays free of any GUI dependency.
 - Each editor wires its own "Updates" `TextButton` directly (duplicated
   across all four editors rather than pulled into a shared UI helper, so
-  `shared/UpdateChecker.h` itself stays free of any GUI dependency — same
+  `shared/updates/UpdateChecker.h` itself stays free of any GUI dependency — same
   reasoning as the Bypass-button wiring already being duplicated across
   the three Learner editors instead of shared). A
   `juce::Component::SafePointer` guards each callback against the editor
@@ -1086,7 +1123,7 @@ See [decisions/009](docs/decisions/009-look-and-feel.md),
 [019](docs/decisions/019-design-system-and-light-theme.md) for the full
 rationale; summary here.
 
-- `shared/AbcTrainFonts.h/.cpp` + `assets/fonts/` + `tools/build_fonts.py`
+- `shared/ui/AbcTrainFonts.h/.cpp` + `assets/fonts/` + `tools/build_fonts.py`
   — the interface typeface, **in the binary**, because a plugin cannot ask
   its host's machine to have a font. Barlow at three widths carries the
   Latin. **Barlow has no Cyrillic at all**, so a companion carries that,
@@ -1113,7 +1150,7 @@ rationale; summary here.
   `buttonIsFilled` and `labelColourOn` are the rest of it, the last two
   deciding by **contrast** rather than by colour identity (see ADR 033 for
   the bug that taught that).
-- `shared/AbcTrainTheme.h/.cpp` — **the single source of every colour,
+- `shared/ui/AbcTrainTheme.h/.cpp` — **the single source of every colour,
   spacing step, corner radius, animation duration and easing curve in the
   UI**. `current()` returns the active `Palette`; `setMode()` switches
   between `dark()` and a separately-*designed* `light()` (warm off-white
@@ -1127,14 +1164,14 @@ rationale; summary here.
   persisted in the same shared "abcTrain" `PropertiesFile` as the
   language, so it's one product-wide preference; each of the four editors
   has a theme toggle in its title row.
-- `shared/WidgetStateRegistry.h/.cpp` — per-`Component` eased hover/press
+- `shared/ui/WidgetStateRegistry.h/.cpp` — per-`Component` eased hover/press
   values on a 60 Hz timer, keyed by `Component::SafePointer` (so a widget
   destroyed mid-animation nulls its entry rather than dangling; dead
   entries pruned each tick). This is what makes hover/press *interpolate*
   rather than snap — the thing ADR 018 recorded as impossible for a
   stateless `LookAndFeel`. Press uses a shorter duration than release
   deliberately: that asymmetry is what reads as mass.
-- `shared/GainReductionMeter.h/.cpp` — gradient arc filling **downward**
+- `shared/analysis/GainReductionMeter.h/.cpp` — gradient arc filling **downward**
   with gain reduction, glow intensifying as it works. Downward on
   purpose (see ADR 019): GR is the one meter where "more is lower", and
   a reused upward level meter would teach the wrong model.
@@ -1153,8 +1190,8 @@ rationale; summary here.
   sentence per preset shown in the guide card, and
   `GuideTooltip::setText`'s `autoDismissMs`. See
   [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
-- `shared/TrainingModule.{h,cpp}` + `shared/LessonAudioBed.{h,cpp}` +
-  `shared/ModuleProgress.{h,cpp}` — the Learner plugins' per-knob training
+- `shared/learning/TrainingModule.{h,cpp}` + `shared/learning/LessonAudioBed.{h,cpp}` +
+  `shared/learning/ModuleProgress.{h,cpp}` — the Learner plugins' per-knob training
   modules: a lesson that then *asks you something*. A module is one
   parameter, with demo steps (reusing `MicroLesson`), a try-it prompt, and
   a **check** — the plugin sets the knob to a value it does not show, plays
@@ -1174,7 +1211,7 @@ rationale; summary here.
   `PropertiesFile`, keyed by module **id string** rather than index —
   deliberately unlike EarTrainer's index-keyed per-exercise stats, whose
   append-only constraint nothing enforces.
-- `shared/ModuleScreenComponent.{h,cpp}` — the module panel inside Learner
+- `shared/learning/ModuleScreenComponent.{h,cpp}` — the module panel inside Learner
   Comp and Learner Verb, opened by a checklist `IconButton` that replaced
   the "Lessons" `ComboBox`. **It never covers the knobs**: it sits over
   the analysis section only and `hitTest` returns false outside the
@@ -1209,11 +1246,11 @@ rationale; summary here.
   knob's units and is exactly what the check scale draws, and the shelf is
   a card grid (four columns at the default width) with the walkthroughs as
   numbered cards under it.
-- `shared/DifficultyRamp.h` — the geometric and linear ramps, moved out of
+- `shared/learning/DifficultyRamp.h` — the geometric and linear ramps, moved out of
   `Game.h` (which now forwards to them) once modules needed the identical
   curve. An accept band narrowing differently in the two halves of the
   product would make "tier 3" and "level 10" incomparable.
-- `shared/PracticeAudioSource.h` + `shared/PracticeSourceSelector.{h,cpp}`
+- `shared/learning/PracticeAudioSource.h` + `shared/learning/PracticeSourceSelector.{h,cpp}`
   — what the three Learner plugins listen to when no host is feeding
   them. `PracticeAudioSource` is a real-time-safe looping player over
   `ReferenceAudioLibrary`'s active clip, run at the very top of each
@@ -1230,7 +1267,7 @@ rationale; summary here.
   the same ADR is why `ReferenceAudioLibrary`, `AudioSliceAnalyzer`,
   `TestSignalGenerator` and `PinkNoiseGenerator` moved out of `Source/`
   (EarTrainer's) into `shared/`.
-- `shared/CompactSelector.h/.cpp` — a one-or-two-glyph value plus a
+- `shared/ui/CompactSelector.h/.cpp` — a one-or-two-glyph value plus a
   hairline chevron, opening a `PopupMenu` on click; no well and no border
   until hovered. Replaces the language and window-size `ComboBox`es in
   EarTrainer's title row (142px of well → ~75px of indicator). Not a
@@ -1240,7 +1277,7 @@ rationale; summary here.
   are separate fields, since the menu must say "Русский" where the
   indicator has room only for "RU". See
   [decisions/022](docs/decisions/022-motion-audit-and-indicators.md).
-- `shared/GuideTooltip.h/.cpp` — the Learner plugins' contextual guide
+- `shared/ui/GuideTooltip.h/.cpp` — the Learner plugins' contextual guide
   text, now a card that eases in over the visualisation only while a
   control is dragged, over a **real** Gaussian blur
   (`juce::ImageConvolutionKernel`) of what's behind it. Snapshots its
@@ -1298,7 +1335,7 @@ rationale; summary here.
   short silently shrinks whatever is last inside, which is how the
   gain-reduction meter lost half its height twice (ADR 023, and again in
   this pass).
-- `shared/AbcTrainLookAndFeel.h/.cpp` — extends `juce::LookAndFeel_V4`.
+- `shared/ui/AbcTrainLookAndFeel.h/.cpp` — extends `juce::LookAndFeel_V4`.
   `refreshFromTheme()` reads `AbcTrainTheme::current()` into one
   `juce::LookAndFeel_V4::ColourScheme` (call it after
   `AbcTrainTheme::setMode()`, then repaint), which
@@ -1343,7 +1380,7 @@ rationale; summary here.
   replaced by `ChoiceSliderComponent` (decisions/015) — a single
   persistent component being re-labelled doesn't need a fade the way
   freshly created buttons did.
-- `shared/AppIcons.h/.cpp` — programmatic `juce::Path` line icons (no
+- `shared/ui/AppIcons.h/.cpp` — programmatic `juce::Path` line icons (no
   external asset pipeline) for the 9 EarTrainer games plus LearnerEQ/
   LearnerComp/LearnerVerb, scaled via `Path::scaleToFit()`.
   `AppIcons::iconForGameName()` maps a `Game::getName()` string to its
@@ -1361,7 +1398,7 @@ rationale; summary here.
 - `assets/icons/{eartrainer,learnereq,learnercomp,learnerverb}.png` — real
   per-plugin application icons (1024×1024, generated programmatically,
   reusing `AbcTrainLookAndFeel`'s palette and, for the three Learner
-  plugins, a rasterized version of their own `shared/AppIcons.cpp` glyph)
+  plugins, a rasterized version of their own `shared/ui/AppIcons.cpp` glyph)
   wired via `ICON_BIG <path>` in each `juce_add_plugin()` call in
   `CMakeLists.txt` — JUCE's own build tooling generates the platform icon
   format from there. Fixes a real reported bug: every Standalone app
@@ -1475,8 +1512,12 @@ could see because the game and the widget were each individually correct
 covered by copying the real per-user settings file aside first and putting
 it back after (skipping EarTrainer entirely if that copy fails, rather
 than risking a player's saved progress for a screenshot). The same tool
-produces `docs/screenshots/`, which is what the README shows - so the
-pictures there can never drift from the code. See
+produces the images in `docs/screenshots/` - so the pictures there can
+never drift from the code. **Only the images a page shows are committed**
+(the README, the wiki, the website brief - 14 files); the full gallery goes
+to `editor-snapshots/`, which is ignored, because re-committing it on every
+visual pass added 18–30 MB to the history each time (ADR 039). When a pass
+changes a screen that a page shows, copy that one file over. See
 [decisions/023](docs/decisions/023-learner-plugin-visual-pass.md).
 
 `tools/ClickMap.cpp` (`ClickMap`, a third `juce_add_console_app`) answers

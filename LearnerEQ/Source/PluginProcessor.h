@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "../../shared/PracticeAudioSource.h"
+#include "shared/learning/PracticeAudioSource.h"
 #include <juce_dsp/juce_dsp.h>
 #include "EQCoefficients.h"
 #include <array>
@@ -97,7 +97,7 @@ public:
 
     // Practice audio: the shared reference library, played through this
     // plugin so it is not silent outside a DAW. Off by default - see
-    // shared/PracticeAudioSource.h.
+    // shared/learning/PracticeAudioSource.h.
     ReferenceAudioLibrary& getPracticeLibrary() noexcept { return practiceLibrary; }
     PracticeAudioSource& getPracticeSource() noexcept { return practiceSource; }
     juce::PropertiesFile& getSharedProperties() noexcept { return sharedProperties; }

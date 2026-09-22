@@ -1,13 +1,13 @@
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "../shared/ModuleProgress.h"
-#include "../shared/TrainingModule.h"
+#include "shared/learning/ModuleProgress.h"
+#include "shared/learning/TrainingModule.h"
 #include "../LearnerVerb/Source/PluginProcessor.h"
 #include "../LearnerVerb/Source/ReverbEngine.h"
 #include "../LearnerVerb/Source/ReverbMeasure.h"
 #include "../LearnerEQ/Source/PluginProcessor.h"
 #include "../LearnerComp/Source/PluginProcessor.h"
 #include "../LearnerComp/Source/CompressorEngine.h"
-#include "../shared/ABCompare.h"
+#include "shared/learning/ABCompare.h"
 #include "TestUtils.h"
 
 // ADR 037: the Learner plugins made honest - a staircase per module, an

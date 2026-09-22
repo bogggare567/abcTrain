@@ -1,9 +1,9 @@
 #include "PluginEditor.h"
-#include "../shared/WindowFit.h"
+#include "shared/ui/WindowFit.h"
 #include <algorithm>
-#include "../shared/UpdatePrompt.h"
+#include "shared/updates/UpdatePrompt.h"
 #include "Achievements.h"
-#include "../shared/Version.h"
+#include "shared/updates/Version.h"
 #include <array>
 #include <memory>
 #include <map>
@@ -1095,7 +1095,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     // Open at the design size where the screen has room for it, and at
     // whatever part of it the screen can show where it has not
-    // (shared/WindowFit.h). The saved text scale is capped the same way:
+    // (shared/ui/WindowFit.h). The saved text scale is capped the same way:
     // chosen on a big monitor, it must not push the window off a laptop.
     {
         const auto wanted = (float) localisationProperties.getDoubleValue (uiScaleKey, 1.0);

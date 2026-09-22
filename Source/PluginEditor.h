@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include "../shared/UpdateWindow.h"
+#include "shared/updates/UpdateWindow.h"
 #include <juce_animation/juce_animation.h>
 #include "PluginProcessor.h"
 #include "ChoiceSliderComponent.h"
@@ -12,21 +12,21 @@
 #include "RunResultsComponent.h"
 #include "TopNavComponent.h"
 #include "AchievementsScreenComponent.h"
-#include "../shared/TourOverlay.h"
-#include "../shared/IdleScreensaver.h"
+#include "shared/ui/TourOverlay.h"
+#include "shared/ui/IdleScreensaver.h"
 #include "SessionManager.h"
 #include "TrainerSettings.h"
 #include "HearingGuard.h"
 #include "HearingNotice.h"
 #include "AchievementToast.h"
-#include "../shared/UpdateChecker.h"
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/CompactSelector.h"
-#include "../shared/AppIcons.h"
-#include "../shared/Vectorscope.h"
-#include "../shared/WaveformDisplay.h"
-#include "../shared/SpectrumAnalyzer.h"
-#include "../shared/i18n/LocalisationManager.h"
+#include "shared/updates/UpdateChecker.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/CompactSelector.h"
+#include "shared/ui/AppIcons.h"
+#include "shared/analysis/Vectorscope.h"
+#include "shared/analysis/WaveformDisplay.h"
+#include "shared/analysis/SpectrumAnalyzer.h"
+#include "shared/i18n/LocalisationManager.h"
 #include <cmath>
 
 // Generic multiple-choice UI driven entirely by the active Game's

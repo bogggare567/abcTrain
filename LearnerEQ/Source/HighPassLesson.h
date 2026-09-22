@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "PluginProcessor.h"
 
 // Why a high-pass is not free, and why "brickwall" is not a compliment.

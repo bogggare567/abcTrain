@@ -2,10 +2,10 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 #include <vector>
-#include "../../shared/PresetFamily.h"
+#include "shared/audio/PresetFamily.h"
 
 // "Guess the compression" exercise: plays a repeating percussive noise
 // burst through juce::dsp::Compressor at one of three fixed weak/medium/
@@ -98,7 +98,7 @@ public:
     // family here has to vary, and it is also the one worth learning.
     //
     // `archetypal` is 1 for the textbook example of its category and 0 for
-    // the one sitting against a neighbour - see shared/PresetFamily.h.
+    // the one sitting against a neighbour - see shared/audio/PresetFamily.h.
     struct Variant
     {
         float thresholdOffsetDb = 0.0f;

@@ -297,7 +297,7 @@ export default function Trainer() {
 
     if (ex.kind === 'zoned') {
       // Two alternatives, and the level decides how close together they
-      // are - the plugin's shared/PresetFamily.h rule, not a web variant
+      // are - the plugin's shared/audio/PresetFamily.h rule, not a web variant
       // of it. The correct one is then either of the two, so the answer
       // never drifts to one side of the panel.
       drawn = drawPair(ex.axis, atLevel,

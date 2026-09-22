@@ -2,9 +2,9 @@
 
 #include "Game.h"
 #include "FrequencyRangeGame.h"   // the one named-range table
-#include "../../shared/GainMatch.h"
+#include "shared/audio/GainMatch.h"
 #include <atomic>
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 
 // "Find the frequency" exercise: plays pink noise through a peak filter

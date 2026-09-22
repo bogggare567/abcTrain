@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "PluginProcessor.h"
 
 // Second LearnerVerb lesson (see decisions/017): frequency-dependent decay

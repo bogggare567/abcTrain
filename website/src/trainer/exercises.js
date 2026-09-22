@@ -14,7 +14,7 @@
 
 import facts from '../generated/plugin-facts.json';
 
-// shared/DifficultyRamp.h's geometric ramp: step 1 to step 10 in equal
+// shared/learning/DifficultyRamp.h's geometric ramp: step 1 to step 10 in equal
 // ratios. Every accept band in the plugin narrows this way, so "step 4"
 // means the same width here as it does there.
 export const geometric = (level, atOne, atTen) => {
@@ -32,7 +32,7 @@ const trim = (v, decimals) => {
 };
 
 // Paul Kellet's economy pink-noise filter - the same algorithm as
-// shared/PinkNoiseGenerator.h, so this and the plugin listen to the same
+// shared/audio/PinkNoiseGenerator.h, so this and the plugin listen to the same
 // signal rather than to two approximations of it.
 export function fillPink(data, amplitude = 0.12, seedState = null) {
   let b0 = 0, b1 = 0, b2 = 0;
@@ -190,7 +190,7 @@ const zoned = (o) => ({ kind: 'zoned', ...o });
 
 // Two alternatives, always - and the level decides which two.
 //
-// This is shared/PresetFamily.h's drawPair, ported rather than reinvented.
+// This is shared/audio/PresetFamily.h's drawPair, ported rather than reinvented.
 // Each zoned exercise writes down where its categories sit on one axis of
 // *character*: how bright a space is, how hard a clipper bites, where a
 // band lives in the spectrum. A level then sees a **window over the pairs

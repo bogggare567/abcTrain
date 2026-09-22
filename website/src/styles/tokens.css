@@ -2,7 +2,7 @@
    abcTrain — design tokens
    ---------------------------------------------------------------------
    Every value here is inherited from the product's own design system
-   (shared/AbcTrainTheme.cpp), not invented for the web. If a colour is
+   (shared/ui/AbcTrainTheme.cpp), not invented for the web. If a colour is
    changed there, change it here too — a site whose blue is not the
    plugin's blue reads as two different companies.
 

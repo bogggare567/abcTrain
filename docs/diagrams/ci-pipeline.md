@@ -27,7 +27,7 @@ build ever regresses:
    `make` jobs, not "one per core." Building three targets' worth of JUCE
    unity-build translation units at once OOM-killed the Ubuntu runner
    (exit 143). Fixed by capping it explicitly (`--parallel 2`).
-3. Extracting `shared/SpectrumAnalyzer` (commit `b3c2f88`, see
+3. Extracting `shared/analysis/SpectrumAnalyzer` (commit `b3c2f88`, see
    [decisions/006](decisions/006-unified-visualization.md)) moved all of
    `SpectrumAnalyserComponent`'s construction logic into the new base
    class and left the derived (LearnerEQ) class with no constructor of its

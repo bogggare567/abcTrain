@@ -1,9 +1,9 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../shared/i18n/LocalisationManager.h"
-#include "../shared/CompactSelector.h"
-#include "../shared/SegmentedChoice.h"
+#include "shared/i18n/LocalisationManager.h"
+#include "shared/ui/CompactSelector.h"
+#include "shared/ui/SegmentedChoice.h"
 #include "TrainerSettings.h"
 #include <functional>
 #include <memory>

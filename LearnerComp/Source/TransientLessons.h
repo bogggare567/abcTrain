@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "PluginProcessor.h"
 
 // The two compressor lessons that are about *time* rather than about

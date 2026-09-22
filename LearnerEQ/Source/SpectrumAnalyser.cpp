@@ -1,8 +1,8 @@
 #include "SpectrumAnalyser.h"
 #include "FrequencyGuide.h"
 #include "FrequencyZones.h"
-#include "../../shared/AbcTrainTheme.h"
-#include "../../shared/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
 
 namespace
 {

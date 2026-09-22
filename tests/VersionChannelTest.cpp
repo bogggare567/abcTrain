@@ -1,5 +1,5 @@
 #include <juce_core/juce_core.h>
-#include "../shared/VersionChannel.h"
+#include "shared/updates/VersionChannel.h"
 
 class VersionChannelTest : public juce::UnitTest
 {

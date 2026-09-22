@@ -2,10 +2,10 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 #include <vector>
-#include "../../shared/PresetFamily.h"
+#include "shared/audio/PresetFamily.h"
 
 // "Guess the distortion type" exercise: continuous pink noise driven into
 // one of four fixed waveshaper types. Same labels throughout - what

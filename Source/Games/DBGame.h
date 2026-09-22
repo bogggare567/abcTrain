@@ -2,7 +2,7 @@
 
 #include "Game.h"
 #include <atomic>
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 
 // "Guess the gain change" exercise: continuous pink noise at one of five

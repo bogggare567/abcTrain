@@ -89,7 +89,7 @@ private:
     void importAndSort();
     juce::TextButton importButton;
 
-    // The same import, through shared/StemSeparator first: each track is
+    // The same import, through shared/audio/StemSeparator first: each track is
     // split into drums / bass / centre / sides and each stem sliced into
     // its own category (ADR 038). A second button rather than a checkbox
     // because it is a different promise about what you get back.

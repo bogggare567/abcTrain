@@ -2,8 +2,8 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "ReverbMeasure.h"
-#include "../../shared/AbcTrainLookAndFeel.h"
-#include "../../shared/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
 
 // The reverb as a picture of what it does to one click: the dry hit, the
 // gap the pre-delay leaves, the first reflections, and the tail dying

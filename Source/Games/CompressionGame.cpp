@@ -1,5 +1,5 @@
 #include "CompressionGame.h"
-#include "../../shared/PinkNoiseGenerator.h"
+#include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 
 void CompressionGame::prepare (const juce::dsp::ProcessSpec& spec)

@@ -1,8 +1,8 @@
 #include "SettingsScreenComponent.h"
-#include "../shared/IdleScreensaver.h"
-#include "../shared/AbcTrainLookAndFeel.h"
-#include "../shared/AbcTrainTheme.h"
-#include "../shared/Version.h"
+#include "shared/ui/IdleScreensaver.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/updates/Version.h"
 #include <BrandBinaryData.h>
 
 namespace

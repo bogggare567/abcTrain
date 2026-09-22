@@ -1,7 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
-#include "../shared/AppIcons.h"
+#include "shared/ui/AppIcons.h"
 #include <functional>
 #include <vector>
 

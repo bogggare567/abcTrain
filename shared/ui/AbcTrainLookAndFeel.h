@@ -1,0 +1,290 @@
+#pragma once
+
+#include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/ui/WidgetStateRegistry.h"
+
+// Shared look and feel for all four plugins. Every colour comes from
+// AbcTrainTheme::current(), so switching to light mode is a palette swap
+// plus a repaint, with no per-widget colour code anywhere.
+//
+// Hover and press states are genuinely *eased* rather than snapped: a
+// WidgetStateRegistry member gives this otherwise-stateless class a
+// per-component animation timeline (see WidgetStateRegistry.h for why that
+// indirection is needed at all). Buttons lift and settle, knobs bloom and
+// fade.
+//
+// One instance per editor (not a shared static): each editor constructs its
+// own AbcTrainLookAndFeel member, calls setLookAndFeel(&laf) in its
+// constructor and setLookAndFeel(nullptr) in its destructor, and declares
+// the member *first* in its class so it's constructed before - and
+// destroyed after - every child Component that might still reference it
+// during teardown.
+class AbcTrainLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    AbcTrainLookAndFeel();
+
+    // Re-reads AbcTrainTheme::current() into JUCE's colour-scheme slots.
+    // Call after AbcTrainTheme::setMode(), then repaint the editor.
+    // `accentOverride` lets one editor run the whole shared theme in its
+    // own family colour (see AbcTrainTheme::accentFor). Each editor owns
+    // its own LookAndFeel instance, so this is per-plugin and two Learner
+    // plugins open at once each keep their own. Transparent (the default)
+    // means "use the palette's accent", which is what EarTrainer wants.
+    void refreshFromTheme (juce::Colour accentOverride = juce::Colours::transparentBlack);
+
+    // One type ladder, six roles, and every piece of text in four plugins
+    // picks one of them. Before this there were fifty-four separate
+    // FontOptions literals across the codebase - 12.5f here, 13.0f there,
+    // 11.5f in a third place - which is not a hierarchy, it is fifty-four
+    // independent decisions that happen to be near each other.
+    //
+    // Named by role rather than by size on purpose: "heading" survives a
+    // change of scale, "15px" is a fact about today's window.
+    //
+    // The steps are roughly a 1.15 ratio, which is tight enough that
+    // adjacent levels look deliberate rather than accidental and wide
+    // enough that they are distinguishable at a glance.
+    static juce::Font displayFont();   // the wordmark, and nothing else
+    static juce::Font headingFont();   // section and card titles
+    static juce::Font bodyFont();      // sentences
+    static juce::Font labelFont();     // control labels
+    static juce::Font microFont();     // counters, step markers
+
+    // Raised in ADR 035. JUCE sizes a font by ascent + descent, so the old
+    // 10px micro drew capitals about 7px tall - at arm's length from a
+    // studio monitor, and with 0.16em tracking thinning them further,
+    // every tracked-capital label in the app was below what anybody can
+    // read without leaning in. The ratios between steps are kept.
+    static constexpr float displayFontHeight = 36.0f;
+    static constexpr float headingFontHeight = 17.0f;
+    static constexpr float labelFontHeight = 14.0f;
+    static constexpr float microFontHeight = 12.0f;
+
+    static constexpr float titleFontHeight = 23.0f;
+    static constexpr float bodyFontHeight = 15.0f;
+    static constexpr float monoFontHeight = 15.0f;
+    static constexpr float captionFontHeight = 13.0f;
+
+    // The value readout under a rotary knob, in the mono face - so a knob
+    // sweeping through 9.8 / 10.0 / 10.2 doesn't make the whole number
+    // jiggle sideways as the glyph widths change. JUCE's default uses a
+    // proportional font, which is exactly where that jitter comes from.
+    juce::Label* createSliderTextBox (juce::Slider&) override;
+
+    // A multiplier on every font this class hands out, so someone can make
+    // the text bigger without changing the layout. Separate from the
+    // window-size picker, which scales the whole design through an
+    // AffineTransform - see SettingsScreenComponent for why both exist.
+    static void setTextScale (float) noexcept;
+    static float getTextScale() noexcept;
+
+    // Which interface typeface to use. Empty means "the best one this
+    // machine has", which is the default and the right answer for almost
+    // everybody; a name overrides it. Not everyone likes the same face,
+    // and on a screen someone stares at for an hour that is not a small
+    // preference.
+    static void setTypefaceName (const juce::String&);
+    static juce::String getTypefaceName();
+
+    // Every face this machine can offer, with "System" first. Enumerating
+    // the font book is slow, so this caches.
+    static juce::StringArray availableTypefaceNames();
+
+    static constexpr const char* typefaceKey = "interfaceTypeface";
+
+    static juce::Font titleFont();
+    static juce::Font monoFont();
+    static juce::Font captionFont();
+
+    juce::Font getLabelFont (juce::Label&) override;
+    juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
+    juce::Font getComboBoxFont (juce::ComboBox&) override;
+    juce::Font getPopupMenuFont() override;
+    juce::Font getAlertWindowTitleFont() override;
+    juce::Font getAlertWindowMessageFont() override;
+
+    void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
+                                bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    void drawButtonText (juce::Graphics&, juce::TextButton&,
+                         bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    // Marks a button as *the* action on its screen: a solid accent block
+    // with the page colour as its label, tracked capitals and the corner
+    // registration marks. Exactly one per screen, which is the whole point
+    // - a screen with two primary buttons has none.
+    //
+    // Set through the component's own property bag rather than a subclass,
+    // because these are plain juce::TextButtons everywhere already and a
+    // parallel PrimaryButton type would mean re-wiring every call site to
+    // change how one rectangle is filled.
+    static void makePrimary (juce::Button&, bool shouldBePrimary = true);
+    static bool isPrimary (const juce::Button&);
+
+    // Whether a button background is a solid fill or a low-alpha wash, and
+    // which label colour reads on it. Both are decided by *contrast* - an
+    // earlier version asked whether the colour was equal to the panel's,
+    // which a caller passing that same colour at 25% alpha walked straight
+    // past, painting a near-black label on a near-black chip.
+    static bool buttonIsFilled (juce::Colour background);
+    static juce::Colour labelColourOn (juce::Colour background);
+
+    void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height,
+                           float sliderPosProportional, float rotaryStartAngle,
+                           float rotaryEndAngle, juce::Slider&) override;
+
+    void drawLinearSlider (juce::Graphics&, int x, int y, int width, int height,
+                           float sliderPos, float minSliderPos, float maxSliderPos,
+                           juce::Slider::SliderStyle, juce::Slider&) override;
+
+    void drawComboBox (juce::Graphics&, int width, int height, bool isButtonDown,
+                       int buttonX, int buttonY, int buttonW, int buttonH, juce::ComboBox&) override;
+
+    void drawToggleButton (juce::Graphics&, juce::ToggleButton&,
+                           bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
+
+    void drawPopupMenuBackground (juce::Graphics&, int width, int height) override;
+
+    // ---- Shared painting helpers, used by components that draw
+    // themselves and so never pass through a LookAndFeel callback. ----
+
+    // The editor backdrop: a soft radial gradient plus a faint noise tooth
+    // (see noiseTexture() for why the grain matters on large flat fills).
+    // `tint` gives the backdrop a per-exercise colour cast. Deliberately
+    // a *cast* over the theme's own base rather than a flat colour of its
+    // own: the reference trainers give each exercise a whole different
+    // background, which is memorable, but a saturated page behind a dark
+    // instrument would fight everything drawn on it. Mixing a hint of hue
+    // into the existing gradient gets the "each training has its own
+    // room" feeling without touching contrast.
+    static void paintPanelBackground (juce::Graphics&, juce::Rectangle<float> bounds,
+                                      juce::Colour tint = juce::Colours::transparentBlack);
+
+    // An optional player-supplied wallpaper, drawn instead of the tinted
+    // gradient. `scrim` is how much of the window colour is laid back over
+    // it - without one, a photograph makes 12px labels unreadable, and the
+    // point of letting someone choose a background is not to stop them
+    // using the app. An invalid image turns the feature off.
+    //
+    // Process-wide, like AbcTrainTheme::current(), so two editors open at
+    // once cannot disagree about the wallpaper. Message thread only.
+    static void setCustomBackground (juce::Image, float scrim);
+    static const juce::Image& customBackground();
+    static float customBackgroundScrim();
+
+    // A grouped-section container: subtly raised surface, hairline border,
+    // optional caption in the top-left. This is what gives related controls
+    // a visual home instead of floating loose on the backdrop.
+    static void paintSectionPanel (juce::Graphics&, juce::Rectangle<float> bounds,
+                                   const juce::String& caption = {});
+
+    // The quieter alternative: a caption and a hairline rule, no fill and
+    // no border. Grouping by *typography and space* rather than by boxes,
+    // for screens where three bordered panels chopped one window into
+    // three pieces instead of organising it. Used by EarTrainer's
+    // training screen; the Learner plugins keep the panels, where a
+    // raised surface genuinely separates controls from data displays.
+    // Depth, as two shapes with opposite lighting.
+    //
+    // A raised card is lit from above and casts downward; a recessed well
+    // is dark at its top edge and light at its bottom. That inversion is
+    // the whole of it - the same rounded rectangle reads as sitting on the
+    // surface or cut into it depending only on which edge is bright, and
+    // getting the two consistent across four plugins is most of what makes
+    // an interface look built rather than assembled.
+    static void paintRaisedCard (juce::Graphics&, juce::Rectangle<float> bounds,
+                                  float elevation = 1.0f);
+
+    static void paintRecessedWell (juce::Graphics&, juce::Rectangle<float> bounds,
+                                    float radius = 8.0f);
+
+    static void paintSectionHeading (juce::Graphics&, juce::Rectangle<float> bounds,
+                                     const juce::String& caption);
+
+    // A recessed well for the spectrum/waveform displays - the inverse
+    // treatment of a section panel, so data displays read as cut *into* the
+    // surface while controls sit *on* it.
+    static void paintDisplayWell (juce::Graphics&, juce::Rectangle<float> bounds);
+
+    // A tiling image of low-amplitude noise. Large flat fills - even
+    // gradient ones - band visibly on 8-bit displays and read as
+    // synthetic; a sub-percent grain breaks the banding up and is the
+    // single cheapest thing that makes a panel look like a surface rather
+    // than a colour value. Cached and tiled, so it costs one small image
+    // for the whole process.
+    static const juce::Image& noiseTexture();
+    static void overlayTexture (juce::Graphics&, juce::Rectangle<float> bounds, float strength = 1.0f);
+
+    // Draws text with manual letter-spacing. JUCE exposes no tracking or
+    // kerning control on Font/Graphics::drawText, so wide-set titles have
+    // to be drawn glyph by glyph. Positive tracking on a short bold title
+    // is most of what separates a considered heading from stock UI text.
+    static void drawTrackedText (juce::Graphics&, const juce::String& text, juce::Rectangle<float> area,
+                                 const juce::Font&, juce::Colour, float trackingPx,
+                                 juce::Justification = juce::Justification::centredLeft);
+
+    static float trackedTextWidth (const juce::String&, const juce::Font&, float trackingPx);
+
+    // Uppercase, for the tracked capitals this design uses as labels.
+    //
+    // juce::String::toUpperCase() goes through the C library's towupper(),
+    // which is **locale-dependent** - and a plugin inherits the "C" locale
+    // unless its host has set another, where towupper() leaves every
+    // non-ASCII letter exactly as it found it. The effect was invisible in
+    // English and wrong in every other language this app ships: every
+    // "УРОВЕНЬ", "ЧАСТОТЫ" and "ДОСТИЖЕНИЯ" was quietly drawing as
+    // "Уровень", "Частоты", "Достижения" - tracked sentence case, which
+    // reads as a mistake rather than as a label.
+    //
+    // So the mapping is done here, over exactly the scripts the embedded
+    // fonts carry: ASCII, Latin-1, Latin Extended-A and Cyrillic. Anything
+    // else is returned untouched, which is the right answer for the CJK
+    // tables (they have no case at all).
+    static juce::String toCaps (const juce::String&);
+
+    // The registration marks - four small crosses at a frame's inner
+    // corners. The one ornament this design has, and it earns its keep:
+    // it is what says the object is a *drawn frame* rather than a filled
+    // block, which is the whole difference between this grammar and the
+    // soft rounded panels it replaced. Drawn in the frame's own colour, so
+    // it never introduces one.
+    static void drawRegistrationMarks (juce::Graphics&, juce::Rectangle<float> frame,
+                                       juce::Colour, float inset = 4.0f, float arm = 2.5f,
+                                       float thickness = 1.0f);
+
+    // A bar made of discrete segments rather than one continuous fill.
+    // "Seven of ten" is a countable claim; a smooth bar makes the same
+    // claim unreadable, and every number this app draws beside a bar is
+    // already counting something.
+    static void drawSegmentedBar (juce::Graphics&, juce::Rectangle<float> track,
+                                  int segments, float progress,
+                                  juce::Colour done, juce::Colour remaining,
+                                  float gap = 2.0f);
+
+    // Blurs whatever is already in `sourceArea` of the component being
+    // painted and fills `bounds` with it - a real Gaussian blur via
+    // juce::ImageConvolutionKernel, used for the floating tooltip backdrop.
+    static void paintBlurredBackdrop (juce::Graphics&, juce::Component& sourceComponent,
+                                      juce::Rectangle<int> bounds, float blurRadius, float cornerRadius);
+
+    // The expensive half of paintBlurredBackdrop, split out so a caller can
+    // do it *once* and keep the result. Snapshotting a component renders its
+    // entire subtree, and the 2D convolution on top is O(area x kernel^2) -
+    // fine for one frame, ruinous for sixty a second. A caller that repaints
+    // every tick must cache this image, not re-make it.
+    static juce::Image blurredSnapshot (juce::Component& sourceComponent,
+                                        juce::Rectangle<int> sourceArea, float blurRadius);
+
+    // Eased interaction state for components that draw themselves and want
+    // the same hover feel as LookAndFeel-drawn widgets.
+    WidgetStateRegistry& getStateRegistry() noexcept { return stateRegistry; }
+
+private:
+    juce::Colour primaryFill;
+
+    WidgetStateRegistry stateRegistry;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AbcTrainLookAndFeel)
+};

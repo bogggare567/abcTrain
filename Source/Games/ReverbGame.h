@@ -1,12 +1,12 @@
 #pragma once
 
 #include "Game.h"
-#include "../../shared/GainMatch.h"
-#include "../../shared/TestSignalGenerator.h"
+#include "shared/audio/GainMatch.h"
+#include "shared/audio/TestSignalGenerator.h"
 #include <array>
 #include <atomic>
 #include <vector>
-#include "../../shared/PresetFamily.h"
+#include "shared/audio/PresetFamily.h"
 
 // "Guess the reverb type" exercise: a repeating percussive noise burst
 // through one of four reverb characters. Room/Hall/Plate are approximated
@@ -115,7 +115,7 @@ private:
     // both Rooms, and somebody who recognises only one of them has learned
     // a recording, not a room. Which member you get depends on the level:
     // early on the archetypes, later the ones sitting against the
-    // neighbouring type. See shared/PresetFamily.h.
+    // neighbouring type. See shared/audio/PresetFamily.h.
     struct Variant
     {
         float roomSize;

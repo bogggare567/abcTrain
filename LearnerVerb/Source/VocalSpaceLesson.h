@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../shared/MicroLesson.h"
+#include "shared/learning/MicroLesson.h"
 #include "PluginProcessor.h"
 
 // Lesson content lives per-plugin, not in shared/ - see ADR 005. Type

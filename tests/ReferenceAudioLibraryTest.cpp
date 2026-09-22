@@ -1,7 +1,7 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_formats/juce_audio_formats.h>
-#include "../shared/ReferenceAudioLibrary.h"
-#include "../shared/AudioSliceAnalyzer.h"
+#include "shared/audio/ReferenceAudioLibrary.h"
+#include "shared/audio/AudioSliceAnalyzer.h"
 #include "TestUtils.h"
 
 namespace

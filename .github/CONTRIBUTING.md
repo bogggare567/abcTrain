@@ -48,7 +48,7 @@ for what's actually planned vs. built.
 - JUCE house style: space before parens (`if (x)`, not `if(x)`).
 - No `juce::Font(float, styleFlags)` (deprecated) — use
   `juce::Font(juce::FontOptions(...))`, matching
-  `shared/AbcTrainLookAndFeel.h`.
+  `shared/ui/AbcTrainLookAndFeel.h`.
 - `AudioProcessorValueTreeState` for per-plugin-instance parameters that
   should save/restore with the host session; `juce::PropertiesFile` for
   per-user data that should persist across every session/project
@@ -113,7 +113,7 @@ actionable.
 - Стиль JUCE: пробел перед скобкой (`if (x)`, а не `if(x)`).
 - Не используйте `juce::Font(float, styleFlags)` (устарел) — используйте
   `juce::Font(juce::FontOptions(...))`, как в
-  `shared/AbcTrainLookAndFeel.h`.
+  `shared/ui/AbcTrainLookAndFeel.h`.
 - `AudioProcessorValueTreeState` — для параметров конкретного экземпляра
   плагина, которые должны сохраняться/восстанавливаться с сессией хоста;
   `juce::PropertiesFile` — для пользовательских данных, которые должны

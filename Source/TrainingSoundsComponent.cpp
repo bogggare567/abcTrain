@@ -1,7 +1,7 @@
-#include "../shared/StemSeparator.h"
+#include "shared/audio/StemSeparator.h"
 #include "TrainingSoundsComponent.h"
-#include "../shared/AbcTrainTheme.h"
-#include "../shared/AbcTrainLookAndFeel.h"
+#include "shared/ui/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
 
 TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processorToControl)
     : processor (processorToControl)

@@ -1,8 +1,8 @@
 #include <juce_core/juce_core.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 
-#include "../shared/ReferenceAudioLibrary.h"
-#include "../shared/TestSignalGenerator.h"
+#include "shared/audio/ReferenceAudioLibrary.h"
+#include "shared/audio/TestSignalGenerator.h"
 
 // The library swaps the clip under the audio thread between rounds, and the
 // generator's read position survives that swap. So the question this file

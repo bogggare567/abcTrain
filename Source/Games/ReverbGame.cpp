@@ -1,6 +1,6 @@
 #include "ReverbGame.h"
-#include "../../shared/PinkNoiseGenerator.h"
-#include "../../shared/PresetFamily.h"
+#include "shared/audio/PinkNoiseGenerator.h"
+#include "shared/audio/PresetFamily.h"
 #include <cmath>
 
 const std::array<float, 4> ReverbGame::springFrequenciesHz { 320.0f, 730.0f, 1400.0f, 2600.0f };

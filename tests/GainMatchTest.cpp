@@ -1,7 +1,7 @@
 #include <juce_core/juce_core.h>
 #include <cmath>
 
-#include "../shared/GainMatch.h"
+#include "shared/audio/GainMatch.h"
 #include "../Source/Games/EQGame.h"
 #include "../Source/Games/FrequencyRangeGame.h"
 #include "../Source/Games/ReverbGame.h"

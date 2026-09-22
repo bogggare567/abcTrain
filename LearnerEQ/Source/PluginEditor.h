@@ -3,9 +3,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "PluginProcessor.h"
 #include "SpectrumAnalyser.h"
-#include "../../shared/LearnerEditorBase.h"
-#include "../../shared/SegmentedChoice.h"
-#include "../../shared/WaveformDisplay.h"
+#include "shared/learning/LearnerEditorBase.h"
+#include "shared/ui/SegmentedChoice.h"
+#include "shared/analysis/WaveformDisplay.h"
 
 // Learner EQ: the curve is the instrument, and one row of controls follows
 // whichever band is selected. The shell is LearnerEditorBase's (ADR 037).
