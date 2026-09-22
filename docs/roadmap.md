@@ -1,5 +1,10 @@
 # Roadmap
 
+> Concrete tasks live on the public board (GitHub Project «abcTrain»); how a task
+> moves from idea to release is [process.md](process.md). This file keeps the
+> direction in broad strokes. The literature review behind the current
+> proposals is [research/2026-09-literature-audit.md](research/2026-09-literature-audit.md).
+
 Status legend: ✓ done · 🚧 in progress · ⏳ planned, not started.
 
 Note on scope: the "Beta"/"1.0"/"2.0" phase boundaries below are a rough

@@ -1,31 +1,30 @@
 ---
-name: Feature request
-about: Suggest an idea — a new ear-training game, a plugin feature, a language, etc.
-title: "[Feature] "
-labels: enhancement
+name: Idea / improvement · Идея / улучшение
+about: Suggest a change — an exercise, a plugin feature, a better way to teach
+title: ""
+labels: idea
 ---
 
-**What's the idea?**
-A clear description of what you'd like to see.
+<!-- Можно писать по-русски. / Russian or English, both fine. -->
+<!-- How ideas move from here to a release: docs/process.md -->
 
-**What problem does it solve, or what would it teach?**
-For a new game/lesson idea specifically: what ear-training skill or
-audio-engineering concept is it meant to build? (See
-[docs/roadmap.md](../../docs/roadmap.md) and
-[docs/knowledge_base.md](../../docs/knowledge_base.md) for what's already
-covered, so we're not duplicating something that exists.)
+**Why · Зачем**
+What problem does it solve, or what does it teach? Who is it for — a
+student, a teacher, an engineer working in a DAW?
 
-**Which part of the project does this touch?**
-- [ ] A new EarTrainer game
-- [ ] LearnerEQ / LearnerComp / LearnerVerb
-- [ ] A new "Learner" teaching plugin
-- [ ] Localization (a new language, or fixing an existing translation)
-- [ ] UI/look and feel
-- [ ] Documentation
-- [ ] Something else
+**Basis · На чём основано**
+An article, a book, a real studio practice, or something you noticed
+while using abcTrain. "I think it would be nice" is fine to start with —
+we will look for a source together (label `needs-source`).
 
-**Alternatives considered**
-Any other way to solve the same problem you thought about.
+**Scenarios · Сценарии**
+Who does what, and what do they see and hear. Include the awkward ones:
 
-**Anything else?**
-Mockups, references to how another plugin does something similar, etc.
+1. …
+2. …
+
+**Simpler alternative · Проще нельзя?**
+Could this *replace* something instead of adding to it?
+
+**Anything else · Что ещё**
+Screenshots, references, how another tool does it.
