@@ -86,7 +86,7 @@ namespace
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
-                       settingsPro, settingsHearing, hearingNotice, moduleResult };
+                       settingsPro, settingsHearing, settingsAbout, hearingNotice, moduleResult };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -166,6 +166,9 @@ namespace
 
                 if (extra == Extra::settingsHearing)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true);
+
+                if (extra == Extra::settingsAbout)
+                    editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::about, false);
 
                 if (extra == Extra::hearingNotice)
                     editor.showHearingNoticeForSnapshot();
@@ -375,6 +378,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingNotice", -1, Extra::hearingNotice);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsPro", -1, Extra::settingsPro);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsHearing", -1, Extra::settingsHearing);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsAbout", -1, Extra::settingsAbout);
 
             if (hadSettings)
             {

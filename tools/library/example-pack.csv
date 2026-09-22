@@ -1,0 +1,4 @@
+source_file,title,author,url,license,genre,content,instruments,start_seconds,clip_seconds
+sources/my-band-song.wav,Название песни,Моя группа,https://soundkorb.ru,permission,rock,vocal-male,drums;bass;electric-guitar;vocals,32;75,10
+sources/ccmixter-acappella.flac,Song Title,Artist Name,https://ccmixter.org/files/artist/12345,CC-BY-4.0,pop,a-cappella-female,vocals,,8
+sources/fma-track.mp3,Track Title,Artist Name,https://freemusicarchive.org/music/...,CC-BY-SA-4.0,hip-hop,instrumental,drums;bass;synth,,10

@@ -17,11 +17,53 @@
 class ReferenceAudioLibrary
 {
 public:
+    // Who made a clip and under what terms - read from a pack's manifest,
+    // shown on the credits page. See docs/design/sound-library.md.
+    struct Credit
+    {
+        juce::String title, author, url, license;
+    };
+
+    // What a pack says about one clip. Empty for a file in a plain folder,
+    // where nothing is known and nothing is guessed.
+    struct ClipInfo
+    {
+        juce::StringArray genres, instruments;
+        juce::String content;     // instrumental / vocal-male / vocal-female / ...
+        juce::String character;   // AudioSliceAnalyzer's folder name
+        Credit credit;
+    };
+
     struct Category
     {
-        juce::String name; // subfolder name, shown as-is in the UI
+        juce::String name;              // subfolder name, shown as-is in the UI
         juce::Array<juce::File> files;
+        juce::Array<ClipInfo> clips;    // parallel to files
+
+        // Set when the folder carries a pack.json.
+        bool isPack = false;
+        juce::String packId, packVersion, titleEn, titleRu;
     };
+
+    // Licences a pack clip may carry to be offered at all.
+    static bool isAllowedLicense (const juce::String& license);
+
+    // Every distinct author/title across the installed packs, for the
+    // credits page - CC BY's one condition.
+    juce::Array<Credit> getCredits() const;
+
+    // Pack clips whose tags match; an empty field matches anything.
+    struct Filter { juce::String genre, content, instrument; };
+    juce::Array<juce::File> filesMatching (const Filter&) const;
+
+    // How many pack clips the last rescan refused (no author, or a licence
+    // outside the list). Not an error: a number the credits page can show.
+    int getRejectedClipCount() const noexcept { return rejectedClips; }
+
+    // When nothing is selected: each exercise's own synthesized material
+    // (true, the default) or pink noise everywhere (false). Persisted.
+    void setPreferExerciseSound (bool shouldPrefer);
+    bool getPreferExerciseSound() const;
 
     // One shared PropertiesFile folder ("abcTrain"), same convention as
     // LocalisationManager::makeDefaultOptions() - the chosen root folder
@@ -73,26 +115,6 @@ public:
     int importAndSliceMany (const juce::Array<juce::File>& sources,
                             std::function<void (float, juce::String)> onProgress,
                             std::function<bool()> shouldStop);
-
-    // Splits each file into four stems - drums, bass, centre (vocals &
-    // leads), sides (wide & ambience) - with StemSeparator, then slices
-    // *each stem* into loop clips the same way importAndSlice does, and
-    // files them under one folder per stem ("Stem - Drums", ...; the names
-    // live in StemSeparator::folderNameFor).
-    //
-    // Classic DSP, not a trained model - see StemSeparator.h for what the
-    // stems honestly are. Silent stems and quiet clips are skipped, so a
-    // mono file gives no "sides" clips at all.
-    //
-    // Same contract as importAndSliceMany: safe on a background thread,
-    // writes into rootFolder only, never touches the sources, polls
-    // `shouldStop` (within separation too, not only between files), and
-    // does **not** rescan. Returns how many clips were written. Far slower
-    // than slicing - several seconds per song - and holds about five times
-    // the decoded song in memory at its peak.
-    int importAndSeparateMany (const juce::Array<juce::File>& sources,
-                               std::function<void (float, juce::String)> onProgress,
-                               std::function<bool()> shouldStop);
 
     // Where imported clips go. The app's own storage, not somewhere the
     // player has to find and pick: the folder-choosing step was a question
@@ -163,6 +185,8 @@ private:
     // let this reuse selectFile()'s ordinary File-based path unchanged,
     // rather than duplicating it for an in-memory source. See decisions/018.
     void addBuiltInCategories();
+    Category readPack (const juce::File& folder, const juce::File& manifest);
+    int rejectedClips = 0;
 
     juce::PropertiesFile& properties;
     juce::AudioFormatManager formatManager;

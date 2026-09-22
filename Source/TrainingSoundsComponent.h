@@ -6,10 +6,9 @@
 #include "PluginProcessor.h"
 #include <functional>
 
-// "Choose training sounds" overlay: lets a player pick which folder of
-// their own reference audio (see ReferenceAudioLibrary) EarTrainer's
-// games should use instead of synthesized pink noise, or switch back to
-// pink noise. Categories are just whatever subfolders currently exist
+// "Choose training sounds" page: each exercise's own synthesized sound
+// (the default since ADR 040), pink noise, or a folder of audio - the
+// player's own, or a pack with authors and tags (docs/design/sound-library.md). Categories are just whatever subfolders currently exist
 // under the configured root folder - this component draws no audio
 // content itself and ships none; see decisions/015. Meant to be added as
 // a full-size child of EarTrainerEditor and toggled visible via a
@@ -63,8 +62,8 @@ public:
         juce::String importAndSort, importing, importedClips, importedNothing, importHint;
         juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
         juce::String builtInPercussive, builtInSustained;
-        juce::String separateStems, separateHint;
-        juce::String stemDrums, stemBass, stemCentre, stemSides;
+        juce::String exerciseSound, trainingOnExerciseSound, credits;
+        juce::String languageCode;   // picks a pack's title: "ru" or anything else
     };
 
     void setStrings (Strings);
@@ -89,13 +88,7 @@ private:
     void importAndSort();
     juce::TextButton importButton;
 
-    // The same import, through shared/audio/StemSeparator first: each track is
-    // split into drums / bass / centre / sides and each stem sliced into
-    // its own category (ADR 038). A second button rather than a checkbox
-    // because it is a different promise about what you get back.
-    void chooseFilesToImport (bool separate);
-    juce::TextButton separateButton;
-    bool separateRunning = false;
+    void chooseFilesToImport();
 
     // The import runs on its own thread: decoding and analysing a handful
     // of full-length tracks takes real seconds, and a window that freezes
@@ -109,7 +102,7 @@ private:
     juce::String importProgressFile;
     bool importRunning = false;
 
-    void startImport (const juce::Array<juce::File>& files, bool separate = false);
+    void startImport (const juce::Array<juce::File>& files);
     void finishImport (int clipsWritten);
     void paintImportProgress (juce::Graphics&, juce::Rectangle<int>);
 
@@ -133,20 +126,27 @@ private:
     juce::TextButton closeButton;
     juce::TextButton revealButton;
 
-    // -1 is pink noise; 0.. index into the library's categories.
+    // Rail rows: the exercise's own sound, pink noise, then 0.. the
+    // library's categories.
+    static constexpr int exerciseRow = -2;
+    static constexpr int pinkNoiseRow = -1;
+    static constexpr int noRow = -3;
+
     int selectedCategory = -1;
-    int hoveredCategoryRow = -2;
+    int hoveredCategoryRow = noRow;
     int hoveredFileRow = -1;
     float fileScroll = 0.0f;
     float maxFileScroll = 0.0f;
 
     juce::Rectangle<int> railBounds() const;
     juce::Rectangle<int> filePaneBounds() const;
-    juce::Rectangle<int> categoryRowBounds (int index) const;   // -1 = pink noise
+    juce::Rectangle<int> categoryRowBounds (int index) const;   // exerciseRow, pinkNoiseRow, 0..
     juce::Rectangle<int> fileRowBounds (int index) const;
 
     const juce::Array<juce::File>* filesForSelection() const;
+    const ReferenceAudioLibrary::Category* selectedCategoryInfo() const;
     void selectPinkNoise();
+    void selectExerciseSound();
     void pinFile (int fileIndex);
     void paintRail (juce::Graphics&);
     void paintFilePane (juce::Graphics&);

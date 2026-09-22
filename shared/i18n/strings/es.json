@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "Estrechar la escala",
   "ui.hintNarrowCostLife": "Estrechar la escala (−1 vida)",
   "ui.hintNarrowCostSeconds": "Estrechar la escala (−{{seconds}} s)",
-  "ui.separateStems": "Separar en stems…",
-  "ui.separateHint": "Separa cada pista en batería, bajo, centro (normalmente la voz) y laterales, y luego corta cada stem en loops. Es una estimación a partir de la propia señal, no un modelo entrenado: un sintetizador centrado acaba junto a la voz.",
-  "ui.stemDrums": "Stem: batería",
-  "ui.stemBass": "Stem: bajo",
-  "ui.stemCentre": "Stem: centro (voz)",
-  "ui.stemSides": "Stem: laterales (amplio)"
+  "ui.soundsExercise": "Sonido propio del ejercicio",
+  "ui.soundsOnExercise": "Cada ejercicio suena con su propio material: un acorde, un loop de batería, un golpe aislado - ruido rosa donde es el material adecuado",
+  "ui.credits": "Créditos de sonido",
+  "ui.creditsIntro": "Cada sonido que puede reproducir el entrenador: quién lo hizo, de dónde viene y con qué licencia."
 }

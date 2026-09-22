@@ -1,4 +1,3 @@
-#include "shared/audio/StemSeparator.h"
 #include "TrainingSoundsComponent.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
@@ -42,9 +41,6 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
     importButton.onClick = [this] { importAndSort(); };
     addAndMakeVisible (importButton);
-
-    separateButton.onClick = [this] { chooseFilesToImport (true); };
-    addAndMakeVisible (separateButton);
 
     rootFolderLabel.setJustificationType (juce::Justification::centred);
     rootFolderLabel.setFont (AbcTrainLookAndFeel::captionFont());
@@ -94,8 +90,6 @@ void TrainingSoundsComponent::setStrings (Strings strings)
         text.importHint = keptHint;
 
     importButton.setButtonText (text.importAndSort);
-    separateButton.setButtonText (text.separateStems);
-    separateButton.setTooltip (text.separateHint);
     titleLabel.setText (text.title, juce::dontSendNotification);
     chooseFolderButton.setButtonText (text.chooseFolder);
     revealButton.setButtonText (text.openFolder);
@@ -111,11 +105,10 @@ juce::String TrainingSoundsComponent::displayNameForCategory (const juce::String
     if (rawName == "Built-in Percussive") return text.builtInPercussive;
     if (rawName == "Built-in Sustained")  return text.builtInSustained;
 
-    // The stem folders are this app's too (StemSeparator::folderNameFor).
-    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::drums))  return text.stemDrums;
-    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::bass))   return text.stemBass;
-    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::centre)) return text.stemCentre;
-    if (rawName == StemSeparator::folderNameFor (StemSeparator::Stem::sides))  return text.stemSides;
+    // A pack names itself, in two languages.
+    for (const auto& category : processor.getGameManager().getReferenceAudioLibrary().getCategories())
+        if (category.isPack && category.name == rawName)
+            return text.languageCode.startsWithIgnoreCase ("ru") ? category.titleRu : category.titleEn;
 
     // Anything else is a folder somebody made. Its name is theirs.
     return rawName;
@@ -162,6 +155,16 @@ void TrainingSoundsComponent::refresh()
     repaint();
 }
 
+const ReferenceAudioLibrary::Category* TrainingSoundsComponent::selectedCategoryInfo() const
+{
+    const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
+
+    if (selectedCategory < 0 || selectedCategory >= categories.size())
+        return nullptr;
+
+    return &categories.getReference (selectedCategory);
+}
+
 const juce::Array<juce::File>* TrainingSoundsComponent::filesForSelection() const
 {
     const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
@@ -172,9 +175,20 @@ const juce::Array<juce::File>* TrainingSoundsComponent::filesForSelection() cons
     return &categories.getReference (selectedCategory).files;
 }
 
+void TrainingSoundsComponent::selectExerciseSound()
+{
+    processor.getGameManager().getReferenceAudioLibrary().clearSelection();
+    processor.getGameManager().setPreferExerciseSound (true);
+    selectedCategory = -1;
+    fileScroll = 0.0f;
+    updateStatusLabel();
+    repaint();
+}
+
 void TrainingSoundsComponent::selectPinkNoise()
 {
     processor.getGameManager().getReferenceAudioLibrary().clearSelection();
+    processor.getGameManager().setPreferExerciseSound (false);
     selectedCategory = -1;
     fileScroll = 0.0f;
     updateStatusLabel();
@@ -222,7 +236,9 @@ void TrainingSoundsComponent::updateStatusLabel()
 
     if (! selected.existsAsFile())
     {
-        statusLabel.setText (text.trainingOnPinkNoise, juce::dontSendNotification);
+        statusLabel.setText (library.getPreferExerciseSound() ? text.trainingOnExerciseSound
+                                                              : text.trainingOnPinkNoise,
+                             juce::dontSendNotification);
         return;
     }
 
@@ -280,7 +296,7 @@ juce::Rectangle<int> TrainingSoundsComponent::categoryRowBounds (int index) cons
     auto rail = railBounds();
     rail.removeFromTop (18);   // the rail's own heading
 
-    return { rail.getX(), rail.getY() + (index + 1) * rowHeight, rail.getWidth(), rowHeight - 2 };
+    return { rail.getX(), rail.getY() + (index - exerciseRow) * rowHeight, rail.getWidth(), rowHeight - 2 };
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::fileRowBounds (int index) const
@@ -325,7 +341,9 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
         g.drawText (detail, text, juce::Justification::centredRight, false);
     };
 
-    drawRow (-1, text.pinkNoise, {}, ! library.getSelectedFile().existsAsFile());
+    const auto nothingSelected = ! library.getSelectedFile().existsAsFile();
+    drawRow (exerciseRow, text.exerciseSound, {}, nothingSelected && library.getPreferExerciseSound());
+    drawRow (pinkNoiseRow, text.pinkNoise, {}, nothingSelected && ! library.getPreferExerciseSound());
 
     for (int i = 0; i < categories.size(); ++i)
         drawRow (i, displayNameForCategory (categories.getReference (i).name),
@@ -395,6 +413,22 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
         else
         {
             text.removeFromLeft (18);
+        }
+
+        // A pack clip says whose it is and under what terms, on its own
+        // row - the credit CC BY asks for, where the clip is chosen.
+        if (const auto* category = selectedCategoryInfo(); category != nullptr && i < category->clips.size())
+        {
+            const auto& credit = category->clips.getReference (i).credit;
+
+            if (credit.author.isNotEmpty())
+            {
+                const auto line = credit.author + "  ·  " + credit.license;
+                g.setColour (theme.textDim);
+                g.setFont (AbcTrainLookAndFeel::captionFont());
+                g.drawText (line, text.removeFromRight (juce::jmin (text.getWidth() / 2, 320)),
+                             juce::Justification::centredRight, true);
+            }
         }
 
         g.setColour (isPinned ? theme.textBright : theme.text);
@@ -495,12 +529,12 @@ juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
 
 void TrainingSoundsComponent::mouseMove (const juce::MouseEvent& event)
 {
-    auto category = -2;
+    auto category = noRow;
     auto file = -1;
 
     const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
 
-    for (int i = -1; i < categories.size(); ++i)
+    for (int i = exerciseRow; i < categories.size(); ++i)
         if (categoryRowBounds (i).contains (event.getPosition()))
             category = i;
 
@@ -520,9 +554,9 @@ void TrainingSoundsComponent::mouseMove (const juce::MouseEvent& event)
 
 void TrainingSoundsComponent::mouseExit (const juce::MouseEvent&)
 {
-    if (hoveredCategoryRow != -2 || hoveredFileRow != -1)
+    if (hoveredCategoryRow != noRow || hoveredFileRow != -1)
     {
-        hoveredCategoryRow = -2;
+        hoveredCategoryRow = noRow;
         hoveredFileRow = -1;
         repaint();
     }
@@ -532,12 +566,14 @@ void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
 {
     const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
 
-    for (int i = -1; i < categories.size(); ++i)
+    for (int i = exerciseRow; i < categories.size(); ++i)
     {
         if (! categoryRowBounds (i).contains (event.getPosition()))
             continue;
 
-        if (i < 0)
+        if (i == exerciseRow)
+            selectExerciseSound();
+        else if (i == pinkNoiseRow)
             selectPinkNoise();
         else
             selectCategory (i);
@@ -588,9 +624,6 @@ void TrainingSoundsComponent::resized()
         // the most important thing in the product.
         importButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth() / 2, 220))
                                     .reduced (0, 6));
-        row.removeFromLeft (Spacing::small);
-        separateButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth(), 240))
-                                      .reduced (0, 6));
     }
 
     rootFolderLabel.setVisible (false);
@@ -604,9 +637,8 @@ void TrainingSoundsComponent::resized()
 class TrainingSoundsComponent::ImportJob : public juce::Thread
 {
 public:
-    ImportJob (TrainingSoundsComponent& ownerToUse, juce::Array<juce::File> filesToImport, bool separateToUse)
-        : juce::Thread ("abcTrain import"), owner (ownerToUse), files (std::move (filesToImport)),
-          separate (separateToUse)
+    ImportJob (TrainingSoundsComponent& ownerToUse, juce::Array<juce::File> filesToImport)
+        : juce::Thread ("abcTrain import"), owner (ownerToUse), files (std::move (filesToImport))
     {
     }
 
@@ -642,8 +674,7 @@ public:
         auto& library = owner.processor.getGameManager().getReferenceAudioLibrary();
         const auto shouldStop = [this] { return threadShouldExit(); };
 
-        const auto written = separate ? library.importAndSeparateMany (files, onProgress, shouldStop)
-                                      : library.importAndSliceMany (files, onProgress, shouldStop);
+        const auto written = library.importAndSliceMany (files, onProgress, shouldStop);
 
         juce::MessageManager::callAsync ([safeOwner, written]
         {
@@ -655,15 +686,14 @@ public:
 private:
     TrainingSoundsComponent& owner;
     juce::Array<juce::File> files;
-    bool separate = false;
 };
 
 void TrainingSoundsComponent::importAndSort()
 {
-    chooseFilesToImport (false);
+    chooseFilesToImport();
 }
 
-void TrainingSoundsComponent::chooseFilesToImport (bool separate)
+void TrainingSoundsComponent::chooseFilesToImport()
 {
     if (importRunning)
         return;
@@ -673,7 +703,7 @@ void TrainingSoundsComponent::chooseFilesToImport (bool separate)
     // the player answer a question about storage layout before they could
     // find out whether the feature was any good.
     fileChooser = std::make_unique<juce::FileChooser> (
-        separate ? separateButton.getButtonText() : importButton.getButtonText(),
+        importButton.getButtonText(),
         juce::File::getSpecialLocation (juce::File::userMusicDirectory),
         "*.wav;*.aiff;*.aif;*.flac;*.mp3");
 
@@ -683,7 +713,7 @@ void TrainingSoundsComponent::chooseFilesToImport (bool separate)
         juce::FileBrowserComponent::openMode
             | juce::FileBrowserComponent::canSelectFiles
             | juce::FileBrowserComponent::canSelectMultipleItems,
-        [safeThis, separate] (const juce::FileChooser& chooser)
+        [safeThis] (const juce::FileChooser& chooser)
         {
             if (safeThis == nullptr)
                 return;
@@ -693,11 +723,11 @@ void TrainingSoundsComponent::chooseFilesToImport (bool separate)
             if (chosen.isEmpty())
                 return;
 
-            safeThis->startImport (chosen, separate);
+            safeThis->startImport (chosen);
         });
 }
 
-void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files, bool separate)
+void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files)
 {
     importJob.reset();
 
@@ -706,11 +736,9 @@ void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files,
     importProgressFile = {};
 
     importButton.setEnabled (false);
-    separateButton.setEnabled (false);
     chooseFolderButton.setEnabled (false);
-    separateRunning = separate;
 
-    importJob = std::make_unique<ImportJob> (*this, files, separate);
+    importJob = std::make_unique<ImportJob> (*this, files);
     importJob->startThread();
 
     repaint();
@@ -719,9 +747,7 @@ void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files,
 void TrainingSoundsComponent::finishImport (int clipsWritten)
 {
     importRunning = false;
-    separateRunning = false;
     importButton.setEnabled (true);
-    separateButton.setEnabled (true);
     chooseFolderButton.setEnabled (true);
 
     auto& library = processor.getGameManager().getReferenceAudioLibrary();

@@ -430,7 +430,13 @@ void SettingsScreenComponent::refresh()
 
 void SettingsScreenComponent::refreshLicenceView()
 {
-    licenceView.setText (licenceText (licenceExpanded));
+    auto text = licenceText (licenceExpanded);
+
+    if (soundCredits != nullptr)
+        if (const auto credits = soundCredits(); credits.isNotEmpty())
+            text << "\n\n" << credits;
+
+    licenceView.setText (text);
     // A TextEditor stamps its colour onto text as it is inserted, so text
     // set under the dark theme stayed near-white after switching to light.
     licenceView.applyColourToAllText (licenceView.findColour (juce::TextEditor::textColourId));

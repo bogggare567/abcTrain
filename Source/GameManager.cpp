@@ -25,7 +25,23 @@ GameManager::GameManager()
     // means this is harmless even for StereoWidthGame, which deliberately
     // ignores it.
     for (auto* game : games)
+    {
         game->setReferenceAudioLibrary (&referenceAudioLibrary);
+        game->setPreferExerciseSound (referenceAudioLibrary.getPreferExerciseSound());
+    }
+}
+
+void GameManager::setPreferExerciseSound (bool shouldPrefer)
+{
+    referenceAudioLibrary.setPreferExerciseSound (shouldPrefer);
+
+    // A new round, so the compensation each exercise measured for the old
+    // material is measured again for the new one.
+    for (auto* game : games)
+    {
+        game->setPreferExerciseSound (shouldPrefer);
+        game->newRound();
+    }
 }
 
 void GameManager::prepare (const juce::dsp::ProcessSpec& spec)

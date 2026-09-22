@@ -331,6 +331,89 @@ public:
 
             root.deleteRecursively();
         }
+
+        beginTest ("a pack: clips, tags and authors come from pack.json; bad licences are refused (ADR 040)");
+        {
+            const auto root = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                                  .getChildFile ("abcTrainPackTest").getNonexistentSibling();
+            const auto packDir = root.getChildFile ("rock-basics");
+            writeTestWav (packDir.getChildFile ("a.wav"), 44100.0, 4410);
+            writeTestWav (packDir.getChildFile ("b.wav"), 44100.0, 4410);
+            writeTestWav (packDir.getChildFile ("c.wav"), 44100.0, 4410);
+            writeTestWav (packDir.getChildFile ("d.wav"), 44100.0, 4410);
+            writeTestWav (root.getChildFile ("outside.wav"), 44100.0, 4410);
+
+            packDir.getChildFile ("pack.json").replaceWithText (juce::String (juce::CharPointer_UTF8 (R"({
+              "abcTrainPack": 1, "id": "rock-basics", "version": "1.0.0",
+              "title": { "en": "Rock basics", "ru": "Рок: основы" },
+              "clips": [
+                { "file": "a.wav", "tags": { "genre": ["rock"], "content": "vocal-female", "instruments": ["guitar"] },
+                  "source": { "title": "Song A", "author": "Band A", "url": "https://a", "license": "CC-BY-4.0" } },
+                { "file": "b.wav", "tags": { "genre": ["rock"], "content": "instrumental" },
+                  "source": { "title": "Song B", "author": "Band B", "license": "CC0-1.0" } },
+                { "file": "c.wav", "tags": { "genre": ["rock"] },
+                  "source": { "title": "Song C", "author": "Band C", "license": "CC-BY-NC-4.0" } },
+                { "file": "d.wav", "tags": { "genre": ["rock"] },
+                  "source": { "title": "Song D", "license": "CC-BY-4.0" } },
+                { "file": "../outside.wav", "source": { "author": "X", "license": "CC0-1.0" } }
+              ] })")));
+
+            auto options = makeTempOptions ("pack");
+            juce::PropertiesFile properties (options);
+            ReferenceAudioLibrary library (properties);
+            library.setRootFolder (root);
+
+            const ReferenceAudioLibrary::Category* pack = nullptr;
+            for (const auto& category : library.getCategories())
+                if (category.isPack)
+                    pack = &category;
+
+            expect (pack != nullptr);
+
+            if (pack != nullptr)
+            {
+                expectEquals (pack->titleRu, juce::String (juce::CharPointer_UTF8 ("\xd0\xa0\xd0\xbe\xd0\xba: \xd0\xbe\xd1\x81\xd0\xbd\xd0\xbe\xd0\xb2\xd1\x8b")));
+                expectEquals (pack->files.size(), 2);   // NC refused, no author refused, outside refused
+                expectEquals (pack->clips.size(), pack->files.size());
+                expectEquals (pack->clips.getReference (0).content, juce::String ("vocal-female"));
+            }
+
+            expectEquals (library.getRejectedClipCount(), 2);
+
+            const auto female = library.filesMatching ({ "rock", "vocal-female", {} });
+            expectEquals (female.size(), 1);
+            expectEquals (library.filesMatching ({ "hip-hop", {}, {} }).size(), 0);
+
+            auto sawBandA = false;
+            for (const auto& credit : library.getCredits())
+                sawBandA = sawBandA || (credit.author == "Band A" && credit.license == "CC-BY-4.0");
+            expect (sawBandA);
+
+            root.deleteRecursively();
+        }
+
+        beginTest ("the exercise-sound preference persists and defaults to on");
+        {
+            auto options = makeTempOptions ("prefer");
+            {
+                juce::PropertiesFile properties (options);
+                ReferenceAudioLibrary library (properties);
+                expect (library.getPreferExerciseSound());
+                library.setPreferExerciseSound (false);
+            }
+            juce::PropertiesFile properties (options);
+            ReferenceAudioLibrary reloaded (properties);
+            expect (! reloaded.getPreferExerciseSound());
+        }
+
+        beginTest ("licences: CC0 / BY / BY-SA / permission in, NC and ND out");
+        {
+            for (const auto* ok : { "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "permission", "PD" })
+                expect (ReferenceAudioLibrary::isAllowedLicense (ok), ok);
+
+            for (const auto* no : { "CC-BY-NC-4.0", "CC-BY-ND-4.0", "CC-BY-NC-SA-4.0", "Pixabay", "" })
+                expect (! ReferenceAudioLibrary::isAllowedLicense (no), no);
+        }
     }
 
 private:

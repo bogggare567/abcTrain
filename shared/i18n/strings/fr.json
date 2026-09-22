@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "Resserrer l’échelle",
   "ui.hintNarrowCostLife": "Resserrer l’échelle (−1 vie)",
   "ui.hintNarrowCostSeconds": "Resserrer l’échelle (−{{seconds}} s)",
-  "ui.separateStems": "Séparer en stems…",
-  "ui.separateHint": "Sépare chaque piste en batterie, basse, centre (généralement la voix) et côtés, puis découpe chaque stem en boucles. C’est une estimation tirée du signal lui-même, pas un modèle entraîné : un synthé centré se retrouve avec la voix.",
-  "ui.stemDrums": "Stem : batterie",
-  "ui.stemBass": "Stem : basse",
-  "ui.stemCentre": "Stem : centre (voix)",
-  "ui.stemSides": "Stem : côtés (large)"
+  "ui.soundsExercise": "Son propre à l'exercice",
+  "ui.soundsOnExercise": "Chaque exercice joue son propre son : un accord, une boucle de batterie, un coup isolé - du bruit rose là où c'est la bonne matière",
+  "ui.credits": "Crédits des sons",
+  "ui.creditsIntro": "Chaque son que l'entraîneur peut jouer : qui l'a fait, d'où il vient et sous quelle licence."
 }

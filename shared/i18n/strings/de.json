@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "Skala eingrenzen",
   "ui.hintNarrowCostLife": "Skala eingrenzen (−1 Leben)",
   "ui.hintNarrowCostSeconds": "Skala eingrenzen (−{{seconds}} s)",
-  "ui.separateStems": "In Stems aufteilen…",
-  "ui.separateHint": "Teilt jeden Track in Drums, Bass, Mitte (meist der Gesang) und Seiten auf und schneidet dann jeden Stem in Loops. Eine Schätzung aus dem Signal selbst, kein trainiertes Modell: Ein mittig platzierter Synth landet beim Gesang.",
-  "ui.stemDrums": "Stem: Drums",
-  "ui.stemBass": "Stem: Bass",
-  "ui.stemCentre": "Stem: Mitte (Gesang)",
-  "ui.stemSides": "Stem: Seiten (breit)"
+  "ui.soundsExercise": "Eigener Klang der Übung",
+  "ui.soundsOnExercise": "Jede Übung spielt ihr eigenes Material: einen Akkord, einen Drum-Loop, einen Einzelschlag - rosa Rauschen, wo es das richtige Material ist",
+  "ui.credits": "Klangquellen",
+  "ui.creditsIntro": "Jeder Klang, den der Trainer spielen kann: wer ihn gemacht hat, woher er stammt und unter welcher Lizenz."
 }

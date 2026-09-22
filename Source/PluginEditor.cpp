@@ -981,6 +981,25 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         hearingGuard.addExposure (hours, levelDbA, HearingGuard::dayNumber (juce::Time::getCurrentTime()));
         refreshHearingIndicator();
     };
+    settingsScreen.soundCredits = [this]
+    {
+        const auto credits = processor.getGameManager().getReferenceAudioLibrary().getCredits();
+
+        juce::String text;
+        text << AbcTrainLookAndFeel::toCaps (localisation.getText ("ui.credits")) << "\n"
+             << localisation.getText ("ui.creditsIntro") << "\n\n";
+
+        for (const auto& c : credits)
+        {
+            text << c.author;
+            if (c.title.isNotEmpty()) text << " - " << c.title;
+            text << "  ·  " << c.license;
+            if (c.url.isNotEmpty()) text << "  ·  " << c.url;
+            text << "\n";
+        }
+
+        return text;
+    };
     settingsScreen.hearingStatus = [this]
     {
         const auto& config = hearingGuard.getConfig();
@@ -2926,12 +2945,10 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.shuffling          = localisation.getText ("ui.soundsShuffling");
         sounds.builtInPercussive  = localisation.getText ("ui.soundsBuiltInPercussive");
         sounds.builtInSustained   = localisation.getText ("ui.soundsBuiltInSustained");
-        sounds.separateStems      = localisation.getText ("ui.separateStems");
-        sounds.separateHint       = localisation.getText ("ui.separateHint");
-        sounds.stemDrums          = localisation.getText ("ui.stemDrums");
-        sounds.stemBass           = localisation.getText ("ui.stemBass");
-        sounds.stemCentre         = localisation.getText ("ui.stemCentre");
-        sounds.stemSides          = localisation.getText ("ui.stemSides");
+        sounds.exerciseSound      = localisation.getText ("ui.soundsExercise");
+        sounds.trainingOnExerciseSound = localisation.getText ("ui.soundsOnExercise");
+        sounds.credits            = localisation.getText ("ui.credits");
+        sounds.languageCode       = localisation.getCurrentLanguage();
 
         trainingSounds.setStrings (std::move (sounds));
     }

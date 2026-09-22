@@ -1,6 +1,5 @@
 #include "shared/audio/ReferenceAudioLibrary.h"
 #include "shared/audio/AudioSliceAnalyzer.h"
-#include "shared/audio/StemSeparator.h"
 #include "SampleBinaryData.h"
 #include <array>
 
@@ -226,6 +225,13 @@ void ReferenceAudioLibrary::addBuiltInCategories()
         }
 
         target->files.add (file);
+
+        // Synthesized by this project, public domain. Credited all the
+        // same, so the credits page accounts for every sound it can play.
+        ClipInfo info;
+        info.credit = { juce::String (b.fileName).upToLastOccurrenceOf (".", false, false),
+                        "abcTrain (synthesized)", "https://github.com/bogggare567/abcTrain", "CC0-1.0" };
+        target->clips.add (info);
     }
 
     // Inserted ahead of anything scanned from rootFolder, so built-in
@@ -239,6 +245,7 @@ void ReferenceAudioLibrary::addBuiltInCategories()
 void ReferenceAudioLibrary::rescan()
 {
     categories.clear();
+    rejectedClips = 0;
     addBuiltInCategories();
 
     if (! rootFolder.isDirectory())
@@ -246,6 +253,22 @@ void ReferenceAudioLibrary::rescan()
 
     for (const auto& subDir : rootFolder.findChildFiles (juce::File::findDirectories, false))
     {
+        // A folder with a pack.json is a pack: its clips, tags and authors
+        // come from the manifest. Anything else is a folder somebody made,
+        // and every playable file in it is a clip with nothing known about
+        // it - exactly as before packs existed.
+        const auto manifest = subDir.getChildFile ("pack.json");
+
+        if (manifest.existsAsFile())
+        {
+            auto pack = readPack (subDir, manifest);
+
+            if (! pack.files.isEmpty())
+                categories.add (std::move (pack));
+
+            continue;
+        }
+
         Category category;
         category.name = subDir.getFileName();
 
@@ -258,12 +281,157 @@ void ReferenceAudioLibrary::rescan()
             // remotely audio-thread-hot.
             std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
             if (reader != nullptr)
+            {
                 category.files.add (file);
+                category.clips.add ({});
+            }
         }
 
         if (! category.files.isEmpty())
             categories.add (category);
     }
+}
+
+bool ReferenceAudioLibrary::isAllowedLicense (const juce::String& license)
+{
+    // The rule from docs/design/sound-library.md, enforced where the audio
+    // is read as well as where packs are built: public domain, CC0, CC BY
+    // and CC BY-SA, or the author's written permission. No NC (closes any
+    // paid future and is arguable even with donations), no ND (a clip is
+    // an adaptation). A clip that fails this is not offered.
+    static const juce::StringArray allowed {
+        "CC0-1.0", "PD", "CC-BY-3.0", "CC-BY-4.0", "CC-BY-SA-3.0", "CC-BY-SA-4.0", "permission"
+    };
+
+    return allowed.contains (license.trim(), true);
+}
+
+ReferenceAudioLibrary::Category ReferenceAudioLibrary::readPack (const juce::File& folder,
+                                                                  const juce::File& manifest)
+{
+    Category pack;
+    pack.name = folder.getFileName();
+    pack.isPack = true;
+
+    const auto json = juce::JSON::parse (manifest);
+
+    if (! json.isObject() || (int) json.getProperty ("abcTrainPack", 0) != 1)
+        return pack;   // not a pack this build understands - offer nothing
+
+    pack.packId = json.getProperty ("id", pack.name).toString();
+    pack.packVersion = json.getProperty ("version", "").toString();
+
+    if (const auto title = json.getProperty ("title", {}); title.isObject())
+    {
+        pack.titleEn = title.getProperty ("en", pack.name).toString();
+        pack.titleRu = title.getProperty ("ru", pack.titleEn).toString();
+    }
+    else
+    {
+        pack.titleEn = pack.titleRu = json.getProperty ("title", pack.name).toString();
+    }
+
+    const auto toStrings = [] (const juce::var& v)
+    {
+        juce::StringArray out;
+        if (const auto* array = v.getArray())
+            for (const auto& item : *array)
+                out.add (item.toString());
+        return out;
+    };
+
+    if (const auto* clips = json.getProperty ("clips", {}).getArray())
+    {
+        for (const auto& clip : *clips)
+        {
+            const auto file = folder.getChildFile (clip.getProperty ("file", "").toString());
+
+            // A manifest may not reach outside its own folder.
+            if (! file.existsAsFile() || ! file.isAChildOf (folder))
+                continue;
+
+            ClipInfo info;
+            const auto tags = clip.getProperty ("tags", {});
+            info.genres = toStrings (tags.getProperty ("genre", {}));
+            info.instruments = toStrings (tags.getProperty ("instruments", {}));
+            info.content = tags.getProperty ("content", "").toString();
+            info.character = tags.getProperty ("character", "").toString();
+
+            const auto source = clip.getProperty ("source", {});
+            info.credit.title = source.getProperty ("title", "").toString();
+            info.credit.author = source.getProperty ("author", "").toString();
+            info.credit.url = source.getProperty ("url", "").toString();
+            info.credit.license = source.getProperty ("license", "").toString();
+
+            // No author or no acceptable licence: not offered. A CC BY clip
+            // without its author cannot be credited, which is the one thing
+            // its licence asks for.
+            if (info.credit.author.isEmpty() || ! isAllowedLicense (info.credit.license))
+            {
+                ++rejectedClips;
+                continue;
+            }
+
+            pack.files.add (file);
+            pack.clips.add (info);
+        }
+    }
+
+    return pack;
+}
+
+juce::Array<ReferenceAudioLibrary::Credit> ReferenceAudioLibrary::getCredits() const
+{
+    juce::Array<Credit> credits;
+
+    for (const auto& category : categories)
+        for (const auto& clip : category.clips)
+        {
+            if (clip.credit.author.isEmpty())
+                continue;
+
+            auto seen = false;
+            for (const auto& c : credits)
+                seen = seen || (c.title == clip.credit.title && c.author == clip.credit.author);
+
+            if (! seen)
+                credits.add (clip.credit);
+        }
+
+    return credits;
+}
+
+juce::Array<juce::File> ReferenceAudioLibrary::filesMatching (const Filter& filter) const
+{
+    juce::Array<juce::File> matches;
+
+    for (const auto& category : categories)
+        for (int i = 0; i < category.files.size(); ++i)
+        {
+            const auto& clip = category.clips[i];
+
+            if (filter.genre.isNotEmpty() && ! clip.genres.contains (filter.genre, true))
+                continue;
+            if (filter.content.isNotEmpty() && clip.content != filter.content)
+                continue;
+            if (filter.instrument.isNotEmpty() && ! clip.instruments.contains (filter.instrument, true))
+                continue;
+
+            matches.add (category.files[i]);
+        }
+
+    return matches;
+}
+
+void ReferenceAudioLibrary::setPreferExerciseSound (bool shouldPrefer)
+{
+    properties.setValue ("referencePreferExerciseSound", shouldPrefer);
+    properties.saveIfNeeded();
+}
+
+bool ReferenceAudioLibrary::getPreferExerciseSound() const
+{
+    return properties.getBoolValue ("referencePreferExerciseSound", true);
 }
 
 bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSampleRate)
@@ -388,102 +556,6 @@ int ReferenceAudioLibrary::importAndSlice (const juce::File& source)
 
     return written;
 }
-
-int ReferenceAudioLibrary::importAndSeparateMany (const juce::Array<juce::File>& sources,
-                                                   std::function<void (float, juce::String)> onProgress,
-                                                   std::function<bool()> shouldStop)
-{
-    juce::AudioFormatManager formats;
-    formats.registerBasicFormats();
-
-    const auto stopRequested = [&shouldStop] { return shouldStop != nullptr && shouldStop(); };
-    const auto perFile = 1.0f / (float) juce::jmax (1, sources.size());
-
-    auto written = 0;
-
-    for (int i = 0; i < sources.size(); ++i)
-    {
-        if (stopRequested())
-            break;
-
-        const auto& file = sources.getReference (i);
-        const auto fileStart = (float) i * perFile;
-
-        if (onProgress != nullptr)
-            onProgress (fileStart, file.getFileName());
-
-        // A folder is not a song. importAndSlice accepts one; this does
-        // not, because the caller hands over what the player picked in a
-        // file chooser and a folder there is a mistake, not a batch.
-        if (! file.existsAsFile())
-            continue;
-
-        juce::AudioBuffer<float> audio;
-        double sampleRate = 0.0;
-
-        // Eight minutes for separation, not twenty: separating holds the
-        // mix and four stems of the same length at once, and five copies of
-        // a twenty-minute stereo file is gigabytes. Eight minutes covers
-        // nearly every song and keeps the peak under a gigabyte at 48 kHz.
-        if (! decodeForImport (formats, file, audio, sampleRate, 8.0))
-            continue;
-
-        // Separation is most of the work - give it most of the bar.
-        auto separated = StemSeparator::separate (
-            audio, sampleRate, {},
-            [&] (float p)
-            {
-                if (onProgress != nullptr)
-                    onProgress (fileStart + perFile * 0.8f * p, file.getFileName());
-            },
-            stopRequested);
-
-        // The decoded mix is no longer needed, and holding it alongside
-        // four stems of the same length is the peak of this whole import.
-        audio.setSize (0, 0);
-
-        if (! separated.completed)
-            break;
-
-        for (int s = 0; s < StemSeparator::numStems; ++s)
-        {
-            if (stopRequested())
-                break;
-
-            const auto stem = (StemSeparator::Stem) s;
-            auto& stemAudio = separated.stems[(size_t) s];
-
-            // The sides of a mono file are silence by construction - and a
-            // stem can also just be empty (an a-cappella has no drums).
-            // The slicer would drop every slice as too quiet anyway; this
-            // only saves it the work.
-            auto peak = 0.0f;
-            for (int channel = 0; channel < stemAudio.getNumChannels(); ++channel)
-                peak = juce::jmax (peak, stemAudio.getMagnitude (channel, 0, stemAudio.getNumSamples()));
-
-            if (peak > 1.0e-4f)
-            {
-                const auto slices = AudioSliceAnalyzer::analyse (stemAudio, sampleRate);
-                const auto folder = rootFolder.getChildFile (StemSeparator::folderNameFor (stem));
-
-                written += writeClips (stemAudio, sampleRate, slices, file.getFileNameWithoutExtension(),
-                                       [folder] (const AudioSliceAnalyzer::Slice&) { return folder; },
-                                       stopRequested);
-            }
-
-            stemAudio.setSize (0, 0);
-
-            if (onProgress != nullptr)
-                onProgress (fileStart + perFile * (0.8f + 0.05f * (float) (s + 1)), file.getFileName());
-        }
-    }
-
-    if (onProgress != nullptr)
-        onProgress (1.0f, {});
-
-    return written;
-}
-
 
 juce::File ReferenceAudioLibrary::getManagedLibraryFolder()
 {

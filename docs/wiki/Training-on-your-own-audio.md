@@ -8,7 +8,7 @@ actually mix against.
 
 ## Importing
 
-Open **Training sounds** from the bar at the bottom of the home screen.
+Open **Training sounds** from the bar at the top of the window.
 
 **Add music…** opens a file picker - pick as many files as you like. Each
 one is decoded, cut into eight-second loops, and each loop is sorted by
@@ -30,30 +30,32 @@ By measurable character, into five folders:
 | **Bright** | cymbals, air, bright synths | the top end |
 | **Full range** | broad, even, usually wide - a finished mix | the realistic and hardest case |
 
-### Split into stems
+### Packs
 
-**Add music** sorts whole slices by character and never separates
-anything. **Split into stems** does: each track is divided into four stems
-and each stem is cut into loops of its own.
+A folder with a `pack.json` in it is a **pack**: a set of clips somebody
+prepared, each with its tags (genre, vocal or instrumental, which
+instruments) and its author and licence. The author and licence of every
+clip are shown next to it and collected under **Settings → About → Sound
+credits**. A pack clip without an author, or under a licence that does not
+allow it to be shared this way, is not offered. How packs are built and
+where their audio may come from: `docs/design/sound-library.md` and
+`tools/library/` in the repository.
 
-| Stem | How it is found |
-|---|---|
-| **Drums** | the percussive part of a harmonic/percussive split (what changes fast in time, not in pitch) |
-| **Bass** | the harmonic part below about 180 Hz |
-| **Centre (vocal)** | the rest of the harmonic part that sits in the middle of the stereo image |
-| **Sides (wide)** | what is left: the harmonic part that is not in the middle |
-
-The four always add back up to the original. It is an estimate from the
-signal itself, **not a trained model**, and it says so: "centre" means "in
-the middle of the image", so a centred synth lands with the vocal, and a
-snare's tail or a strummed guitar can split between stems. On a mono file
-there are no sides. Tracks longer than eight minutes are separated up to
-the eighth minute.
+"Split into stems" was removed in 1.8: a separator without a trained model
+could not do the job well enough to be worth its complexity, and real stems
+come from sources that already have them.
 
 ## Choosing what to train on
 
-Two panes. The left rail is **what to train on** - pink noise, the built-in
-synthesized categories, then everything you imported. The right pane is the
+Two panes. The left rail is **what to train on** - the exercise's own
+sound, pink noise, the built-in synthesized categories, then everything you
+imported and every pack.
+
+- **The exercise's own sound** (the default) - each exercise plays material
+  its skill is heard on: a chord for distortion (noise has no pitch, so no
+  harmonics), a drum loop for compression, a single hit for reverb, pink
+  noise for frequency, level and panning.
+- **Pink noise** - everything on pink noise. The right pane is the
 **actual files** in whichever one is selected.
 
 - Click a **category** → the exercises shuffle through its clips, a
@@ -77,6 +79,6 @@ put in your library is yours and your responsibility.
 - **Stereo width always uses pink noise.** Clips are downmixed to mono on
   load, and mono has no side channel to widen.
 - **Compression and delay are harder to hear on a dense mix** than on the
-  synthesized bursts, because both exercises are built around single hits
+  exercise's own material, because both exercises are built around single hits
   with gaps where an envelope and a repeat are audible. A loop of finished
   music eats that.

@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "缩小范围",
   "ui.hintNarrowCostLife": "缩小范围（−1 条命）",
   "ui.hintNarrowCostSeconds": "缩小范围（−{{seconds}} 秒）",
-  "ui.separateStems": "分离为分轨…",
-  "ui.separateHint": "将每条音轨分离为鼓、贝斯、中置（通常是人声）和两侧，再把每个分轨切成循环。这是根据信号本身做的估算，并非训练好的模型：居中的合成器会被归入人声。",
-  "ui.stemDrums": "分轨：鼓",
-  "ui.stemBass": "分轨：贝斯",
-  "ui.stemCentre": "分轨：中置（人声）",
-  "ui.stemSides": "分轨：两侧（宽声场）"
+  "ui.soundsExercise": "练习自带的声音",
+  "ui.soundsOnExercise": "每个练习播放自己的素材：和弦、鼓循环、单次敲击——在合适的地方使用粉红噪声",
+  "ui.credits": "声音来源",
+  "ui.creditsIntro": "训练器可以播放的每一个声音：由谁制作、来自哪里、采用何种许可。"
 }

@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "Narrow the scale",
   "ui.hintNarrowCostLife": "Narrow the scale (−1 life)",
   "ui.hintNarrowCostSeconds": "Narrow the scale (−{{seconds}} s)",
-  "ui.separateStems": "Split into stems…",
-  "ui.separateHint": "Splits each track into drums, bass, centre (usually the vocal) and sides, then cuts every stem into loops. An estimate from the signal itself, not a trained model: a centred synth lands with the vocal.",
-  "ui.stemDrums": "Stem: drums",
-  "ui.stemBass": "Stem: bass",
-  "ui.stemCentre": "Stem: centre (vocal)",
-  "ui.stemSides": "Stem: sides (wide)"
+  "ui.soundsExercise": "Exercise's own sound",
+  "ui.soundsOnExercise": "Each exercise plays its own sound: a chord, a drum loop, a single hit - pink noise where that is the right material",
+  "ui.credits": "Sound credits",
+  "ui.creditsIntro": "Every sound the trainer can play: who made it, where it is from and under which licence."
 }

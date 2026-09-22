@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "범위 좁히기",
   "ui.hintNarrowCostLife": "범위 좁히기 (−1 라이프)",
   "ui.hintNarrowCostSeconds": "범위 좁히기 (−{{seconds}}초)",
-  "ui.separateStems": "스템으로 분리…",
-  "ui.separateHint": "각 트랙을 드럼, 베이스, 센터(보통 보컬), 사이드로 나눈 뒤 각 스템을 루프로 자릅니다. 학습된 모델이 아니라 신호 자체로 추정하므로, 가운데에 놓인 신스는 보컬 쪽에 들어갑니다.",
-  "ui.stemDrums": "스템: 드럼",
-  "ui.stemBass": "스템: 베이스",
-  "ui.stemCentre": "스템: 센터(보컬)",
-  "ui.stemSides": "스템: 사이드(와이드)"
+  "ui.soundsExercise": "연습 고유의 소리",
+  "ui.soundsOnExercise": "각 연습은 자기 소재를 재생합니다: 코드, 드럼 루프, 단일 타격 — 알맞은 곳에서는 핑크 노이즈",
+  "ui.credits": "사운드 크레딧",
+  "ui.creditsIntro": "트레이너가 재생할 수 있는 모든 소리: 누가 만들었고, 어디서 왔으며, 어떤 라이선스인지."
 }

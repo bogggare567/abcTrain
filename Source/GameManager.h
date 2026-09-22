@@ -40,6 +40,11 @@ public:
     // Training Sounds screen is the only thing that ever calls into this.
     ReferenceAudioLibrary& getReferenceAudioLibrary() noexcept { return referenceAudioLibrary; }
 
+    // When no sound is selected: each exercise's own synthesized material
+    // (true) or pink noise (false). Persisted by the library, applied to
+    // every game. See Game::setPreferExerciseSound and ADR 040.
+    void setPreferExerciseSound (bool shouldPrefer);
+
 private:
     // Declaration order matters: referenceAudioProperties must be
     // constructed before referenceAudioLibrary, which holds a reference

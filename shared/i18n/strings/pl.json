@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "Zawęź skalę",
   "ui.hintNarrowCostLife": "Zawęź skalę (−1 życie)",
   "ui.hintNarrowCostSeconds": "Zawęź skalę (−{{seconds}} s)",
-  "ui.separateStems": "Rozdziel na stemy…",
-  "ui.separateHint": "Dzieli każdy utwór na perkusję, bas, środek (zwykle wokal) i boki, a potem tnie każdy stem na pętle. To szacunek na podstawie samego sygnału, a nie wytrenowany model: synth ustawiony w środku trafi razem z wokalem.",
-  "ui.stemDrums": "Stem: perkusja",
-  "ui.stemBass": "Stem: bas",
-  "ui.stemCentre": "Stem: środek (wokal)",
-  "ui.stemSides": "Stem: boki (szerokie)"
+  "ui.soundsExercise": "Własny dźwięk ćwiczenia",
+  "ui.soundsOnExercise": "Każde ćwiczenie gra własny materiał: akord, pętlę perkusyjną, pojedyncze uderzenie - szum różowy tam, gdzie to właściwy materiał",
+  "ui.credits": "Autorzy dźwięków",
+  "ui.creditsIntro": "Każdy dźwięk, który może zagrać trener: kto go stworzył, skąd pochodzi i na jakiej licencji."
 }

@@ -50,6 +50,11 @@ public:
     // the Hearing page is open.
     std::function<juce::String()> hearingStatus;
 
+    // Who made each sound the trainer can play, and under what licence -
+    // shown on the About page under the product's own licence. The editor
+    // builds it from the sound library's packs (ADR 040).
+    std::function<juce::String()> soundCredits;
+
     void refresh();
 
     enum class Page { training, hearing, appearance, background, about };

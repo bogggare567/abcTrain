@@ -97,3 +97,29 @@ the record.
 - The question each exercise asks (Weak/Medium/Strong, reverb *type*):
   finding M7 is still under discussion.
 - Loudness matching is still RMS (finding M8 wants a measurement first).
+
+## The sound library: packs, credits, no stems
+
+Done in the same pass because `ReferenceAudioLibrary` and the Training
+sounds screen were open for the exercise's own sound anyway.
+
+- **Stems removed.** `StemSeparator` (HPSS plus a mid/side split) was the
+  limit of what a separator without a trained model can do, and it could
+  not be turned into a genre or voice classifier — it filters, it does not
+  classify. Real stems come from sources that already have them. Minus
+  ~400 lines, a test, a button, six strings in twelve languages.
+- **Packs.** A folder with a `pack.json` (format in
+  [design/sound-library.md](../design/sound-library.md)) is read for its
+  clips, tags and authors. A clip without an author, under a licence
+  outside CC0 / PD / CC BY / CC BY-SA / written permission, or pointing
+  outside its folder is not offered — the same rule the pack builder
+  (`tools/library/build_pack.py`) enforces. Tags come from whoever built
+  the pack, never from guessing in the plugin. A folder without a manifest
+  works exactly as before.
+- **Credits.** Settings → About lists every author/title/licence the
+  library can play, built-in synthesized sounds included — CC BY's one
+  condition, kept automatically.
+- **The rail** now starts with *the exercise's own sound* (the default)
+  and *pink noise*; the choice persists (`referencePreferExerciseSound`)
+  and `GameManager::setPreferExerciseSound` applies it to every game and
+  starts a new round, so compensation is re-measured on the new material.

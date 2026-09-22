@@ -3,6 +3,9 @@
 
     python3 tools/board/create_board.py            # сделать
     python3 tools/board/create_board.py --dry-run  # показать, что будет сделано
+    python3 tools/board/create_board.py --sync-stages  # ещё и переставить уже
+        # существующие карточки по этапам из cards.json (перезапишет то, что
+        # двигали руками на доске)
 
 Скрипт можно запускать повторно. Уже существующие метки, карточки (по
 заголовку) и доска не дублируются, добавляется только новое из cards.json.
@@ -121,13 +124,19 @@ def ensure_stage_field(number):
     return next(f for f in fields if f["name"] == STAGE_FIELD)
 
 
-def ensure_items(number, project_id, field, cards, urls):
+def ensure_items(number, project_id, field, cards, urls, sync_stages):
     items = gh("project", "item-list", str(number), "--owner", OWNER, "--limit", "500", "--format", "json", parse=True)
-    on_board = {i.get("content", {}).get("url") for i in items.get("items", [])}
+    on_board = {i.get("content", {}).get("url"): i for i in items.get("items", [])}
     options = {o["name"]: o["id"] for o in field["options"]}
     for card in cards:
         url = urls[card["title"]]
         if url in on_board:
+            item = on_board[url]
+            current = item.get(STAGE_FIELD.lower()) or item.get(STAGE_FIELD)
+            if sync_stages and current != card["stage"]:
+                gh("project", "item-edit", "--id", item["id"], "--project-id", project_id,
+                   "--field-id", field["id"], "--single-select-option-id", options[card["stage"]])
+                print(f"  ⇢ {card['stage']}: {card['title'][:60]}")
             continue
         item = gh("project", "item-add", str(number), "--owner", OWNER, "--url", url, "--format", "json", parse=True)
         gh("project", "item-edit", "--id", item["id"], "--project-id", project_id,
@@ -139,7 +148,9 @@ def main():
     global DRY
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true")
-    DRY = parser.parse_args().dry_run
+    parser.add_argument("--sync-stages", action="store_true")
+    args = parser.parse_args()
+    DRY = args.dry_run
 
     cards = json.loads((Path(__file__).parent / "cards.json").read_text(encoding="utf-8"))
     for c in cards:
@@ -154,7 +165,7 @@ def main():
         print("\nСухой прогон окончен.")
         return
     field = ensure_stage_field(number)
-    ensure_items(number, project_id, field, cards, urls)
+    ensure_items(number, project_id, field, cards, urls, args.sync_stages)
 
     print(f"\nГотово: https://github.com/users/{OWNER}/projects/{number}")
     print(f"Осталось один раз в браузере: вид Board → Group by «{STAGE_FIELD}».")

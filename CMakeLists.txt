@@ -255,7 +255,6 @@ add_library(abc_audio INTERFACE)
 target_sources(abc_audio INTERFACE
     ${abcShared}/audio/ReferenceAudioLibrary.cpp
     ${abcShared}/audio/AudioSliceAnalyzer.cpp
-    ${abcShared}/audio/StemSeparator.cpp
     ${abcShared}/audio/LessonAudioBed.cpp
 )
 target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -544,7 +543,6 @@ target_sources(EarTrainerTests
         tests/SessionManagerTest.cpp
         tests/AchievementsTest.cpp
         tests/AudioSliceAnalyzerTest.cpp
-        tests/StemSeparatorTest.cpp
     tests/RealtimeSafetyTest.cpp
         tests/PracticeAudioSourceTest.cpp
         tests/TrainingModuleTest.cpp

@@ -27,13 +27,18 @@ them. Everything visual comes from `shared/ui/AbcTrainTheme` and
    │               shared/analysis   shared/audio   shared/updates
    │               spectrum ·        library ·      version ·
    │               waveform ·        slicer ·       update check
-   │               meters            stems
+   │               meters            beds
    │                       │                               │
    └──────────────► shared/ui ◄────────────────────────────┘
                     theme · look&feel · fonts · widgets · window fit
                            │
                     shared/i18n   (12 languages, one table each)
 ```
+
+The effect engines — reverb, compressor, EQ coefficients — live in
+`shared/dsp/` (header-only, depends on JUCE alone), and both the trainer's
+exercises and the Learner plugins run them: what a player learns to hear is
+what the plugin then does ([ADR 040](decisions/040-one-engine-per-effect.md)).
 
 Each `shared/` folder is one CMake library that lists its sources once
 ([ADR 039](decisions/039-structure-for-growth.md)). Includes are written
@@ -89,6 +94,26 @@ palette at paint time or in a refresh method, never once at construction.
 
 A knob position belongs to the session; a training record belongs to the
 person. Don't mix them.
+
+### 5. Rules that come from the literature
+
+Each of these is backed by a study and a test; a change that breaks one
+needs an ADR that says why the study does not apply
+([research/2026-09-literature-audit.md](research/2026-09-literature-audit.md)).
+
+- **Moving the answer scale never plays the answer.** The pointer only
+  reads out a value. Training by guessing, without hearing intermediate
+  settings, builds a longer-lasting memory of the reference sounds than
+  sweeping until it sounds right (the ISA/ICA comparison). A "preview while
+  dragging" convenience would undo that.
+- **Boosts before cuts** (`Game::cutChanceForLevel`) — a dip is harder to
+  hear than a peak of the same size (Bücklein 1981).
+- **The threshold is the mean of the reversals, not the record**
+  (`ProgressManager::getThresholdLevelForGame`, Levitt 1971).
+- **Material fits the skill** — no harmonics without pitch, so distortion
+  never defaults to noise (ADR 040).
+- **Level is never the tell** — every exercise measures and matches the
+  loudness of both sides of A/B on the material actually playing.
 
 ## Where to put a change
 

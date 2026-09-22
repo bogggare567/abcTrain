@@ -797,10 +797,8 @@
   "ui.hintNarrowFree": "範囲を絞る",
   "ui.hintNarrowCostLife": "範囲を絞る（−1ライフ）",
   "ui.hintNarrowCostSeconds": "範囲を絞る（−{{seconds}}秒）",
-  "ui.separateStems": "ステムに分割…",
-  "ui.separateHint": "各トラックをドラム、ベース、センター（通常はボーカル）、サイドに分け、各ステムをループに切り分けます。学習済みモデルではなく信号そのものからの推定なので、センターに定位したシンセはボーカル側に入ります。",
-  "ui.stemDrums": "ステム：ドラム",
-  "ui.stemBass": "ステム：ベース",
-  "ui.stemCentre": "ステム：センター（ボーカル）",
-  "ui.stemSides": "ステム：サイド（ワイド）"
+  "ui.soundsExercise": "エクササイズ固有の音",
+  "ui.soundsOnExercise": "各エクササイズは専用の素材を再生します：コード、ドラムループ、単発のヒット——適切な場合はピンクノイズ",
+  "ui.credits": "サウンドのクレジット",
+  "ui.creditsIntro": "トレーナーが再生できるすべての音：作者、出典、ライセンス。"
 }
