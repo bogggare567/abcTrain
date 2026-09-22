@@ -108,7 +108,14 @@ void PanGame::submitNormalisedAnswer (float normalised)
 void PanGame::newRound()
 {
     // Anywhere across the field, not one of five points.
-    targetPan = random.nextFloat() * 2.0f - 1.0f;
+    // Uniform across the field, asked more often where this player misses
+    // (Game::keepDraw).
+    for (int attempt = 0; attempt < 16; ++attempt)
+    {
+        targetPan = random.nextFloat() * 2.0f - 1.0f;
+        if (keepDraw (random, bucketForPan (targetPan)))
+            break;
+    }
 
     // Nearest named position, for the legacy discrete path only.
     correctPositionIndex = 0;

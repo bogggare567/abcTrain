@@ -2,7 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "shared/learning/PracticeAudioSource.h"
-#include "CompressorEngine.h"
+#include "shared/dsp/CompressorEngine.h"
 #include <atomic>
 
 class WaveformDisplay;

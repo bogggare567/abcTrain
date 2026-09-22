@@ -151,6 +151,20 @@ public:
 
     Type getType() const noexcept { return type; }
 
+    // Switches algorithm at once, with an empty tank - no crossfade. For a
+    // caller that is between sounds anyway: the trainer changes its space
+    // only when a round starts, and fading the previous round's space into
+    // the new one would play the answer to the last question over the start
+    // of the next. Message thread or audio thread; never allocates.
+    void setTypeNow (Type newType) noexcept
+    {
+        type = pendingType = newType;
+        switching = false;
+        fadeGain = 1.0f;
+        resetTank();
+        coefficientsValid = false;
+    }
+
     void process (juce::dsp::AudioBlock<float>& block)
     {
         const auto numSamples = (int) block.getNumSamples();

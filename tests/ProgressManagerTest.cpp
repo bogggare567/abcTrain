@@ -137,6 +137,61 @@ public:
             expect (rate > 0.74f && rate < 0.85f, "settled at " + juce::String (rate, 3));
         }
 
+        beginTest ("the threshold is the mean of the reversals, and the record overstates it (ADR 040)");
+        {
+            // Same simulated listener: right with p = 1 - 0.06 (step - 1),
+            // so p = 0.794 - where 3-down/1-up converges - at step 4.43.
+            const auto options = makeTempOptions ("threshold");
+            GameManager gameManager;
+            ProgressManager progress (gameManager, options);
+            juce::Random random (99);
+
+            expect (! progress.hasThresholdForGame (0));
+
+            for (int i = 0; i < 600; ++i)
+            {
+                const auto p = 1.0f - 0.06f * (float) (progress.getLevelForGame (0) - 1);
+                progress.registerAnswer (0, random.nextFloat() < p);
+            }
+
+            expect (progress.hasThresholdForGame (0));
+            const auto threshold = progress.getThresholdLevelForGame (0);
+            logMessage ("threshold " + juce::String (threshold, 2) + ", record "
+                        + juce::String (progress.getBestLevelForGame (0)));
+
+            expectWithinAbsoluteError (threshold, 4.43f, 1.2f);
+            expect ((float) progress.getBestLevelForGame (0) > threshold,
+                    "the record is the top of a random walk and should sit above the threshold");
+
+            // It survives a restart.
+            GameManager gameManager2;
+            ProgressManager reloaded (gameManager2, options);
+            expectWithinAbsoluteError (reloaded.getThresholdLevelForGame (0), threshold, 1.0e-4f);
+        }
+
+        beginTest ("bucket weights follow the misses, with a floor (ADR 040)");
+        {
+            GameManager gameManager;
+            ProgressManager progress (gameManager, makeTempOptions ("weights"));
+
+            // Bucket 1 always missed, bucket 2 never, bucket 0 barely tried.
+            for (int i = 0; i < 6; ++i)
+            {
+                progress.registerAnswer (0, false, 1.0f, 1);
+                progress.registerAnswer (0, true, 1.0f, 2);
+            }
+            progress.registerAnswer (0, false, 1.0f, 0);
+
+            const auto weights = progress.computeBucketWeights (0);
+            expect (weights.size() >= 3);
+            expectWithinAbsoluteError (weights[1], 1.25f, 1.0e-4f);
+            expectWithinAbsoluteError (weights[2], 0.25f, 1.0e-4f);
+            expectWithinAbsoluteError (weights[0], 0.75f, 1.0e-4f);
+
+            // And they reached the game.
+            expectWithinAbsoluteError (gameManager.getGame (0).bucketWeight (1), 1.25f, 1.0e-4f);
+        }
+
         beginTest ("onAnswerScored reports each step (ADR 035)");
         {
             GameManager gameManager;

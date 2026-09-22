@@ -1,7 +1,7 @@
 #pragma once
 
 #include "shared/analysis/SpectrumAnalyzer.h"
-#include "EQCoefficients.h"
+#include "shared/dsp/EQCoefficients.h"
 #include <functional>
 #include <vector>
 

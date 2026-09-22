@@ -256,8 +256,16 @@ target_sources(abc_audio INTERFACE
     ${abcShared}/audio/ReferenceAudioLibrary.cpp
     ${abcShared}/audio/AudioSliceAnalyzer.cpp
     ${abcShared}/audio/StemSeparator.cpp
+    ${abcShared}/audio/LessonAudioBed.cpp
 )
 target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+
+# The effect engines (ADR 040): one reverb, one compressor, one set of EQ
+# coefficients, shared by the trainer's exercises and the Learner plugins,
+# so what a player learns to hear is what the plugin they then turn does.
+# Header-only; depends on nothing but JUCE.
+add_library(abc_dsp INTERFACE)
+target_include_directories(abc_dsp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(abc_updates INTERFACE)
 target_sources(abc_updates INTERFACE
@@ -273,15 +281,14 @@ target_sources(abc_learning INTERFACE
     ${abcShared}/learning/ModuleProgress.cpp
     ${abcShared}/learning/ModuleScreenComponent.cpp
     ${abcShared}/learning/LearnerEditorBase.cpp
-    ${abcShared}/learning/LessonAudioBed.cpp
     ${abcShared}/learning/PracticeSourceSelector.cpp
 )
-target_link_libraries(abc_learning INTERFACE abc_ui abc_analysis abc_audio abc_updates)
+target_link_libraries(abc_learning INTERFACE abc_ui abc_analysis abc_audio abc_dsp abc_updates)
 
 # Everything, for the test binary and the editor tools, which exercise all
 # four products at once.
 add_library(abc_shared INTERFACE)
-target_link_libraries(abc_shared INTERFACE abc_ui abc_analysis abc_audio abc_updates abc_learning)
+target_link_libraries(abc_shared INTERFACE abc_ui abc_analysis abc_audio abc_dsp abc_updates abc_learning)
 
 # The trainer's engine (ADR 039): the nine exercises and the rules around
 # them - which round comes next, the staircase, what is saved, achievements,
@@ -308,7 +315,7 @@ target_sources(abc_trainer_engine INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/DBGame.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/FrequencyRangeGame.cpp
 )
-target_link_libraries(abc_trainer_engine INTERFACE abc_audio abc_i18n)
+target_link_libraries(abc_trainer_engine INTERFACE abc_audio abc_dsp abc_i18n)
 
 juce_add_plugin(EarTrainer
     COMPANY_NAME "soundkorb"
@@ -550,6 +557,7 @@ target_sources(EarTrainerTests
         tests/UpdateCheckerTest.cpp
         tests/ReferenceAudioLibraryTest.cpp
         tests/TestSignalGeneratorTest.cpp
+        tests/SharedEnginesTest.cpp
         tests/HintTest.cpp
         tests/SkillBucketTest.cpp
         tests/HearingGuardTest.cpp
@@ -749,7 +757,7 @@ target_sources(RoundBench PRIVATE
     Source/Games/DistortionGame.cpp Source/Games/FrequencyRangeGame.cpp
 )
 target_compile_definitions(RoundBench PRIVATE JUCE_STANDALONE_APPLICATION=1)
-target_link_libraries(RoundBench PRIVATE abc_audio juce::juce_dsp juce::juce_audio_formats
+target_link_libraries(RoundBench PRIVATE abc_audio abc_dsp juce::juce_dsp juce::juce_audio_formats
     juce::juce_audio_basics juce::juce_core juce::juce_events
     juce::juce_data_structures SampleData
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags)

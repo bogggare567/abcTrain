@@ -71,9 +71,11 @@ public:
         if (! hasAnswered())
             return -1;
 
-        // -1..+1 into 0..4.
-        return juce::jlimit (0, 4, (int) ((targetPan + 1.0f) * 2.5f));
+        return bucketForPan (targetPan);
     }
+
+    // -1..+1 into five fifths of the field, 0..4.
+    static int bucketForPan (float pan) noexcept { return juce::jlimit (0, 4, (int) ((pan + 1.0f) * 2.5f)); }
     float getChosenNormalised() const override { return chosenNormalised; }
     juce::String formatNormalisedValue (float normalised) const override;
     void submitNormalisedAnswer (float normalised) override;

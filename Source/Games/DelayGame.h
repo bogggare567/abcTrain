@@ -76,9 +76,14 @@ public:
         if (! hasAnswered())
             return -1;
 
-        if (targetMs < 80.0f)  return 0;
-        if (targetMs < 200.0f) return 1;
-        if (targetMs < 400.0f) return 2;
+        return bucketForMs (targetMs);
+    }
+
+    static int bucketForMs (float ms) noexcept
+    {
+        if (ms < 80.0f)  return 0;
+        if (ms < 200.0f) return 1;
+        if (ms < 400.0f) return 2;
         return 3;
     }
     float getChosenNormalised() const override { return chosenNormalised; }

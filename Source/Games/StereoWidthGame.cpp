@@ -121,7 +121,7 @@ void StereoWidthGame::setDifficulty (int level)
 void StereoWidthGame::newRound()
 {
     pairIndices = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
-    correctWidthIndex = random.nextInt (2);
+    correctWidthIndex = drawCorrectOfPair (random, pairIndices[0], pairIndices[1]);
 
     // Same reasoning as CompressionGame::newRound: four fixed widths
     // become four memorised recordings. Scaled by the current spread, so

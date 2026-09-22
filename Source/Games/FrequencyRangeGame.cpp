@@ -1,4 +1,5 @@
 #include "FrequencyRangeGame.h"
+#include "shared/dsp/EQCoefficients.h"
 #include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 
@@ -95,7 +96,7 @@ void FrequencyRangeGame::setDifficulty (int level)
 void FrequencyRangeGame::newRound()
 {
     pairIndices = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
-    correctRangeIndex = random.nextInt (2);
+    correctRangeIndex = drawCorrectOfPair (random, pairIndices[0], pairIndices[1]);
     const auto& range = ranges[(size_t) pairIndices[(size_t) correctRangeIndex]];
     // Log-uniform pick within the range, matching how frequency is
     // perceived - a linear random pick would bias heavily toward the
@@ -123,7 +124,8 @@ void FrequencyRangeGame::newRound()
     // one an engineer hunting a resonance actually faces.
     filterQ = juce::jmap (breadth, 0.34f, 1.0f, 0.7f, 2.4f);
 
-    isBoost = random.nextBool();
+    // Boosts first, cuts from step 4 (Game::cutChanceForLevel).
+    isBoost = random.nextFloat() >= cutChanceForLevel (difficultyLevel);
     chosenRangeIndex = -1;
     answered = false;
     updateFilter();
@@ -191,8 +193,9 @@ void FrequencyRangeGame::updateMatchGain()
 
 void FrequencyRangeGame::updateFilter()
 {
-    const auto gain = juce::Decibels::decibelsToGain (isBoost ? gainDb : -gainDb);
-    *peakFilter.state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (sampleRate, correctFreqHz, filterQ, gain);
+    // The matched bell - see EQGame::updateFilter.
+    *peakFilter.state = EQCoefficients::makeArray (EQCoefficients::BandType::bell, sampleRate, correctFreqHz,
+                                                   isBoost ? gainDb : -gainDb, filterQ);
 }
 
 const std::vector<float>& FrequencyRangeGame::axisPositions()

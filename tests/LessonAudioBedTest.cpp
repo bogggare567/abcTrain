@@ -1,5 +1,5 @@
 #include <juce_audio_basics/juce_audio_basics.h>
-#include "shared/learning/LessonAudioBed.h"
+#include "shared/audio/LessonAudioBed.h"
 #include "TestUtils.h"
 #include <cmath>
 
@@ -16,7 +16,7 @@ public:
 
     void runTest() override
     {
-        using Bed = TrainingModule::Bed;
+        using Bed = LessonAudioBed::Bed;
 
         const Bed everyBed[] = { Bed::drumLoop, Bed::bassNote, Bed::singleHit,
                                  Bed::brightHit, Bed::chord, Bed::pinkNoise };

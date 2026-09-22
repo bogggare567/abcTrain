@@ -7,8 +7,9 @@
 #include <vector>
 #include "shared/audio/PresetFamily.h"
 
-// "Guess the distortion type" exercise: continuous pink noise driven into
-// one of four fixed waveshaper types. Same labels throughout - what
+// "Guess the distortion type" exercise: a sustained chord (since ADR 040;
+// pink noise before it, which has no pitch and so no harmonics to hear)
+// driven into one of four waveshaper types, anti-aliased. Same labels throughout - what
 // changes with setDifficulty is the drive amount (the pre-gain applied
 // before waveshaping): high drive at easy levels makes each type's
 // character obvious, low drive at hard levels keeps all four close to
@@ -36,6 +37,7 @@ public:
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
     void setNoiseColour (NoiseColour colour) override { noise.setNoiseColour (colour); }
+    void setPreferExerciseSound (bool shouldPrefer) override { noise.setPreferBed (shouldPrefer); }
 
     // A/B - comparing the treated signal against the untreated one is
     // how a change is actually heard; see Game::supportsBeforeAfter.
@@ -98,6 +100,23 @@ public:
     static float measureMakeupFor (Type type, const Variant& variant, float drive, double sampleRate);
     static float shape (Type type, float driven, float negativeScale);
 
+    // The same measurement over a given signal - what the game uses, with
+    // the material the player is about to hear.
+    static float measureMakeupFor (Type type, const Variant& variant, float drive, double sampleRate,
+                                   const float* source, int numSamples);
+
+    // The curve's antiderivative, for first-order antiderivative
+    // anti-aliasing (Parker, Zavalishin & Le Bivic, DAFx 2016). A test seam
+    // as well: its derivative must be shape() everywhere.
+    static double antiderivative (Type type, double x, float negativeScale) noexcept;
+
+    // One sample of the anti-aliased shaper: the average of the curve over
+    // the straight line from the previous input to this one, instead of the
+    // curve at one point. That average is what a band-limited version of
+    // the curve would output; sampling the curve at a point is what folds
+    // the harmonics above Nyquist back down as inharmonic junk.
+    static float shapeAntiAliased (Type type, float driven, float previousDriven, float negativeScale) noexcept;
+
 private:
     struct TypeInfo
     {
@@ -106,11 +125,10 @@ private:
 
     static const std::array<TypeInfo, numTypes> types;
 
-    float waveshape (Type type, float driven) const;
-
     TestSignalGenerator noise;
     double sampleRate = 44100.0;
     float tapeLowpassState = 0.0f;
+    float previousDriven = 0.0f;   // ADAA's one sample of memory
     float tapeLowpassCoeff = 0.4f;
 
     // Easy (1-3): high drive, obvious character. Medium (4-6) / hard

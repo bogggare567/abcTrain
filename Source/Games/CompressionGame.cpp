@@ -5,10 +5,10 @@
 void CompressionGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
+    compressor.prepare (sampleRate);
+    compressor.reset();
 
-    compressor.prepare (spec);
-    compressor.setAttack (5.0f);
-    compressor.setRelease (120.0f);
+    noise.setExerciseBed (LessonAudioBed::Bed::drumLoop, sampleRate);
 
     attackSamples = juce::jmax (1, (int) (sampleRate * 0.003));
     decayTauSamples = juce::jmax (1, (int) (sampleRate * 0.07));
@@ -22,43 +22,39 @@ void CompressionGame::process (juce::AudioBuffer<float>& buffer)
 {
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
+    const auto shapeNoise = noise.isPlayingNoise();
+    const auto processed = playProcessed.load();
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
-        if (samplesSinceBurstStart >= burstPeriodSamples)
-            samplesSinceBurstStart = 0;
+        auto value = noise.nextSample();
 
-        float envelope;
-        if (samplesSinceBurstStart < attackSamples)
-            envelope = (float) samplesSinceBurstStart / (float) attackSamples;
-        else
-            envelope = std::exp ((float) -(samplesSinceBurstStart - attackSamples) / (float) decayTauSamples);
+        // Pink noise is shaped into hits; the drum loop or a clip already
+        // has its own.
+        if (shapeNoise)
+        {
+            if (samplesSinceBurstStart >= burstPeriodSamples)
+                samplesSinceBurstStart = 0;
 
-        const auto value = noise.nextSample() * envelope;
+            value *= samplesSinceBurstStart < attackSamples
+                       ? (float) samplesSinceBurstStart / (float) attackSamples
+                       : std::exp ((float) -(samplesSinceBurstStart - attackSamples) / (float) decayTauSamples);
+            ++samplesSinceBurstStart;
+        }
+
+        // The engine is fed every sample either way, so switching A/B does
+        // not restart its envelope from zero. Only the compressed path gets
+        // the makeup: it is a per-round dry-over-wet ratio, and applying it
+        // to the dry side would make that side louder by exactly what the
+        // compressor took away.
+        const auto gain = compressor.computeGain (value);
+
+        if (processed)
+            value *= gain * roundMakeupGain;
 
         for (int ch = 0; ch < numChannels; ++ch)
-            buffer.setSample (ch, sample, value);
-
-        ++samplesSinceBurstStart;
+            buffer.setSample (ch, sample, value * 0.6f);
     }
-
-    if (playProcessed.load())
-    {
-        juce::dsp::AudioBlock<float> block (buffer);
-        juce::dsp::ProcessContextReplacing<float> context (block);
-        compressor.process (context);
-
-        // Only the compressed path gets it. Applying it to both was right
-        // while the makeup was a fixed per-preset constant equalising the
-        // three settings against each other; it is wrong now that it is a
-        // per-round dry-over-wet ratio, because multiplying the *dry* path
-        // by it makes the untreated side louder by exactly the amount the
-        // compressor had taken off. Which is a loudness comparison again,
-        // just pointing the other way.
-        buffer.applyGain (roundMakeupGain);
-    }
-
-    buffer.applyGain (0.6f);
 }
 
 void CompressionGame::setDifficulty (int level)
@@ -177,11 +173,10 @@ float CompressionGame::measureMakeupForTest (int level, const Variant& variant) 
     // restores precisely what the compressor took away and the absolute
     // scale of the measurement signal cancels out.
     const auto rate = sampleRate > 0.0 ? sampleRate : 44100.0;
-    const auto numSamples = (int) (rate * 1.2);
+    const auto numSamples = (int) (rate * 2.4);
 
-    juce::dsp::Compressor<float> measuring;
-    juce::dsp::ProcessSpec spec { rate, (juce::uint32) numSamples, 1 };
-    measuring.prepare (spec);
+    CompressorEngine measuring;
+    measuring.prepare (rate);
 
     // Exactly what updateCompressor() is about to set on the real one,
     // *including this round's jitter*. Measuring the un-jittered setting
@@ -189,26 +184,29 @@ float CompressionGame::measureMakeupForTest (int level, const Variant& variant) 
     // changes how much gain reduction happens and therefore how much
     // needs putting back.
     const auto& preset = presets[(size_t) juce::jlimit (0, numLevels - 1, level)];
-    measuring.setThreshold (preset.thresholdDb + variant.thresholdOffsetDb + roundThresholdJitterDb);
-    measuring.setRatio (juce::jmax (1.05f, preset.ratio * variant.ratioScale + roundRatioJitter));
-    measuring.setAttack (variant.attackMs);
-    measuring.setRelease (variant.releaseMs);
+    measuring.setParameters (preset.thresholdDb + variant.thresholdOffsetDb + roundThresholdJitterDb,
+                             juce::jmax (1.05f, preset.ratio * variant.ratioScale + roundRatioJitter),
+                             variant.attackMs, variant.releaseMs, kneeDb, 0.0f);
 
+    // The material the player is about to hear - the drum loop, their own
+    // clip, or noise shaped into the same hits the game plays. A
+    // compressor is level- and envelope-dependent, so measuring it on
+    // anything else measures a different device.
     juce::AudioBuffer<float> scratch (1, numSamples);
-    PinkNoiseGenerator measuringNoise { 0x5EED };
+    noise.fillForMeasurement (scratch.getWritePointer (0), numSamples, 0x5EED);
 
-    // The same attack-then-exponential-decay burst the game plays, so the
-    // measurement sees the transient the compressor is actually working
-    // on rather than a steady tone.
-    for (int i = 0; i < numSamples; ++i)
+    if (noise.isPlayingNoise())
     {
-        const auto position = i % juce::jmax (1, burstPeriodSamples);
-        const auto envelope = position < attackSamples
-                                ? (float) position / (float) juce::jmax (1, attackSamples)
-                                : std::exp ((float) -(position - attackSamples)
-                                                / (float) juce::jmax (1, decayTauSamples));
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto position = i % juce::jmax (1, burstPeriodSamples);
+            const auto envelope = position < attackSamples
+                                    ? (float) position / (float) juce::jmax (1, attackSamples)
+                                    : std::exp ((float) -(position - attackSamples)
+                                                    / (float) juce::jmax (1, decayTauSamples));
 
-        scratch.setSample (0, i, measuringNoise.nextSample() * envelope);
+            scratch.setSample (0, i, scratch.getSample (0, i) * envelope);
+        }
     }
 
     const auto rmsOf = [&scratch, numSamples]
@@ -224,9 +222,9 @@ float CompressionGame::measureMakeupForTest (int level, const Variant& variant) 
 
     const auto dry = rmsOf();
 
-    juce::dsp::AudioBlock<float> block (scratch);
-    juce::dsp::ProcessContextReplacing<float> context (block);
-    measuring.process (context);
+    auto* data = scratch.getWritePointer (0);
+    for (int i = 0; i < numSamples; ++i)
+        data[i] *= measuring.computeGain (data[i]);
 
     const auto wet = rmsOf();
 
@@ -242,7 +240,8 @@ void CompressionGame::newRound()
     // separate draw, so a hard pair does not also bias which side is
     // right.
     pairLevels = drawPair();
-    correctLevelIndex = random.nextInt (2);
+    correctLevelIndex = drawCorrectOfPair (random, pairLevels[0], pairLevels[1]);
+    noise.nextBedVariation (random);
 
     // A small random nudge on top of the preset, redrawn every round.
     //
@@ -305,10 +304,9 @@ juce::String CompressionGame::getFeedbackText() const
 void CompressionGame::updateCompressor()
 {
     const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
-    compressor.setThreshold (preset.thresholdDb + roundVariant.thresholdOffsetDb + roundThresholdJitterDb);
-    compressor.setRatio (juce::jmax (1.05f, preset.ratio * roundVariant.ratioScale + roundRatioJitter));
-    compressor.setAttack (roundVariant.attackMs);
-    compressor.setRelease (roundVariant.releaseMs);
+    compressor.setParameters (preset.thresholdDb + roundVariant.thresholdOffsetDb + roundThresholdJitterDb,
+                              juce::jmax (1.05f, preset.ratio * roundVariant.ratioScale + roundRatioJitter),
+                              roundVariant.attackMs, roundVariant.releaseMs, kneeDb, 0.0f);
 }
 
 std::array<int, 2> CompressionGame::drawPair()

@@ -1,5 +1,5 @@
 #include "PluginEditor.h"
-#include "EQCoefficients.h"
+#include "shared/dsp/EQCoefficients.h"
 #include "FrequencyGuide.h"
 #include "FrequencyZones.h"
 #include "EQModules.h"

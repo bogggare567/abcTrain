@@ -3,19 +3,25 @@
 #include "Game.h"
 #include "shared/audio/GainMatch.h"
 #include "shared/audio/TestSignalGenerator.h"
+#include "shared/dsp/ReverbEngine.h"
 #include <array>
 #include <atomic>
 #include <vector>
 #include "shared/audio/PresetFamily.h"
 
-// "Guess the reverb type" exercise: a repeating percussive noise burst
-// through one of four reverb characters. Room/Hall/Plate are approximated
-// with different juce::dsp::Reverb (Freeverb-derived algorithm) parameter
-// presets - not physically modeled per type, just tuned by ear to sound
-// distinct, same approach CompressionGame takes with its presets. Spring
-// is different enough (a metallic comb/allpass "boing" that Freeverb-style
-// algorithms don't produce) that it's built separately, as a cascade of
-// resonant allpass filters instead of the Reverb DSP object.
+// "Guess the reverb type": a hit, and the space it is played in.
+//
+// Since ADR 040 the space is Learner Verb's own engine
+// (shared/dsp/ReverbEngine): Room and Chamber are its FDN with short lines
+// and strong early reflections, Hall its FDN with long lines, Plate is
+// Dattorro's tank and Spring two dispersive loops. What a player learns to
+// recognise here is exactly what the plugin they then turn produces. It
+// used to be Freeverb tuned by ear, plus four all-pass filters standing in
+// for a spring - a different reverb from the one the product teaches with.
+//
+// The hit is the exercise's own synthesized single hit (LessonAudioBed),
+// not a burst of noise: reverb is judged on a clap or a snare, where the
+// direct sound and the tail can be told apart.
 class ReverbGame : public Game
 {
 public:
@@ -44,6 +50,7 @@ public:
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
     void setNoiseColour (NoiseColour colour) override { noise.setNoiseColour (colour); }
+    void setPreferExerciseSound (bool shouldPrefer) override { noise.setPreferBed (shouldPrefer); }
 
     // A/B - the same hooks the other seven games wire up (see
     // Game::supportsBeforeAfter). This game and StereoWidthGame were the
@@ -116,12 +123,20 @@ private:
     // a recording, not a room. Which member you get depends on the level:
     // early on the archetypes, later the ones sitting against the
     // neighbouring type. See shared/audio/PresetFamily.h.
+    // One space: which algorithm, and the numbers a sound engineer would
+    // actually dial into it. Measured in real units since ADR 040 - the
+    // engine is Learner Verb's, so Decay is seconds of RT60 and Pre-delay
+    // is milliseconds, where the Freeverb this replaced took a unitless
+    // "room size" tuned by ear.
     struct Variant
     {
-        float roomSize;
-        float damping;
-        float width;
-        float wet;
+        ReverbEngine::Type engine;
+        float decaySeconds;
+        float preDelayMs;
+        float size;         // 0..1, the engine's Size
+        float damping;      // 0..1
+        float width;        // 0..1
+        float send;         // wet level against the dry hit
         float archetypal;   // 1 = textbook, 0 = borderline
     };
 
@@ -135,8 +150,6 @@ private:
     // constant exists to make loud.
     static constexpr int plateTypeIndex = 3;
     static constexpr int springTypeIndex = 4;
-    static constexpr float springQ = 4.0f;
-    static const std::array<float, 4> springFrequenciesHz;
     static const std::array<const char*, numTypes> typeLabels;
 
     // Unlock order: Room, Hall, Plate, Chamber, Spring. Indices into
@@ -153,9 +166,8 @@ private:
     void updateReverbForType();
 
     TestSignalGenerator noise;
-    juce::dsp::Reverb reverb;
-    std::array<juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
-                                               juce::dsp::IIR::Coefficients<float>>, 4> springAllpass;
+    ReverbEngine engine;
+    juce::AudioBuffer<float> wetScratch;
     double sampleRate = 44100.0;
     // Defaults to the easy tier (matches EQGame/CompressionGame both
     // defaulting to their easy values) in case something ever constructs

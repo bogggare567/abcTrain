@@ -160,6 +160,7 @@ private:
     int correctBandIndex = 0;
     int chosenBandIndex = -1;
     bool isBoost = true;
+    int difficultyLevel = 1;
 
 public:
     // +1/-1 so the editor can say "boosted at" / "cut at" in the player's

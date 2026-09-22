@@ -39,9 +39,13 @@ ProgressManager::ProgressManager (GameManager& gm, const juce::PropertiesFile::O
     updateStreakForDate (today);
     generateDailyChallengeForDate (today);
 
-    // Each exercise gets its own difficulty, not one shared number.
+    // Each exercise gets its own difficulty, not one shared number, and
+    // starts asking where this player misses.
     for (int i = 0; i < gameManager.getNumGames(); ++i)
+    {
         gameManager.getGame (i).setDifficulty (getLevelForGame (i));
+        pushBucketWeights (i);
+    }
 }
 
 ProgressManager::~ProgressManager()
@@ -119,6 +123,7 @@ void ProgressManager::registerAnswer (int gameIndex, bool wasCorrect, float qual
 
     juce::ignoreUnused (quality);
     applyAnswerToProgress (gameIndex, wasCorrect, outcome);
+    pushBucketWeights (gameIndex);
 
     refreshAchievements();
     saveState();
@@ -292,6 +297,23 @@ void ProgressManager::applyAnswerToProgress (int gameIndex, bool wasCorrect,
         outcome.newBest = true;
     }
 
+    // A turning point: the staircase moved the other way from last time.
+    // The step it turned *at* is the reversal level.
+    if (game.level != before)
+    {
+        const auto direction = game.level > before ? 1 : -1;
+
+        if (game.lastDirection != 0 && direction != game.lastDirection)
+        {
+            game.reversals.push_back (before);
+
+            if ((int) game.reversals.size() > reversalsKept)
+                game.reversals.erase (game.reversals.begin());
+        }
+
+        game.lastDirection = direction;
+    }
+
     outcome.leveledUp = game.level > before;
     outcome.steppedDown = game.level < before;
     outcome.level = game.level;
@@ -308,6 +330,59 @@ int ProgressManager::getLevelForGame (int gameIndex) const noexcept
         return 1;
 
     return progressPerGame[(size_t) gameIndex].level;
+}
+
+float ProgressManager::getThresholdLevelForGame (int gameIndex) const noexcept
+{
+    if (gameIndex < 0 || gameIndex >= (int) progressPerGame.size())
+        return -1.0f;
+
+    const auto& reversals = progressPerGame[(size_t) gameIndex].reversals;
+
+    if ((int) reversals.size() < reversalsForThreshold)
+        return -1.0f;
+
+    // An even number of the most recent ones, so as many peaks as troughs
+    // go into the mean and neither end biases it (Levitt).
+    const auto count = (int) reversals.size() - ((int) reversals.size() % 2);
+    auto sum = 0.0f;
+
+    for (int i = (int) reversals.size() - count; i < (int) reversals.size(); ++i)
+        sum += (float) reversals[(size_t) i];
+
+    return sum / (float) count;
+}
+
+std::vector<float> ProgressManager::computeBucketWeights (int gameIndex) const
+{
+    std::vector<float> weights;
+
+    if (gameIndex < 0 || gameIndex >= gameManager.getNumGames()
+        || gameIndex >= (int) bucketsPerGame.size())
+        return weights;
+
+    const auto numBuckets = juce::jmin (maxSkillBuckets, gameManager.getGame (gameIndex).getNumSkillBuckets());
+
+    for (int b = 0; b < numBuckets; ++b)
+    {
+        const auto& bucket = bucketsPerGame[(size_t) gameIndex][(size_t) b];
+
+        // Floor 0.25, plus the miss rate: a part missed every time comes up
+        // five times as often as one never missed. Untried or barely tried:
+        // the middle of that range, so it is explored rather than starved.
+        const auto weight = bucket.attempts >= 3
+                              ? 0.25f + (float) bucket.misses / (float) bucket.attempts
+                              : 0.75f;
+        weights.push_back (weight);
+    }
+
+    return weights;
+}
+
+void ProgressManager::pushBucketWeights (int gameIndex)
+{
+    if (gameIndex >= 0 && gameIndex < gameManager.getNumGames())
+        gameManager.getGame (gameIndex).setBucketWeights (computeBucketWeights (gameIndex));
 }
 
 int ProgressManager::getBestLevelForGame (int gameIndex) const noexcept
@@ -491,6 +566,18 @@ void ProgressManager::loadState()
         gameProgress.bestLevel = juce::jlimit (gameProgress.level, maxLevel,
                                                properties->getIntValue (prefix + "bestLevel", gameProgress.level));
         gameProgress.stepRun   = juce::jlimit (0, stepRule - 1, properties->getIntValue (prefix + "stepRun", 0));
+        gameProgress.lastDirection = juce::jlimit (-1, 1, properties->getIntValue (prefix + "direction", 0));
+        gameProgress.reversals.clear();
+
+        {
+            juce::StringArray tokens;
+            tokens.addTokens (properties->getValue (prefix + "reversals"), ",", "");
+            tokens.removeEmptyStrings();
+
+            for (const auto& token : tokens)
+                if (gameProgress.reversals.size() < (size_t) reversalsKept)
+                    gameProgress.reversals.push_back (juce::jlimit (1, maxLevel, token.getIntValue()));
+        }
 
         if (i < favouritePerGame.size())
             favouritePerGame[i] = properties->getBoolValue (prefix + "favourite", false);
@@ -542,6 +629,15 @@ void ProgressManager::saveState()
         properties->setValue (prefix + "level", gameProgress.level);
         properties->setValue (prefix + "bestLevel", gameProgress.bestLevel);
         properties->setValue (prefix + "stepRun", gameProgress.stepRun);
+        properties->setValue (prefix + "direction", gameProgress.lastDirection);
+
+        {
+            juce::StringArray tokens;
+            for (const auto r : gameProgress.reversals)
+                tokens.add (juce::String (r));
+
+            properties->setValue (prefix + "reversals", tokens.joinIntoString (","));
+        }
 
         if (i < favouritePerGame.size())
             properties->setValue (prefix + "favourite", (bool) favouritePerGame[i]);

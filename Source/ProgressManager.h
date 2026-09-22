@@ -55,6 +55,31 @@ public:
     int getStepRunForGame (int gameIndex) const noexcept;
     float getLevelProgressForGame (int gameIndex) const noexcept;
 
+    // ---- the measured threshold (Levitt 1971) ---------------------------
+    //
+    // The record above is the highest step the staircase ever touched, and
+    // the highest point of a random walk is systematically optimistic:
+    // three lucky answers on a wide band happen, and the record keeps them
+    // for ever. Psychoacoustics does not read a threshold off the top of a
+    // staircase; it averages the *reversals* - the steps where it turned
+    // round - and so does this: the mean of the last six to eight, once
+    // there are six. That is the number a teacher can compare before and
+    // after, and the one the home screen shows once it exists.
+    //
+    // A fractional step (6.5 = between steps 6 and 7). Negative when there
+    // are not enough reversals yet.
+    float getThresholdLevelForGame (int gameIndex) const noexcept;
+    bool hasThresholdForGame (int gameIndex) const noexcept { return getThresholdLevelForGame (gameIndex) > 0.0f; }
+    static constexpr int reversalsForThreshold = 6;
+    static constexpr int reversalsKept = 8;
+
+    // How often each part of the subject should come up next, from where
+    // the misses land (Kaniwa et al. 2011: weight follows the error rate,
+    // with a floor so a strong part is still asked). A bucket with fewer
+    // than three attempts gets the neutral weight, so an untried part of the
+    // subject is not starved. Pushed into each Game after every answer.
+    std::vector<float> computeBucketWeights (int gameIndex) const;
+
     // The highest record across all exercises.
     int getMaxLevelReached() const noexcept;
 
@@ -261,7 +286,15 @@ private:
         int level = 1;
         int bestLevel = 1;
         int stepRun = 0;
+
+        // The staircase's turning points, newest last, at most
+        // reversalsKept; and which way it last moved (+1 harder, -1 easier,
+        // 0 not yet).
+        std::vector<int> reversals;
+        int lastDirection = 0;
     };
+
+    void pushBucketWeights (int gameIndex);
 
     std::vector<GameProgress> progressPerGame;
 

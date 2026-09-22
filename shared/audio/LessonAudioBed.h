@@ -1,7 +1,6 @@
 #pragma once
 
 #include <juce_audio_basics/juce_audio_basics.h>
-#include "shared/learning/TrainingModule.h"
 
 // The sounds a training module teaches over, synthesized from nothing.
 //
@@ -34,14 +33,28 @@
 // when a module opens and then looped.
 namespace LessonAudioBed
 {
+    // Which synthesized sound a module teaches over. Half the value of a
+    // module is picking material the knob is actually audible on: attack
+    // does nothing you can hear on a sustained pad, and pre-delay is
+    // invisible inside a busy loop. See shared/audio/LessonAudioBed.h.
+    enum class Bed
+    {
+        drumLoop,   // transients, spaced - attack, release, knee, ratio
+        bassNote,   // sustained and low - threshold, low shelves
+        singleHit,  // one hit then silence - pre-delay, decay tails
+        brightHit,  // repeated bright transient - damping, air, high shelves
+        chord,      // three detuned voices - width, mid range
+        pinkNoise   // flat and dense - frequency, Q
+    };
+
     // Renders `bed` as a seamless stereo loop at `sampleRate`. The
     // variation seed picks one instance out of the family: same seed, same
     // sound, which is what lets a check be repeated and a test be written.
-    juce::AudioBuffer<float> render (TrainingModule::Bed bed, double sampleRate,
+    juce::AudioBuffer<float> render (Bed bed, double sampleRate,
                                      int variationSeed);
 
     // How long each bed's loop is, in seconds. Beds meant for hearing a
     // tail (singleHit, brightHit) leave real silence after the hit, because
     // the silence is where the tail lives.
-    double lengthSeconds (TrainingModule::Bed) noexcept;
+    double lengthSeconds (Bed) noexcept;
 }

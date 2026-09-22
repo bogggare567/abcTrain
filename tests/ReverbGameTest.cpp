@@ -173,8 +173,18 @@ public:
             const juce::dsp::ProcessSpec spec { 44100.0, 512, 2 };
             game.prepare (spec); // prepare() calls newRound() once
 
-            juce::AudioBuffer<float> buffer (2, 512);
-            game.process (buffer);
+            // A quarter of a second, in host-sized blocks: the exercise's
+            // own hit starts a few milliseconds in, after a fade, so the
+            // very first block of it can legitimately be silence.
+            juce::AudioBuffer<float> buffer (2, 11025);
+            buffer.clear();
+
+            for (int start = 0; start < buffer.getNumSamples(); start += 512)
+            {
+                const auto length = juce::jmin (512, buffer.getNumSamples() - start);
+                juce::AudioBuffer<float> block (buffer.getArrayOfWritePointers(), 2, start, length);
+                game.process (block);
+            }
 
             float maxAbs = 0.0f;
             for (int ch = 0; ch < buffer.getNumChannels(); ++ch)

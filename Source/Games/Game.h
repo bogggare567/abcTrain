@@ -215,6 +215,113 @@ public:
     // rather than "you guess here". -1 when there is nothing to record.
     virtual int getSkillBucketForRound() const { return -1; }
 
+    // ---- asking more often where you miss ------------------------------
+    //
+    // The miss map above says where somebody is weak; this is what makes
+    // the exercise do something about it. Kaniwa et al. (SMC 2011) trained
+    // two groups on the same band-identification task for four weeks: one
+    // drew bands uniformly, the other drew the bands it got wrong more
+    // often, with a floor so a strong band still came up. The weighted
+    // group improved more, and it was on music - the case that carries
+    // into real work - that the difference showed.
+    //
+    // `weights` is one number per skill bucket, larger = ask more.
+    // ProgressManager computes it from the same counts the miss map draws;
+    // an exercise uses it where it draws its target. Empty (the default,
+    // and what a first-time player has) means uniform, so nothing changes
+    // until there is something to go on. Message thread only, like
+    // newRound().
+    void setBucketWeights (std::vector<float> weights) { bucketWeights = std::move (weights); }
+    const std::vector<float>& getBucketWeights() const noexcept { return bucketWeights; }
+
+    // The weight of one bucket, 1 when nothing is known.
+    float bucketWeight (int bucket) const noexcept
+    {
+        if (bucket < 0 || bucket >= (int) bucketWeights.size())
+            return 1.0f;
+
+        const auto w = bucketWeights[(size_t) bucket];
+        return std::isfinite (w) && w > 0.0f ? w : 1.0f;
+    }
+
+    // Draws one of `candidates` with probability proportional to its
+    // bucket's weight. With no weights this is a uniform pick.
+    int drawWeighted (juce::Random& random, const std::vector<int>& candidates) const
+    {
+        if (candidates.empty())
+            return -1;
+
+        auto total = 0.0f;
+        for (const auto c : candidates)
+            total += bucketWeight (c);
+
+        auto roll = random.nextFloat() * total;
+
+        for (const auto c : candidates)
+        {
+            roll -= bucketWeight (c);
+            if (roll <= 0.0f)
+                return c;
+        }
+
+        return candidates.back();
+    }
+
+    // For an exercise that draws a *value*: whether to keep a draw that
+    // landed in `bucket`, or draw again. Accepting with probability
+    // weight / largest weight leaves the shape of the draw alone inside each
+    // bucket and only changes how often each bucket comes up. Call it in a
+    // bounded loop.
+    bool keepDraw (juce::Random& random, int bucket) const
+    {
+        auto largest = 0.0f;
+        for (int i = 0; i < (int) bucketWeights.size(); ++i)
+            largest = juce::jmax (largest, bucketWeight (i));
+
+        if (largest <= 0.0f)
+            return true;
+
+        return random.nextFloat() * largest <= bucketWeight (bucket);
+    }
+
+    // Which of the two offered alternatives is the answer, biased toward
+    // the one whose bucket is weaker. For the two-alternative exercises,
+    // whose bucket is the category itself.
+    int drawCorrectOfPair (juce::Random& random, int bucketA, int bucketB) const
+    {
+        const auto wA = bucketWeight (bucketA);
+        const auto wB = bucketWeight (bucketB);
+        return random.nextFloat() * (wA + wB) < wA ? 0 : 1;
+    }
+
+    // ---- boosts first, cuts later ----------------------------------------
+    //
+    // A dip is harder to hear than a peak of the same size (Bücklein, JAES
+    // 1981). Drawing boost or cut 50/50 at every level made each step of the
+    // staircase two different difficulties at once. Corey's programme and
+    // Harman's "How to Listen" both start with boosts and bring cuts in
+    // later, and so does this: none on the first three steps, then a
+    // rising share up to half from step 8.
+    static float cutChanceForLevel (int level) noexcept
+    {
+        const auto l = juce::jlimit (1, 10, level);
+        if (l <= 3)
+            return 0.0f;
+
+        return juce::jmin (0.5f, 0.1f * (float) (l - 3));
+    }
+
+    // ---- the sound an exercise plays when you have not picked one --------
+    //
+    // Pink noise is the right first material for frequency, level and
+    // panning, and the wrong one for three exercises: noise has no pitch, so
+    // a waveshaper cannot show odd against even harmonics; compression is
+    // heard on drums, not on hiss; reverb is judged on a hit. An exercise
+    // that knows better plays its own synthesized material
+    // (shared/audio/LessonAudioBed) unless the player explicitly asked for
+    // pink noise. Default: no opinion, pink noise.
+    virtual void setPreferExerciseSound (bool shouldPrefer) { juce::ignoreUnused (shouldPrefer); }
+
     // The English *name* of choice i, as opposed to its displayed label.
     //
     // Every categorical exercise offers two names out of its own family,
@@ -351,4 +458,7 @@ public:
 
     virtual int getScore() const = 0;
     virtual int getRoundsPlayed() const = 0;
+
+private:
+    std::vector<float> bucketWeights;
 };

@@ -2783,9 +2783,18 @@ void EarTrainerEditor::rebuildHomeSections()
 
         card.level = progress.getLevelForGame (i);
         card.bestLevel = progress.getBestLevelForGame (i);
-        card.levelText = formatLevel (gameManager.getGame (i), card.bestLevel, localisation);
-        card.rankText = rankFor (card.bestLevel, localisation);
-        card.levelIsNumber = gameManager.getGame (i).describeLevel (card.bestLevel).unit
+
+        // The number on the right is the *measured* threshold (the mean of
+        // the staircase's recent turning points, ADR 040) once there are
+        // enough of them; before that, the record. The ruler's fill stays
+        // the record either way.
+        const auto shownLevel = progress.hasThresholdForGame (i)
+                                    ? juce::jlimit (1, ProgressManager::maxLevel,
+                                                    juce::roundToInt (progress.getThresholdLevelForGame (i)))
+                                    : card.bestLevel;
+        card.levelText = formatLevel (gameManager.getGame (i), shownLevel, localisation);
+        card.rankText = rankFor (shownLevel, localisation);
+        card.levelIsNumber = gameManager.getGame (i).describeLevel (shownLevel).unit
                                  != Game::LevelMeaning::Unit::none;
         card.accent = tintForGame (englishName);
 

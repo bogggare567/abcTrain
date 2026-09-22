@@ -3,7 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "shared/learning/PracticeAudioSource.h"
 #include <juce_dsp/juce_dsp.h>
-#include "EQCoefficients.h"
+#include "shared/dsp/EQCoefficients.h"
 #include <array>
 #include <atomic>
 

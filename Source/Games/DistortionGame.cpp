@@ -1,6 +1,7 @@
 #include "DistortionGame.h"
 #include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
+#include <vector>
 
 const std::array<DistortionGame::TypeInfo, DistortionGame::numTypes> DistortionGame::types {{
     { "Soft Clipping"   },
@@ -82,6 +83,11 @@ void DistortionGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
     sampleRate = spec.sampleRate;
 
+    // Pitched, sustained material: harmonics only exist where there is a
+    // pitch, and odd against even harmonics is the whole question here.
+    // Pink noise through a waveshaper is still noise, only tilted.
+    noise.setExerciseBed (LessonAudioBed::Bed::chord, sampleRate);
+
     // The post-shaping rolloff's coefficient is now per-variant, not per
     // type, so newRound() sets it - which prepare() calls next anyway.
     newRound();
@@ -108,12 +114,60 @@ float DistortionGame::shape (Type type, float driven, float negativeScale)
     return driven;
 }
 
-float DistortionGame::waveshape (Type type, float driven) const
+double DistortionGame::antiderivative (Type type, double x, float negativeScale) noexcept
 {
-    return shape (type, driven, roundVariant.negativeScale);
+    // ln(cosh(x)) without overflowing: |x| + ln(1 + e^(-2|x|)) - ln 2.
+    const auto logCosh = [] (double v)
+    {
+        const auto a = std::abs (v);
+        return a + std::log1p (std::exp (-2.0 * a)) - 0.69314718055994530942;
+    };
+
+    if (type == Type::hardClip)
+    {
+        const auto a = std::abs (x);
+        return a <= 1.0 ? 0.5 * x * x : a - 0.5;
+    }
+
+    // tanh(x) above zero, tanh(k x) below: the integral is ln cosh(x) and
+    // ln cosh(k x) / k, both zero at zero, so the halves join.
+    if (x >= 0.0)
+        return logCosh (x);
+
+    const auto k = juce::jmax (1.0e-3, (double) negativeScale);
+    return logCosh (k * x) / k;
+}
+
+float DistortionGame::shapeAntiAliased (Type type, float driven, float previous, float negativeScale) noexcept
+{
+    const auto dx = (double) driven - (double) previous;
+
+    // Where the input barely moved the difference quotient is 0/0; the
+    // curve at the midpoint is its limit.
+    if (std::abs (dx) < 1.0e-5)
+        return shape (type, 0.5f * (driven + previous), negativeScale);
+
+    return (float) ((antiderivative (type, driven, negativeScale)
+                     - antiderivative (type, previous, negativeScale)) / dx);
 }
 
 float DistortionGame::measureMakeupFor (Type type, const Variant& variant, float drive, double sampleRate)
+{
+    // Pink noise: the fallback the game plays when neither its own chord
+    // nor a clip is available, and the signal the tests pin the
+    // compensation against.
+    constexpr int numSamples = 65536;
+    std::vector<float> source ((size_t) numSamples);
+    PinkNoiseGenerator measuringNoise { 0x5EED };
+
+    for (auto& v : source)
+        v = measuringNoise.nextSample();
+
+    return measureMakeupFor (type, variant, drive, sampleRate, source.data(), numSamples);
+}
+
+float DistortionGame::measureMakeupFor (Type type, const Variant& variant, float drive, double sampleRate,
+                                        const float* source, int numSamples)
 {
     // Measured, not guessed. The four types used to carry one hand-tuned
     // makeup gain each, which was near enough while every type had exactly
@@ -123,29 +177,27 @@ float DistortionGame::measureMakeupFor (Type type, const Variant& variant, float
     // character - the one thing every one of these exercises is built to
     // avoid.
     //
-    // So: run a reproducible signal through this exact voicing and scale
-    // it to a fixed RMS.
-    //
-    // **Pink** noise, because that is what the game plays. The first
-    // version measured full-scale white noise - some 15 dB hotter than the
-    // real signal - so it compensated for an amount of clipping that never
-    // happens and left the treated side several dB off. A waveshaper is a
-    // level-dependent device; measuring it at the wrong level measures a
-    // different device.
-    constexpr int numSamples = 65536;
+    // So: run the signal the player hears through this exact voicing and
+    // scale it to a fixed RMS. A waveshaper is a level-dependent device;
+    // measuring it on a different signal measures a different device - the
+    // first version used full-scale white noise and was several dB off.
     constexpr float targetRms = 0.20f;
 
-    PinkNoiseGenerator measuringNoise { 0x5EED };
+    if (source == nullptr || numSamples <= 0)
+        return 1.0f;
+
     const auto toneCoeff = onePoleCoeff (variant.toneCutoffHz, sampleRate);
 
     auto toneState = 0.0f;
+    auto previous = 0.0f;
     auto sum = 0.0;
     auto sumOfSquares = 0.0;
 
     for (int i = 0; i < numSamples; ++i)
     {
-        const auto raw = measuringNoise.nextSample();
-        auto shaped = shape (type, raw * drive, variant.negativeScale);
+        const auto driven = source[i] * drive;
+        auto shaped = shapeAntiAliased (type, driven, previous, variant.negativeScale);
+        previous = driven;
 
         if (variant.toneCutoffHz > 0.0f)
         {
@@ -188,7 +240,12 @@ void DistortionGame::process (juce::AudioBuffer<float>& buffer)
     {
         const auto raw = noise.nextSample();
         const auto driven = raw * juce::jmax (0.2f, driveAmount * roundVariant.driveScale + roundDriveJitter);
-        auto shaped = waveshape (type, driven);
+
+        // Anti-aliased (see shapeAntiAliased). Without it a hard clip folds
+        // inharmonic partials back under Nyquist - a tell no real plugin
+        // gives, and one that is louder on a pitched source than on noise.
+        auto shaped = shapeAntiAliased (type, driven, previousDriven, roundVariant.negativeScale);
+        previousDriven = driven;
 
         // Applied by the variant rather than by the type: a soft clip with
         // its top rolled off is a real voicing, and it is the one that
@@ -223,7 +280,8 @@ void DistortionGame::setDifficulty (int level)
 void DistortionGame::newRound()
 {
     pairIndices = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
-    correctTypeIndex = random.nextInt (2);
+    correctTypeIndex = drawCorrectOfPair (random, pairIndices[0], pairIndices[1]);
+    noise.nextBedVariation (random);
 
     // Three independent draws - the pair sets the question, the family
     // member sets how archetypal the example is. Same split, and the same
@@ -242,24 +300,24 @@ void DistortionGame::newRound()
     // Settled here, on the message thread, so the audio thread reads two
     // plain floats and never runs the measurement itself.
     const auto drive = juce::jmax (0.2f, driveAmount * roundVariant.driveScale + roundDriveJitter);
-    roundMakeup = measureMakeupFor (type, roundVariant, drive, sampleRate);
+    // Measured on what the player is about to hear - the chord, their own
+    // clip, or pink noise.
+    constexpr int measuredSamples = 32768;
+    std::vector<float> source ((size_t) measuredSamples);
+    noise.fillForMeasurement (source.data(), measuredSamples, 0x5EED);
+
+    roundMakeup = measureMakeupFor (type, roundVariant, drive, sampleRate, source.data(), measuredSamples);
 
     // The untreated signal measured on its own and brought to the same
     // target, rather than borrowing the shaped path's number.
     {
-        constexpr int numSamples = 4096;
         constexpr float targetRms = 0.20f;
-
-        PinkNoiseGenerator cleanNoise { 0x5EED };
         auto sumOfSquares = 0.0;
 
-        for (int i = 0; i < numSamples; ++i)
-        {
-            const auto value = cleanNoise.nextSample();
-            sumOfSquares += (double) value * (double) value;
-        }
+        for (const auto v : source)
+            sumOfSquares += (double) v * (double) v;
 
-        const auto cleanRms = (float) std::sqrt (sumOfSquares / (double) numSamples);
+        const auto cleanRms = (float) std::sqrt (sumOfSquares / (double) measuredSamples);
         roundCleanGain = cleanRms > 1.0e-6f ? juce::jlimit (0.05f, 20.0f, targetRms / cleanRms)
                                             : 1.0f;
     }
@@ -268,6 +326,7 @@ void DistortionGame::newRound()
     chosenTypeIndex = -1;
     answered = false;
     tapeLowpassState = 0.0f;
+    previousDriven = 0.0f;
     sendChangeMessage();
 }
 

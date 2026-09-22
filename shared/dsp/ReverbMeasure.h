@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ReverbEngine.h"
+#include "shared/dsp/ReverbEngine.h"
 #include <cmath>
 #include <vector>
 

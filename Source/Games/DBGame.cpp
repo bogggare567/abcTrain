@@ -90,7 +90,12 @@ void DBGame::newRound()
     // always a value a person could plausibly name - a target of
     // -4.37 dB would be unfair however wide the tolerance.
     const auto steps = juce::roundToInt (axisSpanDb * 2.0f);
-    targetDb = axisMinDb + (float) random.nextInt (steps + 1) * 0.5f;
+    for (int attempt = 0; attempt < 16; ++attempt)
+    {
+        targetDb = axisMinDb + (float) random.nextInt (steps + 1) * 0.5f;
+        if (keepDraw (random, bucketForDb (targetDb)))
+            break;
+    }
 
     // Nearest legacy choice, for the discrete path only.
     correctChoiceIndex = 0;

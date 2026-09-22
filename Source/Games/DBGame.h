@@ -76,9 +76,14 @@ public:
         if (! hasAnswered())
             return -1;
 
-        if (targetDb <= -3.0f) return 0;
-        if (targetDb <   0.0f) return 1;
-        if (targetDb <=  3.0f) return 2;
+        return bucketForDb (targetDb);
+    }
+
+    static int bucketForDb (float db) noexcept
+    {
+        if (db <= -3.0f) return 0;
+        if (db <   0.0f) return 1;
+        if (db <=  3.0f) return 2;
         return 3;
     }
     float getChosenNormalised() const override { return chosenNormalised; }

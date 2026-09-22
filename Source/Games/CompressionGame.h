@@ -3,15 +3,21 @@
 #include "Game.h"
 #include <atomic>
 #include "shared/audio/TestSignalGenerator.h"
+#include "shared/dsp/CompressorEngine.h"
 #include <array>
 #include <vector>
 #include "shared/audio/PresetFamily.h"
 
-// "Guess the compression" exercise: plays a repeating percussive noise
-// burst through juce::dsp::Compressor at one of three fixed weak/medium/
-// strong presets. Output loudness is makeup-gain-matched across presets
-// so the player has to judge compression character (pumping, reduced
-// dynamics) rather than just picking whichever answer sounds loudest.
+// "Guess the compression": a drum loop through one of three amounts of
+// compression - Weak, Medium, Strong. Output loudness is measured and
+// matched per round, so the player judges what the compressor does to the
+// hits rather than which side is louder.
+//
+// Since ADR 040 the compressor is Learner Comp's own engine
+// (shared/dsp/CompressorEngine: the Giannoulis/Massberg/Reiss soft-knee gain
+// computer with log-domain smoothing), not juce::dsp::Compressor, and the
+// material is a synthesized drum loop rather than bursts of noise -
+// compression is heard on drums.
 class CompressionGame : public Game
 {
 public:
@@ -34,6 +40,7 @@ public:
     void setDifficulty (int level) override;
     void setReferenceAudioLibrary (const ReferenceAudioLibrary* library) override { noise.setLibrary (library); }
     void setNoiseColour (NoiseColour colour) override { noise.setNoiseColour (colour); }
+    void setPreferExerciseSound (bool shouldPrefer) override { noise.setPreferBed (shouldPrefer); }
 
     // A/B - comparing the treated signal against the untreated one is
     // how a change is actually heard; see Game::supportsBeforeAfter.
@@ -133,7 +140,11 @@ private:
 
     void updateCompressor();
 
-    juce::dsp::Compressor<float> compressor;
+    // A soft knee, as nearly every hardware and plugin compressor has by
+    // default; the hard knee juce::dsp::Compressor had is the exception.
+    static constexpr float kneeDb = 6.0f;
+
+    CompressorEngine compressor;
     TestSignalGenerator noise;
     double sampleRate = 44100.0;
 

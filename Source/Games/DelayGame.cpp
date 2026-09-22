@@ -136,8 +136,13 @@ void DelayGame::newRound()
 {
     // Log-uniform, so short and long delays come up equally often;
     // rounded to 5 ms so the answer is always a nameable number.
-    targetMs = juce::jlimit (axisMinMs, axisMaxMs,
-                              5.0f * juce::roundToInt (normalisedToMs (random.nextFloat()) / 5.0f));
+    for (int attempt = 0; attempt < 16; ++attempt)
+    {
+        targetMs = juce::jlimit (axisMinMs, axisMaxMs,
+                                  5.0f * juce::roundToInt (normalisedToMs (random.nextFloat()) / 5.0f));
+        if (keepDraw (random, bucketForMs (targetMs)))
+            break;
+    }
 
     // Nearest legacy fixed time, for the discrete path only.
     correctDelayIndex = 0;

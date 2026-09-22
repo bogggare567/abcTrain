@@ -3,7 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "shared/learning/TrainingModule.h"
 #include "shared/learning/ModuleProgress.h"
-#include "shared/learning/LessonAudioBed.h"
+#include "shared/audio/LessonAudioBed.h"
 #include "shared/learning/PracticeAudioSource.h"
 #include <functional>
 #include <vector>

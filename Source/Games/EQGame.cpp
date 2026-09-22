@@ -1,5 +1,6 @@
 #include "EQGame.h"
 #include "shared/audio/PinkNoiseGenerator.h"
+#include "shared/dsp/EQCoefficients.h"
 #include <cmath>
 #include <limits>
 
@@ -152,6 +153,7 @@ void EQGame::setDifficulty (int level)
     // the accept band from a whole octave either side down to a fifth of
     // one. The band is the real lever - it is the same *ratio* of slack at
     // 200 Hz as at 8 kHz, which a fixed number of hertz would not be.
+    difficultyLevel = juce::jlimit (1, 10, level);
     gainDb = rampTolerance (level, 9.0f, 2.5f);
     toleranceOctaves = toleranceForLevel (level);
 }
@@ -164,7 +166,46 @@ void EQGame::newRound()
     // Drawn from the audible middle of the axis, not its full span - see
     // targetLowHz/targetHighHz for why the ruler is wider than the
     // question.
-    targetHz = targetLowHz * std::pow (targetHighHz / targetLowHz, random.nextFloat());
+    //
+    // Weighted by where this player misses (Game::setBucketWeights): each
+    // named range is drawn with probability proportional to its width in
+    // octaves times its weight, then a point log-uniformly inside it. With
+    // every weight equal that is exactly the log-uniform draw across the
+    // whole span; with weights it asks more often where the ear is weak.
+    {
+        struct Span { int bucket; float lowHz, highHz, octaves; };
+        std::vector<Span> spans;
+        auto total = 0.0f;
+
+        for (int i = 0; i < FrequencyRangeGame::numRanges; ++i)
+        {
+            const auto& r = FrequencyRangeGame::ranges[(size_t) i];
+            const auto low = juce::jmax (targetLowHz, r.lowHz);
+            const auto high = juce::jmin (targetHighHz, r.highHz);
+
+            if (high <= low)
+                continue;
+
+            const auto octaves = std::log2 (high / low);
+            spans.push_back ({ i, low, high, octaves });
+            total += octaves * bucketWeight (i);
+        }
+
+        auto roll = random.nextFloat() * total;
+        auto chosen = spans.empty() ? Span { 0, targetLowHz, targetHighHz, 1.0f } : spans.back();
+
+        for (const auto& span : spans)
+        {
+            roll -= span.octaves * bucketWeight (span.bucket);
+            if (roll <= 0.0f)
+            {
+                chosen = span;
+                break;
+            }
+        }
+
+        targetHz = chosen.lowHz * std::pow (chosen.highHz / chosen.lowHz, random.nextFloat());
+    }
 
     // Nearest grid mark, for the legacy discrete path only.
     correctBandIndex = 0;
@@ -179,7 +220,8 @@ void EQGame::newRound()
         }
     }
 
-    isBoost = random.nextBool();
+    // Boosts first, cuts from step 4 (Game::cutChanceForLevel).
+    isBoost = random.nextFloat() >= cutChanceForLevel (difficultyLevel);
     chosenBandIndex = -1;
     chosenNormalised = -1.0f;
     answered = false;
@@ -243,8 +285,11 @@ juce::String EQGame::getFeedbackText() const
 void EQGame::updateFilter()
 {
     const auto freq = targetHz;
-    const auto gain = juce::Decibels::decibelsToGain (isBoost ? gainDb : -gainDb);
-    *peakFilter.state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter (sampleRate, freq, filterQ, gain);
+    // The matched bell (EQCoefficients::makeMatchedBell): the RBJ one this
+    // replaced narrowed near Nyquist, which made the top targets quietly
+    // harder than the level said.
+    *peakFilter.state = EQCoefficients::makeArray (EQCoefficients::BandType::bell, sampleRate, freq,
+                                                   isBoost ? gainDb : -gainDb, filterQ);
 }
 
 float EQGame::toleranceForLevel (int level) noexcept

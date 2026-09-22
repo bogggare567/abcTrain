@@ -1,4 +1,4 @@
-#include "shared/learning/LessonAudioBed.h"
+#include "shared/audio/LessonAudioBed.h"
 #include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 
@@ -219,22 +219,22 @@ namespace LessonAudioBed
         }
     }
 
-    double lengthSeconds (TrainingModule::Bed bed) noexcept
+    double lengthSeconds (Bed bed) noexcept
     {
         switch (bed)
         {
-            case TrainingModule::Bed::drumLoop:  return 4.8;  // two bars at 100 BPM
-            case TrainingModule::Bed::bassNote:  return 4.0;
-            case TrainingModule::Bed::singleHit: return 2.4;  // hit, then room to hear a tail
-            case TrainingModule::Bed::brightHit: return 3.0;
-            case TrainingModule::Bed::chord:     return 4.0;
-            case TrainingModule::Bed::pinkNoise: return 4.0;
+            case Bed::drumLoop:  return 4.8;  // two bars at 100 BPM
+            case Bed::bassNote:  return 4.0;
+            case Bed::singleHit: return 2.4;  // hit, then room to hear a tail
+            case Bed::brightHit: return 3.0;
+            case Bed::chord:     return 4.0;
+            case Bed::pinkNoise: return 4.0;
         }
 
         return 4.0;
     }
 
-    juce::AudioBuffer<float> render (TrainingModule::Bed bed, double sampleRate,
+    juce::AudioBuffer<float> render (Bed bed, double sampleRate,
                                      int variationSeed)
     {
         const auto numSamples = juce::jmax (1, (int) (lengthSeconds (bed) * sampleRate));
@@ -246,7 +246,7 @@ namespace LessonAudioBed
 
         switch (bed)
         {
-            case TrainingModule::Bed::drumLoop:
+            case Bed::drumLoop:
             {
                 // 100 BPM, two bars. Kick on 1 and 3 plus the "and" of 3,
                 // snare on 2 and 4, eighth-note hats: enough transients to
@@ -279,18 +279,18 @@ namespace LessonAudioBed
                 break;
             }
 
-            case TrainingModule::Bed::bassNote:
+            case Bed::bassNote:
                 renderBassNote (buffer, sampleRate, random);
                 break;
 
-            case TrainingModule::Bed::singleHit:
+            case Bed::singleHit:
                 // One hit near the front, then nothing. The silence is the
                 // subject: pre-delay and decay live entirely inside it.
                 renderKick (buffer, (int) (0.05 * sampleRate), sampleRate, random, 0.9f);
                 renderSnare (buffer, (int) (0.05 * sampleRate), sampleRate, random, 0.7f);
                 break;
 
-            case TrainingModule::Bed::brightHit:
+            case Bed::brightHit:
                 // Repeated, so the difference between a bright tail and a
                 // dark one has something to repeat against.
                 for (int hit = 0; hit < 2; ++hit)
@@ -302,11 +302,11 @@ namespace LessonAudioBed
 
                 break;
 
-            case TrainingModule::Bed::chord:
+            case Bed::chord:
                 renderChord (buffer, sampleRate, random);
                 break;
 
-            case TrainingModule::Bed::pinkNoise:
+            case Bed::pinkNoise:
                 renderPinkNoise (buffer);
                 break;
         }
