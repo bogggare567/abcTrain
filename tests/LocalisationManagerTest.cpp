@@ -1,5 +1,6 @@
 #include <juce_core/juce_core.h>
 #include "shared/i18n/LocalisationManager.h"
+#include "BinaryData.h"
 
 class LocalisationManagerTest : public juce::UnitTest
 {
@@ -37,6 +38,53 @@ public:
                 expectEquals (manager.getCurrentLanguage(), code);
                 expect (manager.getText ("ui.bypass").isNotEmpty());
                 expect (manager.getText ("game.eq.name").isNotEmpty());
+            }
+        }
+
+        beginTest ("every language table has every English key, and no extra ones");
+        {
+            // getText falls back to English, so a missing translation is
+            // invisible at runtime - an English sentence inside a Russian
+            // screen. This is where it is caught instead.
+            const auto keysOf = [] (const char* data, int size)
+            {
+                juce::StringArray keys;
+                const auto parsed = juce::JSON::parse (juce::String::fromUTF8 (data, size));
+
+                if (auto* object = parsed.getDynamicObject())
+                    for (const auto& property : object->getProperties())
+                        keys.add (property.name.toString());
+
+                return keys;
+            };
+
+            const auto english = keysOf (BinaryData::en_json, BinaryData::en_jsonSize);
+            expect (english.size() > 500);
+
+            struct Table { const char* code; const char* data; int size; };
+            const Table tables[] = {
+                { "ru", BinaryData::ru_json, BinaryData::ru_jsonSize },
+                { "de", BinaryData::de_json, BinaryData::de_jsonSize },
+                { "fr", BinaryData::fr_json, BinaryData::fr_jsonSize },
+                { "es", BinaryData::es_json, BinaryData::es_jsonSize },
+                { "pt", BinaryData::pt_json, BinaryData::pt_jsonSize },
+                { "zh-Hans", BinaryData::zhHans_json, BinaryData::zhHans_jsonSize },
+                { "ja", BinaryData::ja_json, BinaryData::ja_jsonSize },
+                { "ko", BinaryData::ko_json, BinaryData::ko_jsonSize },
+                { "it", BinaryData::it_json, BinaryData::it_jsonSize },
+                { "pl", BinaryData::pl_json, BinaryData::pl_jsonSize },
+                { "uk", BinaryData::uk_json, BinaryData::uk_jsonSize },
+            };
+
+            for (const auto& table : tables)
+            {
+                const auto keys = keysOf (table.data, table.size);
+
+                for (const auto& key : english)
+                    expect (keys.contains (key), juce::String (table.code) + " is missing " + key);
+
+                for (const auto& key : keys)
+                    expect (english.contains (key), juce::String (table.code) + " has a key English does not: " + key);
             }
         }
 

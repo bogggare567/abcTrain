@@ -119,6 +119,7 @@ code goes is [ADR 039](decisions/039-structure-for-growth.md).
 | 2. Assignments + teacher page | an assignment file sets exercise, range, rounds; a page in `website/` reads dropped result files in the browser and draws the group | ⏳ — medium; still no server, no accounts |
 | 3. Live | presenter controls rounds, **each phone plays the sound into its own earbuds** (a hall's room modes are larger than the boosts being asked about), votes relayed, anonymous, deleted when the session ends | ⏳ — large; the first thing in abcTrain that needs a server, kept a separate optional deployable in `website/` |
 | 4. Telegram join | a second way into a Live session | ⏳ — small once 3 exists |
+| 5. Battles and **Decibelo** | two or more players on the same server-rendered rounds, won on precision in the exercise's units; a rating after Elo (Glicko-2 for groups), named after Elo and the bel — Alexander Graham Bell. Anti-cheat is part of it: a rating computed on the player's machine can always be faked, so it is only earned on rounds the server ran | ⏳ — the user's idea (2026-09-23); needs the same server as Live |
 
 What does not change: the installed product keeps no account, no server
 and no telemetry. Live is opt-in by scanning a code, and says what it
