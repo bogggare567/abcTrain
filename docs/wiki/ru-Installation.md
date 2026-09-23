@@ -105,3 +105,15 @@ cmake -B build && cmake --build build
 
 CMake сам скачает JUCE; локальная копия не нужна. На Linux сначала поставьте
 `libcurl4-openssl-dev`.
+
+## Сборка из исходников
+
+Тот же бинарник, и никаких предупреждений:
+
+```bash
+git clone https://github.com/bogggare567/abcTrain.git
+cd abcTrain
+cmake -B build && cmake --build build
+```
+
+JUCE CMake скачает сам. На Linux сначала поставьте `libcurl4-openssl-dev`.

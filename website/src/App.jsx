@@ -104,13 +104,13 @@ function Families() {
   );
 }
 
-// The real plugin, doing real things.
+// The real plugin, as it draws itself.
 //
 // The demo above it is the trainer *rebuilt for the browser*, which is
-// honest about what it is but cannot show the desktop build - the window
-// it opens in your DAW, the theme switch, the language list. This is a
-// recording of that build being used: open an exercise, answer it, switch
-// theme, switch language.
+// honest about what it is but cannot show the desktop build. This is a
+// tour made from that build's own renders (tools/EditorSnapshots, stitched
+// by tools/make_tour.py), so it cannot fall behind the design the way the
+// screen recording it replaced did.
 //
 // Video rather than a GIF: same seconds at a twentieth of the weight and
 // none of the banding a 96-colour palette does to a dark gradient.
@@ -136,11 +136,11 @@ function Desktop() {
           // and it did not fire on first load here either. A recording the
           // visitor cannot start is worse than one with a scrub bar.
           controls
-          aria-label="Opening an exercise, answering it, switching theme and language in the desktop app"
+          aria-label="The trainer's home, a round and its answer, results, then Learner EQ, Comp and Verb"
         />
         <p className="desktop__caption">
-          Nine exercises, twelve languages, light and dark - the same build the
-          installers carry. Recorded, not mocked up.
+          Nine exercises and three teaching plugins - every frame drawn by the
+          same build the installers carry, not mocked up.
         </p>
       </div>
     </section>
