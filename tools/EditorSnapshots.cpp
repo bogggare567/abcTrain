@@ -86,7 +86,8 @@ namespace
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
-                       settingsPro, settingsHearing, settingsAbout, hearingNotice, moduleResult };
+                       settingsPro, settingsHearing, settingsAbout, hearingNotice, moduleResult,
+                       studioEQ, studioComp, studioVerb };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -172,6 +173,15 @@ namespace
 
                 if (extra == Extra::hearingNotice)
                     editor.showHearingNoticeForSnapshot();
+
+                if (extra == Extra::studioEQ)
+                    editor.openStudioForSnapshot (StudioScreenComponent::Effect::eq);
+
+                if (extra == Extra::studioComp)
+                    editor.openStudioForSnapshot (StudioScreenComponent::Effect::comp);
+
+                if (extra == Extra::studioVerb)
+                    editor.openStudioForSnapshot (StudioScreenComponent::Effect::verb);
 
                 if (extra == Extra::results)
                     editor.showRunResultsForSnapshot();
@@ -295,12 +305,8 @@ int main (int argc, char* argv[])
 
         if (! hadLibrary || library.copyFileTo (backup))
         {
-            failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Check", -1, Extra::moduleCheck, 2);
-            failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Result", -1, Extra::moduleResult, 2);
             failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb-Modules", -1, Extra::moduleShelf);
-            failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb-Check", -1, Extra::moduleCheck, 1);
             failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Modules", -1, Extra::moduleShelf);
-            failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Check", -1, Extra::moduleCheck, 0);
 
             if (hadLibrary)
             {
@@ -366,6 +372,9 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQ", -1, Extra::studioEQ);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioComp", -1, Extra::studioComp);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioVerb", -1, Extra::studioVerb);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);

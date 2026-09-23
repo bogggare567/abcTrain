@@ -1,11 +1,18 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "LearnerEQ/Source/PluginProcessor.h"
+#include "LearnerComp/Source/PluginProcessor.h"
+#include "LearnerVerb/Source/PluginProcessor.h"
 
 EarTrainerProcessor::EarTrainerProcessor()
     : AudioProcessor (BusesProperties()
                            .withInput ("Input", juce::AudioChannelSet::stereo(), true)
                            .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    studio[0] = std::make_unique<LearnerEQProcessor>();
+    studio[1] = std::make_unique<LearnerCompProcessor>();
+    studio[2] = std::make_unique<LearnerVerbProcessor>();
+
     // Before any audio device exists, so the editor (and the snapshot
     // tool, which never has one) can already convert levels.
     measureCalibrationNoise (48000.0);
@@ -64,11 +71,38 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     outputGain.reset (sampleRate, 0.04);
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (outputGainDb.load(),
                                                                          minOutputGainDb));
+
+    // All three, not just the one on show, so switching in the Studio is
+    // a pointer swap on the audio thread and never a prepare.
+    for (auto& effect : studio)
+    {
+        effect->setPlayConfigDetails (getTotalNumInputChannels(), getTotalNumOutputChannels(),
+                                      sampleRate, samplesPerBlock);
+        effect->prepareToPlay (sampleRate, samplesPerBlock);
+    }
 }
 
-void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void EarTrainerProcessor::releaseResources()
+{
+    for (auto& effect : studio)
+        effect->releaseResources();
+}
+
+void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
+
+    // The Studio: the Learner's own processBlock, then the same last two
+    // steps as the trainer - one output level, and the hearing meter,
+    // because an hour of EQ on headphones is an hour of sound. Calibration
+    // noise still wins over it, as it does over everything.
+    if (const auto effect = studioEffect.load(); effect >= 0 && ! calibrationNoise.load())
+    {
+        studio[(size_t) effect]->processBlock (buffer, midi);
+        applyOutputGain (buffer);
+        outputMeter.process (buffer);
+        return;
+    }
 
     // The trainer ignores whatever the host feeds in and generates its own test signal.
     gameManager.process (buffer);
@@ -161,8 +195,19 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     // levels its treated signal against its untreated one so loudness
     // cannot be the tell, and one gain applied to everything downstream
     // moves both sides of every A/B by the same amount.
+    applyOutputGain (buffer);
+
+    // What actually leaves, for the hearing dose.
+    outputMeter.process (buffer);
+}
+
+void EarTrainerProcessor::applyOutputGain (juce::AudioBuffer<float>& buffer) noexcept
+{
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (outputGainDb.load(),
                                                                 minOutputGainDb));
+
+    const auto numSamples = buffer.getNumSamples();
+    const auto numChannels = buffer.getNumChannels();
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -171,9 +216,38 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         for (int ch = 0; ch < numChannels; ++ch)
             buffer.getWritePointer (ch)[i] *= g;
     }
+}
 
-    // What actually leaves, for the hearing dose.
-    outputMeter.process (buffer);
+void EarTrainerProcessor::getStateInformation (juce::MemoryBlock& destData)
+{
+    juce::ValueTree state ("abcTrainStudio");
+
+    for (size_t i = 0; i < studio.size(); ++i)
+    {
+        juce::MemoryBlock block;
+        studio[i]->getStateInformation (block);
+        state.setProperty ("effect" + juce::String ((int) i), block.toBase64Encoding(), nullptr);
+    }
+
+    juce::MemoryOutputStream stream (destData, false);
+    state.writeToStream (stream);
+}
+
+void EarTrainerProcessor::setStateInformation (const void* data, int sizeInBytes)
+{
+    const auto state = juce::ValueTree::readFromData (data, (size_t) sizeInBytes);
+
+    if (! state.hasType ("abcTrainStudio"))
+        return;
+
+    for (size_t i = 0; i < studio.size(); ++i)
+    {
+        juce::MemoryBlock block;
+
+        if (block.fromBase64Encoding (state.getProperty ("effect" + juce::String ((int) i)).toString())
+            && block.getSize() > 0)
+            studio[i]->setStateInformation (block.getData(), (int) block.getSize());
+    }
 }
 
 juce::AudioProcessorEditor* EarTrainerProcessor::createEditor()

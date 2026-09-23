@@ -134,10 +134,29 @@ needs its own planning pass when the earlier phases are further along.
 
 ## Recorded, not started
 
-Three ideas raised during development, written down here so they are not
+Ideas raised during development, written down here so they are not
 lost and not half-built. None of them has been started; each is listed
 with what it would actually cost, because that is the part that decides
 whether it happens.
+
+### A mini-DAW inside abcTrain
+
+Raised by the author, 2026-09-23, **for after** the standalone apps are
+merged into one abcTrain app and the Learner plugins have reached the
+state he is aiming for. The idea: a small multitrack inside the app where
+the Learner EQ / Comp / Verb run as inserts on real tracks, and an
+exercise can set a task in terms of an instrument - "make this snare sit
+like the reference" - which you then solve with the same processors you
+learnt, not with a scale.
+
+What it would cost: a track/clip model, a mixer with inserts and sends,
+transport, and saving a session - a small DAW is still a DAW. Grading
+also changes shape: "match the reference" has to be measured (spectral
+and loudness distance to a target), not read off one parameter. Nothing
+in the current engine blocks it - every processor already lives in
+`shared/dsp` and runs outside a plugin host - but it should not start
+before the single app and the reworked Learners exist, because it is
+built out of them.
 
 ### The settings side menu grows
 

@@ -1,9 +1,10 @@
 # abcTrain — notes for a coding session
 
-Four JUCE 8 plugins in one CMake build, all VST3/AU/Standalone:
-**ABC Ear Trainer** (nine listening exercises on a 3-down/1-up staircase)
-and **ABC Learner EQ / Comp / Verb** (real processors that teach while you
-use them). Vendor `soundkorb`. Product names begin with `ABC`; CMake
+One app and three plugins in one CMake build (ADR 041): **abcTrain** (the
+`EarTrainer` target, standalone only — nine listening exercises on a
+3-down/1-up staircase, plus a Studio tab that runs the Learners inside the
+app) and **ABC Learner EQ / Comp / Verb** (VST3/AU — real processors that
+teach while you use them). Vendor `soundkorb`. Product names begin with `ABC`; CMake
 targets and folders keep the short forms (`EarTrainer`, `LearnerEQ/`).
 Renaming a product changes its VST3/AU id and breaks saved host projects —
 don't.
@@ -18,7 +19,7 @@ understanding.
 |---|---|
 | [docs/orientation.md](docs/orientation.md) | the map, the load-bearing ideas, **the rules from the literature** — read first |
 | [docs/code-map.md](docs/code-map.md) | per-file breakdown (was the body of this file) — read the part you change |
-| [docs/decisions/](docs/decisions/) | ADRs, 001–040: why each shape was chosen |
+| [docs/decisions/](docs/decisions/) | ADRs, 001–041: why each shape was chosen |
 | [docs/process.md](docs/process.md) | how a task goes from idea to release; the scenario checklist |
 | [docs/research/](docs/research/) | the literature review every current proposal rests on |
 | [docs/design/](docs/design/) | sound library, education/live, the redesign spec |
@@ -57,13 +58,15 @@ shared/learning/  abc_learning  modules, lessons, Learner editor base, A/B  → 
 shared/updates/   abc_updates   version, update check                       → ui
 shared/i18n/      abc_i18n      localisation (12 languages)
 Source/Games + managers         abc_trainer_engine — the nine exercises and their rules, no GUI
+Learner*/Source (no PluginEntry) abc_learner_eq/comp/verb, abc_learners — plugins and the app's Studio
 ```
 
 - Includes from the repository root: `#include "shared/dsp/ReverbEngine.h"`.
 - A new shared `.cpp` goes in its group's `target_sources` once. A new
   exercise goes in `abc_trainer_engine` **and is appended** to
   `GameManager`'s list (progress is keyed by index).
-- Nothing in `shared/` includes `Source/` or `Learner*/`.
+- Nothing in `shared/` includes `Source/` or `Learner*/`. `Source/` may
+  include `Learner*/Source/` (the Studio) — never a `PluginEntry.cpp`.
 - One engine per effect: the trainer and the plugins run the same DSP.
   Don't add a second reverb or compressor.
 
@@ -84,7 +87,10 @@ Source/Games + managers         abc_trainer_engine — the nine exercises and th
 - **Every string in all 12 languages** (`shared/i18n/strings/*.json`); the
   tests check that each table has every English key.
 - **Offline-first:** no account, no server, no telemetry in anything
-  installed. Live (seminars) would be a separate deployable in `website/`.
+  installed. Live (seminars, battles) is a separate deployable; the app
+  may only connect when the player opens Live himself.
+- **Learner modules have no hearing check** (ADR 041): watch → try → Done.
+  Naming a setting by ear is the trainer's job.
 - **Sound packs:** only CC0 / PD / CC BY / CC BY-SA / written permission,
   with an author (`ReferenceAudioLibrary::isAllowedLicense`,
   `tools/library/build_pack.py`). Never bundle audio of unknown licence.

@@ -34,8 +34,8 @@ class TopNavComponent : public juce::Component,
 public:
     // Order is the order they appear. Kept as an enum rather than indices
     // so a caller cannot quietly mean the wrong tab.
-    enum class Item { trainings, achievements, sounds, settings };
-    static constexpr int numItems = 4;
+    enum class Item { trainings, studio, achievements, sounds, settings };
+    static constexpr int numItems = 5;
 
     TopNavComponent();
     ~TopNavComponent() override;

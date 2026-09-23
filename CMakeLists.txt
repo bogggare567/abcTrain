@@ -316,11 +316,41 @@ target_sources(abc_trainer_engine INTERFACE
 )
 target_link_libraries(abc_trainer_engine INTERFACE abc_audio abc_dsp abc_i18n)
 
+# The three Learner processors and editors, each as a library (ADR 041).
+# The plugins link one each and add their own PluginEntry.cpp - the only
+# file that defines createPluginFilter(), so it must never be in here. The
+# abcTrain app links all three and runs them inside its Studio tab; the
+# tests and the editor tools link them for the same reason.
+add_library(abc_learner_eq INTERFACE)
+target_sources(abc_learner_eq INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerEQ/Source/PluginProcessor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerEQ/Source/PluginEditor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerEQ/Source/SpectrumAnalyser.cpp
+)
+target_link_libraries(abc_learner_eq INTERFACE abc_learning)
+
+add_library(abc_learner_comp INTERFACE)
+target_sources(abc_learner_comp INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerComp/Source/PluginProcessor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerComp/Source/PluginEditor.cpp
+)
+target_link_libraries(abc_learner_comp INTERFACE abc_learning)
+
+add_library(abc_learner_verb INTERFACE)
+target_sources(abc_learner_verb INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerVerb/Source/PluginProcessor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/LearnerVerb/Source/PluginEditor.cpp
+)
+target_link_libraries(abc_learner_verb INTERFACE abc_learning)
+
+add_library(abc_learners INTERFACE)
+target_link_libraries(abc_learners INTERFACE abc_learner_eq abc_learner_comp abc_learner_verb)
+
 juce_add_plugin(EarTrainer
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Eqg1
-    FORMATS AU VST3 Standalone
+    FORMATS Standalone
     PRODUCT_NAME "ABC Ear Trainer"
     ICON_BIG assets/icons/eartrainer.png
     ICON_SMALL assets/icons/eartrainer_small.png
@@ -346,6 +376,7 @@ target_sources(EarTrainer
         Source/RunResultsComponent.cpp
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
+        Source/StudioScreenComponent.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -357,6 +388,7 @@ target_compile_definitions(EarTrainer
 target_link_libraries(EarTrainer
     PRIVATE
         abc_trainer_engine
+        abc_learners
         abc_ui
         abc_analysis
         abc_audio
@@ -378,7 +410,7 @@ juce_add_plugin(LearnerEQ
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Leq1
-    FORMATS AU VST3 Standalone
+    FORMATS AU VST3
     PRODUCT_NAME "ABC Learner EQ"
     ICON_BIG assets/icons/learnereq.png
     ICON_SMALL assets/icons/learnereq_small.png
@@ -394,9 +426,6 @@ juce_add_plugin(LearnerEQ
 
 target_sources(LearnerEQ
     PRIVATE
-        LearnerEQ/Source/PluginProcessor.cpp
-        LearnerEQ/Source/PluginEditor.cpp
-        LearnerEQ/Source/SpectrumAnalyser.cpp
         LearnerEQ/Source/PluginEntry.cpp
 )
 
@@ -408,7 +437,7 @@ target_compile_definitions(LearnerEQ
 
 target_link_libraries(LearnerEQ
     PRIVATE
-        abc_learning
+        abc_learner_eq
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -424,7 +453,7 @@ juce_add_plugin(LearnerComp
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Lcp1
-    FORMATS AU VST3 Standalone
+    FORMATS AU VST3
     PRODUCT_NAME "ABC Learner Comp"
     ICON_BIG assets/icons/learnercomp.png
     ICON_SMALL assets/icons/learnercomp_small.png
@@ -440,8 +469,6 @@ juce_add_plugin(LearnerComp
 
 target_sources(LearnerComp
     PRIVATE
-        LearnerComp/Source/PluginProcessor.cpp
-        LearnerComp/Source/PluginEditor.cpp
         LearnerComp/Source/PluginEntry.cpp
 )
 
@@ -453,7 +480,7 @@ target_compile_definitions(LearnerComp
 
 target_link_libraries(LearnerComp
     PRIVATE
-        abc_learning
+        abc_learner_comp
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -469,7 +496,7 @@ juce_add_plugin(LearnerVerb
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Lvb1
-    FORMATS AU VST3 Standalone
+    FORMATS AU VST3
     PRODUCT_NAME "ABC Learner Verb"
     ICON_BIG assets/icons/learnerverb.png
     ICON_SMALL assets/icons/learnerverb_small.png
@@ -485,8 +512,6 @@ juce_add_plugin(LearnerVerb
 
 target_sources(LearnerVerb
     PRIVATE
-        LearnerVerb/Source/PluginProcessor.cpp
-        LearnerVerb/Source/PluginEditor.cpp
         LearnerVerb/Source/PluginEntry.cpp
 )
 
@@ -498,7 +523,7 @@ target_compile_definitions(LearnerVerb
 
 target_link_libraries(LearnerVerb
     PRIVATE
-        abc_learning
+        abc_learner_verb
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -560,13 +585,6 @@ target_sources(EarTrainerTests
         tests/SkillBucketTest.cpp
         tests/HearingGuardTest.cpp
         tests/LearnerRedesignTest.cpp
-        LearnerEQ/Source/PluginProcessor.cpp
-        LearnerEQ/Source/PluginEditor.cpp
-        LearnerEQ/Source/SpectrumAnalyser.cpp
-        LearnerComp/Source/PluginProcessor.cpp
-        LearnerComp/Source/PluginEditor.cpp
-        LearnerVerb/Source/PluginProcessor.cpp
-        LearnerVerb/Source/PluginEditor.cpp
 )
 
 # JUCE_USE_CURL is deliberately left at its default (0) here: this test
@@ -584,6 +602,7 @@ target_link_libraries(EarTrainerTests
     PRIVATE
         abc_trainer_engine
         abc_shared
+        abc_learners
         juce::juce_audio_utils
         juce::juce_dsp
         I18nData
@@ -622,13 +641,7 @@ set(abcTrainEditorToolSources
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/TrainingSoundsComponent.cpp
-        LearnerEQ/Source/PluginProcessor.cpp
-        LearnerEQ/Source/PluginEditor.cpp
-        LearnerEQ/Source/SpectrumAnalyser.cpp
-        LearnerComp/Source/PluginProcessor.cpp
-        LearnerComp/Source/PluginEditor.cpp
-        LearnerVerb/Source/PluginProcessor.cpp
-        LearnerVerb/Source/PluginEditor.cpp
+        Source/StudioScreenComponent.cpp
 )
 
 juce_add_console_app(EditorSnapshots
@@ -653,6 +666,7 @@ target_link_libraries(EditorSnapshots
     PRIVATE
         abc_trainer_engine
         abc_shared
+        abc_learners
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation
@@ -695,6 +709,7 @@ target_link_libraries(LearnerStrings
     PRIVATE
         abc_trainer_engine
         abc_shared
+        abc_learners
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation
@@ -729,6 +744,7 @@ target_link_libraries(ClickMap
     PRIVATE
         abc_trainer_engine
         abc_shared
+        abc_learners
         juce::juce_audio_utils
         juce::juce_dsp
         juce::juce_animation

@@ -92,3 +92,14 @@ void ModuleProgress::markDemoSeen (const juce::String& moduleId)
     properties.setValue (key (moduleId, "demoSeen"), true);
     properties.saveIfNeeded();
 }
+
+bool ModuleProgress::isDone (const juce::String& moduleId) const
+{
+    return properties.getBoolValue (key (moduleId, "done"), false) || get (moduleId).attempts > 0;
+}
+
+void ModuleProgress::markDone (const juce::String& moduleId)
+{
+    properties.setValue (key (moduleId, "done"), true);
+    properties.saveIfNeeded();
+}

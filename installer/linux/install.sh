@@ -65,7 +65,7 @@ case "${vst3_choice:-1}" in
 esac
 
 echo
-STANDALONE_CHOICE="$(ask_yes_no "Also install the Standalone app(s)?" "n")"
+STANDALONE_CHOICE="$(ask_yes_no "Install the abcTrain app (the exercises and the Studio)?" "y")"
 STANDALONE_DEST="$HOME/.local/share/abcTrain"
 if [ "$STANDALONE_CHOICE" = "y" ]; then
     read -r -p "Standalone install path [default: $STANDALONE_DEST]: " custom_dest || custom_dest=""

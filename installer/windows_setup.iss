@@ -48,8 +48,8 @@ WizardStyle=modern
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Types]
-Name: "full"; Description: "Full installation (all plugins, VST3 + Standalone)"
-Name: "compact"; Description: "Compact installation (all plugins, VST3 only)"
+Name: "full"; Description: "Full installation (the abcTrain app + the three Learner plugins)"
+Name: "compact"; Description: "Compact installation (the three Learner plugins only)"
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 ; Component tree: each plugin is a top-level checkbox; VST3/Standalone are
@@ -58,9 +58,10 @@ Name: "custom"; Description: "Custom installation"; Flags: iscustom
 ; children is standard Inno Setup component-tree behavior, no extra code
 ; needed for that part.
 [Components]
-Name: "eartrainer"; Description: "ABC Ear Trainer - ear-training games (guess the boosted/cut band, compression strength, reverb type; points, levels, daily streak)"; Types: full compact custom
-Name: "eartrainer\vst3"; Description: "VST3 format (Ableton Live, Cubase, Reaper, Studio One, and most other DAWs)"; Types: full compact custom
-Name: "eartrainer\standalone"; Description: "Standalone app (runs on its own, no DAW needed)"; Types: full custom
+; The trainer is an app only; the Learner plugins run inside it too, in its
+; Studio tab, so they are plugins only (ADR 041).
+Name: "eartrainer"; Description: "abcTrain app - nine listening exercises, and the Learner EQ / Comp / Verb in its Studio tab"; Types: full custom
+Name: "eartrainer\standalone"; Description: "The app (runs on its own, no DAW needed)"; Types: full custom
 
 Name: "learnereq"; Description: "ABC Learner EQ - real 4-band EQ with live spectrum + response curve, a guided Lesson"; Types: full compact custom
 Name: "learnereq\vst3"; Description: "VST3 format (Ableton Live, Cubase, Reaper, Studio One, and most other DAWs)"; Types: full compact custom
@@ -112,18 +113,14 @@ var
 
 function AnyVST3Selected(): Boolean;
 begin
-  Result := IsComponentSelected('eartrainer\vst3')
-    or IsComponentSelected('learnereq\vst3')
+  Result := IsComponentSelected('learnereq\vst3')
     or IsComponentSelected('learnercomp\vst3')
     or IsComponentSelected('learnerverb\vst3');
 end;
 
 function StandaloneInstalled(): Boolean;
 begin
-  Result := IsComponentSelected('eartrainer\standalone')
-    or IsComponentSelected('learnereq\standalone')
-    or IsComponentSelected('learnercomp\standalone')
-    or IsComponentSelected('learnerverb\standalone');
+  Result := IsComponentSelected('eartrainer\standalone');
 end;
 
 function GetVST3Dir(Param: String): String;

@@ -323,6 +323,9 @@ int main (int argc, char* argv[])
             { "Settings - Hearing", Expect::everythingLive, 0,        [] (auto& e) { e.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true); } },
             { "Hearing notice", Expect::everythingLive, 0,            [] (auto& e) { e.showHearingNoticeForSnapshot(); } },
             { "Achievements", Expect::everythingLive, 0,              [] (auto& e) { e.openAchievementsForSnapshot(); } },
+            { "Studio - EQ", Expect::everythingLive, 0,               [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::eq); } },
+            { "Studio - Comp", Expect::everythingLive, 0,             [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::comp); } },
+            { "Studio - Verb", Expect::everythingLive, 0,             [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::verb); } },
         };
 
         for (const auto& c : cases)

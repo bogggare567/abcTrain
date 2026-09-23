@@ -546,6 +546,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         // bar that stays live, leaving one visible would make the next tab
         // you press look broken - it would do its work behind a page still
         // covering the content.
+        const auto onStudio       = (item == TopNavComponent::Item::studio);
         const auto onAchievements = (item == TopNavComponent::Item::achievements);
         const auto onSounds       = (item == TopNavComponent::Item::sounds);
         const auto onSettings     = (item == TopNavComponent::Item::settings);
@@ -553,6 +554,19 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         achievementsScreen.setVisible (onAchievements);
         trainingSounds.setVisible (onSounds);
         settingsScreen.setVisible (onSettings);
+        studioScreen.setVisible (onStudio);
+
+        // The Studio makes sound, so leaving it has to stop it - not just
+        // hide it. Opening it starts the chosen processor.
+        if (onStudio)
+        {
+            studioScreen.open();
+            studioScreen.toFront (false);
+        }
+        else
+        {
+            studioScreen.close();
+        }
 
         if (onAchievements)
             showAchievementsScreen();
@@ -1030,6 +1044,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         return text;
     };
     addChildComponent (settingsScreen);
+    addChildComponent (studioScreen);
 
     // The hearing strip. "Break" goes home, which is also what silences
     // the signal; "later" moves the reminder on by fifteen minutes.
@@ -1087,7 +1102,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         return processor.isSignalEnabled()
                || tour.isRunning()
                || trainingSounds.isVisible()
-               || settingsScreen.isVisible();
+               || settingsScreen.isVisible()
+               || studioScreen.isOpen();
     };
 
     screensaver.onDismissed = [this] { repaint(); };
@@ -1791,6 +1807,7 @@ void EarTrainerEditor::resized()
     trainingSounds.setBounds (contentBounds());
     settingsScreen.setBounds (contentBounds());
     achievementsScreen.setBounds (contentBounds());
+    studioScreen.setBounds (contentBounds());
 
     // The run result still covers everything: it is not a destination, it
     // is what a finished run leaves on the screen.
@@ -2457,7 +2474,8 @@ void EarTrainerEditor::refreshRailStatus()
     // change) left the achievements or settings page under a bar that
     // said you were somewhere else.
     auto active = TopNavComponent::Item::trainings;
-    if (achievementsScreen.isVisible())   active = TopNavComponent::Item::achievements;
+    if (studioScreen.isVisible())         active = TopNavComponent::Item::studio;
+    else if (achievementsScreen.isVisible()) active = TopNavComponent::Item::achievements;
     else if (trainingSounds.isVisible())  active = TopNavComponent::Item::sounds;
     else if (settingsScreen.isVisible())  active = TopNavComponent::Item::settings;
     topNav.setActiveItem (active);
@@ -2742,6 +2760,8 @@ void EarTrainerEditor::showScreen (Screen screen)
     settingsScreen.setVisible (false);
     trainingSounds.setVisible (false);
     achievementsScreen.setVisible (false);
+    studioScreen.setVisible (false);
+    studioScreen.close();
 
     resized();
     repaint();
@@ -2958,7 +2978,9 @@ void EarTrainerEditor::refreshLocalisedText()
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     updateButton.setTooltip (localisation.getText ("ui.updates"));
+    studioScreen.setLabels (localisation.getText ("ui.studio.caption"));
     topNav.setLabels ({ localisation.getText ("ui.trainings"),
+                        localisation.getText ("ui.studio"),
                         localisation.getText ("ui.achievements"),
                         localisation.getText ("ui.trainingSounds"),
                         localisation.getText ("ui.settings") },

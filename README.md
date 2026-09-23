@@ -9,7 +9,7 @@
 ### Learn to hear what you have been reading about.
 
 Nine listening exercises and three real effects that teach while they work on your audio.<br>
-Free · macOS · Windows · Linux · VST3 · AU · Standalone
+Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 
 <br>
 
@@ -32,7 +32,7 @@ Free · macOS · Windows · Linux · VST3 · AU · Standalone
 | | |
 |:---:|---|
 | 🎧 | **ABC Ear Trainer** — frequency, dynamics, space, character. A psychoacoustic staircase finds your real threshold and shows it in the exercise's own units: *±0.35 oct*, *±1.2 dB*, *Room vs Chamber*. |
-| 🎛️ | **ABC Learner EQ · Comp · Verb** — real processors in your DAW. Each hides a setting, plays it, and asks you to match it by ear with its own knob. |
+| 🎛️ | **ABC Learner EQ · Comp · Verb** — real processors in your DAW and in the app's Studio tab. Each hides a setting, plays it, and asks you to match it by ear with its own knob. |
 | 📚 | **Grounded in research** — how ear training is taught and how the processing is done follow published work. [Why each choice →](docs/research/2026-09-literature-audit.md) |
 | 🔒 | **Nothing connects anywhere** — no account, no server, no telemetry. |
 

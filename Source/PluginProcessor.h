@@ -8,7 +8,9 @@
 #include "shared/analysis/WaveformDisplay.h"
 #include "shared/analysis/AWeightedMeter.h"
 #include "shared/audio/PinkNoiseGenerator.h"
+#include <array>
 #include <atomic>
+#include <memory>
 
 class EarTrainerProcessor : public juce::AudioProcessor
 {
@@ -17,7 +19,7 @@ public:
     ~EarTrainerProcessor() override = default;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
-    void releaseResources() override {}
+    void releaseResources() override;
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
@@ -41,8 +43,11 @@ public:
     const juce::String getProgramName (int) override { return {}; }
     void changeProgramName (int, const juce::String&) override {}
 
-    void getStateInformation (juce::MemoryBlock&) override {}
-    void setStateInformation (const void*, int) override {}
+    // The trainer keeps its own progress in a PropertiesFile; what the
+    // app's wrapper saves here is only the Studio's three knob states, so a
+    // session's EQ is still there next time the app opens.
+    void getStateInformation (juce::MemoryBlock&) override;
+    void setStateInformation (const void*, int) override;
 
     GameManager& getGameManager() noexcept { return gameManager; }
     ProgressManager& getProgressManager() noexcept { return progressManager; }
@@ -104,7 +109,24 @@ public:
 
     static constexpr float calibrationLevelDbFs = -20.0f;
 
+    // ---- Studio (ADR 041) ----
+    //
+    // Learner EQ, Comp and Verb, run inside the app. While one is active it
+    // replaces the trainer's signal entirely: its input is the audio
+    // interface's input and its own practice source, exactly as when it
+    // runs as a plugin, and only the output level and the hearing meter
+    // are applied after it. -1 is none.
+    static constexpr int numStudioEffects = 3;
+    void setStudioEffect (int index) noexcept { studioEffect.store (juce::jlimit (-1, numStudioEffects - 1, index)); }
+    int getStudioEffect() const noexcept { return studioEffect.load(); }
+    juce::AudioProcessor& getStudioProcessor (int index) { return *studio[(size_t) juce::jlimit (0, numStudioEffects - 1, index)]; }
+
 private:
+    void applyOutputGain (juce::AudioBuffer<float>&) noexcept;
+
+    std::array<std::unique_ptr<juce::AudioProcessor>, numStudioEffects> studio;
+    std::atomic<int> studioEffect { -1 };
+
     // Declaration order matters: gameManager must be constructed before
     // progressManager, since ProgressManager's constructor registers
     // itself as a listener on every game.

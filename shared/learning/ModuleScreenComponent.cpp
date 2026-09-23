@@ -76,7 +76,16 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
             goToPhase (Phase::tryIt);
     };
 
-    readyButton.onClick = [this] { beginCheck(); };
+    // The end of a module (ADR 041). It used to lead into a graded check -
+    // the plugin hid a value and you matched it by ear - and that task
+    // belongs to the trainer, not to a processor you are learning to use.
+    readyButton.onClick = [this]
+    {
+        if (auto* definition = currentModule())
+            progress.markDone (definition->id);
+
+        closeModule();
+    };
 
     // Matching a hidden value without being able to switch back to it is
     // not a listening task, it is a guess.
@@ -139,7 +148,7 @@ void ModuleScreenComponent::setStrings (Strings newStrings)
 
     backButton.setButtonText (text.back);
     nextButton.setButtonText (text.next);
-    readyButton.setButtonText (text.ready);
+    readyButton.setButtonText (text.done);
     referenceButton.setButtonText (text.reference);
     mineButton.setButtonText (text.mine);
     submitButton.setButtonText (text.submit);
@@ -862,8 +871,7 @@ void ModuleScreenComponent::paintModuleCard (juce::Graphics& g, int index, juce:
 {
     const auto& theme = AbcTrainTheme::current();
     const auto& m = modules[(size_t) index];
-    const auto state = progress.get (m.id);
-    const auto tried = state.attempts > 0;
+    const auto tried = progress.isDone (m.id);
 
     // A frame; filled faintly on hover, and warm once it has a record -
     // the cards you have worked on are the ones that look worked on.
@@ -891,35 +899,16 @@ void ModuleScreenComponent::paintModuleCard (juce::Graphics& g, int index, juce:
     g.setFont (AbcTrainLookAndFeel::headingFont());
     g.drawFittedText (textFor (m, "name", m.name), r.removeFromTop (22), juce::Justification::centredLeft, 1, 0.85f);
 
-    // Bottom: ten steps with the record filled and today's step marked
-    // (the same ruler as a row on the trainer's home screen), and the
-    // threshold reached, in the knob's own units, or that there is none.
+    // Bottom: whether you have worked through it. The ten-step ruler that
+    // stood here measured the hearing check, which the plugins no longer
+    // have (ADR 041).
     auto bottom = r.removeFromBottom (18);
     r.removeFromBottom (4);
 
-    const auto status = ! tried ? AbcTrainLookAndFeel::toCaps (text.notTried)
-                                : m.check.unit == TrainingModule::Unit::choice ? AbcTrainLookAndFeel::toCaps (text.passed)
-                                                                               : formatTolerance (m.check, state.bestLevel);
-    const auto statusFont = tried ? AbcTrainLookAndFeel::monoFont() : AbcTrainLookAndFeel::microFont();
-    const auto statusWidth = juce::jmin (bottom.getWidth() / 2,
-                                         (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (status, statusFont, tried ? 0.0f : 1.2f)) + 6);
-    AbcTrainLookAndFeel::drawTrackedText (g, status, bottom.removeFromRight (statusWidth).toFloat(), statusFont,
-                                          tried ? accent : theme.textDim, tried ? 0.0f : 1.2f,
+    const auto status = AbcTrainLookAndFeel::toCaps (tried ? text.done : text.notTried);
+    AbcTrainLookAndFeel::drawTrackedText (g, status, bottom.toFloat(), AbcTrainLookAndFeel::microFont(),
+                                          tried ? accent : theme.textDim, 1.2f,
                                           juce::Justification::centredRight);
-    bottom.removeFromRight (10);
-
-    auto ruler = bottom.withSizeKeepingCentre (bottom.getWidth(), 6).toFloat();
-    AbcTrainLookAndFeel::drawSegmentedBar (g, ruler, TrainingModule::maxLevel,
-                                           tried ? (float) state.bestLevel / (float) TrainingModule::maxLevel : 0.0f,
-                                           accent, theme.outline.withAlpha (0.8f), 2.0f);
-
-    if (tried)
-    {
-        const auto segW = (ruler.getWidth() - 2.0f * (TrainingModule::maxLevel - 1)) / (float) TrainingModule::maxLevel;
-        const auto x = ruler.getX() + (float) (state.level - 1) * (segW + 2.0f) + segW * 0.5f;
-        g.setColour (theme.textBright);
-        g.fillRect (x - 1.0f, ruler.getY() - 4.0f, 2.0f, ruler.getHeight() + 8.0f);
-    }
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::captionFont());
@@ -995,12 +984,12 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
     if (! walkthrough)
     {
         auto marks = area.removeFromTop (22);
-        const Phase order[] = { Phase::demo, Phase::tryIt, Phase::check, Phase::result };
-        const juce::String names[] { text.phaseWatch, text.phaseTry, text.phaseCheck, text.phaseResult };
+        const Phase order[] = { Phase::demo, Phase::tryIt };
+        const juce::String names[] { text.phaseWatch, text.phaseTry };
         const auto font = AbcTrainLookAndFeel::microFont();
         auto x = (float) marks.getX();
 
-        for (int i = 0; i < 4; ++i)
+        for (int i = 0; i < 2; ++i)
         {
             const auto here = order[i] == phase;
             const auto caps = AbcTrainLookAndFeel::toCaps (names[i]);

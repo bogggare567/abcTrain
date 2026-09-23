@@ -51,9 +51,14 @@ for entry in "${PLUGINS[@]}"; do
         exit 1
     fi
 
-    mkdir -p "$STAGE_DIR/$key/VST3" "$STAGE_DIR/$key/Standalone"
-    cp -r "$artefacts/VST3/." "$STAGE_DIR/$key/VST3/"
-    cp -r "$artefacts/Standalone/." "$STAGE_DIR/$key/Standalone/"
+    # Only the formats the build made (ADR 041): the trainer is an app,
+    # the Learners are plugins.
+    for format in VST3 Standalone; do
+        if [ -d "$artefacts/$format" ]; then
+            mkdir -p "$STAGE_DIR/$key/$format"
+            cp -r "$artefacts/$format/." "$STAGE_DIR/$key/$format/"
+        fi
+    done
 done
 
 cp "$SCRIPT_DIR/install.sh" "$STAGE_DIR/"

@@ -30,10 +30,10 @@ FRAMES = [
     "EarTrainer-Distortion-dark.png",
     "EarTrainer-Achievements-dark.png",
     "EarTrainer-Results-dark.png",
-    "LearnerEQ-dark.png",
+    "EarTrainer-StudioEQ-dark.png",
+    "EarTrainer-StudioComp-dark.png",
     "LearnerComp-Modules-dark.png",
-    "LearnerComp-Check-dark.png",
-    "LearnerVerb-dark.png",
+    "EarTrainer-StudioVerb-dark.png",
 ]
 
 HOLD = 2.6      # секунд на экран

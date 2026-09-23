@@ -79,23 +79,31 @@ for entry in "${PLUGINS[@]}"; do
         exit 1
     fi
 
-    vst3_root="$WORK_DIR/root_${key}_vst3"
-    mkdir -p "$vst3_root"
-    cp -R "$artefacts/VST3/${product}.vst3" "$vst3_root/"
-    build_component_pkg "com.earsnap.abctrain.${key}.vst3" "$vst3_root" \
-        "/Library/Audio/Plug-Ins/VST3" "$PKG_DIR/${key}_vst3.pkg"
+    # Each format only where the build made it (ADR 041): the trainer is
+    # an app only, the Learners are plugins only.
+    if [ -d "$artefacts/VST3/${product}.vst3" ]; then
+        vst3_root="$WORK_DIR/root_${key}_vst3"
+        mkdir -p "$vst3_root"
+        cp -R "$artefacts/VST3/${product}.vst3" "$vst3_root/"
+        build_component_pkg "com.earsnap.abctrain.${key}.vst3" "$vst3_root" \
+            "/Library/Audio/Plug-Ins/VST3" "$PKG_DIR/${key}_vst3.pkg"
+    fi
 
-    au_root="$WORK_DIR/root_${key}_au"
-    mkdir -p "$au_root"
-    cp -R "$artefacts/AU/${product}.component" "$au_root/"
-    build_component_pkg "com.earsnap.abctrain.${key}.au" "$au_root" \
-        "/Library/Audio/Plug-Ins/Components" "$PKG_DIR/${key}_au.pkg"
+    if [ -d "$artefacts/AU/${product}.component" ]; then
+        au_root="$WORK_DIR/root_${key}_au"
+        mkdir -p "$au_root"
+        cp -R "$artefacts/AU/${product}.component" "$au_root/"
+        build_component_pkg "com.earsnap.abctrain.${key}.au" "$au_root" \
+            "/Library/Audio/Plug-Ins/Components" "$PKG_DIR/${key}_au.pkg"
+    fi
 
-    app_root="$WORK_DIR/root_${key}_app"
-    mkdir -p "$app_root"
-    cp -R "$artefacts/Standalone/${product}.app" "$app_root/"
-    build_component_pkg "com.earsnap.abctrain.${key}.app" "$app_root" \
-        "/Applications/abcTrain" "$PKG_DIR/${key}_app.pkg"
+    if [ -d "$artefacts/Standalone/${product}.app" ]; then
+        app_root="$WORK_DIR/root_${key}_app"
+        mkdir -p "$app_root"
+        cp -R "$artefacts/Standalone/${product}.app" "$app_root/"
+        build_component_pkg "com.earsnap.abctrain.${key}.app" "$app_root" \
+            "/Applications/abcTrain" "$PKG_DIR/${key}_app.pkg"
+    fi
 done
 
 PRODUCT_PKG="$WORK_DIR/abcTrain.pkg"

@@ -9,6 +9,7 @@
 #include "HomeScreenComponent.h"
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
+#include "StudioScreenComponent.h"
 #include "RunResultsComponent.h"
 #include "TopNavComponent.h"
 #include "AchievementsScreenComponent.h"
@@ -128,6 +129,18 @@ public:
     // page that sits *under* that bar with the bar not there showed a
     // layout the player never sees, which is the one thing a contact
     // sheet must not do.
+    void openStudioForSnapshot (StudioScreenComponent::Effect effect)
+    {
+        showScreen (Screen::home);
+        studioScreen.select (effect);
+        studioScreen.setVisible (true);
+        studioScreen.open();
+        studioScreen.toFront (false);
+        hideContentUnderNavPage();
+        refreshRailStatus();
+        resized();
+    }
+
     void openSettingsForSnapshot()
     {
         showScreen (Screen::home);
@@ -1389,6 +1402,12 @@ private:
     // once. Added after trainingSounds so it paints over it, and before
     // the toast, which paints over everything.
     SettingsScreenComponent settingsScreen { localisation, localisationProperties };
+
+    // Learner EQ / Comp / Verb inside the app (ADR 041). The processors
+    // live in EarTrainerProcessor; this page owns only the editor on show.
+    StudioScreenComponent studioScreen { StudioScreenComponent::Host {
+        [this] (int index) { processor.setStudioEffect (index); },
+        [this] (int index) -> juce::AudioProcessor& { return processor.getStudioProcessor (index); } } };
 
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four

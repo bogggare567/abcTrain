@@ -49,6 +49,13 @@ public:
     bool hasSeenDemo (const juce::String& moduleId) const;
     void markDemoSeen (const juce::String& moduleId);
 
+    // A module ends with "Done" after trying it yourself (ADR 041): the
+    // hearing check left the plugins - naming a setting by ear is the
+    // trainer's job - so this is what marks a module worked through.
+    // A module with a graded attempt saved from before counts as done too.
+    bool isDone (const juce::String& moduleId) const;
+    void markDone (const juce::String& moduleId);
+
     static constexpr int stepUpAfter = 3;
     static constexpr int maxLevel = 10;
 
