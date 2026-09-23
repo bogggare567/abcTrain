@@ -64,6 +64,25 @@ public:
         for (int i = 0; i < 14; ++i)
             session.registerAnswer (i % 4 != 3);
 
+        // Twelve rounds of a run, as the round-by-round strip draws them:
+        // one miss in the mids, the rest inside the band at varying depth.
+        runMarks.clear();
+        runStartLevel = juce::jmax (1, processor.getProgressManager().getLevelForGame (
+                                           processor.getGameManager().getActiveGameIndex()) - 1);
+        {
+            const float quality[] = { 0.82f, 0.71f, 0.46f, 0.9f, 0.0f, 0.55f, 0.77f, 0.2f, 0.62f, 0.85f, 0.4f, 0.58f };
+
+            for (int i = 0; i < 12; ++i)
+            {
+                RunResultsComponent::Summary::RoundMark mark;
+                mark.correct = i != 4;
+                mark.quality = quality[i];
+                mark.target = "1.00 kHz";
+                mark.answer = "1.60 kHz";
+                runMarks.push_back (mark);
+            }
+        }
+
         // Seed the miss map through the real counter, not by writing the
         // summary. An empty map is a legitimate state - it is what a fresh
         // profile sees - but it is not the state worth looking at on a
@@ -109,6 +128,12 @@ public:
                                      localisation.getText ("tour.accept"),
                                      localisation.getText ("tour.decline"));
         showScreen (Screen::support);
+    }
+
+    void openWelcomeAccountForSnapshot()
+    {
+        showScreen (Screen::support);
+        supportScreen.showStep (1);
     }
 
     void openScreensaverForSnapshot()
@@ -193,6 +218,12 @@ public:
         refreshRailStatus();
     }
 
+    void openSoundClipsForSnapshot()
+    {
+        openSoundsForSnapshot();
+        trainingSounds.browseForSnapshot ("Built-in Sustained", 1);
+    }
+
     // Snapshot seam: the hint costs points, so there is no way to
     // photograph it from outside - and "the hint now matches the
     // exercise" is a claim about three different pictures.
@@ -269,6 +300,7 @@ public:
 
         session.setMode (mode);
         runStarted = true;
+        beginRunLog();
         startNewRun();
         session.registerAnswer (true);
         session.registerAnswer (false);   // one heart gone, so the HUD shows both states
@@ -1267,6 +1299,12 @@ private:
     // vanished) the moment a pill was clicked, while the countdown was
     // still saying "get ready".
     bool runStarted = false;
+
+    // This run, round by round, for the results card.
+    std::vector<RunResultsComponent::Summary::RoundMark> runMarks;
+    int runStartLevel = 1;
+    void beginRunLog();
+    void logRoundForRun (bool correct);
 
     void beginRunWithCountdown();
     // Three pills, one visibly on. A ComboBox meant the current mode was a

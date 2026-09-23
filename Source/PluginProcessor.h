@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared/audio/ClipPreview.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "GameManager.h"
 #include "ProgressManager.h"
@@ -121,7 +123,13 @@ public:
     int getStudioEffect() const noexcept { return studioEffect.load(); }
     juce::AudioProcessor& getStudioProcessor (int index) { return *studio[(size_t) juce::jlimit (0, numStudioEffects - 1, index)]; }
 
+    // The Training Sounds page's "click to hear". Sounds only while the
+    // trainer's own signal is off (menus), so it can never mix into a round.
+    ClipPreview& getClipPreview() noexcept { return clipPreview; }
+
 private:
+    ClipPreview clipPreview;
+
     void applyOutputGain (juce::AudioBuffer<float>&) noexcept;
 
     std::array<std::unique_ptr<juce::AudioProcessor>, numStudioEffects> studio;

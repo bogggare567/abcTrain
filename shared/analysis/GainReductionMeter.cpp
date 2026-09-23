@@ -39,6 +39,40 @@ void GainReductionMeter::paint (juce::Graphics& g)
     // the ring ran into each other. Left-growing is what a hardware GR
     // meter's needle does, and "more is lower" is still said by the arrow.
     const auto& theme = AbcTrainTheme::current();
+
+    // Standing up, beside the waveform (the approved Comp layout): "GR"
+    // on top, a column that hangs from the top as reduction grows, the
+    // number under it. Same colours and range as the lying-down one.
+    if (getHeight() > getWidth() * 2)
+    {
+        auto column = getLocalBounds().toFloat();
+        AbcTrainLookAndFeel::drawTrackedText (g, "GR", column.removeFromTop (22.0f), AbcTrainLookAndFeel::microFont(),
+                                              theme.textDim, 1.3f, juce::Justification::centred);
+        auto readout = column.removeFromBottom (24.0f);
+        column.removeFromBottom (4.0f);
+
+        const auto bar = column.withSizeKeepingCentre (juce::jmin (18.0f, column.getWidth()), column.getHeight());
+        g.setColour (theme.displayBackground);
+        g.fillRect (bar);
+        g.setColour (theme.outline.withAlpha (0.8f));
+        g.drawRect (bar, 1.0f);
+
+        const auto amount = juce::jlimit (0.0f, 1.0f, displayedDb / rangeDb);
+
+        if (amount > 0.002f)
+        {
+            g.setColour (theme.negative.withAlpha (0.85f));
+            g.fillRect (bar.reduced (1.0f).withHeight ((bar.getHeight() - 2.0f) * amount));
+        }
+
+        g.setColour (displayedDb > 0.5f ? theme.textBright : theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f));
+        g.drawText ((displayedDb > 0.05f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String())
+                        + juce::String (displayedDb, 1).replace (".", decimal),
+                    readout, juce::Justification::centred, false);
+        return;
+    }
+
     auto area = getLocalBounds().toFloat().reduced (2.0f, 0.0f);
 
     const auto labelFont = AbcTrainLookAndFeel::labelFont();

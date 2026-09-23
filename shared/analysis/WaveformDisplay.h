@@ -98,6 +98,16 @@ public:
 
     void paint (juce::Graphics&) override;
 
+    // Draw the per-column highlight as a gain-reduction line hanging from
+    // the top, with a caption, and a legend along the bottom - the Comp's
+    // display. Empty strings turn it off.
+    void setGainReductionTrace (juce::String captionText, juce::String legendText)
+    {
+        grCaption = std::move (captionText);
+        legend = std::move (legendText);
+        repaint();
+    }
+
 private:
     struct Column
     {
@@ -130,6 +140,7 @@ private:
     // Message thread only.
     std::array<float, numColumns> inputPeaks {}, outputPeaks {}, inputRms {}, outputRms {}, highlights {};
     float inputPeakReadout = 0.0f, outputPeakReadout = 0.0f, highlightReadout = 0.0f;
+    juce::String grCaption, legend;
     double lastTick = 0.0;
     bool quiet = true;
 

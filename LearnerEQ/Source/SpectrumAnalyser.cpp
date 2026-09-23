@@ -188,6 +188,37 @@ void SpectrumAnalyserComponent::paintZones (juce::Graphics& g, juce::Rectangle<f
     }
 }
 
+juce::Colour SpectrumAnalyserComponent::colourForBand (int index)
+{
+    static const juce::uint32 palette[] = { 0xff9a9aa6, 0xff4fa3d1, 0xffd05a5a, 0xff5fb37f,
+                                            0xff9b7ad8, 0xffd99a45, 0xff4cc0b5, 0xffd46fa8,
+                                            0xffb8b450, 0xff7f8fd9, 0xffc47a5a, 0xff6fb8d9 };
+    return juce::Colour (palette[(size_t) juce::jmax (0, index) % std::size (palette)]);
+}
+
+void SpectrumAnalyserComponent::paintCustomZones (juce::Graphics& g, juce::Rectangle<float> bounds) const
+{
+    const auto area = curveArea (bounds);
+    const auto labelStrip = bounds.withBottom (area.getY());
+
+    for (const auto& zone : customZones)
+    {
+        const auto left = xForFrequency (zone.lowHz, area);
+        const auto right = xForFrequency (zone.highHz, area);
+        const auto strip = juce::Rectangle<float> (left, bounds.getY(), right - left, bounds.getHeight());
+        const auto underPointer = pointerFreq >= zone.lowHz && pointerFreq < zone.highHz;
+
+        g.setColour (zone.colour.withAlpha (underPointer ? 0.20f : 0.12f));
+        g.fillRect (strip);
+
+        g.setColour (zone.colour);
+        g.setFont (AbcTrainLookAndFeel::microFont());
+        g.drawText (AbcTrainLookAndFeel::toCaps (zone.name),
+                    juce::Rectangle<float> (left, labelStrip.getY(), right - left, labelStrip.getHeight()),
+                    juce::Justification::centred, false);
+    }
+}
+
 void SpectrumAnalyserComponent::paintNodes (juce::Graphics& g, juce::Rectangle<float> bounds) const
 {
     const auto& theme = AbcTrainTheme::current();
@@ -212,14 +243,25 @@ void SpectrumAnalyserComponent::paintNodes (juce::Graphics& g, juce::Rectangle<f
             g.drawLine (x, area.getY(), x, area.getBottom(), isSelected ? 2.0f : 1.0f);
         }
 
-        g.setColour (theme.accent.withAlpha (isSelected ? 0.32f : 0.16f));
-        g.fillEllipse (x - radius * 1.9f, y - radius * 1.9f, radius * 3.8f, radius * 3.8f);
+        const auto colour = colourForBand (band.index);
 
-        g.setColour (usesGain ? theme.accent : theme.accentWarm);
+        if (isSelected || isHovered)
+        {
+            g.setColour (colour.withAlpha (isSelected ? 0.32f : 0.16f));
+            g.fillEllipse (x - radius * 1.9f, y - radius * 1.9f, radius * 3.8f, radius * 3.8f);
+        }
+
+        g.setColour (colour);
         g.fillEllipse (x - radius, y - radius, radius * 2.0f, radius * 2.0f);
 
-        g.setColour (theme.displayBackground.withAlpha (0.9f));
-        g.drawEllipse (x - radius, y - radius, radius * 2.0f, radius * 2.0f, 1.5f);
+        g.setColour (isSelected ? theme.textBright : theme.displayBackground.withAlpha (0.9f));
+        g.drawEllipse (x - radius, y - radius, radius * 2.0f, radius * 2.0f, isSelected ? 2.0f : 1.5f);
+
+        // The band's number, so the dot and its chip below name each other.
+        g.setColour (theme.displayBackground);
+        g.setFont (AbcTrainLookAndFeel::microFont().withHeight (radius * 1.3f));
+        g.drawText (juce::String (band.index + 1), juce::Rectangle<float> (x - radius, y - radius, radius * 2.0f, radius * 2.0f),
+                    juce::Justification::centred, false);
     }
 }
 
@@ -227,7 +269,9 @@ void SpectrumAnalyserComponent::paintOverlay (juce::Graphics& g, juce::Rectangle
 {
     const auto& theme = AbcTrainTheme::current();
 
-    if (zonesVisible)
+    if (! customZones.empty())
+        paintCustomZones (g, bounds);
+    else if (zonesVisible)
         paintZones (g, bounds);
 
     const auto area = curveArea (bounds);
@@ -242,8 +286,10 @@ void SpectrumAnalyserComponent::paintOverlay (juce::Graphics& g, juce::Rectangle
     g.setColour (theme.accent.withAlpha (0.25f));
     g.strokePath (curve, juce::PathStrokeType (4.0f, juce::PathStrokeType::curved));
 
-    g.setColour (theme.accent);
-    g.strokePath (curve, juce::PathStrokeType (1.8f, juce::PathStrokeType::curved));
+    // The curve in bright neutral over the family-coloured analyser, so
+    // it reads as the thing you are drawing rather than more spectrum.
+    g.setColour (theme.textBright.withAlpha (0.92f));
+    g.strokePath (curve, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved));
 
     paintNodes (g, bounds);
 }

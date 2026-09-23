@@ -38,12 +38,17 @@ void PracticeSourceSelector::refresh()
 
     selector.clearItems();
     selector.addItem (hostText, 1, hostShortText);
+    shortLabels.clearQuick();
+    shortLabels.add (hostShortText);
 
     const auto& categories = library.getCategories();
 
     for (int i = 0; i < categories.size(); ++i)
+    {
         selector.addItem (categories[i].name + " (" + juce::String (categories[i].files.size()) + ")",
                           i + 2, shortLabelFor (categories[i].name));
+        shortLabels.add (shortLabelFor (categories[i].name));
+    }
 
     // Restore by *name*, not by index: the list is rebuilt from whatever
     // folders exist, so an index saved last week can point at a different
@@ -58,6 +63,9 @@ void PracticeSourceSelector::refresh()
 
     selector.setSelectedId (restoredId, juce::dontSendNotification);
     applySelection();
+
+    if (onListChanged != nullptr)
+        onListChanged();
 }
 
 void PracticeSourceSelector::applySelection()

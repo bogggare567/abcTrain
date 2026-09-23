@@ -5,6 +5,7 @@
 
 #include "PluginProcessor.h"
 #include <functional>
+#include <map>
 
 // "Choose training sounds" page: each exercise's own synthesized sound
 // (the default since ADR 040), pink noise, or a folder of audio - the
@@ -28,7 +29,12 @@
 // Categories used to unlock with the player's level. That made sense for
 // shipped content and none at all for a folder of the player's own music:
 // files you imported yourself should never be locked behind anything.
-class TrainingSoundsComponent : public juce::Component
+// September 2026: laid out like a DAW's sample browser. Every clip shows
+// its waveform and has a play button; the chosen one is drawn large with
+// a playhead; "All clips / This clip only" says in two words what the old
+// tick-and-footer combination took a sentence to explain.
+class TrainingSoundsComponent : public juce::Component,
+                                private juce::Timer
 {
 public:
     explicit TrainingSoundsComponent (EarTrainerProcessor& processorToControl);
@@ -63,10 +69,27 @@ public:
         juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
         juce::String builtInPercussive, builtInSustained;
         juce::String exerciseSound, trainingOnExerciseSound, credits;
+        juce::String clipsCaption, allClips, thisClip;   // "{{n}} clips · click to hear..."
+
         juce::String languageCode;   // picks a pack's title: "ru" or anything else
     };
 
     void setStrings (Strings);
+
+    // For tools/EditorSnapshots: show a category's clips with one focused,
+    // without changing what the library trains on (that is persisted).
+    void browseForSnapshot (const juce::String& categoryName, int fileToFocus)
+    {
+        const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
+
+        for (int i = 0; i < categories.size(); ++i)
+            if (categories.getReference (i).name == categoryName)
+                selectedCategory = i;
+
+        focusedFile = fileToFocus;
+        updateModeButtons();
+        repaint();
+    }
 
 private:
     juce::Rectangle<int> cardBounds() const;
@@ -150,12 +173,40 @@ private:
     void pinFile (int fileIndex);
     void paintRail (juce::Graphics&);
     void paintFilePane (juce::Graphics&);
+    void paintPreview (juce::Graphics&, juce::Rectangle<int>);
+    void paintWave (juce::Graphics&, juce::Rectangle<float>, const std::vector<float>&,
+                    juce::Colour, float playedFraction, juce::Colour playedColour);
+
+    // ---- the browser ----
+    void timerCallback() override;
+
+    // Peaks and length per file, read once and kept for the page's life.
+    const ClipPreview::Overview& overviewFor (const juce::File&);
+    std::map<juce::String, ClipPreview::Overview> overviews;
+    juce::AudioFormatManager formats;
+
+    // The clip drawn large: the pinned one, else the one last clicked.
+    int focusedFile = -1;
+    int playingFile = -1;
+    void focusFile (int index);
+    void togglePlay (int index, float from = 0.0f);
+    void stopPreview();
+
+    juce::Rectangle<int> previewBounds() const;
+    juce::Rectangle<int> previewWaveBounds() const;
+    juce::Rectangle<int> previewPlayBounds() const;
+    juce::Rectangle<int> listBounds() const;
+    juce::Rectangle<int> rowPlayBounds (int index) const;
+
+    juce::TextButton allClipsButton, thisClipButton;
+    void updateModeButtons();
 
 public:
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    void visibilityChanged() override;
 
 private:
 

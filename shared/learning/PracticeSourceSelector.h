@@ -46,6 +46,19 @@ public:
 
     int getPreferredWidth() const { return selector.getPreferredWidth(); }
 
+    // The same choices as short words, for a chip row: host first, then
+    // one per category. Index = position in this list.
+    juce::StringArray getShortLabels() const { return shortLabels; }
+    int getChosenIndex() const { return selector.getSelectedId() - 1; }
+    void choose (int index)
+    {
+        selector.setSelectedId (index + 1, juce::dontSendNotification);
+        applySelection();
+    }
+
+    // Called after refresh() rebuilt the list, so a chip row can follow.
+    std::function<void()> onListChanged;
+
     void resized() override;
 
     static constexpr const char* selectedCategoryKey = "practiceCategory";
@@ -60,6 +73,7 @@ private:
     std::function<double()> getSampleRate;
 
     CompactSelector selector;
+    juce::StringArray shortLabels;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PracticeSourceSelector)
 };

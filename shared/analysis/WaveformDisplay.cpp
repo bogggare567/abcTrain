@@ -193,4 +193,34 @@ void WaveformDisplay::paint (juce::Graphics& g)
     g.setGradientFill (juce::ColourGradient (theme.windowBackground.withAlpha (0.0f), edge.getX(), 0.0f,
                                              theme.windowBackground.withAlpha (0.35f), edge.getRight(), 0.0f, false));
     g.fillRect (edge);
+
+    if (grCaption.isNotEmpty())
+    {
+        // Gain reduction as a line hanging from the top: 0 dB at the top
+        // edge, the full range at the centre line - so it dips exactly
+        // where the orange is pushed down.
+        juce::Path trace;
+        const auto n = (int) highlights.size();
+
+        for (int i = 0; i < n; ++i)
+        {
+            const auto column = highlights[(size_t) i];
+            const auto x = plot.getX() + plot.getWidth() * (float) i / (float) (n - 1);
+            const auto y = plot.getY() + (plot.getHeight() * 0.5f) * juce::jlimit (0.0f, 1.0f, column / highlightRangeDb);
+
+            if (i == 0) trace.startNewSubPath (x, y);
+            else        trace.lineTo (x, y);
+        }
+
+        g.setColour (theme.negative.withAlpha (0.9f));
+        g.strokePath (trace, juce::PathStrokeType (1.4f));
+
+        const auto font = AbcTrainLookAndFeel::microFont();
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (grCaption),
+                                              plot.reduced (8.0f, 4.0f).removeFromTop (16.0f), font,
+                                              theme.negative, 1.3f);
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (legend),
+                                              plot.reduced (8.0f, 4.0f).removeFromBottom (16.0f), font,
+                                              theme.textDim, 1.3f);
+    }
 }

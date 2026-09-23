@@ -87,7 +87,7 @@ namespace
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, hearingNotice, moduleResult,
-                       studioEQ, studioComp, studioVerb };
+                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -192,6 +192,12 @@ namespace
                 if (extra == Extra::tourOffer)
                     editor.offerTourForSnapshot();
 
+                if (extra == Extra::soundClips)
+                    editor.openSoundClipsForSnapshot();
+
+                if (extra == Extra::welcomeAccount)
+                    editor.openWelcomeAccountForSnapshot();
+
                 if (extra == Extra::tour)
                     editor.openTourForSnapshot();
 
@@ -208,6 +214,10 @@ namespace
                 if (extra == Extra::none)
                     editor.applyPresetForSnapshot (1);
             }
+
+            if constexpr (std::is_same_v<EditorType, LearnerEQEditor>)
+                if (extra == Extra::eqKick)
+                    editor.kickLessonForSnapshot();
 
             if constexpr (std::is_same_v<EditorType, LearnerCompEditor>
                           || std::is_same_v<EditorType, LearnerVerbEditor>
@@ -290,6 +300,7 @@ int main (int argc, char* argv[])
 
     auto failures = 0;
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ");
+    failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Kick", -1, Extra::eqKick);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Stretched",
@@ -371,6 +382,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintEnvelope", 1, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundClips", -1, Extra::soundClips);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQ", -1, Extra::studioEQ);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioComp", -1, Extra::studioComp);
@@ -378,6 +390,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-WelcomeAccount", -1, Extra::welcomeAccount);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Tour", -1, Extra::tour);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Screensaver", -1, Extra::screensaver);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Stretched", 0, Extra::stretched);

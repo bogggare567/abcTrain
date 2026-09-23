@@ -84,7 +84,43 @@ public:
         // Written by the editor, which has the localised strings; empty
         // when there is not enough data to say anything honest.
         juce::String missVerdict;
+
+        // Round by round, in order: whether it landed and how close. The
+        // strip across the card is the run's shape - a wobble at round
+        // five reads at a glance where "11 of 12" does not.
+        struct RoundMark
+        {
+            bool correct = false;
+            float quality = 0.0f;
+            juce::String target, answer;
+        };
+
+        std::vector<RoundMark> marks;
+
+        // The staircase level before and after, already formatted by the
+        // editor ("±1/3 oct" and the like). Delta > 0 means narrower.
+        juce::String levelBefore, levelAfter;
+        int levelDelta = 0;
     };
+
+    // Captions for the detail parts of the card; English defaults so a
+    // snapshot without localisation still reads.
+    struct DetailStrings
+    {
+        juce::String rounds       { "Rounds" };
+        juce::String ofInBand     { "{{n}} of {{m}} inside the band" };
+        juce::String precision    { "Precision" };
+        juce::String precisionNote{ "median closeness" };
+        juce::String threshold    { "Threshold" };
+        juce::String narrower     { "narrower" };
+        juce::String wider        { "wider" };
+        juce::String unchanged    { "unchanged" };
+        juce::String roundByRound { "Round by round" };
+        juce::String byRange      { "By range" };
+        juce::String lastMiss     { "The last miss: {{answer}} for {{target}}." };
+    };
+
+    void setDetailStrings (DetailStrings);
 
     RunResultsComponent();
     ~RunResultsComponent() override;
@@ -137,6 +173,7 @@ private:
     juce::String titleText, againText, homeText;
     juce::String scoreCaption, accuracyCaption, streakCaption, bestCaption;
     juce::String newBestText, whereYouStandText;
+    DetailStrings detail;
 
     juce::TextButton againButton, homeButton;
 

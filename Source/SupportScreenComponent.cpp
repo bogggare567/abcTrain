@@ -2,50 +2,66 @@
 #include "shared/audio/AmbientInstruments.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
-#include <BrandBinaryData.h>
 
 namespace
 {
     constexpr int tickHz = 60;
 
-    // juce::String's plain const char* constructor does NOT assume UTF-8 -
-    // a known JUCE gotcha this project has already been bitten by once
-    // (see decisions/011, where the language names mojibake'd the same
-    // way). A raw "·" here rendered on screen as "Â·". Caught by looking
-    // at a render; a test would never have noticed.
+    // juce::String's plain const char* constructor does NOT assume UTF-8
+    // (decisions/011). A raw "·" rendered as "Â·".
     juce::String middleDot()
     {
         return juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  "));
     }
 
-    // The whole block, measured once so paint() and resized() cannot drift
-    // apart - they both lay out the same vertical run, and two copies of
-    // one layout is how a screen ends up with its text in a different
-    // place from its buttons.
-    constexpr int iconHeight = 76;
-    constexpr int wordmarkHeight = 54;
-    constexpr int wordsHeight = 26;
-    constexpr int continueHeight = 36;
-    constexpr int asksHeight = 32;
-
-    // Each word starts 260ms after the one before, and takes 380ms to
-    // arrive. The whole thing is over in about a second: long enough to
-    // read as three separate ideas, short enough that nobody waits for it.
-    constexpr double wordStaggerMs = 260.0;
-    constexpr double wordArriveMs = 380.0;
+    // Each item starts 260 ms after the one before and takes 380 ms to
+    // arrive: long enough to read as three things, short enough that
+    // nobody waits for it.
+    constexpr double staggerMs = 260.0;
+    constexpr double arriveMs = 380.0;
     constexpr float riseDistance = 10.0f;
 
     AbcTrainTheme::Family familyForWord (int index)
     {
         // ambiance -> space, balance -> dynamics, clarity -> frequency.
-        // The mapping is the whole point of the acronym, so it is spelled
-        // out rather than derived from the index.
         switch (index)
         {
             case 0:  return AbcTrainTheme::Family::space;
             case 1:  return AbcTrainTheme::Family::dynamics;
             default: return AbcTrainTheme::Family::frequency;
         }
+    }
+
+    // Trainings are the frequency-blue of the app's first exercise, the
+    // Studio the dynamics-orange of the Learner family; Live has no
+    // colour yet because it does not exist yet.
+    juce::Colour cardColour (int index)
+    {
+        if (index == 0) return AbcTrainTheme::accentFor (AbcTrainTheme::Family::frequency);
+        if (index == 1) return AbcTrainTheme::accentFor (AbcTrainTheme::Family::dynamics);
+        return AbcTrainTheme::current().textDim;
+    }
+
+    juce::Font wordmarkFont()
+    {
+        return AbcTrainLookAndFeel::displayFont().withHeight (54.0f);
+    }
+
+    juce::Font headingFont()
+    {
+        return AbcTrainLookAndFeel::displayFont().withHeight (40.0f);
+    }
+
+    void paintTag (juce::Graphics& g, juce::Rectangle<float> area, const juce::String& text, juce::Colour colour)
+    {
+        const auto font = AbcTrainLookAndFeel::microFont();
+        const auto caps = AbcTrainLookAndFeel::toCaps (text);
+        const auto width = AbcTrainLookAndFeel::trackedTextWidth (caps, font, 1.2f) + 12.0f;
+        const auto box = area.withWidth (width).withSizeKeepingCentre (width, 17.0f);
+
+        g.setColour (colour.withAlpha (0.8f));
+        g.drawRect (box, 1.0f);
+        AbcTrainLookAndFeel::drawTrackedText (g, caps, box, font, colour, 1.2f, juce::Justification::centred);
     }
 }
 
@@ -54,58 +70,47 @@ SupportScreenComponent::SupportScreenComponent (LocalisationManager& localisatio
 {
     setOpaque (true);
 
-    appIcon = juce::ImageCache::getFromMemory (BrandBinaryData::eartrainer_png,
-                                                BrandBinaryData::eartrainer_pngSize);
-
-    donateButton.onClick = []
+    tourButton.onClick = [this]
     {
-        juce::URL ("https://soundkorb.ru").launchInDefaultBrowser();
+        if (onTourRequested != nullptr)
+            onTourRequested();
     };
-    addAndMakeVisible (donateButton);
+    addChildComponent (tourButton);
 
-    starButton.onClick = []
+    nextButton.onClick = [this] { showStep (1); };
+    addChildComponent (nextButton);
+
+    donateLink.setURL (juce::URL ("https://soundkorb.ru"));
+    starLink.setURL (juce::URL ("https://github.com/bogggare567/abcTrain"));
+    for (auto* link : { &donateLink, &starLink })
     {
-        juce::URL ("https://github.com/bogggare567/abcTrain").launchInDefaultBrowser();
-    };
-    addAndMakeVisible (starButton);
+        link->setJustificationType (juce::Justification::centredRight);
+        addChildComponent (*link);
+    }
+
+    backButton.onClick = [this] { showStep (0); };
+    addChildComponent (backButton);
 
     continueButton.onClick = [this]
     {
         if (onDismissed != nullptr)
             onDismissed();
     };
-    addAndMakeVisible (continueButton);
+    AbcTrainLookAndFeel::makePrimary (continueButton, true);
+    addChildComponent (continueButton);
 
-    // Both hidden unless setTourOffer says otherwise, so a returning player
-    // never sees them.
-    tourButton.onClick = [this]
+    for (auto* b : { &telegramButton, &sendCodeButton })
     {
-        if (onTourRequested != nullptr)
-            onTourRequested();
-    };
-    tourButton.setColour (juce::TextButton::buttonColourId,
-                           AbcTrainTheme::current().accent.withAlpha (0.9f));
-    addChildComponent (tourButton);
+        b->setEnabled (false);
+        addChildComponent (*b);
+    }
 
-    noTourButton.onClick = [this]
-    {
-        if (onDismissed != nullptr)
-            onDismissed();
-    };
-    addChildComponent (noTourButton);
-
-    headphoneNote.setJustificationType (juce::Justification::centred);
-    // Body size, not label size. This screen is now seen twice in a
-    // lifetime rather than every launch, and this is the only sentence on
-    // it that changes whether the exercises work at all - laptop speakers
-    // hide both ends of the spectrum, which is most of what is being
-    // trained. It was set two steps down the ladder and dimmed, i.e.
-    // whispered, on an ear-training product.
-    headphoneNote.setFont (AbcTrainLookAndFeel::bodyFont());
-    headphoneNote.setInterceptsMouseClicks (false, false);
-    addAndMakeVisible (headphoneNote);
-
-    addAndMakeVisible (repoLink);
+    emailField.setEnabled (false);
+    emailField.setReadOnly (true);
+    emailField.setFont (AbcTrainLookAndFeel::bodyFont());
+    emailField.setIndents (12, 0);
+    emailField.setJustification (juce::Justification::centredLeft);
+    addChildComponent (emailField);
 
     refresh();
     startTimerHz (tickHz);
@@ -118,32 +123,56 @@ SupportScreenComponent::~SupportScreenComponent()
 
 void SupportScreenComponent::refresh()
 {
-    donateButton.setButtonText (localisation.getText ("ui.support"));
-    starButton.setButtonText (localisation.getText ("ui.star"));
-    continueButton.setButtonText (localisation.getText ("ui.continue"));
-    headphoneNote.setText (localisation.getText ("ui.headphoneNote"), juce::dontSendNotification);
-    headphoneNote.setColour (juce::Label::textColourId, AbcTrainTheme::current().text);
+    nextButton.setButtonText (localisation.getText ("welcome.next"));
+    donateLink.setButtonText (localisation.getText ("ui.support"));
+    starLink.setButtonText (localisation.getText ("ui.star"));
+    backButton.setButtonText (localisation.getText ("welcome.back"));
+    continueButton.setButtonText (localisation.getText ("welcome.continueNoAccount"));
+    telegramButton.setButtonText (localisation.getText ("welcome.telegram"));
+    sendCodeButton.setButtonText (localisation.getText ("welcome.sendCode"));
+    emailField.setTextToShowWhenEmpty (localisation.getText ("welcome.emailPlaceholder"),
+                                       AbcTrainTheme::current().textDim.withAlpha (0.6f));
 
-    // Restart the reveal: a language switch changes the three words, and
-    // showing new text already faded in would look like a glitch.
+    for (auto* link : { &donateLink, &starLink })
+    {
+        link->setColour (juce::HyperlinkButton::textColourId, AbcTrainTheme::current().accent);
+        link->setFont (AbcTrainLookAndFeel::captionFont(), false, juce::Justification::centredRight);
+    }
+
+    // Restart the reveal: a language switch changes the words, and new
+    // text appearing already faded in reads as a glitch.
     elapsedMs = 0.0;
     wordReveal = { { 0.0f, 0.0f, 0.0f } };
-    bouncePhase = 0.0;
+    sweepPhase = 0.0;
 
+    showStep (0);
+}
+
+void SupportScreenComponent::showStep (int newStep)
+{
+    step = juce::jlimit (0, 1, newStep);
+    const auto inside = (step == 0);
+
+    tourButton.setVisible (inside && tourOffered);
+    nextButton.setVisible (inside);
+    AbcTrainLookAndFeel::makePrimary (nextButton, ! tourOffered);
+    donateLink.setVisible (inside);
+    starLink.setVisible (inside);
+
+    for (juce::Component* c : { (juce::Component*) &backButton, (juce::Component*) &continueButton,
+                                (juce::Component*) &telegramButton, (juce::Component*) &sendCodeButton,
+                                (juce::Component*) &emailField })
+        c->setVisible (! inside);
+
+    layout();
     repaint();
 }
 
 void SupportScreenComponent::completeReveal()
 {
-    elapsedMs = wordStaggerMs * 2.0 + wordArriveMs + 1.0;
+    elapsedMs = staggerMs * 2.0 + arriveMs + 1.0;
     wordReveal = { { 1.0f, 1.0f, 1.0f } };
-
-    // The wordmark's own sweep too, or a still frame shows no letters at
-    // all - the same reason this method exists for the three words.
-    bouncePhase = 2.0;
-
-    // Part-way into the first scene rather than at zero, so the contact
-    // sheet catches the background mid-figure instead of at its flattest.
+    sweepPhase = 2.0;
     ambientPhase = 3.2;
     repaint();
 }
@@ -159,259 +188,327 @@ void SupportScreenComponent::timerCallback()
     if (! isVisible())
         return;
 
-    // The reveal finishes; the bounce does not, so this no longer returns
-    // early once the words have arrived.
-    // The wordmark sweep runs once and stops; the background keeps its
-    // own clock, which is what is still moving after that.
-    if (bouncePhase < 2.0)
-        bouncePhase += 1.0 / (double) tickHz;
+    if (sweepPhase < 2.0)
+        sweepPhase += 1.0 / (double) tickHz;
 
     ambientPhase += 1.0 / (double) tickHz;
-
     elapsedMs += 1000.0 / (double) tickHz;
-
-    auto revealing = false;
 
     for (size_t i = 0; i < wordReveal.size(); ++i)
     {
-        const auto start = wordStaggerMs * (double) i;
-        const auto target = (float) juce::jlimit (0.0, 1.0, (elapsedMs - start) / wordArriveMs);
-        revealing = revealing || ! juce::approximatelyEqual (wordReveal[i], target);
-        wordReveal[i] = target;
+        const auto start = staggerMs * (double) i;
+        wordReveal[i] = (float) juce::jlimit (0.0, 1.0, (elapsedMs - start) / arriveMs);
     }
 
-    // Once the reveal has finished, the only thing still moving is the
-    // bouncing wordmark - so only that strip is repainted. This screen
-    // opens on every launch, and repainting the whole gradient-and-noise
-    // window at 60 Hz forever was the app's first impression.
-    // The background is always moving, so the whole screen repaints. It
-    // is four thin figures at a few per cent alpha over a cached gradient,
-    // not the every-frame full re-render the letters used to force.
+    // The background is always moving: four thin figures at a few per
+    // cent alpha over a cached gradient.
     repaint();
+}
+
+void SupportScreenComponent::setTourOffer (juce::String question, juce::String accept,
+                                            juce::String decline)
+{
+    // The question itself is no longer printed: "Show me around" beside
+    // "Next" says the same thing without a sentence above it.
+    juce::ignoreUnused (decline);
+    tourOffered = question.isNotEmpty();
+    tourButton.setButtonText (accept);
+    AbcTrainLookAndFeel::makePrimary (tourButton, true);
+    showStep (step);
+}
+
+//==============================================================================
+void SupportScreenComponent::layout()
+{
+    using namespace AbcTrainTheme;
+
+    lay = {};
+
+    // A frame of fixed proportions, centred: at 940x620 it fills the
+    // window, and on a big screen it stays a readable block rather than
+    // flying apart to the corners.
+    auto frame = getLocalBounds().reduced (60, 44);
+    frame = frame.withSizeKeepingCentre (juce::jmin (frame.getWidth(), 1100),
+                                         juce::jmin (frame.getHeight(), 640));
+
+    auto columns = frame;
+    auto left = columns.removeFromLeft (juce::roundToInt ((float) columns.getWidth() * 0.43f));
+    columns.removeFromLeft (Spacing::large * 2);
+    auto right = columns;
+
+    auto buttons = left.removeFromBottom (40);
+
+    if (step == 0)
+    {
+        left.removeFromTop (Spacing::large);
+        lay.wordmark = left.removeFromTop (64);
+        lay.words = left.removeFromTop (28);
+        left.removeFromTop (Spacing::medium);
+        lay.tagline = left.removeFromTop (48);
+        left.removeFromTop (Spacing::small);
+        lay.stepLabel = left.removeFromTop (18);
+        left.removeFromBottom (Spacing::large);
+        lay.note = left.removeFromBottom (40);
+
+        if (tourOffered)
+        {
+            tourButton.setBounds (buttons.removeFromLeft (200));
+            buttons.removeFromLeft (Spacing::medium);
+        }
+
+        nextButton.setBounds (buttons.removeFromLeft (130));
+
+        // Three cards stepping down and to the right, the way a staircase
+        // does - it is the shape of every exercise in the app.
+        auto links = right.removeFromBottom (24);
+        starLink.setBounds (links.removeFromRight (130));
+        links.removeFromRight (Spacing::medium);
+        donateLink.setBounds (links.removeFromRight (160));
+
+        right.removeFromBottom (Spacing::large);
+        const auto cardHeight = juce::jmin (112, (right.getHeight() - 2 * 28) / 3);
+        const auto step = juce::jmin (48, right.getWidth() / 8);
+        const auto cardWidth = right.getWidth() - 2 * step;
+        const auto gapY = (right.getHeight() - cardHeight * 3) / 2;
+
+        for (int i = 0; i < 3; ++i)
+            lay.cards[(size_t) i] = { right.getX() + step * i, right.getY() + (cardHeight + gapY) * i,
+                                      cardWidth, cardHeight };
+    }
+    else
+    {
+        lay.stepLabel = left.removeFromTop (18);
+        left.removeFromTop (Spacing::medium);
+        {
+            // As tall as the heading actually is: one line in English at
+            // this width, two in German or Russian.
+            juce::AttributedString text;
+            text.append (localisation.getText ("welcome.account.title"), headingFont());
+            juce::TextLayout measured;
+            measured.createLayout (text, (float) left.getWidth());
+            lay.heading = left.removeFromTop (juce::jlimit (48, 110, (int) std::ceil (measured.getHeight()) + 4));
+        }
+
+        left.removeFromTop (Spacing::medium);
+        lay.body = left.removeFromTop (52);
+        left.removeFromTop (Spacing::medium);
+        lay.offline = left.removeFromTop (40);
+
+        backButton.setBounds (buttons.removeFromLeft (100));
+        buttons.removeFromLeft (Spacing::medium);
+        continueButton.setBounds (buttons.removeFromLeft (juce::jmin (300, buttons.getWidth())));
+
+        lay.panel = right;
+        auto inner = right.reduced (Spacing::large);
+        lay.signIn = inner.removeFromTop (20);
+        inner.removeFromTop (Spacing::medium);
+        telegramButton.setBounds (inner.removeFromTop (42));
+        inner.removeFromTop (Spacing::small);
+        lay.orLabel = inner.removeFromTop (22);
+        lay.emailNote = inner.removeFromTop (22);
+        inner.removeFromTop (Spacing::small);
+        emailField.setBounds (inner.removeFromTop (40));
+        inner.removeFromTop (Spacing::medium);
+        sendCodeButton.setBounds (inner.removeFromTop (40));
+        inner.removeFromTop (Spacing::medium);
+        lay.privacy = inner.removeFromTop (40);
+
+        // The panel ends where its content does, not at the bottom of the
+        // window: an empty half-panel reads as something failed to load.
+        lay.panel.setBottom (lay.privacy.getBottom() + Spacing::large);
+    }
+}
+
+void SupportScreenComponent::resized()
+{
+    layout();
 }
 
 void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<float> area)
 {
     const auto& theme = AbcTrainTheme::current();
-    // Bigger and tighter than body text by a long way. Without a licensed
-    // display face this is as much of a wordmark as a system font can be
-    // made into: weight, size and negative-ish tracking doing the work a
-    // drawn logotype would otherwise do.
-    const auto font = AbcTrainLookAndFeel::titleFont();
-    constexpr float tracking = 0.4f;
-
-    // "abc" in the three family colours, "Train" in plain bright text.
-    // Drawn glyph by glyph because the three letters need three colours
-    // and JUCE has no rich-text drawText.
+    const auto font = wordmarkFont();
+    constexpr float tracking = 0.0f;
     const juce::String letters ("abcTrain");
 
-    auto totalWidth = 0.0f;
-    for (int i = 0; i < letters.length(); ++i)
-        totalWidth += AbcTrainLookAndFeel::trackedTextWidth (letters.substring (i, i + 1), font, tracking);
-
-    auto x = area.getCentreX() - totalWidth * 0.5f;
+    auto x = area.getX();
 
     for (int i = 0; i < letters.length(); ++i)
     {
         const auto letter = letters.substring (i, i + 1);
         const auto width = AbcTrainLookAndFeel::trackedTextWidth (letter, font, tracking);
+        const auto colour = i < 3 ? AbcTrainTheme::accentFor (familyForWord (i)) : theme.textBright;
 
-        const auto colour = i < 3 ? AbcTrainTheme::accentFor (familyForWord (i))
-                                  : theme.textBright;
+        // One left-to-right sweep on arrival, the way a needle settles;
+        // after that the letters simply are.
+        const auto sweep = (float) juce::jlimit (0.0, 1.0, (sweepPhase - (double) i * 0.16) / 0.55);
 
-        // Still. The hop is gone.
-        //
-        // It was the only moving thing on the screen, which put the whole
-        // weight of "this is alive" on a gag - and one that read as a toy
-        // beside the rest of the product. What is left is a single
-        // left-to-right reveal on arrival, the way a needle sweeps once
-        // and settles; after that the letters simply are. The motion moved
-        // to the background, where a background belongs.
-        const auto sweep = (float) juce::jlimit (0.0, 1.0,
-            (bouncePhase - (double) i * 0.16) / 0.55);
-
-        const auto eased = AbcTrainTheme::Ease::out (sweep);
-
-        AbcTrainLookAndFeel::drawTrackedText (g, letter,
-                                               area.withX (x).withWidth (width),
-                                               font, colour.withAlpha (eased), tracking,
-                                               juce::Justification::centred);
+        AbcTrainLookAndFeel::drawTrackedText (g, letter, area.withX (x).withWidth (width + 1.0f), font,
+                                               colour.withAlpha (AbcTrainTheme::Ease::out (sweep)),
+                                               tracking, juce::Justification::centredLeft);
         x += width;
     }
 }
 
 void SupportScreenComponent::paint (juce::Graphics& g)
 {
-    const auto& theme = AbcTrainTheme::current();
-
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
-
-    // The instruments this product is about, drifting behind everything.
-    // This screen used to have exactly one moving thing - three hopping
-    // letters - which put the whole weight of "this is alive" on a gag.
-    // The motion lives here now and the wordmark is still.
-    // Full bounds, no inset: the figures are supposed to run to the
-    // edges and past them, the way a backdrop does. The inset version
-    // read as a small animated panel - "a microscope", per the report -
-    // which is a widget, not weather.
     AmbientInstruments::paint (g, getLocalBounds().toFloat(), ambientPhase);
 
-    auto area = getLocalBounds().reduced (AbcTrainTheme::Spacing::large * 2);
+    if (step == 0)
+        paintInside (g);
+    else
+        paintAccount (g);
+}
 
-    // Centred vertically rather than pinned to the top: the first version
-    // hung everything off the top edge and left 250px of empty window
-    // under the buttons, which reads as an unfinished screen.
-    area = contentArea (area);
+void SupportScreenComponent::paintInside (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
 
-    // The real app icon, not a stand-in glyph: the first thing seen should
-    // be the same mark that is in the dock.
-    const auto iconBox = area.removeFromTop (iconHeight).withSizeKeepingCentre (72, 72);
+    paintWordmark (g, lay.wordmark.toFloat());
 
-    if (appIcon.isValid())
-        g.drawImage (appIcon, iconBox.toFloat(), juce::RectanglePlacement::centred);
-
-    area.removeFromTop (AbcTrainTheme::Spacing::medium);
-
-    // Remembered so the steady-state bounce can repaint just this strip.
-    // Expanded past the lift height because a letter mid-hop paints above
-    // the strip's own top edge.
-    const auto wordmarkStrip = area.removeFromTop (wordmarkHeight);
-    wordmarkRepaintArea = wordmarkStrip.expanded (0, 10);
-    paintWordmark (g, wordmarkStrip.toFloat());
-
-    area.removeFromTop (AbcTrainTheme::Spacing::small);
-
-    // --- the three words, arriving one at a time -------------------------
+    // The three words, arriving one at a time, each in its family colour.
     {
         const char* const wordKeys[] = { "brand.a", "brand.b", "brand.c" };
-        const auto wordFont = AbcTrainLookAndFeel::titleFont();
-        auto row = area.removeFromTop (wordsHeight).toFloat();
+        const auto font = AbcTrainLookAndFeel::titleFont();
+        auto x = (float) lay.words.getX();
+        const auto separatorWidth = AbcTrainLookAndFeel::trackedTextWidth (middleDot(), font, 1.0f);
 
-        // Laid out as one centred line, measured first so the words don't
-        // shift sideways as later ones appear.
-        std::array<juce::String, 3> words;
-        auto totalWidth = 0.0f;
-
-        for (size_t i = 0; i < words.size(); ++i)
+        for (size_t i = 0; i < 3; ++i)
         {
-            words[i] = localisation.getText (wordKeys[i]);
-            totalWidth += AbcTrainLookAndFeel::trackedTextWidth (words[i], wordFont, 1.0f);
-        }
-
-        const auto separatorWidth = AbcTrainLookAndFeel::trackedTextWidth (middleDot(), wordFont, 1.0f);
-        totalWidth += separatorWidth * 2.0f;
-
-        auto x = row.getCentreX() - totalWidth * 0.5f;
-
-        for (size_t i = 0; i < words.size(); ++i)
-        {
+            const auto word = localisation.getText (wordKeys[i]);
             const auto eased = AbcTrainTheme::Ease::out (wordReveal[i]);
-            const auto width = AbcTrainLookAndFeel::trackedTextWidth (words[i], wordFont, 1.0f);
+            const auto width = AbcTrainLookAndFeel::trackedTextWidth (word, font, 1.0f);
 
             AbcTrainLookAndFeel::drawTrackedText (
-                g, words[i],
-                row.withX (x).withWidth (width).translated (0.0f, (1.0f - eased) * riseDistance),
-                wordFont,
-                AbcTrainTheme::accentFor (familyForWord ((int) i)).withAlpha (eased),
-                1.0f, juce::Justification::centred);
-
+                g, word, lay.words.toFloat().withX (x).withWidth (width + 2.0f)
+                             .translated (0.0f, (1.0f - eased) * riseDistance),
+                font, AbcTrainTheme::accentFor (familyForWord ((int) i)).withAlpha (eased), 1.0f);
             x += width;
 
-            if (i + 1 < words.size())
+            if (i < 2)
             {
                 g.setColour (theme.textDim.withAlpha (0.5f * eased));
-                g.setFont (wordFont);
-                g.drawText (middleDot(), row.withX (x).withWidth (separatorWidth).toNearestInt(),
-                             juce::Justification::centred, false);
+                g.setFont (font);
+                g.drawText (middleDot(), juce::Rectangle<float> (x, (float) lay.words.getY(), separatorWidth,
+                                                                  (float) lay.words.getHeight()),
+                            juce::Justification::centred, false);
                 x += separatorWidth;
             }
         }
     }
 
-    area.removeFromTop (AbcTrainTheme::Spacing::large);
+    g.setColour (theme.text);
+    g.setFont (AbcTrainLookAndFeel::bodyFont().withHeight (18.0f));
+    g.drawFittedText (localisation.getText ("welcome.tagline"), lay.tagline,
+                      juce::Justification::topLeft, 2, 1.0f);
 
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (localisation.getText ("welcome.step1")),
+                                           lay.stepLabel.toFloat(), AbcTrainLookAndFeel::microFont(),
+                                           theme.textDim, 1.4f);
 
-    if (tourQuestion.isNotEmpty())
+    // Said once, quietly but at body size: on laptop speakers several
+    // exercises are answerable only by guessing, and it is better to say
+    // so than to let somebody conclude their ears are the problem.
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::captionFont());
+    g.drawFittedText (localisation.getText ("ui.headphoneNote"), lay.note,
+                      juce::Justification::bottomLeft, 2, 1.0f);
+
+    const char* const titles[] = { "ui.trainings", "ui.studio", "welcome.live" };
+    const char* const bodies[] = { "welcome.trainings.body", "welcome.studio.body", "welcome.live.body" };
+
+    for (int i = 0; i < 3; ++i)
     {
-        g.setColour (AbcTrainTheme::current().textDim);
-        g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText (tourQuestion, tourQuestionBounds, juce::Justification::centred, true);
+        const auto eased = AbcTrainTheme::Ease::out (wordReveal[(size_t) i]);
+        auto card = lay.cards[(size_t) i].toFloat().translated (0.0f, (1.0f - eased) * riseDistance);
+        const auto soon = (i == 2);
+        const auto colour = cardColour (i);
+
+        juce::Graphics::ScopedSaveState state (g);
+        g.beginTransparencyLayer (eased * (soon ? 0.7f : 1.0f));
+
+        g.setColour (theme.panelBackground.withAlpha (0.94f));
+        g.fillRect (card);
+        g.setColour (soon ? theme.outline : colour.withAlpha (0.85f));
+        g.drawRect (card, 1.0f);
+
+        auto inner = card.reduced (18.0f, 14.0f);
+        auto titleRow = inner.removeFromTop (28.0f);
+        g.setColour (colour);
+        g.fillRect (titleRow.removeFromLeft (10.0f).withSizeKeepingCentre (10.0f, 10.0f));
+        titleRow.removeFromLeft (8.0f);
+
+        const auto title = localisation.getText (titles[i]);
+        const auto titleFont = AbcTrainLookAndFeel::titleFont();
+        g.setColour (soon ? theme.textDim : theme.textBright);
+        g.setFont (titleFont);
+        g.drawText (title, titleRow, juce::Justification::centredLeft, false);
+
+        if (soon)
+        {
+            const auto titleWidth = juce::GlyphArrangement::getStringWidth (titleFont, title);
+            paintTag (g, titleRow.withTrimmedLeft (titleWidth + 10.0f),
+                      localisation.getText ("welcome.soon"), theme.textDim);
+        }
+
+        inner.removeFromTop (6.0f);
+        g.setColour (soon ? theme.textDim : theme.text);
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        g.drawFittedText (localisation.getText (bodies[i]), inner.toNearestInt(),
+                          juce::Justification::topLeft, 3, 1.0f);
+
+        g.endTransparencyLayer();
     }
 }
 
-juce::Rectangle<int> SupportScreenComponent::contentArea (juce::Rectangle<int> bounds) const
+void SupportScreenComponent::paintAccount (juce::Graphics& g)
 {
-    using namespace AbcTrainTheme;
+    const auto& theme = AbcTrainTheme::current();
+    const auto liveColour = AbcTrainTheme::accentFor (AbcTrainTheme::Family::dynamics);
 
-    const auto total = iconHeight + Spacing::medium + wordmarkHeight
-                           + Spacing::small + wordsHeight
-                           + Spacing::large + continueHeight
-                           + Spacing::medium + asksHeight;
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (localisation.getText ("welcome.step2")),
+                                           lay.stepLabel.toFloat(), AbcTrainLookAndFeel::microFont(),
+                                           theme.textDim, 1.4f);
 
-    return bounds.withHeight (juce::jmin (bounds.getHeight(), total))
-                 .withY (bounds.getY() + juce::jmax (0, (bounds.getHeight() - total) / 2));
-}
+    g.setColour (theme.textBright);
+    g.setFont (headingFont());
+    g.drawFittedText (localisation.getText ("welcome.account.title"), lay.heading,
+                      juce::Justification::topLeft, 3, 0.8f);
 
-void SupportScreenComponent::setTourOffer (juce::String question, juce::String accept,
-                                            juce::String decline)
-{
-    tourQuestion = std::move (question);
-    tourButton.setButtonText (accept);
-    noTourButton.setButtonText (decline);
+    g.setColour (theme.text);
+    g.setFont (AbcTrainLookAndFeel::bodyFont());
+    g.drawFittedText (localisation.getText ("welcome.account.body"), lay.body,
+                      juce::Justification::topLeft, 3, 1.0f);
 
-    const auto offering = tourQuestion.isNotEmpty();
-    tourButton.setVisible (offering);
-    noTourButton.setVisible (offering);
-    continueButton.setVisible (! offering);
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::captionFont());
+    g.drawFittedText (localisation.getText ("welcome.account.offline"), lay.offline,
+                      juce::Justification::topLeft, 2, 1.0f);
 
-    resized();
-    repaint();
-}
+    // The panel: what signing in will look like, greyed out.
+    g.setColour (theme.panelBackground.withAlpha (0.6f));
+    g.fillRect (lay.panel.toFloat());
+    g.setColour (theme.outline);
+    g.drawRect (lay.panel.toFloat(), 1.0f);
 
-void SupportScreenComponent::resized()
-{
-    using namespace AbcTrainTheme;
-
-    auto area = contentArea (getLocalBounds().reduced (Spacing::large * 2));
-
-    area.removeFromTop (iconHeight + Spacing::medium + wordmarkHeight
-                        + Spacing::small + wordsHeight
-                        + Spacing::large);
-
-    // "Continue" is the primary action and sits alone, above the two asks
-    // rather than below them: the screen is an offer, not a toll gate, and
-    // the way onward should be the easiest thing to find.
     {
-        auto primary = area.removeFromTop (continueHeight);
-
-        if (tourQuestion.isNotEmpty())
-        {
-            // Two buttons of the same size, side by side. Making the accept
-            // bigger would be the screen having an opinion about what you
-            // should want.
-            tourQuestionBounds = primary.withHeight (18).translated (0, -22);
-
-            auto pair = primary.withSizeKeepingCentre (330, 38);
-            tourButton.setBounds (pair.removeFromLeft (196));
-            pair.removeFromLeft (10);
-            noTourButton.setBounds (pair.withSizeKeepingCentre (124, 30));
-        }
-        else
-        {
-            continueButton.setBounds (primary.withSizeKeepingCentre (180, 36));
-        }
+        const auto caps = AbcTrainLookAndFeel::toCaps (localisation.getText ("welcome.signIn"));
+        const auto font = AbcTrainLookAndFeel::microFont();
+        const auto width = AbcTrainLookAndFeel::trackedTextWidth (caps, font, 1.4f);
+        AbcTrainLookAndFeel::drawTrackedText (g, caps, lay.signIn.toFloat(), font, theme.textDim, 1.4f);
+        paintTag (g, lay.signIn.toFloat().withTrimmedLeft (width + 12.0f),
+                  localisation.getText ("welcome.comingWithLive"), liveColour);
     }
 
-    area.removeFromTop (AbcTrainTheme::Spacing::medium);
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (localisation.getText ("welcome.or")),
+                                           lay.orLabel.toFloat(), AbcTrainLookAndFeel::microFont(),
+                                           theme.textDim, 1.4f, juce::Justification::centred);
 
-    auto row = area.removeFromTop (asksHeight).withSizeKeepingCentre (
-                   juce::jmin (area.getWidth(), 340), 32);
-    donateButton.setBounds (row.removeFromLeft (row.getWidth() / 2 - 4));
-    row.removeFromLeft (8);
-    starButton.setBounds (row);
-
-    auto footer = getLocalBounds().removeFromBottom (56);
-    headphoneNote.setBounds (footer.removeFromTop (26)
-                                 .reduced (AbcTrainTheme::Spacing::large, 0));
-    repoLink.setBounds (footer.reduced (AbcTrainTheme::Spacing::large, 6));
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::captionFont());
+    g.drawFittedText (localisation.getText ("welcome.emailNote"), lay.emailNote,
+                      juce::Justification::centredLeft, 1, 0.9f);
+    g.drawFittedText (localisation.getText ("welcome.privacy"), lay.privacy,
+                      juce::Justification::topLeft, 2, 1.0f);
 }

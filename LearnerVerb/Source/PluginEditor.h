@@ -7,6 +7,7 @@
 #include "shared/ui/SegmentedChoice.h"
 #include "shared/analysis/WaveformDisplay.h"
 #include "EchogramView.h"
+#include "RoomView.h"
 
 // Learner Verb: four reverb types, six knobs, and the same shell as the
 // other two Learner plugins (ADR 037).
@@ -19,35 +20,35 @@ public:
     void applyPresetForSnapshot (int index)
     {
         verbProcessor.applyPreset (index);
-        presets.setActive (index);
+        presets.setChosen (index);
         syncType();
         updateEchogram (true);
     }
 
 private:
-    int analysisContentHeight() const override { return 200 + 12 + 120 + 8 + 22; }
-    int controlsContentHeight() const override
-    {
-        return (isCompact() ? 30 + 26 : 34 + 30) + 3 * rowGap() + knobRowHeight() + presetRowHeight();
-    }
-    void paint (juce::Graphics&) override;
+    int analysisContentHeight() const override { return 260; }
+    int controlsContentHeight() const override { return knobRowHeight() + KnobRow::noteHeight + controlsFooterHeight() + 3 * rowGap(); }
+    int controlsFooterHeight() const override { return 30; }
+    void layoutToolbar (juce::Rectangle<int>) override;
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;
     void themeChanged() override;
     void tick() override;
     void syncType();
     void updateEchogram (bool immediately = false);
+    void updateNotes();
+    juce::String typeDescription (int type) const;
 
     LearnerVerbProcessor& verbProcessor;
 
+    RoomView room;
     EchogramView echogram;
-    WaveformDisplay waveform;
-    juce::Label inputPeakLabel, outputPeakLabel;
+    WaveformDisplay waveform;   // fed by the processor; not on screen in this layout
 
-    SegmentedChoice typeChoice;
-    juce::Rectangle<int> typeCaptionArea, thisIsCaptionArea, thisIsTextArea;
+    ChipRow typeChips;
+    int shownType = -1;
     KnobRow knobs;
-    PresetRow presets;
+    ChipRow presets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerVerbEditor)
 };

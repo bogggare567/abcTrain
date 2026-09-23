@@ -52,8 +52,18 @@ LearnerEditorBase::LearnerEditorBase (juce::AudioProcessor& p, Services s, Ident
     pluginIcon.setIcon (identity.icon);
     addAndMakeVisible (pluginIcon);
 
+    // What the plugin listens to, as chips: the host (or, in the app, the
+    // audio input) and every category of the shared library. The dropdown
+    // underneath does the work and is what shows when there are too many
+    // categories for a row.
+    practiceSelector.onListChanged = [this] { refreshMaterialChips(); };
     practiceSelector.setLabels (t ("lp.source", "source"), t ("lp.hostAudio", "Host audio"), t ("lp.host", "host"));
-    addAndMakeVisible (practiceSelector);
+    addChildComponent (practiceSelector);
+
+    materialChips.setCaption (t ("lp.material", "Material"));
+    materialChips.onChosen = [this] (int index) { practiceSelector.choose (index); };
+    addAndMakeVisible (materialChips);
+    refreshMaterialChips();
 
     // Bypass as a square toggle in the trainer's grammar: an outline when
     // the plugin is working, filled when it is not - the state you most
@@ -88,6 +98,12 @@ LearnerEditorBase::LearnerEditorBase (juce::AudioProcessor& p, Services s, Ident
     modulesButton.onClick = [this] { moduleScreen.openShelf(); };
     addAndMakeVisible (modulesButton);
 
+    // The same shelf, as a word, for the toolbar inside the app - where
+    // there is no title row for the icon to live in.
+    lessonsButton.setButtonText (localisation.getText ("module.shelfTitle"));
+    lessonsButton.onClick = [this] { moduleScreen.openShelf(); };
+    addChildComponent (lessonsButton);
+
     soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false, juce::Justification::centredRight);
     addAndMakeVisible (soundkorbLink);
 
@@ -104,6 +120,74 @@ LearnerEditorBase::LearnerEditorBase (juce::AudioProcessor& p, Services s, Ident
 LearnerEditorBase::~LearnerEditorBase()
 {
     setLookAndFeel (nullptr);
+}
+
+void LearnerEditorBase::refreshMaterialChips()
+{
+    materialChips.setItems (practiceSelector.getShortLabels());
+    materialChips.setChosen (practiceSelector.getChosenIndex());
+
+    // Not from the base constructor: resized() asks the subclass for its
+    // heights, and the subclass does not exist yet.
+    if (setupFinished)
+        resized();
+}
+
+void LearnerEditorBase::placeMaterial (juce::Rectangle<int> area)
+{
+    // Chips when they fit, the dropdown when the library has grown past
+    // a row.
+    const auto chipsFit = materialChips.getPreferredWidth() <= area.getWidth();
+    materialChips.setVisible (chipsFit);
+    practiceSelector.setVisible (! chipsFit);
+
+    if (chipsFit)
+    {
+        materialChips.setBounds (area.withWidth (materialChips.getPreferredWidth()));
+        return;
+    }
+
+    const auto practiceWidth = juce::jmin (area.getWidth(), practiceSelector.getPreferredWidth());
+    practiceSelector.setBounds (area.removeFromRight (practiceWidth).withSizeKeepingCentre (practiceWidth, 26));
+}
+
+void LearnerEditorBase::placeWithMaterial (ChipRow& own, juce::Rectangle<int> area)
+{
+    const auto gap = AbcTrainTheme::Spacing::large;
+
+    if (own.getPreferredWidth() + gap + materialChips.getPreferredWidth() <= area.getWidth())
+    {
+        own.setBounds (area.removeFromLeft (own.getPreferredWidth()));
+        area.removeFromLeft (gap);
+        placeMaterial (area);
+        return;
+    }
+
+    materialChips.setVisible (false);
+    practiceSelector.setVisible (true);
+
+    const auto practiceWidth = juce::jmin (area.getWidth() / 3, practiceSelector.getPreferredWidth());
+    practiceSelector.setBounds (area.removeFromRight (practiceWidth).withSizeKeepingCentre (practiceWidth, 26));
+    area.removeFromRight (AbcTrainTheme::Spacing::small);
+    own.setBounds (area.withWidth (juce::jmin (area.getWidth(), own.getPreferredWidth())));
+}
+
+void LearnerEditorBase::setEmbedded (bool shouldBeEmbedded)
+{
+    embedded = shouldBeEmbedded;
+
+    pluginIcon.setVisible (! embedded);
+    updateButton.setVisible (! embedded);
+    themeButton.setVisible (! embedded);
+    modulesButton.setVisible (! embedded);
+    soundkorbLink.setVisible (! embedded);
+    lessonsButton.setVisible (embedded);
+
+    // In the app the host is the audio interface's input.
+    practiceSelector.setLabels (t ("lp.source", "source"), t ("lp.hostAudio", "Host audio"),
+                                embedded ? t ("lp.input", "input") : t ("lp.host", "host"));
+    resized();
+    repaint();
 }
 
 void LearnerEditorBase::refreshSlots()
@@ -172,6 +256,7 @@ ModuleScreenComponent::Strings LearnerEditorBase::moduleStrings() const
 
 void LearnerEditorBase::finishSetup (std::vector<TrainingModule::Definition> modules, int width, int height)
 {
+    setupFinished = true;
     moduleScreen.setModules (std::move (modules));
 
     // After the subclass's own controls, so it floats above what it covers.
@@ -209,6 +294,7 @@ void LearnerEditorBase::applyTheme()
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
     pluginIcon.setIconColour (accent);
     moduleScreen.setAccentColour (accent);
+    materialChips.setAccent (accent);
 
     themeChanged();
     repaint();
@@ -281,6 +367,7 @@ void LearnerEditorBase::paint (juce::Graphics& g)
 
     // The name, tracked, beside the icon; a hairline; then the family in
     // its own colour - which part of the subject this plugin teaches.
+    if (! embedded)
     {
         auto row = getLocalBounds().reduced (AbcTrainTheme::Spacing::large).removeFromTop (titleRowHeight);
         row.removeFromLeft (38);
@@ -321,9 +408,20 @@ void LearnerEditorBase::paint (juce::Graphics& g)
         g.drawText (t (familyKeys[f], familyFallbacks[f]), row, juce::Justification::centredLeft, true);
     }
 
-    AbcTrainLookAndFeel::paintSectionPanel (g, analysisSection.toFloat(), localisation.getText ("lp.analysis"));
-    AbcTrainLookAndFeel::paintSectionPanel (g, controlSection.toFloat(), localisation.getText (identity.controlsCaptionKey));
+    // No panel behind the analysis: the displays are their own wells, and
+    // a box round boxes was what made the old layout read as forms. The
+    // controls keep one hairline box, which is what groups the knobs.
+    {
+        const auto box = controlSection.withTrimmedBottom (controlsFooterHeight() > 0
+                                                               ? controlsFooterHeight() + AbcTrainTheme::Spacing::medium : 0)
+                                       .toFloat().reduced (0.5f);
+        g.setColour (theme.panelBackground.withAlpha (0.5f));
+        g.fillRect (box);
+        g.setColour (theme.outline);
+        g.drawRect (box, 1.0f);
+    }
 }
+
 
 void LearnerEditorBase::paintOverChildren (juce::Graphics& g)
 {
@@ -351,61 +449,72 @@ void LearnerEditorBase::resized()
 
     updateWindow.setBounds (getLocalBounds());
 
-    auto area = getLocalBounds().reduced (Spacing::large);
+    auto area = getLocalBounds().reduced (embedded ? Spacing::large - 4 : Spacing::large);
 
-    auto titleRow = area.removeFromTop (titleRowHeight);
-    pluginIcon.setBounds (titleRow.removeFromLeft (28).withSizeKeepingCentre (28, 28));
-
-    const auto square = [&titleRow] (juce::Component& c)
+    // The plugin's own title row: icon, name, family, and the things a
+    // plugin window has to carry for itself - modules, theme, updates.
+    if (! embedded)
     {
-        c.setBounds (titleRow.removeFromRight (32).withSizeKeepingCentre (32, 32));
-        titleRow.removeFromRight (Spacing::small);
-    };
+        auto titleRow = area.removeFromTop (titleRowHeight);
+        pluginIcon.setBounds (titleRow.removeFromLeft (28).withSizeKeepingCentre (28, 28));
 
-    square (modulesButton);
-    square (themeButton);
-    square (updateButton);
+        const auto square = [&titleRow] (juce::Component& c)
+        {
+            c.setBounds (titleRow.removeFromRight (32).withSizeKeepingCentre (32, 32));
+            titleRow.removeFromRight (Spacing::small);
+        };
 
-    bypassButton.setBounds (titleRow.removeFromRight (104).withSizeKeepingCentre (104, 30));
-    titleRow.removeFromRight (Spacing::small);
+        square (modulesButton);
+        square (themeButton);
+        square (updateButton);
+        familyLimit = titleRow.getRight() - Spacing::small;
 
-    slotB.setBounds (titleRow.removeFromRight (34).withSizeKeepingCentre (34, 30));
-    titleRow.removeFromRight (2);
-    slotA.setBounds (titleRow.removeFromRight (34).withSizeKeepingCentre (34, 30));
-    titleRow.removeFromRight (Spacing::medium);
+        area.removeFromTop (Spacing::medium);
+    }
 
-    const auto practiceWidth = practiceSelector.getPreferredWidth();
-    practiceSelector.setBounds (titleRow.removeFromRight (practiceWidth).withSizeKeepingCentre (practiceWidth, 26));
-    familyLimit = practiceSelector.getX() - Spacing::small;
+    // The toolbar: what is playing on the left, A/B and bypass on the right.
+    {
+        auto toolbar = area.removeFromTop (32);
+
+        bypassButton.setBounds (toolbar.removeFromRight (104));
+        toolbar.removeFromRight (Spacing::small);
+
+        slotB.setBounds (toolbar.removeFromRight (38));
+        slotA.setBounds (toolbar.removeFromRight (38));
+        toolbar.removeFromRight (Spacing::small);
+
+        if (embedded)
+        {
+            const auto width = juce::jmax (96, (int) AbcTrainLookAndFeel::trackedTextWidth (
+                                                   AbcTrainLookAndFeel::toCaps (lessonsButton.getButtonText()),
+                                                   AbcTrainLookAndFeel::labelFont(), 1.2f) + 32);
+            lessonsButton.setBounds (toolbar.removeFromRight (width));
+            toolbar.removeFromRight (Spacing::medium);
+        }
+
+        layoutToolbar (toolbar);
+    }
 
     area.removeFromTop (Spacing::medium);
 
-    auto footer = area.removeFromBottom (footerHeight);
-    soundkorbLink.setBounds (footer.removeFromRight (140));
-    area.removeFromBottom (Spacing::small);
+    if (! embedded)
+    {
+        auto footer = area.removeFromBottom (footerHeight);
+        soundkorbLink.setBounds (footer.removeFromRight (140));
+        area.removeFromBottom (Spacing::small);
+    }
 
-    const auto captionSpace = Spacing::large + 6;
-    const auto controlsHeight = controlsContentHeight() + captionSpace + Spacing::medium;
+    const auto controlsHeight = controlsContentHeight() + 2 * Spacing::medium;
 
-    // In a short window the analysis section gives way first: a spectrum
-    // 180 px tall still reads, a knob too small to grab does not.
-    const auto analysisFloor = isCompact() ? 180 : analysisContentHeight();
-    analysisSection = area.removeFromTop (juce::jmax (analysisFloor + captionSpace + Spacing::medium,
-                                                      area.getHeight() - controlsHeight - Spacing::medium));
+    // In a short window the analysis section gives way first: a display
+    // 160 px tall still reads, a knob too small to grab does not.
+    const auto analysisFloor = isCompact() ? 160 : analysisContentHeight();
+    analysisSection = area.removeFromTop (juce::jmax (analysisFloor, area.getHeight() - controlsHeight - Spacing::medium));
     area.removeFromTop (Spacing::medium);
     controlSection = area.removeFromTop (controlsHeight);
 
-    {
-        auto inner = analysisSection.reduced (Spacing::medium);
-        inner.removeFromTop (captionSpace - Spacing::medium);
-        layoutAnalysis (inner);
-    }
-
-    {
-        auto inner = controlSection.reduced (Spacing::medium);
-        inner.removeFromTop (captionSpace - Spacing::medium);
-        layoutControls (inner);
-    }
+    layoutAnalysis (analysisSection);
+    layoutControls (controlSection.reduced (Spacing::medium));
 
     moduleScreen.setBounds (analysisSection);
 

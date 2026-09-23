@@ -6,6 +6,7 @@
 #include "shared/learning/LearnerEditorBase.h"
 #include "shared/ui/SegmentedChoice.h"
 #include "shared/analysis/WaveformDisplay.h"
+#include "LessonPanel.h"
 
 // Learner EQ: the curve is the instrument, and one row of controls follows
 // whichever band is selected. The shell is LearnerEditorBase's (ADR 037).
@@ -15,9 +16,26 @@ public:
     explicit LearnerEQEditor (LearnerEQProcessor&);
     ~LearnerEQEditor() override;
 
+    // Snapshot seam: the kick lesson half done - a high-pass, the body
+    // lifted, band 4 on the click - so the picture shows ticks, the
+    // current step and coloured nodes rather than one flat line.
+    void kickLessonForSnapshot()
+    {
+        chooseInstrument (0);
+        eqProcessor.removeBand (0);
+        eqProcessor.addBand (30.0f, 0.0f, EQCoefficients::BandType::highPass);
+        eqProcessor.addBand (65.0f, 3.0f, EQCoefficients::BandType::bell);
+        eqProcessor.addBand (330.0f, 0.0f, EQCoefficients::BandType::bell);
+        const auto click = eqProcessor.addBand (3200.0f, 4.0f, EQCoefficients::BandType::bell);
+        pushBandsToDisplay();
+        selectBand (click);
+        refreshLesson();
+    }
+
 private:
-    int analysisContentHeight() const override { return 215 + 12 + 110 + 8 + 24; }
-    int controlsContentHeight() const override { return 24 + 30 + 2 * rowGap() + (isCompact() ? 96 : 118); }
+    int analysisContentHeight() const override { return 280; }
+    int controlsContentHeight() const override { return isCompact() ? 104 : 124; }
+    void layoutToolbar (juce::Rectangle<int>) override;
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;
     void themeChanged() override;
@@ -28,19 +46,22 @@ private:
     void pushSelectedBandToControls();
     void writeParameter (const juce::String& id, float value);
     void refreshZoneLabel();
+    void chooseInstrument (int index);   // -1: the general zones
+    void refreshLesson();
     void pushBandsToDisplay();
     juce::String typeName (EQCoefficients::BandType) const;
 
     LearnerEQProcessor& eqProcessor;
 
     SpectrumAnalyserComponent spectrum;
-    WaveformDisplay waveform;
-    juce::Label inputPeakLabel, outputPeakLabel;
+    WaveformDisplay waveform;   // fed by the processor; not on screen in this layout
+    LessonPanel lessonPanel;
 
-    juce::Label zoneLabel;
-    juce::TextButton zonesButton;
-    SegmentedChoice typeChoice;
-    juce::Label bandLabel;
+    ChipRow instrumentChips;
+    int instrument = -1;
+
+    ChipRow typeChips;
+    juce::Rectangle<int> bandCaptionArea;
 
     // One chip per active band, and "+" to add one: the bands as things
     // you can count and pick, not only as dots on a curve.

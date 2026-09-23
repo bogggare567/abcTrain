@@ -11,6 +11,7 @@
 #include "shared/learning/PracticeSourceSelector.h"
 #include "shared/updates/UpdateWindow.h"
 #include "shared/ui/WindowFit.h"
+#include "shared/ui/ChipRow.h"
 #include "shared/i18n/LocalisationManager.h"
 #include <functional>
 #include <memory>
@@ -61,6 +62,13 @@ public:
     void paintOverChildren (juce::Graphics&) override;
     void resized() override;
 
+    // Inside the app's Studio (ADR 041) the app already says which plugin
+    // this is, owns the theme and the update check, and has its own footer:
+    // the title row goes, and the toolbar - material, A/B, bypass - is the
+    // top of the page, as in docs/design/approved-2026-09.
+    void setEmbedded (bool shouldBeEmbedded);
+    bool isEmbedded() const noexcept { return embedded; }
+
     // For tools/EditorSnapshots.
     void openModuleShelfForSnapshot()                     { moduleScreen.openShelf(); moduleScreen.completeAnimation(); }
     void openModuleCheckForSnapshot (int index)           { moduleScreen.openCheckForSnapshot (index); }
@@ -90,6 +98,25 @@ protected:
     // Inner areas, already inset for the section caption.
     virtual void layoutAnalysis (juce::Rectangle<int>) = 0;
     virtual void layoutControls (juce::Rectangle<int>) = 0;
+
+    // The left part of the toolbar row. By default the material chips
+    // (what the plugin listens to); a subclass with a more useful first
+    // choice - an instrument, a reverb type - puts its own there and may
+    // still place the material chips (see materialChips) where it likes.
+    virtual void layoutToolbar (juce::Rectangle<int> left) { placeMaterial (left); }
+
+    // Puts the material choice in `area`: chips from the left when they
+    // fit, the compact dropdown at the right when they do not.
+    void placeMaterial (juce::Rectangle<int> area);
+
+    // A subclass's own chip row first, then the material: both as chips
+    // when they fit, otherwise the material as the dropdown at the right
+    // and the subclass's chips in what is left.
+    void placeWithMaterial (ChipRow& own, juce::Rectangle<int> area);
+
+    // Height at the bottom of the control section that sits *outside* its
+    // bordered panel - a "Start from" row under the knobs, say.
+    virtual int controlsFooterHeight() const { return 0; }
 
     // The palette changed (or the editor just opened): push the accent
     // into whatever draws itself.
@@ -139,6 +166,9 @@ protected:
     ModuleProgress moduleProgress;
     ModuleScreenComponent moduleScreen;
 
+    ChipRow materialChips;
+    void refreshMaterialChips();
+
 private:
     void timerCallback() override;
     void applyTheme();
@@ -158,6 +188,10 @@ private:
     PracticeSourceSelector practiceSelector;
     juce::HyperlinkButton soundkorbLink { "soundkorb.ru", juce::URL ("https://soundkorb.ru") };
     UpdateWindow updateWindow;
+
+    juce::TextButton lessonsButton;
+    bool embedded = false;
+    bool setupFinished = false;
 
     float bypassVeil = 0.0f;
     juce::Point<int> designSize { 900, 830 };

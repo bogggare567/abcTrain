@@ -97,6 +97,7 @@ private:
     juce::Rectangle<int> sideMenuBounds() const;
     juce::Rectangle<int> pageBounds() const;
     juce::Rectangle<int> modeSwitchBounds() const;
+    int menuTop() const;
     void paintSideMenu (juce::Graphics&, juce::Rectangle<int>);
     int menuRowAt (juce::Point<int>) const;
 
@@ -113,7 +114,9 @@ private:
     Page currentPage = Page::training;
     int hoveredMenuRow = -1;
 
-    SegmentedChoice modeSwitch;
+    // Pro mode as one switch at the foot of the rail (the author's call):
+    // it is a setting you choose once, not a page you move between.
+    juce::ToggleButton modeSwitch;
 
     // Training
     SegmentedChoice stepRule, answerPause, survivalLives, blitzSeconds, blitzPenalty, hints, allModes;
@@ -122,6 +125,7 @@ private:
     // Hearing
     SegmentedChoice hearingOn, breakMinutes, fatigueHint, weeklyLimit;
     juce::TextButton calibrationNoiseButton, calibrationSaveButton, calibrationClearButton;
+    juce::TextButton calibrationDown { juce::String::fromUTF8 ("\xe2\x88\x92") }, calibrationUp { "+" };
     juce::Slider calibrationSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     juce::Component calibrationRow;
     SegmentedChoice exposureHours, exposureLevel;

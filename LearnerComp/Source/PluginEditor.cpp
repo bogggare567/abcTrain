@@ -42,20 +42,17 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
                         { "knee",      t ("knob.knee", "Knee"),           " " + t ("unit.dB", "dB"), 0 },
                         { "makeup",    t ("knob.makeup", "Makeup"),       " " + t ("unit.dB", "dB"), 1 },
                         { "dryWet",    t ("knob.mix", "Mix"),             "%", 0 } }, decimalPoint()),
-      presets (presetNames (localisation))
+      presets()
 {
+    presets.setCaption (t ("lp.startFrom", "Start from"));
+    presets.setItems (presetNames (localisation));
+    waveform.setGainReductionTrace (t ("lp.gainReduction", "Gain reduction"),
+                                    t ("lp.inOutLegendComp", "In (grey) / out (orange)"));
     transferCurve.setStrings ({ t ("lp.curveIn", "in, dB"), t ("lp.curveOut", "out, dB") });
     addAndMakeVisible (transferCurve);
     addAndMakeVisible (waveform);
     gainReductionMeter.setUnits (t ("unit.dB", "dB"), decimalPoint());
     addAndMakeVisible (gainReductionMeter);
-
-    for (auto* label : { &inputPeakLabel, &outputPeakLabel })
-    {
-        label->setJustificationType (juce::Justification::centred);
-        label->setFont (AbcTrainLookAndFeel::monoFont());
-        addAndMakeVisible (*label);
-    }
 
     knobs.onDragStart = [this] (const juce::String& id)
     {
@@ -65,8 +62,8 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     knobs.onValueChange = [this] (const juce::String&)
     {
         // A preset is a claim about every knob; once one moves it is false.
-        if (! moduleScreen.isRunning() && presets.getActive() >= 0 && knobs.isMouseButtonDown (true))
-            presets.setActive (-1);
+        if (! moduleScreen.isRunning() && presets.getChosen() >= 0 && knobs.isMouseButtonDown (true))
+            presets.setChosen (-1);
     };
     addAndMakeVisible (knobs);
 
@@ -104,40 +101,31 @@ void LearnerCompEditor::layoutAnalysis (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
 
-    auto meterRow = area.removeFromBottom (48);
-    area.removeFromBottom (Spacing::medium);
-
     // The transfer curve square on the left - level in against level out
-    // wants equal axes - and the waveform, which shows the same thing
-    // happening in time, beside it.
-    const auto curveSide = juce::jmin (area.getHeight(), area.getWidth() * 2 / 5);
-    transferCurve.setBounds (area.removeFromLeft (curveSide).reduced (1));
+    // wants equal axes - the waveform with the gain-reduction line beside
+    // it, and a standing GR meter at the end.
+    const auto curveSide = juce::jmin (area.getHeight(), area.getWidth() * 3 / 10);
+    transferCurve.setBounds (area.removeFromLeft (curveSide));
     area.removeFromLeft (Spacing::medium);
-    waveform.setBounds (area.reduced (1));
 
-    // In and out on the ends, the gain-reduction bar between them.
-    inputPeakLabel.setBounds (meterRow.removeFromLeft (170));
-    outputPeakLabel.setBounds (meterRow.removeFromRight (170));
-    gainReductionMeter.setBounds (meterRow.reduced (Spacing::medium, 6));
+    gainReductionMeter.setBounds (area.removeFromRight (56).reduced (0, Spacing::large));
+    area.removeFromRight (Spacing::medium);
+    waveform.setBounds (area);
 }
 
 void LearnerCompEditor::layoutControls (juce::Rectangle<int> area)
 {
-    knobs.setBounds (area.removeFromTop (knobRowHeight()));
-    area.removeFromTop (rowGap());
-    presets.setBounds (area.removeFromTop (presetRowHeight()));
+    presets.setBounds (area.removeFromBottom (controlsFooterHeight()).withTrimmedLeft (0).translated (-AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::medium));
+    area.removeFromBottom (2 * rowGap());
+    knobs.setBounds (area.withTrimmedTop (rowGap()));
 }
 
 void LearnerCompEditor::themeChanged()
 {
-    const auto& theme = AbcTrainTheme::current();
-
-    inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
-    outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
     transferCurve.setAccentColour (accent);
     waveform.setAccentColour (accent);
+    presets.setAccent (accent);
     knobs.refreshColours();
-    presets.setActive (presets.getActive());
 }
 
 void LearnerCompEditor::tick()
@@ -147,6 +135,4 @@ void LearnerCompEditor::tick()
 
     gainReductionMeter.setGainReductionDb (waveform.getCurrentHighlightAmount());
 
-    inputPeakLabel.setText (peakText ("lp.in", "In", waveform.getInputPeak()), juce::dontSendNotification);
-    outputPeakLabel.setText (peakText ("lp.out", "Out", waveform.getOutputPeak()), juce::dontSendNotification);
 }

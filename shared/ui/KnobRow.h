@@ -90,6 +90,26 @@ public:
     }
 
     static constexpr int labelHeight = 20;
+    static constexpr int noteHeight = 16;
+
+    // One short line under a knob's value saying what the number means in
+    // the world - "room = 14 x 10 x 6 m" under Size. Setting any note gives
+    // every column room for one.
+    void setNote (const juce::String& paramId, const juce::String& note)
+    {
+        for (auto& k : knobs)
+            if (k->paramId == paramId && k->note != note)
+            {
+                k->note = note;
+                repaint (k->column);
+            }
+
+        if (! hasNotes && note.isNotEmpty())
+        {
+            hasNotes = true;
+            resized();
+        }
+    }
 
     void paint (juce::Graphics& g) override
     {
@@ -101,6 +121,14 @@ public:
             AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (k->label), area,
                                                   AbcTrainLookAndFeel::labelFont(), theme.textDim, 1.3f,
                                                   juce::Justification::centred);
+
+            if (hasNotes && k->note.isNotEmpty())
+            {
+                g.setColour (theme.textDim);
+                g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (12.0f));
+                g.drawFittedText (k->note, k->column.withTop (k->column.getBottom() - noteHeight),
+                                  juce::Justification::centred, 1, 0.85f);
+            }
         }
     }
 
@@ -112,14 +140,14 @@ public:
         for (auto& k : knobs)
         {
             k->column = area.removeFromLeft (width).reduced (AbcTrainTheme::Spacing::tight, 0);
-            k->slider.setBounds (k->column.withTrimmedTop (labelHeight));
+            k->slider.setBounds (k->column.withTrimmedTop (labelHeight).withTrimmedBottom (hasNotes ? noteHeight : 0));
         }
     }
 
 private:
     struct Knob
     {
-        juce::String paramId, label;
+        juce::String paramId, label, note;
         juce::Slider slider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;
         juce::Rectangle<int> column;
@@ -127,6 +155,7 @@ private:
 
     juce::AudioProcessorValueTreeState& apvts;
     std::vector<std::unique_ptr<Knob>> knobs;
+    bool hasNotes = false;
 };
 
 // The teaching presets as a row of chips, the current one filled - "you

@@ -72,6 +72,27 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     // child (rather than deleted) so the key handler and tests that reach
     // for it still have something to reach for.
     addChildComponent (closeButton);
+
+    formats.registerBasicFormats();
+
+    // "All clips" is rotation through the category, "This clip only" pins
+    // the clip drawn large. Two segments of one switch, because they are
+    // one question.
+    allClipsButton.setClickingTogglesState (false);
+    thisClipButton.setClickingTogglesState (false);
+    allClipsButton.setConnectedEdges (juce::Button::ConnectedOnRight);
+    thisClipButton.setConnectedEdges (juce::Button::ConnectedOnLeft);
+
+    allClipsButton.onClick = [this]
+    {
+        if (selectedCategory >= 0)
+            selectCategory (selectedCategory);
+    };
+
+    thisClipButton.onClick = [this] { pinFile (focusedFile); };
+
+    addChildComponent (allClipsButton);
+    addChildComponent (thisClipButton);
 }
 
 void TrainingSoundsComponent::setStrings (Strings strings)
@@ -93,6 +114,8 @@ void TrainingSoundsComponent::setStrings (Strings strings)
     titleLabel.setText (text.title, juce::dontSendNotification);
     chooseFolderButton.setButtonText (text.chooseFolder);
     revealButton.setButtonText (text.openFolder);
+    allClipsButton.setButtonText (text.allClips);
+    thisClipButton.setButtonText (text.thisClip);
     closeButton.setButtonText (text.close);
 
     updateStatusLabel();
@@ -150,6 +173,12 @@ void TrainingSoundsComponent::refresh()
                 selectedCategory = i;
 
     fileScroll = 0.0f;
+    focusedFile = -1;
+
+    if (const auto* files = filesForSelection())
+        focusedFile = juce::jmax (0, files->indexOf (library.getSelectedFile()));
+
+    updateModeButtons();
     updateStatusLabel();
     resized();
     repaint();
@@ -180,7 +209,9 @@ void TrainingSoundsComponent::selectExerciseSound()
     processor.getGameManager().getReferenceAudioLibrary().clearSelection();
     processor.getGameManager().setPreferExerciseSound (true);
     selectedCategory = -1;
+    focusedFile = -1;
     fileScroll = 0.0f;
+    updateModeButtons();
     updateStatusLabel();
     repaint();
 }
@@ -190,7 +221,9 @@ void TrainingSoundsComponent::selectPinkNoise()
     processor.getGameManager().getReferenceAudioLibrary().clearSelection();
     processor.getGameManager().setPreferExerciseSound (false);
     selectedCategory = -1;
+    focusedFile = -1;
     fileScroll = 0.0f;
+    updateModeButtons();
     updateStatusLabel();
     repaint();
 }
@@ -205,6 +238,7 @@ void TrainingSoundsComponent::pinFile (int fileIndex)
     processor.getGameManager().getReferenceAudioLibrary()
         .pinFile ((*files)[fileIndex], processor.getSampleRate());
 
+    updateModeButtons();
     updateStatusLabel();
     repaint();
 }
@@ -223,8 +257,16 @@ void TrainingSoundsComponent::selectCategory (int categoryIndex)
     library.setActiveCategory (categories.getReference (categoryIndex).name,
                                 processor.getSampleRate());
 
+    const auto changed = selectedCategory != categoryIndex;
     selectedCategory = categoryIndex;
-    fileScroll = 0.0f;
+
+    if (changed)
+    {
+        fileScroll = 0.0f;
+        focusedFile = categories.getReference (categoryIndex).files.isEmpty() ? -1 : 0;
+    }
+
+    updateModeButtons();
     updateStatusLabel();
     repaint();
 }
@@ -259,53 +301,179 @@ void TrainingSoundsComponent::updateStatusLabel()
 
 namespace
 {
-    constexpr int railWidth = 196;
-    constexpr int headerHeight = 30;
-    constexpr int actionRowHeight = 44;
-    constexpr int hintHeight = 16;
-    constexpr int footerHeight = 34;
+    constexpr int railWidth = 220;
+    constexpr int railRowHeight = 36;
+    constexpr int titleHeight = 44;
+    constexpr int previewHeight = 156;
+    constexpr int fileRowHeight = 46;
+    constexpr int fileRowGap = 6;
+    constexpr int footerHeight = 30;
+    constexpr int overviewBuckets = 480;
+
+    juce::String formatTime (double seconds, bool fine)
+    {
+        seconds = juce::jmax (0.0, seconds);
+        const auto minutes = (int) (seconds / 60.0);
+        const auto rest = seconds - minutes * 60.0;
+
+        if (fine)
+            return juce::String (minutes) + ":" + (rest < 10.0 ? "0" : "") + juce::String (rest, 1);
+
+        return juce::String (minutes) + ":" + juce::String ((int) rest).paddedLeft ('0', 2);
+    }
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::railBounds() const
 {
-    using namespace AbcTrainTheme;
-
-    auto area = cardBounds().reduced (Spacing::large);
-    area.removeFromTop (headerHeight + Spacing::large + actionRowHeight
-                        + Spacing::small + hintHeight + Spacing::large);
-    area.removeFromBottom (footerHeight + Spacing::small);
-
-    return area.removeFromLeft (railWidth);
+    return cardBounds().withWidth (railWidth);
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::filePaneBounds() const
 {
-    using namespace AbcTrainTheme;
-
-    auto area = cardBounds().reduced (Spacing::large);
-    area.removeFromTop (headerHeight + Spacing::large + actionRowHeight
-                        + Spacing::small + hintHeight + Spacing::large);
-    area.removeFromBottom (footerHeight + Spacing::small);
-    area.removeFromLeft (railWidth + Spacing::medium);
-
-    return area;
+    return cardBounds().withTrimmedLeft (railWidth).reduced (AbcTrainTheme::Spacing::large);
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::categoryRowBounds (int index) const
 {
-    auto rail = railBounds();
-    rail.removeFromTop (18);   // the rail's own heading
+    auto rail = railBounds().reduced (10, 0);
+    rail.removeFromTop (48);   // the rail's own heading
 
-    return { rail.getX(), rail.getY() + (index - exerciseRow) * rowHeight, rail.getWidth(), rowHeight - 2 };
+    return { rail.getX(), rail.getY() + (index - exerciseRow) * railRowHeight, rail.getWidth(), railRowHeight };
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::previewBounds() const
+{
+    auto pane = filePaneBounds();
+    pane.removeFromTop (titleHeight);
+    return pane.removeFromTop (previewHeight);
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::previewPlayBounds() const
+{
+    return previewBounds().reduced (12).removeFromTop (34).removeFromLeft (34);
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::previewWaveBounds() const
+{
+    auto area = previewBounds().reduced (12);
+    area.removeFromTop (34 + 8);
+    return area;
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::listBounds() const
+{
+    auto pane = filePaneBounds();
+    pane.removeFromTop (titleHeight + previewHeight + AbcTrainTheme::Spacing::medium);
+    pane.removeFromBottom (footerHeight);
+    return pane;
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::fileRowBounds (int index) const
 {
-    auto pane = filePaneBounds();
-    pane.removeFromTop (18);
+    const auto list = listBounds();
+    return { list.getX(), list.getY() + (int) ((float) (index * (fileRowHeight + fileRowGap)) - fileScroll),
+             list.getWidth(), fileRowHeight };
+}
 
-    return { pane.getX(), pane.getY() + (int) ((float) index * rowHeight - fileScroll),
-             pane.getWidth(), rowHeight - 2 };
+juce::Rectangle<int> TrainingSoundsComponent::rowPlayBounds (int index) const
+{
+    return fileRowBounds (index).reduced (10, 0).removeFromLeft (30).withSizeKeepingCentre (30, 30);
+}
+
+const ClipPreview::Overview& TrainingSoundsComponent::overviewFor (const juce::File& file)
+{
+    const auto key = file.getFullPathName();
+
+    if (auto found = overviews.find (key); found != overviews.end())
+        return found->second;
+
+    return overviews[key] = ClipPreview::readOverview (formats, file, overviewBuckets);
+}
+
+void TrainingSoundsComponent::focusFile (int index)
+{
+    focusedFile = index;
+    updateModeButtons();
+    repaint();
+}
+
+void TrainingSoundsComponent::togglePlay (int index, float from)
+{
+    const auto* files = filesForSelection();
+
+    if (files == nullptr || index < 0 || index >= files->size())
+        return;
+
+    auto& preview = processor.getClipPreview();
+
+    if (playingFile == index && preview.isPlaying() && from <= 0.0f)
+    {
+        stopPreview();
+        return;
+    }
+
+    juce::AudioBuffer<float> clip;
+
+    if (! ClipPreview::readClip (formats, (*files)[index], preview.getSampleRate(), clip))
+        return;
+
+    preview.play (std::move (clip), from);
+    playingFile = index;
+    focusFile (index);
+    startTimerHz (30);
+}
+
+void TrainingSoundsComponent::stopPreview()
+{
+    processor.getClipPreview().stop();
+    playingFile = -1;
+    stopTimer();
+    repaint();
+}
+
+void TrainingSoundsComponent::timerCallback()
+{
+    if (! processor.getClipPreview().isPlaying())
+    {
+        stopPreview();
+        return;
+    }
+
+    repaint (previewBounds());
+    repaint (listBounds());
+}
+
+void TrainingSoundsComponent::visibilityChanged()
+{
+    // Leaving the page silences it: a preview carrying on under the
+    // exercise list is a sound with no visible source.
+    if (! isVisible())
+        stopPreview();
+}
+
+void TrainingSoundsComponent::updateModeButtons()
+{
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    const auto* files = filesForSelection();
+    const auto hasFocus = files != nullptr && juce::isPositiveAndBelow (focusedFile, files->size());
+    const auto pinnedHere = hasFocus && library.isPinned() && library.getSelectedFile() == (*files)[focusedFile];
+
+    allClipsButton.setVisible (files != nullptr);
+    thisClipButton.setVisible (files != nullptr);
+    thisClipButton.setEnabled (hasFocus);
+
+    allClipsButton.setToggleState (files != nullptr && ! pinnedHere
+                                       && library.getSelectedFile().existsAsFile() && ! library.isPinned(),
+                                   juce::dontSendNotification);
+    thisClipButton.setToggleState (pinnedHere, juce::dontSendNotification);
+
+    const auto& theme = AbcTrainTheme::current();
+
+    for (auto* b : { &allClipsButton, &thisClipButton })
+    {
+        b->setColour (juce::TextButton::buttonOnColourId, theme.accent);
+        b->setColour (juce::TextButton::textColourOnId, theme.windowBackground);
+    }
 }
 
 void TrainingSoundsComponent::paintRail (juce::Graphics& g)
@@ -314,41 +482,162 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
     auto& library = processor.getGameManager().getReferenceAudioLibrary();
     const auto& categories = library.getCategories();
 
-    AbcTrainLookAndFeel::paintSectionHeading (g, railBounds().removeFromTop (18).toFloat(),
-                                               text.trainOnSection);
+    const auto rail = railBounds();
+    g.setColour (theme.displayBackground.withAlpha (0.35f));
+    g.fillRect (rail);
+    g.setColour (theme.divider);
+    g.drawVerticalLine (rail.getRight() - 1, (float) rail.getY(), (float) rail.getBottom());
 
-    const auto drawRow = [&] (int index, const juce::String& name, const juce::String& detail,
-                              bool selected)
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (text.trainOnSection),
+                                           rail.reduced (22, 0).withTrimmedTop (14).withHeight (20).toFloat(),
+                                           AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
+
+    const auto drawRow = [&] (int index, const juce::String& name, const juce::String& detail, bool selected)
     {
         const auto row = categoryRowBounds (index);
 
         if (index == hoveredCategoryRow || selected)
         {
-            g.setColour (selected ? theme.accent.withAlpha (0.22f)
-                                   : theme.widgetBackground.withAlpha (0.5f));
-            g.fillRoundedRectangle (row.toFloat(), AbcTrainTheme::Radius::button);
+            g.setColour (selected ? theme.accent.withAlpha (0.2f) : theme.widgetBackground.withAlpha (0.5f));
+            g.fillRect (row);
         }
 
-        auto text = row.reduced (10, 0);
+        auto label = row.reduced (12, 0);
 
         g.setColour (selected ? theme.textBright : theme.text);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText (name, text.removeFromLeft (text.getWidth() - 34),
-                     juce::Justification::centredLeft, true);
+        g.drawText (name, label.removeFromLeft (label.getWidth() - 30), juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
-        g.drawText (detail, text, juce::Justification::centredRight, false);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+        g.drawText (detail, label, juce::Justification::centredRight, false);
     };
 
     const auto nothingSelected = ! library.getSelectedFile().existsAsFile();
-    drawRow (exerciseRow, text.exerciseSound, {}, nothingSelected && library.getPreferExerciseSound());
-    drawRow (pinkNoiseRow, text.pinkNoise, {}, nothingSelected && ! library.getPreferExerciseSound());
+    drawRow (exerciseRow, text.exerciseSound, {}, selectedCategory < 0 && nothingSelected && library.getPreferExerciseSound());
+    drawRow (pinkNoiseRow, text.pinkNoise, {}, selectedCategory < 0 && nothingSelected && ! library.getPreferExerciseSound());
 
     for (int i = 0; i < categories.size(); ++i)
         drawRow (i, displayNameForCategory (categories.getReference (i).name),
-                  juce::String (categories.getReference (i).files.size()),
-                  i == selectedCategory && library.getSelectedFile().existsAsFile());
+                 juce::String (categories.getReference (i).files.size()), i == selectedCategory);
+
+    // Import progress, or what the last import did, above the buttons.
+    auto bottom = rail.reduced (10, 0).withTrimmedBottom (10 + 34 + 6 + 28 + 4 + 28 + 8);
+    auto status = bottom.removeFromBottom (34);
+
+    if (importRunning)
+    {
+        paintImportProgress (g, status.removeFromTop (6));
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        g.drawText (importProgressFile, status, juce::Justification::centredLeft, true);
+    }
+    else if (text.importHint.isNotEmpty() && text.importHint != previousHint)
+    {
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        g.drawFittedText (text.importHint, status, juce::Justification::bottomLeft, 2, 0.9f);
+    }
+}
+
+void TrainingSoundsComponent::paintWave (juce::Graphics& g, juce::Rectangle<float> area,
+                                          const std::vector<float>& peaks, juce::Colour colour,
+                                          float playedFraction, juce::Colour playedColour)
+{
+    if (peaks.empty() || area.getWidth() < 2.0f)
+        return;
+
+    const auto columns = juce::jmax (1, (int) area.getWidth());
+    const auto centre = area.getCentreY();
+    const auto half = area.getHeight() * 0.5f;
+
+    juce::Path played, rest;
+
+    for (int x = 0; x < columns; ++x)
+    {
+        const auto from = (size_t) ((double) x / columns * (double) peaks.size());
+        const auto to = juce::jmax (from + 1, (size_t) ((double) (x + 1) / columns * (double) peaks.size()));
+
+        auto peak = 0.0f;
+        for (auto i = from; i < juce::jmin (to, peaks.size()); ++i)
+            peak = juce::jmax (peak, peaks[i]);
+
+        const auto h = juce::jmax (0.5f, peak * half);
+        const auto bar = juce::Rectangle<float> (area.getX() + (float) x, centre - h, 1.0f, h * 2.0f);
+
+        ((float) x / (float) columns < playedFraction ? played : rest).addRectangle (bar);
+    }
+
+    g.setColour (colour);
+    g.fillPath (rest);
+    g.setColour (playedColour);
+    g.fillPath (played);
+}
+
+void TrainingSoundsComponent::paintPreview (juce::Graphics& g, juce::Rectangle<int> box)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto* files = filesForSelection();
+
+    g.setColour (theme.displayBackground);
+    g.fillRect (box);
+    g.setColour (theme.outline);
+    g.drawRect (box, 1);
+
+    if (files == nullptr || ! juce::isPositiveAndBelow (focusedFile, files->size()))
+        return;
+
+    const auto& file = (*files)[focusedFile];
+    const auto& overview = overviewFor (file);
+    auto& preview = processor.getClipPreview();
+    const auto playing = playingFile == focusedFile && preview.isPlaying();
+    const auto progress = playing ? preview.getProgress() : 0.0f;
+
+    // Play / stop, a filled square in the accent colour like the mock-up.
+    {
+        const auto button = previewPlayBounds().toFloat();
+        g.setColour (theme.accent);
+        g.fillRect (button);
+        g.setColour (theme.windowBackground);
+
+        if (playing)
+        {
+            g.fillRect (button.withSizeKeepingCentre (10.0f, 10.0f));
+        }
+        else
+        {
+            juce::Path triangle;
+            const auto c = button.getCentre();
+            triangle.addTriangle (c.x - 4.0f, c.y - 6.0f, c.x - 4.0f, c.y + 6.0f, c.x + 6.0f, c.y);
+            g.fillPath (triangle);
+        }
+    }
+
+    auto header = box.reduced (12).removeFromTop (34);
+    header.removeFromLeft (34 + 12);
+
+    g.setColour (theme.textBright);
+    g.setFont (AbcTrainLookAndFeel::headingFont());
+    const auto name = file.getFileNameWithoutExtension();
+    const auto nameWidth = juce::jmin (header.getWidth() / 2,
+                                       (int) juce::GlyphArrangement::getStringWidth (AbcTrainLookAndFeel::headingFont(), name) + 4);
+    g.drawText (name, header.removeFromLeft (nameWidth), juce::Justification::centredLeft, true);
+    header.removeFromLeft (10);
+
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+    g.drawText (formatTime (progress * overview.seconds, true) + " / " + formatTime (overview.seconds, true),
+                header, juce::Justification::centredLeft, false);
+
+    const auto wave = previewWaveBounds().toFloat();
+    paintWave (g, wave, overview.peaks, theme.accent.withAlpha (0.75f), progress, theme.accent);
+
+    if (playing)
+    {
+        g.setColour (theme.textBright);
+        g.fillRect (juce::Rectangle<float> (wave.getX() + wave.getWidth() * progress - 1.0f, wave.getY(),
+                                            2.0f, wave.getHeight()));
+    }
 }
 
 void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
@@ -358,172 +647,155 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
     const auto* files = filesForSelection();
     const auto pane = filePaneBounds();
 
-    AbcTrainLookAndFeel::paintSectionHeading (g, pane.toFloat().withHeight (18.0f),
-                                               files == nullptr ? juce::String() : text.clipsHeading);
-
-    if (files == nullptr)
+    // Title: what is selected, and in small type how this page works.
     {
-        // Two different empty states. "There is nothing here" and "you have
-        // not picked anything yet" are not the same problem, and telling
-        // someone to import music when they already have four categories on
-        // the left is how a screen loses their trust.
-        const auto anything = ! library.getCategories().isEmpty();
+        auto row = pane.withHeight (titleHeight - 8);
+        juce::String title, caption;
 
-        g.setColour (theme.textDim);
-        g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawFittedText (anything ? text.pickCategory : text.empty,
-                           pane.withTrimmedTop (18), juce::Justification::centredTop, 4);
-        return;
-    }
-
-    juce::Graphics::ScopedSaveState clip (g);
-    g.reduceClipRegion (pane.withTrimmedTop (18));
-
-    const auto pinnedFile = library.isPinned() ? library.getSelectedFile() : juce::File();
-
-    for (int i = 0; i < files->size(); ++i)
-    {
-        const auto row = fileRowBounds (i);
-
-        if (! row.intersects (pane))
-            continue;
-
-        const auto isPinned = pinnedFile == (*files)[i];
-
-        if (i == hoveredFileRow || isPinned)
+        if (files != nullptr)
         {
-            g.setColour (isPinned ? theme.accent.withAlpha (0.22f)
-                                   : theme.widgetBackground.withAlpha (0.5f));
-            g.fillRoundedRectangle (row.toFloat(), AbcTrainTheme::Radius::button);
-        }
-
-        auto text = row.reduced (10, 0);
-
-        if (isPinned)
-        {
-            juce::Path tick;
-            const auto box = text.removeFromLeft (18).toFloat();
-            tick.startNewSubPath (box.getX(), box.getCentreY());
-            tick.lineTo (box.getX() + 4.0f, box.getCentreY() + 4.0f);
-            tick.lineTo (box.getX() + 11.0f, box.getCentreY() - 5.0f);
-            g.setColour (theme.positive);
-            g.strokePath (tick, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
-                                                       juce::PathStrokeType::rounded));
+            title = displayNameForCategory (selectedCategoryInfo()->name);
+            caption = text.clipsCaption.replace ("{{n}}", juce::String (files->size()));
         }
         else
         {
-            text.removeFromLeft (18);
+            title = library.getPreferExerciseSound() ? text.exerciseSound : text.pinkNoise;
         }
 
-        // A pack clip says whose it is and under what terms, on its own
-        // row - the credit CC BY asks for, where the clip is chosen.
-        if (const auto* category = selectedCategoryInfo(); category != nullptr && i < category->clips.size())
-        {
-            const auto& credit = category->clips.getReference (i).credit;
+        const auto font = AbcTrainLookAndFeel::displayFont().withHeight (26.0f);
+        const auto width = (int) juce::GlyphArrangement::getStringWidth (font, title) + 14;
 
-            if (credit.author.isNotEmpty())
+        g.setColour (theme.textBright);
+        g.setFont (font);
+        g.drawText (title, row.removeFromLeft (juce::jmin (width, row.getWidth() / 2)),
+                    juce::Justification::centredLeft, true);
+
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        g.drawText (caption, row, juce::Justification::centredLeft, true);
+    }
+
+    if (files == nullptr)
+    {
+        // Two different empty states: nothing picked yet, or nothing there.
+        auto body = pane.withTrimmedTop (titleHeight);
+        g.setColour (theme.text);
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
+        g.drawFittedText (statusLabel.getText(), body.removeFromTop (48), juce::Justification::topLeft, 3);
+
+        body.removeFromTop (AbcTrainTheme::Spacing::medium);
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        g.drawFittedText (library.getCategories().isEmpty() ? text.empty : text.pickCategory,
+                          body.removeFromTop (40), juce::Justification::topLeft, 3);
+        return;
+    }
+
+    paintPreview (g, previewBounds());
+
+    {
+        juce::Graphics::ScopedSaveState clip (g);
+        g.reduceClipRegion (listBounds());
+
+        auto& preview = processor.getClipPreview();
+        const auto pinnedFile = library.isPinned() ? library.getSelectedFile() : juce::File();
+
+        for (int i = 0; i < files->size(); ++i)
+        {
+            const auto row = fileRowBounds (i);
+
+            if (! row.intersects (listBounds()))
+                continue;
+
+            const auto focused = (i == focusedFile);
+            const auto pinned = pinnedFile == (*files)[i];
+
+            g.setColour (focused ? theme.accent.withAlpha (0.12f)
+                                 : theme.panelBackground.withAlpha (i == hoveredFileRow ? 0.9f : 0.6f));
+            g.fillRect (row);
+            g.setColour (focused ? theme.accent.withAlpha (0.8f) : theme.outline.withAlpha (0.7f));
+            g.drawRect (row, 1);
+
+            auto inner = row.reduced (10, 0);
+            const auto playBox = rowPlayBounds (i).toFloat();
+            inner.removeFromLeft (30 + 12);
+
+            const auto playing = playingFile == i && preview.isPlaying();
+            g.setColour (theme.outline);
+            g.drawRect (playBox, 1.0f);
+            g.setColour (theme.text);
+
+            if (playing)
             {
-                const auto line = credit.author + "  ·  " + credit.license;
-                g.setColour (theme.textDim);
-                g.setFont (AbcTrainLookAndFeel::captionFont());
-                g.drawText (line, text.removeFromRight (juce::jmin (text.getWidth() / 2, 320)),
-                             juce::Justification::centredRight, true);
+                g.fillRect (playBox.withSizeKeepingCentre (8.0f, 8.0f));
+            }
+            else
+            {
+                juce::Path triangle;
+                const auto c = playBox.getCentre();
+                triangle.addTriangle (c.x - 3.0f, c.y - 4.5f, c.x - 3.0f, c.y + 4.5f, c.x + 4.5f, c.y);
+                g.fillPath (triangle);
+            }
+
+            const auto& overview = overviewFor ((*files)[i]);
+
+            // Name, then the small waveform, then length and credit.
+            auto nameBox = inner.removeFromLeft (juce::jmin (150, inner.getWidth() / 4));
+            g.setColour (focused || pinned ? theme.textBright : theme.text);
+            g.setFont (AbcTrainLookAndFeel::labelFont());
+            g.drawText ((*files)[i].getFileNameWithoutExtension(), nameBox, juce::Justification::centredLeft, true);
+
+            auto creditBox = inner.removeFromRight (juce::jmin (120, inner.getWidth() / 5));
+            auto timeBox = inner.removeFromRight (52);
+            inner.removeFromRight (10);
+
+            paintWave (g, inner.reduced (0, 12).toFloat(), overview.peaks,
+                       (focused ? theme.accent : theme.textDim).withAlpha (focused ? 0.85f : 0.45f),
+                       playing ? preview.getProgress() : 0.0f, theme.accent);
+
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+            g.drawText (formatTime (overview.seconds, false), timeBox, juce::Justification::centred, false);
+
+            if (const auto* category = selectedCategoryInfo(); category != nullptr && i < category->clips.size())
+            {
+                const auto& credit = category->clips.getReference (i).credit;
+
+                if (credit.author.isNotEmpty() || credit.license.isNotEmpty())
+                {
+                    g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (11.5f));
+                    g.drawFittedText (credit.license + (credit.author.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 (" \xc2\xb7\n")) + credit.author : juce::String()),
+                                      creditBox, juce::Justification::centredLeft, 2, 0.9f);
+                }
+            }
+
+            if (pinned)
+            {
+                g.setColour (theme.positive);
+                g.fillRect (row.withWidth (3));
             }
         }
-
-        g.setColour (isPinned ? theme.textBright : theme.text);
-        g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText ((*files)[i].getFileNameWithoutExtension(), text,
-                     juce::Justification::centredLeft, true);
     }
+
+    // The footer says what will play in a round - the one fact this whole
+    // page exists to change.
+    g.setColour (theme.textDim);
+    g.setFont (AbcTrainLookAndFeel::captionFont());
+    g.drawText (statusLabel.getText(), pane.withTop (pane.getBottom() - footerHeight + 8),
+                juce::Justification::centredLeft, true);
 }
 
 void TrainingSoundsComponent::paint (juce::Graphics& g)
 {
-    const auto& theme = AbcTrainTheme::current();
-
     AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
-
-    const auto card = cardBounds().toFloat();
-
-    juce::Path shape;
-    shape.addRoundedRectangle (card, AbcTrainTheme::Radius::panel);
-
-    // No shadow and no outline: a page has nothing to float above. Both
-    // were what made this read as a dialogue laid over the app.
-
-    g.setColour (theme.panelBackground);
-    g.fillPath (shape);
-
-    auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large);
-
-    AbcTrainLookAndFeel::drawTrackedText (g, titleLabel.getText(),
-                                           inner.removeFromTop ((float) headerHeight),
-                                           AbcTrainLookAndFeel::headingFont(),
-                                           theme.textBright, 1.2f);
-
-    inner.removeFromTop ((float) AbcTrainTheme::Spacing::large);
-    inner.removeFromTop ((float) actionRowHeight);
-    inner.removeFromTop ((float) AbcTrainTheme::Spacing::small);
-
-    {
-        auto row = inner.removeFromTop ((float) hintHeight);
-
-        if (importRunning)
-        {
-            paintImportProgress (g, row.removeFromLeft (row.getWidth() * 0.5f)
-                                        .withSizeKeepingCentre ((int) (row.getWidth() * 0.5f), 6)
-                                        .toNearestInt());
-
-            g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (importProgressFile, row.toNearestInt(),
-                         juce::Justification::centredRight, true);
-        }
-        else
-        {
-            // Where the files actually are. Not a section heading and not a
-            // question - just the answer, because "where did my import go"
-            // was unanswerable from this screen.
-            g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (rootFolderLabel.getText(), row.toNearestInt(),
-                         juce::Justification::centredLeft, true);
-        }
-    }
 
     paintRail (g);
     paintFilePane (g);
-
-    // A hairline between the two panes, so the eye reads them as one screen
-    // with two jobs rather than two lists that happen to be adjacent.
-    {
-        const auto rail = railBounds();
-        g.setColour (theme.divider.withAlpha (0.6f));
-        g.drawVerticalLine (rail.getRight() + AbcTrainTheme::Spacing::medium / 2,
-                             (float) rail.getY(), (float) rail.getBottom());
-    }
-
-    // The footer says what is playing, which is the one fact this whole
-    // screen exists to change.
-    {
-        auto footer = cardBounds().reduced (AbcTrainTheme::Spacing::large)
-                          .removeFromBottom (footerHeight);
-        footer.removeFromRight (110 + AbcTrainTheme::Spacing::small + 110);
-
-        g.setColour (theme.text);
-        g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText (statusLabel.getText(), footer, juce::Justification::centredLeft, true);
-    }
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::cardBounds() const
 {
-    // A page, not a card. Opened from a tab in the bar above, it fills
-    // everything under that bar: a centred panel over a dimmed window is
-    // the shape of a dialogue you must dismiss, and this is a place you
-    // navigate to. The editor already hands this component only the area
-    // below the bar.
+    // A page, not a card: it fills everything under the bar above.
     return getLocalBounds();
 }
 
@@ -540,8 +812,7 @@ void TrainingSoundsComponent::mouseMove (const juce::MouseEvent& event)
 
     if (const auto* files = filesForSelection())
         for (int i = 0; i < files->size(); ++i)
-            if (fileRowBounds (i).contains (event.getPosition())
-                && filePaneBounds().contains (event.getPosition()))
+            if (fileRowBounds (i).contains (event.getPosition()) && listBounds().contains (event.getPosition()))
                 file = i;
 
     if (category != hoveredCategoryRow || file != hoveredFileRow)
@@ -564,12 +835,15 @@ void TrainingSoundsComponent::mouseExit (const juce::MouseEvent&)
 
 void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
 {
+    const auto position = event.getPosition();
     const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
 
     for (int i = exerciseRow; i < categories.size(); ++i)
     {
-        if (! categoryRowBounds (i).contains (event.getPosition()))
+        if (! categoryRowBounds (i).contains (position))
             continue;
+
+        stopPreview();
 
         if (i == exerciseRow)
             selectExerciseSound();
@@ -581,26 +855,52 @@ void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
         return;
     }
 
-    if (const auto* files = filesForSelection())
-        for (int i = 0; i < files->size(); ++i)
-            if (fileRowBounds (i).contains (event.getPosition())
-                && filePaneBounds().contains (event.getPosition()))
-            {
-                pinFile (i);
-                return;
-            }
+    const auto* files = filesForSelection();
+
+    if (files == nullptr)
+        return;
+
+    if (previewPlayBounds().contains (position))
+    {
+        togglePlay (focusedFile);
+        return;
+    }
+
+    // Clicking the big waveform plays from there - the scrub every
+    // sample browser has.
+    if (previewWaveBounds().contains (position) && juce::isPositiveAndBelow (focusedFile, files->size()))
+    {
+        const auto wave = previewWaveBounds();
+        togglePlay (focusedFile, juce::jmax (0.0001f, (float) (position.x - wave.getX()) / (float) wave.getWidth()));
+        return;
+    }
+
+    if (! listBounds().contains (position))
+        return;
+
+    // "Click to hear": a click anywhere on a row focuses it and plays it;
+    // the play button on the row toggles.
+    for (int i = 0; i < files->size(); ++i)
+        if (fileRowBounds (i).contains (position))
+        {
+            if (rowPlayBounds (i).contains (position) || i != playingFile)
+                togglePlay (i);
+
+            focusFile (i);
+            return;
+        }
 }
 
 void TrainingSoundsComponent::mouseWheelMove (const juce::MouseEvent& event,
                                                const juce::MouseWheelDetails& wheel)
 {
-    if (! filePaneBounds().contains (event.getPosition()))
+    if (! listBounds().contains (event.getPosition()))
         return;
 
     const auto* files = filesForSelection();
-    const auto contentHeight = files != nullptr ? (float) (files->size() * rowHeight) : 0.0f;
+    const auto contentHeight = files != nullptr ? (float) (files->size() * (fileRowHeight + fileRowGap)) : 0.0f;
 
-    maxFileScroll = juce::jmax (0.0f, contentHeight - (float) (filePaneBounds().getHeight() - 18));
+    maxFileScroll = juce::jmax (0.0f, contentHeight - (float) listBounds().getHeight());
     fileScroll = juce::jlimit (0.0f, maxFileScroll, fileScroll - wheel.deltaY * 220.0f);
     repaint();
 }
@@ -609,22 +909,17 @@ void TrainingSoundsComponent::resized()
 {
     using namespace AbcTrainTheme;
 
-    auto area = cardBounds().reduced (Spacing::large);
-    area.removeFromTop (headerHeight + Spacing::large);
+    auto rail = railBounds().reduced (10);
+    importButton.setBounds (rail.removeFromBottom (34));
+    rail.removeFromBottom (6);
 
-    {
-        auto row = area.removeFromTop (actionRowHeight);
-        chooseFolderButton.setBounds (row.removeFromRight (120).reduced (0, 6));
-        row.removeFromRight (Spacing::small);
-        revealButton.setBounds (row.removeFromRight (110).reduced (0, 6));
-        row.removeFromRight (Spacing::small);
-        // Capped. It used to take whatever the row had left, which on a
-        // card was a sensible 400px and on a full page is a button
-        // fifteen hundred pixels wide - a control whose size claims it is
-        // the most important thing in the product.
-        importButton.setBounds (row.removeFromLeft (juce::jmin (row.getWidth() / 2, 220))
-                                    .reduced (0, 6));
-    }
+    chooseFolderButton.setBounds (rail.removeFromBottom (28));
+    rail.removeFromBottom (4);
+    revealButton.setBounds (rail.removeFromBottom (28));
+
+    auto header = previewBounds().reduced (12).removeFromTop (34);
+    thisClipButton.setBounds (header.removeFromRight (130));
+    allClipsButton.setBounds (header.removeFromRight (100));
 
     rootFolderLabel.setVisible (false);
     statusLabel.setVisible (false);

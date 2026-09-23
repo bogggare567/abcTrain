@@ -6,6 +6,7 @@
 #include "VocalEqLesson.h"
 #include "FindResonanceLesson.h"
 #include "HighPassLesson.h"
+#include "InstrumentMaps.h"
 
 namespace
 {
@@ -54,13 +55,20 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     }
 
     addAndMakeVisible (spectrum);
-    addAndMakeVisible (waveform);
+    addAndMakeVisible (lessonPanel);
 
-    for (auto* label : { &inputPeakLabel, &outputPeakLabel })
+    // Instrument first: the map of a kick is not the map of a voice, and
+    // choosing one is what makes the zones and the lesson specific.
     {
-        label->setJustificationType (juce::Justification::centred);
-        label->setFont (AbcTrainLookAndFeel::monoFont());
-        addAndMakeVisible (*label);
+        juce::StringArray names { t ("eq.inst.general", "General") };
+
+        for (const auto& inst : InstrumentMaps::all())
+            names.add (t (juce::String ("eq.inst.") + inst.key, inst.english));
+
+        instrumentChips.setCaption (t ("eq.instrument", "Instrument"));
+        instrumentChips.setItems (names);
+        instrumentChips.onChosen = [this] (int index) { chooseInstrument (index - 1); };
+        addAndMakeVisible (instrumentChips);
     }
 
     // ---- the curve is the instrument ----
@@ -118,10 +126,11 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
             labels.add (t (juce::String (typeKey (bandType)) + ".short", EQCoefficients::nameForType (bandType)));
         }
 
-        typeChoice.setOptions (values, labels);
+        juce::ignoreUnused (values);
+        typeChips.setItems (labels);
     }
 
-    typeChoice.onChange = [this] (int value)
+    typeChips.onChosen = [this] (int value)
     {
         if (selectedBand >= 0)
         {
@@ -129,7 +138,7 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
             pushSelectedBandToControls();
         }
     };
-    addAndMakeVisible (typeChoice);
+    addAndMakeVisible (typeChips);
 
     freqSlider.setRange (20.0, 20000.0);
     freqSlider.setSkewFactor (0.3);
@@ -208,25 +217,7 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     };
     addAndMakeVisible (addBandChip);
 
-    bandLabel.setJustificationType (juce::Justification::centredRight);
-    bandLabel.setFont (AbcTrainLookAndFeel::labelFont());
-    addAndMakeVisible (bandLabel);
-
-    zoneLabel.setJustificationType (juce::Justification::centredLeft);
-    zoneLabel.setFont (AbcTrainLookAndFeel::bodyFont());
-    addAndMakeVisible (zoneLabel);
-
-    zonesButton.setButtonText (t ("eq.zones", "Zones"));
-    zonesButton.setClickingTogglesState (true);
-    zonesButton.setToggleState (true, juce::dontSendNotification);
-    AbcTrainLookAndFeel::makePrimary (zonesButton, true);
-    zonesButton.onClick = [this]
-    {
-        spectrum.setZonesVisible (zonesButton.getToggleState());
-        AbcTrainLookAndFeel::makePrimary (zonesButton, zonesButton.getToggleState());
-    };
-    addAndMakeVisible (zonesButton);
-
+    chooseInstrument (services.libraryProperties.getIntValue ("eqInstrument", 0) - 1);
     refreshZoneLabel();
     selectBand (0);
     pushBandsToDisplay();
@@ -282,8 +273,12 @@ void LearnerEQEditor::refreshBandChips()
 
         chip.setVisible (on);
 
-        if (AbcTrainLookAndFeel::isPrimary (chip) != (i == selectedBand))
-            AbcTrainLookAndFeel::makePrimary (chip, i == selectedBand);
+        // Each chip in its band's colour - the same colour as its dot on
+        // the curve - filled when it is the one the knobs are turning.
+        const auto colour = SpectrumAnalyserComponent::colourForBand (i);
+        const auto selected = i == selectedBand;
+        chip.setColour (juce::TextButton::buttonColourId, selected ? colour : colour.withAlpha (0.12f));
+        chip.setColour (juce::TextButton::textColourOffId, selected ? AbcTrainTheme::current().windowBackground : colour);
     }
 
     addBandChip.setBounds (row.removeFromLeft (34));
@@ -295,43 +290,35 @@ juce::String LearnerEQEditor::typeName (EQCoefficients::BandType type) const
     return t (typeKey (type), EQCoefficients::nameForType (type));
 }
 
+void LearnerEQEditor::layoutToolbar (juce::Rectangle<int> area)
+{
+    placeWithMaterial (instrumentChips, area);
+}
+
 void LearnerEQEditor::layoutAnalysis (juce::Rectangle<int> area)
 {
-    using namespace AbcTrainTheme;
-
-    auto meterRow = area.removeFromBottom (24);
-    area.removeFromBottom (Spacing::small);
-
-    // The curve is the instrument and gets most of the height.
-    const auto spectrumHeight = (area.getHeight() - Spacing::medium) * 64 / 100;
-    spectrum.setBounds (area.removeFromTop (spectrumHeight).reduced (1));
-    area.removeFromTop (Spacing::medium);
-    waveform.setBounds (area.reduced (1));
-
-    inputPeakLabel.setBounds (meterRow.removeFromLeft (meterRow.getWidth() / 2));
-    outputPeakLabel.setBounds (meterRow);
+    // The curve is the instrument and gets most of the width; the lesson
+    // sits beside it, never over it.
+    const auto panelWidth = juce::jlimit (240, 360, area.getWidth() * 3 / 10);
+    lessonPanel.setBounds (area.removeFromRight (panelWidth));
+    area.removeFromRight (AbcTrainTheme::Spacing::medium);
+    spectrum.setBounds (area);
 }
 
 void LearnerEQEditor::layoutControls (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
 
-    auto zoneRow = area.removeFromTop (24);
-    zonesButton.setBounds (zoneRow.removeFromRight (96).withSizeKeepingCentre (96, 24));
-    zoneRow.removeFromRight (Spacing::small);
-    zoneLabel.setBounds (zoneRow);
+    // Left: which band, its shape, the bands. Right: its three knobs.
+    auto left = area.removeFromLeft (area.getWidth() * 55 / 100);
+    area.removeFromLeft (Spacing::medium);
 
-    area.removeFromTop (rowGap());
-
-    auto typeRow = area.removeFromTop (30);
-    bandLabel.setBounds (typeRow.removeFromRight (typeRow.getWidth() > 860 ? 110 : 0));
-    typeRow.removeFromRight (Spacing::small);
-    chipRow = typeRow.removeFromRight (juce::jmin (typeRow.getWidth() / 3, 9 * 36));
-    typeRow.removeFromRight (Spacing::medium);
+    bandCaptionArea = left.removeFromTop (18);
+    left.removeFromTop (rowGap());
+    typeChips.setBounds (left.removeFromTop (30));
+    left.removeFromTop (rowGap());
+    chipRow = left.removeFromTop (30);
     refreshBandChips();
-    typeChoice.setBounds (typeRow.removeFromLeft (juce::jmin (typeRow.getWidth(), juce::jmax (typeChoice.getPreferredWidth(), 520))));
-
-    area.removeFromTop (rowGap());
 
     const auto width = area.getWidth() / 3;
     juce::Slider* sliders[] { &freqSlider, &gainSlider, &qSlider };
@@ -354,16 +341,107 @@ void LearnerEQEditor::paintOverChildren (juce::Graphics& g)
                                               AbcTrainLookAndFeel::labelFont(), theme.textDim, 1.3f,
                                               juce::Justification::centred);
 
+    const auto caption = selectedBand >= 0 ? localisation.getText ("eq.band", { { "number", juce::String (selectedBand + 1) } })
+                                                 + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + t ("eq.selected", "selected")
+                                           : localisation.getText ("eq.noBand");
+    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (caption), bandCaptionArea.toFloat(),
+                                          AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
+
     LearnerEditorBase::paintOverChildren (g);
+}
+
+void LearnerEQEditor::chooseInstrument (int index)
+{
+    const auto& instruments = InstrumentMaps::all();
+    instrument = juce::isPositiveAndBelow (index, (int) instruments.size()) ? index : -1;
+    instrumentChips.setChosen (instrument + 1);
+
+    services.libraryProperties.setValue ("eqInstrument", instrument + 1);
+    services.libraryProperties.saveIfNeeded();
+
+    std::vector<SpectrumAnalyserComponent::CustomZone> zones;
+
+    if (instrument >= 0)
+    {
+        const auto& theme = AbcTrainTheme::current();
+
+        for (const auto& z : instruments[(size_t) instrument].zones)
+        {
+            SpectrumAnalyserComponent::CustomZone zone;
+            zone.lowHz = z.lowHz;
+            zone.highHz = z.highHz;
+            zone.name = t (juce::String ("eq.zone.") + z.key, z.english);
+            zone.colour = z.kind == InstrumentMaps::ZoneKind::problem ? theme.negative
+                        : z.kind == InstrumentMaps::ZoneKind::edge ? theme.positive
+                                                                   : accent;
+            zones.push_back (zone);
+        }
+    }
+
+    spectrum.setCustomZones (std::move (zones));
+    refreshLesson();
+}
+
+void LearnerEQEditor::refreshLesson()
+{
+    if (instrument < 0)
+    {
+        // No instrument: the general map, and what is under the pointer.
+        const auto freq = spectrum.getPointerFrequency();
+        juce::String title = t ("eq.general.title", "Where things live"), body = localisation.getText ("eq.zoneHint");
+
+        if (freq > 0.0f)
+        {
+            const auto& zone = FrequencyZones::zoneFor (freq);
+            const auto key = juce::String ("zone.") + zoneKey (zone);
+            title = t (key + ".name", zone.name) + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + formatFrequency (freq);
+            body = t (key + ".feels", zone.feels);
+        }
+
+        lessonPanel.setContent (t ("eq.general.caption", "The general map"), title, {}, body,
+                                t ("eq.general.foot", "Choose an instrument above for its own map and a lesson."));
+        return;
+    }
+
+    const auto& inst = InstrumentMaps::all()[(size_t) instrument];
+    const auto prefix = juce::String ("eq.lesson.") + inst.key + ".";
+
+    std::vector<InstrumentMaps::BandState> bands;
+
+    for (int band = 0; band < LearnerEQProcessor::maxBands; ++band)
+        if (eqProcessor.isBandOn (band))
+            bands.push_back ({ eqProcessor.getBandType (band),
+                               eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (band))->load(),
+                               eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (band))->load() });
+
+    std::vector<LessonPanel::Step> steps;
+    auto currentGiven = false;
+
+    for (const auto& step : inst.steps)
+    {
+        LessonPanel::Step s;
+        s.text = t (prefix + step.key, step.english);
+
+        if (InstrumentMaps::isDone (step, bands))
+            s.state = LessonPanel::State::done;
+        else if (! currentGiven)
+        {
+            s.state = LessonPanel::State::current;
+            currentGiven = true;
+        }
+
+        steps.push_back (s);
+    }
+
+    const auto name = t (juce::String ("eq.inst.") + inst.key, inst.english);
+    lessonPanel.setContent (t ("eq.lesson.caption", "Lesson") + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + name,
+                            t (prefix + "title", inst.lessonTitle), std::move (steps), {},
+                            t ("eq.lesson.foot", "The coloured zones are where each part usually lives; the room and the mic move them."));
 }
 
 void LearnerEQEditor::themeChanged()
 {
     const auto& theme = AbcTrainTheme::current();
-
-    inputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
-    outputPeakLabel.setColour (juce::Label::textColourId, theme.textDim);
-    bandLabel.setColour (juce::Label::textColourId, theme.textDim);
 
     for (auto* slider : { &freqSlider, &gainSlider, &qSlider })
     {
@@ -374,8 +452,10 @@ void LearnerEQEditor::themeChanged()
 
     spectrum.setAccentColour (accent);
     waveform.setAccentColour (accent);
-    typeChoice.setAccent (accent);
-    refreshZoneLabel();
+    typeChips.setAccent (accent);
+    instrumentChips.setAccent (accent);
+    lessonPanel.setAccentColour (accent);
+    chooseInstrument (instrument);
 }
 
 void LearnerEQEditor::tick()
@@ -389,9 +469,7 @@ void LearnerEQEditor::tick()
 
     pushSelectedBandToControls();
     refreshBandChips();
-
-    inputPeakLabel.setText (peakText ("lp.in", "In", waveform.getInputPeak()), juce::dontSendNotification);
-    outputPeakLabel.setText (peakText ("lp.out", "Out", waveform.getOutputPeak()), juce::dontSendNotification);
+    refreshLesson();
 }
 
 void LearnerEQEditor::writeParameter (const juce::String& id, float value)
@@ -406,31 +484,35 @@ void LearnerEQEditor::selectBand (int band)
     spectrum.setSelectedBand (selectedBand);
     pushSelectedBandToControls();
     refreshBandChips();
+    repaint (bandCaptionArea);
 }
 
 void LearnerEQEditor::pushSelectedBandToControls()
 {
     const auto hasBand = selectedBand >= 0;
 
-    typeChoice.setEnabled (hasBand);
+    typeChips.setEnabled (hasBand);
     freqSlider.setEnabled (hasBand);
     qSlider.setEnabled (hasBand);
 
     if (! hasBand)
     {
         gainSlider.setEnabled (false);
-        bandLabel.setText (localisation.getText ("eq.noBand"), juce::dontSendNotification);
+        typeChips.setChosen (-1);
+        repaint (bandCaptionArea);
         return;
     }
 
     const auto type = eqProcessor.getBandType (selectedBand);
 
-    bandLabel.setText (localisation.getText ("eq.band", { { "number", juce::String (selectedBand + 1) } }),
-                       juce::dontSendNotification);
-
     // Gain is greyed for the shapes that have none.
     gainSlider.setEnabled (EQCoefficients::usesGain (type));
-    typeChoice.setValue ((int) type);
+
+    if (typeChips.getChosen() != (int) type)
+    {
+        typeChips.setChosen ((int) type);
+        repaint (bandCaptionArea);
+    }
 
     // A mirror of the parameters, never echoed back.
     freqSlider.setValue (eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (selectedBand))->load(), juce::dontSendNotification);
@@ -440,23 +522,9 @@ void LearnerEQEditor::pushSelectedBandToControls()
 
 void LearnerEQEditor::refreshZoneLabel()
 {
-    const auto freq = spectrum.getPointerFrequency();
-
-    if (freq < 0.0f)
-    {
-        zoneLabel.setText (localisation.getText ("eq.zoneHint"), juce::dontSendNotification);
-        zoneLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().textDim);
-        return;
-    }
-
-    const auto& zone = FrequencyZones::zoneFor (freq);
-    const auto key = juce::String ("zone.") + zoneKey (zone);
-
-    zoneLabel.setText (t (key + ".name", zone.name) + " - " + t (key + ".feels", zone.feels)
-                           + "   " + juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")) + "   "
-                           + formatFrequency (freq),
-                       juce::dontSendNotification);
-    zoneLabel.setColour (juce::Label::textColourId, AbcTrainTheme::current().text);
+    // The pointer's zone now reads in the lesson panel (general map only).
+    if (instrument < 0)
+        refreshLesson();
 }
 
 void LearnerEQEditor::pushBandsToDisplay()

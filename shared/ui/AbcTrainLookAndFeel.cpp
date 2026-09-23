@@ -583,63 +583,65 @@ void AbcTrainLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
     // The knob swells very slightly under the cursor - about 3% - and its
     // value arc thickens. Both are below the threshold of being noticed as
     // motion, and above the threshold of the control feeling alive.
+    // The author's potentiometer (master-pot/, his own drawings, redrawn
+    // as vectors): a knurled black skirt, a brushed silver ring, a cap in
+    // the family colour and a white pointer. No value arc any more - the
+    // pointer on a real pot is how anybody reads one, and an arc around
+    // every knob made a row of seven read as a row of gauges.
     const auto scale = 1.0f + 0.03f * touch;
-    const auto ringRadius = radius * scale;
-    const auto trackThickness = 2.5f + 0.9f * touch;
+    const auto r = radius * 0.92f * scale;
+    const auto capColour = slider.findColour (juce::Slider::rotarySliderFillColourId);
+    const auto disabled = ! slider.isEnabled();
 
-    const auto fillColour = slider.findColour (juce::Slider::rotarySliderFillColourId);
+    juce::Path skirt;
+    skirt.addEllipse (juce::Rectangle<float> (r * 2.0f, r * 2.0f).withCentre (centre));
+    dropShadowForPath (g, skirt, 0.4f + 0.12f * touch, 6 + (int) (3.0f * touch), { 0, 2 });
 
-    juce::Path track;
-    track.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f,
-                         rotaryStartAngle, rotaryEndAngle, true);
-    g.setColour (t.outline);
-    g.strokePath (track, juce::PathStrokeType (trackThickness, juce::PathStrokeType::curved,
-                                                juce::PathStrokeType::rounded));
+    g.setColour (juce::Colour (0xff141418));
+    g.fillPath (skirt);
 
-    juce::Path valueArc;
-    valueArc.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f,
-                            rotaryStartAngle, angle, true);
+    // Knurling: short radial ridges round the rim, lighter than the skirt.
+    {
+        const auto ridges = juce::jlimit (24, 72, (int) (r * 2.2f));
+        juce::Path knurl;
 
-    glowPath (g, valueArc, fillColour, trackThickness, touch);
+        for (int i = 0; i < ridges; ++i)
+        {
+            const auto a = juce::MathConstants<float>::twoPi * (float) i / (float) ridges;
+            knurl.startNewSubPath (centre.getPointOnCircumference (r * 0.80f, a));
+            knurl.lineTo (centre.getPointOnCircumference (r * 0.97f, a));
+        }
 
-    // The value arc is a gradient across the knob rather than one flat
-    // colour - it picks up the warm accent toward the top of its travel,
-    // so "how far up is this" is readable from colour as well as angle.
-    juce::ColourGradient arcGradient (fillColour.darker (0.25f), bounds.getX(), bounds.getBottom(),
-                                       fillColour.brighter (0.15f), bounds.getRight(), bounds.getY(), false);
-    g.setGradientFill (arcGradient);
-    g.strokePath (valueArc, juce::PathStrokeType (trackThickness, juce::PathStrokeType::curved,
-                                                   juce::PathStrokeType::rounded));
+        g.setColour (juce::Colour (0xff34343c));
+        g.strokePath (knurl, juce::PathStrokeType (juce::jmax (0.8f, r * 0.045f)));
+    }
 
-    // Knob cap: a gradient disc lit from the top-left, over its own
-    // shadow, so it reads as a domed physical cap rather than a flat disc.
-    const auto capDiameter = radius * 1.28f * scale;
-    const auto capBounds = juce::Rectangle<float> (capDiameter, capDiameter).withCentre (centre);
+    // Silver ring: lit from the top-left like the photograph.
+    const auto ringR = r * 0.76f;
+    const auto ring = juce::Rectangle<float> (ringR * 2.0f, ringR * 2.0f).withCentre (centre);
+    g.setGradientFill (juce::ColourGradient (juce::Colour (0xffe4e4ea), ring.getX(), ring.getY(),
+                                             juce::Colour (0xff7c7c86), ring.getRight(), ring.getBottom(), false));
+    g.fillEllipse (ring);
 
-    juce::Path capPath;
-    capPath.addEllipse (capBounds);
-    dropShadowForPath (g, capPath, 0.34f + 0.12f * touch, 5 + (int) (3.0f * touch), { 0, 2 });
+    // The cap, very slightly domed.
+    const auto capR = r * 0.66f;
+    const auto cap = juce::Rectangle<float> (capR * 2.0f, capR * 2.0f).withCentre (centre);
+    const auto base = disabled ? capColour.withSaturation (0.1f).darker (0.4f) : capColour;
+    g.setGradientFill (juce::ColourGradient (base.brighter (0.18f), cap.getX() + capR * 0.4f, cap.getY(),
+                                             base.darker (0.18f), cap.getRight(), cap.getBottom(), false));
+    g.fillEllipse (cap);
+    g.setColour (juce::Colours::black.withAlpha (0.25f));
+    g.drawEllipse (cap, 0.8f);
 
-    juce::ColourGradient capGradient (t.widgetBackground.brighter (0.20f),
-                                       capBounds.getX() + capBounds.getWidth() * 0.25f, capBounds.getY(),
-                                       t.widgetBackground.darker (0.22f),
-                                       capBounds.getCentreX(), capBounds.getBottom(), false);
-    g.setGradientFill (capGradient);
-    g.fillEllipse (capBounds);
-
-    g.setColour (t.outline.withAlpha (0.7f));
-    g.drawEllipse (capBounds, 1.0f);
-
-    // Pointer stops short of the cap edge instead of starting at dead
-    // centre - a full-radius spoke looks like a clock hand, a short
-    // indicator at the rim looks like a control surface.
+    // The pointer runs from near the centre out onto the ring, the way the
+    // real one does, so its angle reads from across a room.
     juce::Path pointer;
-    const auto capRadius = capDiameter * 0.5f;
-    pointer.startNewSubPath (centre.getPointOnCircumference (capRadius * 0.45f, angle));
-    pointer.lineTo (centre.getPointOnCircumference (capRadius * 0.88f, angle));
-    g.setColour (t.textBright.withAlpha (0.9f));
-    g.strokePath (pointer, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved,
+    pointer.startNewSubPath (centre.getPointOnCircumference (r * 0.10f, angle));
+    pointer.lineTo (centre.getPointOnCircumference (r * 0.70f, angle));
+    g.setColour (juce::Colour (0xfff2f2f2).withAlpha (disabled ? 0.5f : 1.0f));
+    g.strokePath (pointer, juce::PathStrokeType (juce::jmax (2.0f, r * 0.13f), juce::PathStrokeType::curved,
                                                   juce::PathStrokeType::rounded));
+    juce::ignoreUnused (t);
 }
 
 void AbcTrainLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int width, int height,

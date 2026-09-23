@@ -5,7 +5,18 @@
 #include <array>
 #include <functional>
 
-// The welcome screen: what the name means, and the two ways to help.
+// The welcome screen: what the name means, what is inside, and - on a
+// second step - where an account will fit once Live exists.
+//
+// **Two steps, and the second one is honest.** Step one says what the app
+// holds: Trainings, the Studio (the Learners running inside the app, ADR
+// 041) and Live, marked "soon". Step two shows the sign-in that Live will
+// use - Telegram or a six-digit code by e-mail - greyed out and labelled
+// "coming with Live", with "Continue without an account" as the one
+// primary action. Nothing on it connects anywhere: the installed app stays
+// offline (CLAUDE.md), and a sign-in form that did something would break
+// that. It is there so the account arrives later as a known thing rather
+// than a surprise.
 //
 // **It does not gate anything.** Every button leads onward, and
 // "Continue" is always there. Two reasons, both practical rather than
@@ -38,28 +49,24 @@ public:
 
     std::function<void()> onDismissed;
 
-    // Offered only on a first run, and only offered. The decline is the
-    // same size as the accept: a walkthrough somebody feels cornered into
-    // is one that teaches them to dismiss things unread.
+    // Offered only on a first run, and only offered. The decline ("Next")
+    // is right beside it: a walkthrough somebody feels cornered into is one
+    // that teaches them to dismiss things unread.
     std::function<void()> onTourRequested;
     void setTourOffer (juce::String question, juce::String accept, juce::String decline);
 
     // Re-reads every string and restarts the reveal. Called on a language
-    // change, and whenever the screen becomes visible.
+    // change, and whenever the screen becomes visible (which also returns
+    // it to step one).
     void refresh();
 
-    // Jumps the reveal to its end state.
-    //
-    // Exists for tools/EditorSnapshots, which deliberately never pumps a
-    // message loop - so no Timer fires and every eased value is captured
-    // at rest. That is right for hover and for the bypass veil, and wrong
-    // for the one animation whose *rest* state is "nothing on screen yet":
-    // without this the contact sheet showed this screen with the three
-    // words missing entirely, which is worse than no picture at all.
-    //
-    // The same shape as ProgressManager::registerAnswer - a small public
-    // seam that exists because the thing that needs to observe this
-    // cannot drive it the normal way.
+    // 0 = what is inside, 1 = account.
+    void showStep (int);
+    int getStep() const noexcept { return step; }
+
+    // Jumps the reveal to its end state, for tools/EditorSnapshots, which
+    // never pumps a message loop - without it a still frame shows the
+    // screen before anything has arrived.
     void completeReveal();
 
     void paint (juce::Graphics&) override;
@@ -68,59 +75,45 @@ public:
 
 private:
     void timerCallback() override;
+    void layout();
+    void paintInside (juce::Graphics&);
+    void paintAccount (juce::Graphics&);
 
-    // Draws "abcTrain" with the a, b and c tinted their family colours, so
-    // the name and the three words below are visibly the same idea.
+    // "abcTrain" with a, b and c in their family colours, left-aligned.
     void paintWordmark (juce::Graphics&, juce::Rectangle<float>);
-
-    // The block's own bounds, vertically centred inside whatever it is
-    // given. Both paint() and resized() start from this, so they cannot
-    // disagree about where anything is.
-    juce::Rectangle<int> contentArea (juce::Rectangle<int>) const;
 
     LocalisationManager& localisation;
 
-    juce::Image appIcon;
+    int step = 0;
 
-    // 0..1 per word, staggered. Each eases in and rises a few pixels - the
-    // same motion the guide card uses, so the app has one idea of how
-    // things arrive rather than three.
+    // 0..1 per item, staggered: the three words under the wordmark and the
+    // three cards arrive together, one pair at a time.
     std::array<float, 3> wordReveal { { 0.0f, 0.0f, 0.0f } };
-
-    // The three letters keep bouncing after they have arrived, each a third
-    // of a cycle behind the last, so the mark reads as three things rather
-    // than one word. It never stops: this screen is the front door and a
-    // door with something alive on it is one people do not mind opening.
-    double bouncePhase = 0.0;
+    double sweepPhase = 0.0;
     double elapsedMs = 0.0;
 
-    juce::TextButton donateButton, starButton, continueButton;
-    juce::TextButton tourButton, noTourButton;
-    juce::String tourQuestion;
-    juce::Rectangle<int> tourQuestionBounds;
-
-    // Where the bouncing wordmark last painted, so the steady-state timer
-    // can repaint that strip alone instead of the whole window.
-    juce::Rectangle<int> wordmarkRepaintArea;
-
-    // Seconds, for the background instruments. Its own clock, so the
-    // wordmark's one-shot sweep can finish and stop while this carries on.
-    //
-    // **Started mid-scene, not at zero.** Each scene cross-fades in over
-    // its first 1.4 seconds, so a clock starting at zero means the screen
-    // opens on a second and a half of nothing - which is exactly the
-    // emptiness the background exists to fix, arriving at the worst
-    // possible moment.
+    // Seconds, for the background instruments. Started mid-scene - each
+    // scene cross-fades in over its first 1.4 s, so zero opens on nothing.
     double ambientPhase = 3.2;
-    // One quiet line, every launch. Everything here is a listening test
-    // against a small difference, and laptop speakers simply do not
-    // reproduce the bottom two octaves or the top one - on those, several
-    // exercises are answerable only by guessing. Better to say so once
-    // than to let somebody conclude their ears are the problem.
-    juce::Label headphoneNote;
 
-    juce::HyperlinkButton repoLink { "github.com/bogggare567/abcTrain",
-                                      juce::URL ("https://github.com/bogggare567/abcTrain") };
+    // Step one.
+    juce::TextButton tourButton, nextButton;
+    juce::HyperlinkButton donateLink, starLink;
+    bool tourOffered = false;
+
+    // Step two. The sign-in controls are real components, disabled, so
+    // they look exactly like what will be there - not a picture of it.
+    juce::TextButton backButton, continueButton;
+    juce::TextButton telegramButton, sendCodeButton;
+    juce::TextEditor emailField;
+
+    // Laid out once in layout(), read by paint(), so the two cannot drift.
+    struct Layout
+    {
+        juce::Rectangle<int> wordmark, words, tagline, stepLabel, note;
+        std::array<juce::Rectangle<int>, 3> cards;
+        juce::Rectangle<int> heading, body, offline, panel, signIn, orLabel, emailNote, privacy;
+    } lay;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SupportScreenComponent)
 };

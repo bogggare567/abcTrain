@@ -22,12 +22,13 @@ public:
     void applyPresetForSnapshot (int index)
     {
         compProcessor.applyPreset (index);
-        presets.setActive (index);
+        presets.setChosen (index);
     }
 
 private:
-    int analysisContentHeight() const override { return 240 + 12 + 48; }
-    int controlsContentHeight() const override { return knobRowHeight() + rowGap() + presetRowHeight(); }
+    int analysisContentHeight() const override { return 250; }
+    int controlsContentHeight() const override { return knobRowHeight() + controlsFooterHeight() + 3 * rowGap(); }
+    int controlsFooterHeight() const override { return 30; }
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;
     void themeChanged() override;
@@ -39,10 +40,8 @@ private:
     TransferCurveView transferCurve;
     WaveformDisplay waveform;
     GainReductionMeter gainReductionMeter;
-    juce::Label inputPeakLabel, outputPeakLabel;
-
     KnobRow knobs;
-    PresetRow presets;
+    ChipRow presets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerCompEditor)
 };

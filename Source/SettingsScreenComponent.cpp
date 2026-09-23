@@ -24,9 +24,10 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     setOpaque (true);
 
     // ---- mode --------------------------------------------------------
-    modeSwitch.onChange = [this] (int value)
+    modeSwitch.setComponentID ("settings.proMode");
+    modeSwitch.onClick = [this]
     {
-        settings.setMode (value == 1 ? TrainerSettings::Mode::pro : TrainerSettings::Mode::beginner);
+        settings.setMode (modeSwitch.getToggleState() ? TrainerSettings::Mode::pro : TrainerSettings::Mode::beginner);
         syncControlsFromSettings();
 
         if (onTrainerSettingsChanged != nullptr)
@@ -82,7 +83,18 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     calibrationRow.addAndMakeVisible (calibrationSlider);
     calibrationRow.addAndMakeVisible (calibrationSaveButton);
     calibrationRow.addAndMakeVisible (calibrationClearButton);
+    calibrationRow.addAndMakeVisible (calibrationDown);
+    calibrationRow.addAndMakeVisible (calibrationUp);
     addAndMakeVisible (calibrationRow);
+
+    // The row covers its own title and hint, which the page paints: let
+    // clicks through everywhere except on the controls themselves.
+    calibrationRow.setInterceptsMouseClicks (false, true);
+
+    // A meter reads in whole dB, so the fader has to be settable in whole
+    // dB without a steady hand: one press, one dB.
+    calibrationDown.onClick = [this] { calibrationSlider.setValue (calibrationSlider.getValue() - 1.0); };
+    calibrationUp.onClick   = [this] { calibrationSlider.setValue (calibrationSlider.getValue() + 1.0); };
 
     calibrationNoiseButton.onClick = [this]
     {
@@ -322,7 +334,7 @@ void SettingsScreenComponent::buildRows()
 void SettingsScreenComponent::syncControlsFromSettings()
 {
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
-    modeSwitch.setValue (pro ? 1 : 0);
+    modeSwitch.setToggleState (pro, juce::dontSendNotification);
 
     // In Beginner the Pro rows show what is actually in force - the
     // defaults - not the Pro values waiting in the file.
@@ -390,7 +402,7 @@ void SettingsScreenComponent::refresh()
     const auto minutes = [this] (int m) { return localisation.getText ("set.minutes", { { "n", n (m) } }); };
     const auto secs = [this] (int s) { return localisation.getText ("set.seconds", { { "n", n (s) } }); };
 
-    modeSwitch.setOptions ({ 0, 1 }, { t ("set.mode.beginner"), t ("set.mode.pro") });
+    modeSwitch.setButtonText (t ("set.mode.switch"));
 
     stepRule.setOptions ({ 2, 3, 4 }, { "2", "3", "4" });
     answerPause.setOptions ({ 0, 1, 2 }, { t ("set.pause.short"), t ("set.pause.normal"), t ("set.pause.long") });
@@ -603,9 +615,15 @@ juce::Rectangle<int> SettingsScreenComponent::sideMenuBounds() const
 
 juce::Rectangle<int> SettingsScreenComponent::modeSwitchBounds() const
 {
-    return sideMenuBounds().reduced (AbcTrainTheme::Spacing::medium, 0)
-                           .withTrimmedTop (AbcTrainTheme::Spacing::large + 20)
-                           .withHeight (controlHeight);
+    // At the foot of the rail, over a two-line note of what it does.
+    auto rail = sideMenuBounds().reduced (AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::large);
+    rail.removeFromBottom (40);
+    return rail.removeFromBottom (controlHeight);
+}
+
+int SettingsScreenComponent::menuTop() const
+{
+    return sideMenuBounds().getY() + AbcTrainTheme::Spacing::large + 8;
 }
 
 juce::Rectangle<int> SettingsScreenComponent::pageBounds() const
@@ -616,7 +634,7 @@ juce::Rectangle<int> SettingsScreenComponent::pageBounds() const
 
 int SettingsScreenComponent::menuRowAt (juce::Point<int> p) const
 {
-    auto area = sideMenuBounds().withTrimmedTop (modeSwitchBounds().getBottom() + 58)
+    auto area = sideMenuBounds().withTrimmedTop (menuTop())
                                 .reduced (AbcTrainTheme::Spacing::small, 0);
 
     for (int i = 0; i < 5; ++i)
@@ -664,6 +682,16 @@ void SettingsScreenComponent::resized()
         if (row.page != currentPage)
             continue;
 
+        // Calibration gets a second line and the whole width for its fader:
+        // squeezed into the control column it was a thumb's width long,
+        // and 50 dB over a thumb's width is a fader that barely moves.
+        if (row.control == &calibrationRow)
+        {
+            row.bounds = page.removeFromTop (rowHeight + controlHeight + 10).withWidth (contentWidth);
+            calibrationRow.setBounds (row.bounds.withTrimmedBottom (8));
+            continue;
+        }
+
         row.bounds = page.removeFromTop (rowHeight).withWidth (contentWidth);
 
         auto controlArea = row.bounds.withTrimmedLeft (titleColumn);
@@ -679,14 +707,23 @@ void SettingsScreenComponent::resized()
 
     // Composite rows lay out their own children.
     {
-        auto r = calibrationRow.getLocalBounds();
-        const auto w = (float) r.getWidth();
-        calibrationNoiseButton.setBounds (r.removeFromLeft (juce::jmin (170, (int) (w * 0.34f))));
-        r.removeFromLeft (8);
-        calibrationClearButton.setBounds (r.removeFromRight (juce::jmin (110, (int) (w * 0.22f))));
+        // Play noise, then − fader +, then save or forget - the order you
+        // do it in: play, read the meter, set, keep.
+        // "Play noise" on the title line, where the other rows keep their
+        // control; the fader and what to do with it on the line under it.
+        auto all = calibrationRow.getLocalBounds();
+        calibrationNoiseButton.setBounds (all.removeFromTop (controlHeight + 6).withTrimmedTop (6)
+                                             .removeFromRight (160));
+        auto r = all.removeFromBottom (controlHeight);
+        calibrationClearButton.setBounds (r.removeFromRight (100));
         r.removeFromRight (8);
-        calibrationSaveButton.setBounds (r.removeFromRight (juce::jmin (120, (int) (w * 0.24f))));
-        r.removeFromRight (8);
+        calibrationSaveButton.setBounds (r.removeFromRight (100));
+        r.removeFromRight (12);
+        calibrationDown.setBounds (r.removeFromLeft (r.getHeight()));
+        r.removeFromLeft (6);
+        calibrationUp.setBounds (r.removeFromRight (r.getHeight()));
+        r.removeFromRight (6);
+        calibrationSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 88, r.getHeight());
         calibrationSlider.setBounds (r);
     }
     {
@@ -741,17 +778,18 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
     g.setColour (theme.divider);
     g.fillRect (area.getRight() - 1, area.getY(), 1, area.getHeight());
 
-    // The mode, first: it decides what everything else means.
+    // The mode, at the foot: a hairline over it, the switch, and a line
+    // under it saying what the switch is doing right now.
     const auto modeBox = modeSwitchBounds();
-    AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (localisation.getText ("set.mode.title")),
-                                          modeBox.translated (0, -22).withHeight (18).toFloat(),
-                                          AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
+    g.setColour (theme.divider);
+    g.fillRect (area.getX() + AbcTrainTheme::Spacing::medium, modeBox.getY() - AbcTrainTheme::Spacing::small,
+                area.getWidth() - AbcTrainTheme::Spacing::medium * 2, 1);
 
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
     g.drawFittedText (localisation.getText (pro ? "set.mode.hintPro" : "set.mode.hintBeginner"),
-                      modeBox.translated (0, controlHeight + 6).withHeight (36), juce::Justification::topLeft, 2, 1.0f);
+                      modeBox.translated (0, controlHeight + 4).withHeight (36), juce::Justification::topLeft, 2, 1.0f);
 
     const juce::String labels[] { localisation.getText ("set.page.training"),
                                    localisation.getText ("set.page.hearing"),
@@ -759,7 +797,7 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
                                    localisation.getText ("ui.settingsBackground"),
                                    localisation.getText ("ui.about") };
 
-    auto rowArea = area.withTrimmedTop (modeBox.getBottom() + 58).reduced (AbcTrainTheme::Spacing::small, 0);
+    auto rowArea = area.withTrimmedTop (menuTop() - area.getY()).reduced (AbcTrainTheme::Spacing::small, 0);
 
     for (int i = 0; i < 5; ++i)
     {

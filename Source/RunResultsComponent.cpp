@@ -92,29 +92,27 @@ void RunResultsComponent::timerCallback()
         repaint();
 }
 
+void RunResultsComponent::setDetailStrings (DetailStrings strings)
+{
+    detail = std::move (strings);
+    repaint();
+}
+
 juce::Rectangle<int> RunResultsComponent::cardBounds() const
 {
-    // Height follows the content. It was a flat 400, which left about a
-    // hundred and thirty pixels of nothing between the skills row and the
-    // buttons - a card mostly made of gap, which is what a results screen
-    // must never be: this is the one moment the player is looking *at*
-    // rather than through.
+    // Height follows the content, width a share of the window with a
+    // floor - a dialogue that keeps its old width in a bigger window reads
+    // as something that failed to notice the window.
     using namespace AbcTrainTheme;
-    constexpr int contentHeight = 20 + 26 + 18 + Spacing::large
-                                    + 14 + 64 + 26 + Spacing::medium
-                                    + 44 + Spacing::large
-                                    + 22 + Spacing::small + 52
-                                    + Spacing::small + 34
-                                    + Spacing::large + 34 + 20;
+    constexpr int contentHeight = 26 + 18 + Spacing::large       // heading
+                                    + 64 + Spacing::large           // four numbers
+                                    + 16 + 46 + Spacing::large      // round by round
+                                    + 16 + 7 * 20 + Spacing::large  // ranges and the sentence
+                                    + 38;                           // buttons
 
-    // Sized as a *fraction* of the window with a floor, not as a fixed
-    // 520. A dialogue that keeps its old width inside a window half as
-    // wide again does not read as restrained, it reads as something that
-    // failed to notice the window - which is exactly how these looked
-    // after the design moved to 1180.
-    return juce::Rectangle<int> (juce::jlimit (420, getWidth() - 80,
-                                                juce::roundToInt ((float) getWidth() * 0.62f)),
-                                  juce::jmin (getHeight() - 60, contentHeight))
+    return juce::Rectangle<int> (juce::jlimit (480, getWidth() - 60,
+                                                juce::roundToInt ((float) getWidth() * 0.72f)),
+                                  juce::jmin (getHeight() - 40, contentHeight + Spacing::large * 2))
                .withCentre (getLocalBounds().getCentre());
 }
 
@@ -122,17 +120,28 @@ void RunResultsComponent::paintStat (juce::Graphics& g, juce::Rectangle<int> are
                                       const juce::String& caption, const juce::String& value,
                                       juce::Colour valueColour)
 {
+    // Left-aligned, caption over value over a note: four of these in a row
+    // read as a line of facts, where centred ones read as a scoreboard.
     const auto& theme = AbcTrainTheme::current();
 
     AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (caption),
                                            area.removeFromTop (13).toFloat(),
-                                           AbcTrainLookAndFeel::captionFont(),
-                                           theme.textDim, 1.4f,
-                                           juce::Justification::centred);
+                                           AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
 
     g.setColour (valueColour);
-    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (26.0f));
-    g.drawText (value, area.removeFromTop (30), juce::Justification::centred, false);
+    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (28.0f));
+    g.drawText (value, area.removeFromTop (34), juce::Justification::centredLeft, false);
+}
+
+namespace
+{
+    juce::String fillIn (juce::String text, std::initializer_list<std::pair<const char*, juce::String>> fields)
+    {
+        for (const auto& [key, value] : fields)
+            text = text.replace (juce::String ("{{") + key + "}}", value);
+
+        return text;
+    }
 }
 
 void RunResultsComponent::paint (juce::Graphics& g)
@@ -144,194 +153,223 @@ void RunResultsComponent::paint (juce::Graphics& g)
     const auto eased = AbcTrainTheme::Ease::out (appearAmount);
     const auto card = cardBounds().toFloat().translated (0.0f, (1.0f - eased) * 14.0f);
 
-    juce::Path shape;
-    shape.addRoundedRectangle (card, AbcTrainTheme::Radius::panel);
-
     juce::DropShadow (theme.shadow.withAlpha (0.55f * theme.shadowStrength * eased), 26, { 0, 8 })
-        .drawForPath (g, shape);
+        .drawForRectangle (g, card.toNearestInt());
 
     g.setColour (theme.panelBackground);
     g.setOpacity (eased);
-    g.fillPath (shape);
+    g.fillRect (card);
     g.setOpacity (1.0f);
-
     g.setColour (theme.outline);
-    g.strokePath (shape, juce::PathStrokeType (1.0f));
+    g.drawRect (card, 1.0f);
 
     auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large).toNearestInt();
-
-    // --- heading: which exercise, which mode -----------------------------
-    AbcTrainLookAndFeel::drawTrackedText (g, titleText, inner.removeFromTop (26).toFloat(),
-                                           AbcTrainLookAndFeel::headingFont(),
-                                           theme.textBright, 1.2f);
-
-    g.setColour (theme.textDim);
-    g.setFont (AbcTrainLookAndFeel::labelFont());
-    g.drawText (summary.exerciseName + "  ·  " + summary.modeName,
-                 inner.removeFromTop (18), juce::Justification::centredLeft, true);
-
-    inner.removeFromTop (AbcTrainTheme::Spacing::large);
-
     const auto counted = AbcTrainTheme::Ease::out (countAmount);
 
-    // --- the number the run was about ------------------------------------
-    //
-    // Four numbers at one size is a table, and a table is what you read
-    // when you are looking something up - not what you want at the end of
-    // ninety seconds of concentrating. The score is the thing that just
-    // happened; accuracy, streak and personal best are how to read it.
-    // So one of them is large and three are small, which is the whole
-    // difference between a result and a receipt.
+    // --- heading: which exercise, which mode, how it ended ---------------
     {
-        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (scoreCaption),
-                                               inner.removeFromTop (14).toFloat(),
-                                               AbcTrainLookAndFeel::captionFont(),
-                                               theme.textDim.withAlpha (0.75f), 1.4f,
-                                               juce::Justification::centred);
+        auto top = inner.removeFromTop (26);
 
-        auto heroRow = inner.removeFromTop (64);
+        if (summary.isNewBest)
+        {
+            const auto width = juce::roundToInt (AbcTrainLookAndFeel::trackedTextWidth (
+                                   newBestText, AbcTrainLookAndFeel::headingFont(), 0.0f)) + 28;
+            auto pill = top.removeFromRight (width).withSizeKeepingCentre (width, 24).toFloat();
+            g.setColour (theme.positive.withAlpha (0.14f));
+            g.fillRect (pill);
+            g.setColour (theme.positive.withAlpha (0.6f));
+            g.drawRect (pill, 1.0f);
+            g.setColour (theme.positive);
+            g.setFont (AbcTrainLookAndFeel::headingFont());
+            g.drawText (newBestText, pill.toNearestInt(), juce::Justification::centred, false);
+        }
 
-        g.setColour (summary.isNewBest ? theme.positive : theme.textBright);
-        g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (
-            58.0f * AbcTrainLookAndFeel::getTextScale()));
-        g.drawText (juce::String (juce::roundToInt ((float) summary.score * counted)),
-                     heroRow, juce::Justification::centred, false);
-    }
+        g.setColour (theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::headingFont().withHeight (22.0f));
+        g.drawText (summary.exerciseName + "  ·  " + summary.modeName, top,
+                    juce::Justification::centredLeft, true);
 
-    // A personal best is the one thing here worth a moment. It gets a
-    // pill rather than a line of green text, because a sentence in the
-    // middle of a column of numbers reads as another number.
-    if (summary.isNewBest)
-    {
-        auto badgeRow = inner.removeFromTop (26);
-        const auto textWidth = AbcTrainLookAndFeel::trackedTextWidth (
-            newBestText, AbcTrainLookAndFeel::headingFont(), 0.0f);
-        auto pill = badgeRow.withSizeKeepingCentre (juce::roundToInt (textWidth) + 34, 24).toFloat();
-
-        // A frame, not a lozenge. Every corner in this design is square,
-        // and a fully-rounded pill was the one shape left over from the
-        // look this replaced.
-        g.setColour (theme.positive.withAlpha (0.16f));
-        g.fillRect (pill);
-        g.setColour (theme.positive.withAlpha (0.55f));
-        g.drawRect (pill, 1.0f);
-
-        g.setColour (theme.positive);
-        g.setFont (AbcTrainLookAndFeel::headingFont());
-        g.drawText (newBestText, pill.toNearestInt(), juce::Justification::centred, false);
-    }
-    else
-    {
         g.setColour (theme.textDim);
-        g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawText (accuracyCaption + ": " + juce::String (juce::roundToInt (summary.lifetimeAccuracy * 100.0f))
-                        + "%  (" + juce::String (summary.rounds) + ")",
-                     inner.removeFromTop (26), juce::Justification::centred, false);
-    }
-
-    inner.removeFromTop (AbcTrainTheme::Spacing::medium);
-
-    // --- the three that put it in context ---------------------------------
-    {
-        auto row = inner.removeFromTop (44);
-        const auto columnWidth = row.getWidth() / 3;
-
-        paintStat (g, row.removeFromLeft (columnWidth), accuracyCaption,
-                    juce::String (juce::roundToInt (summary.runAccuracy * 100.0f * counted)) + "%",
-                    theme.text);
-
-        paintStat (g, row.removeFromLeft (columnWidth), streakCaption,
-                    juce::String (juce::roundToInt ((float) summary.bestStreakThisRun * counted)),
-                    theme.text);
-
-        paintStat (g, row, bestCaption,
-                    juce::String (juce::jmax (summary.previousBest, summary.score)),
-                    theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::labelFont());
+        g.drawText (titleText, inner.removeFromTop (18), juce::Justification::centredLeft, true);
     }
 
     inner.removeFromTop (AbcTrainTheme::Spacing::large);
 
-    // --- where the four skills stand -------------------------------------
-    AbcTrainLookAndFeel::paintSectionHeading (g, inner.removeFromTop (22).toFloat(), whereYouStandText);
-    inner.removeFromTop (AbcTrainTheme::Spacing::small);
-
-    // --- where the misses land -------------------------------------------
+    // --- four numbers, one line ------------------------------------------
     //
-    // Replaces the four family levels that used to sit here. Those said
-    // "you are level 3 at reverb", which the home screen already says on
-    // its own cards; this says which *part* of the subject keeps catching
-    // you out, which nothing anywhere said before.
-    if (! summary.buckets.empty())
+    // What the run was (rounds), how often you were inside the band, how
+    // far inside, and what that did to the staircase. Each with a note
+    // that says what the number is measured against, because a bare "92%"
+    // leaves the player to guess what 92 percent of.
     {
-        auto row = inner.removeFromTop (52);
-        const auto n = (int) summary.buckets.size();
-        const auto columnWidth = row.getWidth() / juce::jmax (1, n);
+        auto row = inner.removeFromTop (64);
+        const auto columnWidth = row.getWidth() / 4;
 
-        // The worst bucket with enough rounds behind it to mean anything.
-        // Three is not statistics, but it is the difference between a
-        // pattern and a single unlucky round, and this is a nudge rather
-        // than a diagnosis.
+        const auto total = (int) summary.marks.size();
+        int inBand = 0;
+        std::vector<float> qualities;
+
+        for (const auto& m : summary.marks)
+        {
+            if (m.correct)
+            {
+                ++inBand;
+                qualities.push_back (m.quality);
+            }
+        }
+
+        std::sort (qualities.begin(), qualities.end());
+        const auto median = qualities.empty() ? 0.0f : qualities[qualities.size() / 2];
+
+        auto note = [&] (juce::Rectangle<int> column, const juce::String& text)
+        {
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::captionFont());
+            g.drawFittedText (text, column.withTrimmedTop (48), juce::Justification::topLeft, 1, 0.85f);
+        };
+
+        auto column = row.removeFromLeft (columnWidth);
+        paintStat (g, column, detail.rounds, juce::String (juce::roundToInt ((float) summary.score * counted)),
+                   summary.isNewBest ? theme.positive : theme.textBright);
+        note (column, bestCaption + " " + juce::String (juce::jmax (summary.previousBest, summary.score)));
+
+        column = row.removeFromLeft (columnWidth);
+        paintStat (g, column, accuracyCaption,
+                   juce::String (juce::roundToInt (summary.runAccuracy * 100.0f * counted)) + "%", theme.text);
+        note (column, fillIn (detail.ofInBand, { { "n", juce::String (inBand) }, { "m", juce::String (total) } }));
+
+        column = row.removeFromLeft (columnWidth);
+        paintStat (g, column, detail.precision, juce::String (juce::roundToInt (median * 100.0f * counted)) + "%",
+                   theme.text);
+        note (column, detail.precisionNote);
+
+        column = row;
+        const auto moved = summary.levelBefore != summary.levelAfter;
+        paintStat (g, column, detail.threshold, moved ? summary.levelAfter : summary.levelBefore,
+                   summary.levelDelta > 0 ? theme.positive : theme.text);
+        note (column, summary.levelDelta > 0 ? detail.narrower
+                    : summary.levelDelta < 0 ? detail.wider : detail.unchanged);
+    }
+
+    inner.removeFromTop (AbcTrainTheme::Spacing::large);
+
+    // --- round by round ----------------------------------------------------
+    //
+    // One cell per answer: green inside the band, red outside, and filled
+    // from the bottom by how close it was. The run as it happened, where
+    // a percentage says only how it averaged out.
+    {
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.roundByRound),
+                                               inner.removeFromTop (16).toFloat(),
+                                               AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
+
+        auto strip = inner.removeFromTop (46);
+        const auto n = juce::jmax (1, (int) summary.marks.size());
+        const auto gap = 4;
+        const auto cellWidth = juce::jmin (64, (strip.getWidth() - gap * (n - 1)) / n);
+
+        for (int i = 0; i < (int) summary.marks.size(); ++i)
+        {
+            const auto& m = summary.marks[(size_t) i];
+            auto cell = juce::Rectangle<int> (strip.getX() + i * (cellWidth + gap), strip.getY(), cellWidth, strip.getHeight()).toFloat();
+            const auto colour = m.correct ? theme.positive : theme.negative;
+            const auto shown = (float) i < counted * (float) n;
+
+            g.setColour (colour.withAlpha (0.10f));
+            g.fillRect (cell);
+
+            if (shown)
+            {
+                const auto height = cell.getHeight() * (m.correct ? juce::jmax (0.12f, m.quality) : 1.0f);
+                g.setColour (colour.withAlpha (m.correct ? 0.55f : 0.30f));
+                g.fillRect (cell.withTop (cell.getBottom() - height));
+            }
+
+            g.setColour (colour.withAlpha (0.7f));
+            g.drawRect (cell, 1.0f);
+
+            g.setColour (theme.textBright);
+            g.setFont (AbcTrainLookAndFeel::microFont());
+            g.drawText (juce::String (i + 1), cell.toNearestInt().withTrimmedTop (4).withHeight (12),
+                        juce::Justification::centred, false);
+        }
+    }
+
+    inner.removeFromTop (AbcTrainTheme::Spacing::large);
+
+    // --- by range, and what to do about it ---------------------------------
+    //
+    // Counts, not a histogram: "Mids 2 / 3" says exactly what happened,
+    // where a bar a few pixels tall made the reader estimate it.
+    {
+        auto block = inner.removeFromTop (16 + 7 * 20);
+        auto left = block.removeFromLeft (juce::jmin (330, block.getWidth() / 2));
+        block.removeFromLeft (AbcTrainTheme::Spacing::large);
+
+        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.byRange),
+                                               left.removeFromTop (16).toFloat(),
+                                               AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
+
         auto worst = -1;
         auto worstRate = 0.0f;
 
-        for (int i2 = 0; i2 < n; ++i2)
-        {
-            const auto& b = summary.buckets[(size_t) i2];
-
-            if (b.attempts >= 3 && b.missRate() > worstRate)
+        for (int b = 0; b < (int) summary.buckets.size(); ++b)
+            if (summary.buckets[(size_t) b].attempts >= 3 && summary.buckets[(size_t) b].missRate() > worstRate)
             {
-                worstRate = b.missRate();
-                worst = i2;
+                worstRate = summary.buckets[(size_t) b].missRate();
+                worst = b;
             }
-        }
 
-        for (int i2 = 0; i2 < n; ++i2)
+        for (int b = 0; b < juce::jmin (7, (int) summary.buckets.size()); ++b)
         {
-            const auto& b = summary.buckets[(size_t) i2];
-            auto column = row.removeFromLeft (columnWidth).reduced (3, 0);
+            const auto& bucket = summary.buckets[(size_t) b];
+            auto line = left.removeFromTop (20);
 
-            auto bar = column.removeFromTop (30).toFloat();
-            const auto isWorst = (i2 == worst);
+            g.setColour (b == worst ? theme.textBright : theme.text);
+            g.setFont (AbcTrainLookAndFeel::captionFont());
+            g.drawText (bucket.label, line.removeFromLeft (96), juce::Justification::centredLeft, true);
 
-            // The trough is drawn whether or not there is data, so an
-            // untouched bucket reads as "not tried yet" rather than as
-            // "perfect".
+            auto count = line.removeFromRight (56);
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+            g.drawText (juce::String (bucket.attempts - bucket.misses) + " / " + juce::String (bucket.attempts),
+                        count, juce::Justification::centredRight, false);
+
+            // Hits then misses as one bar, the share of each - the same
+            // two colours as the round cells above.
+            auto bar = line.reduced (6, 5).toFloat();
             g.setColour (theme.displayBackground);
             g.fillRect (bar);
 
-            if (b.attempts > 0)
+            if (bucket.attempts > 0)
             {
-                // A floor of 6px, not 2. A bucket you have missed twice in
-                // nine is not "nothing", and at 22% of a 30px trough it
-                // drew a two-pixel line that reads as an empty bucket -
-                // which is the one thing it must not be confused with,
-                // since an untouched bucket is drawn empty on purpose.
-                const auto filled = juce::jmax (6.0f, bar.getHeight() * counted
-                                                          * juce::jlimit (0.08f, 1.0f, b.missRate()));
-                auto fill = bar.withTop (bar.getBottom() - filled);
+                const auto hitShare = (float) (bucket.attempts - bucket.misses) / (float) bucket.attempts;
+                g.setColour (theme.positive.withAlpha (0.75f));
+                g.fillRect (bar.withWidth (bar.getWidth() * hitShare * counted));
+                g.setColour (theme.negative.withAlpha (0.85f));
+                g.fillRect (bar.withLeft (bar.getX() + bar.getWidth() * hitShare).withWidth (
+                    bar.getWidth() * (1.0f - hitShare) * counted));
+            }
+        }
 
-                g.setColour (isWorst ? theme.negative.withAlpha (0.85f)
-                                     : theme.textDim.withAlpha (0.62f));
-                g.fillRect (fill);
+        // The sentence: the last miss named in units, then where misses
+        // pile up - a place to go and listen, not a grade.
+        juce::String text;
+
+        for (auto it = summary.marks.rbegin(); it != summary.marks.rend(); ++it)
+            if (! it->correct && it->target.isNotEmpty() && it->answer.isNotEmpty())
+            {
+                text = fillIn (detail.lastMiss, { { "answer", it->answer }, { "target", it->target } });
+                break;
             }
 
-            column.removeFromTop (4);
-
-            g.setColour (isWorst ? theme.textBright : theme.textDim.withAlpha (0.7f));
-            g.setFont (AbcTrainLookAndFeel::microFont());
-            g.drawFittedText (b.label, column.removeFromTop (13),
-                               juce::Justification::centred, 1, 0.8f);
-        }
-
-        inner.removeFromTop (AbcTrainTheme::Spacing::small);
-
         if (summary.missVerdict.isNotEmpty())
-        {
-            g.setColour (theme.text);
-            g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (summary.missVerdict, inner.removeFromTop (34),
-                               juce::Justification::centredTop, 2, 1.0f);
-        }
+            text = (text.isNotEmpty() ? text + " " : juce::String()) + summary.missVerdict;
+
+        g.setColour (theme.text);
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
+        g.drawFittedText (text, block.withTrimmedTop (16), juce::Justification::topLeft, 5, 1.0f);
     }
 }
 
@@ -339,11 +377,13 @@ void RunResultsComponent::resized()
 {
     using namespace AbcTrainTheme;
 
-    auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (34);
+    auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (38);
 
-    homeButton.setBounds (footer.removeFromRight (120));
+    // "Play again" is the one filled button, rightmost; Home beside it.
+    AbcTrainLookAndFeel::makePrimary (againButton, true);
+    againButton.setBounds (footer.removeFromRight (150));
     footer.removeFromRight (Spacing::small);
-    againButton.setBounds (footer.removeFromRight (140));
+    homeButton.setBounds (footer.removeFromRight (110));
 
     // The other modes sit on the left of the same row, so "again" and
     // "differently" are the same distance from the eye - a run ending is
@@ -362,7 +402,7 @@ void RunResultsComponent::resized()
 
         for (auto* button : modeButtons)
         {
-            button->setBounds (footer.removeFromLeft (width).withHeight (34));
+            button->setBounds (footer.removeFromLeft (width).withHeight (38));
             footer.removeFromLeft (Spacing::small);
         }
     }

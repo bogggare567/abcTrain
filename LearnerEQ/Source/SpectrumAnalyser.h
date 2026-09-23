@@ -52,6 +52,24 @@ public:
     void setZoneNames (juce::StringArray names) { zoneNames = std::move (names); repaint(); }
     bool areZonesVisible() const noexcept { return zonesVisible; }
 
+    // An instrument's own map instead of the general eight: where a kick's
+    // body, box and click live, each in its own colour - the approved
+    // Learner EQ (docs/design/approved-2026-09). Empty goes back to the
+    // general zones. Zones may leave gaps; that is the honest shape of an
+    // instrument's map.
+    struct CustomZone
+    {
+        float lowHz = 20.0f, highHz = 20000.0f;
+        juce::String name;
+        juce::Colour colour;
+    };
+
+    void setCustomZones (std::vector<CustomZone> zones) { customZones = std::move (zones); repaint(); }
+
+    // One colour per band slot, shared with the editor's band chips so a
+    // node and its chip are visibly the same thing.
+    static juce::Colour colourForBand (int index);
+
     // What the pointer is currently over, for the editor's readout line.
     // Negative when the pointer is outside.
     float getPointerFrequency() const noexcept { return pointerFreq; }
@@ -111,6 +129,8 @@ private:
     int draggingBandIndex = -1;
     bool zonesVisible = true;
     juce::StringArray zoneNames;
+    std::vector<CustomZone> customZones;
+    void paintCustomZones (juce::Graphics&, juce::Rectangle<float> bounds) const;
 
     float pointerFreq = -1.0f;
 

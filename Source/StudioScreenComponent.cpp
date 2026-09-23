@@ -1,4 +1,5 @@
 #include "StudioScreenComponent.h"
+#include "shared/learning/LearnerEditorBase.h"
 
 #include "shared/ui/AbcTrainLookAndFeel.h"
 
@@ -85,6 +86,10 @@ void StudioScreenComponent::showEditorFor (Effect effect)
         // The plugin's editor is a window of its own in a DAW and brings a
         // resize corner; here it is a page, sized by the app.
         editor->setResizable (false, false);
+
+        if (auto* learner = dynamic_cast<LearnerEditorBase*> (editor.get()))
+            learner->setEmbedded (true);
+
         addAndMakeVisible (*editor);
     }
 

@@ -56,6 +56,8 @@ bool EarTrainerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 
 void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    clipPreview.prepare (sampleRate);
+
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = (juce::uint32) samplesPerBlock;
@@ -130,6 +132,11 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         // the output is silenced. Clearing without processing would make
         // every return from the menu start mid-burst.
         buffer.clear();
+
+        // A clip being auditioned from the Training Sounds page, through
+        // the same output level as everything else.
+        if (clipPreview.render (buffer))
+            applyOutputGain (buffer);
 
         // Silence is metered too: quiet time on the menus is what makes a
         // break count as one.

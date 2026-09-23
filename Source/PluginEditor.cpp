@@ -1408,6 +1408,11 @@ void EarTrainerEditor::resized()
 {
     updateWindow.setBounds (getLocalBounds());
 
+    // The welcome follows the window. It used to be sized only when shown,
+    // so a window resized while it was up - or opened at one size and
+    // fitted to the screen a moment later - drew it for the old size.
+    supportScreen.setBounds (getLocalBounds());
+
     using namespace AbcTrainTheme;
 
     // Anything that changes the height while the hint is closed is a drag,
@@ -1540,62 +1545,13 @@ void EarTrainerEditor::resized()
 
     // --- the hint ---------------------------------------------------------
     //
-    // The space is reserved whether or not a hint has been bought, because
-    // the window no longer resizes to make room for one. Reserving it here
-    // rather than letting the answer section swallow it is what puts the
-    // empty room *where the picture will appear* instead of leaving a hole
-    // somewhere else on the screen - and an empty stretch of background
-    // reads as space, where a dimmed placeholder box would read as a
-    // broken element. Between hearing and answering, which is the order
-    // you use it in.
-    if (hintRevealed && ! hintNarrowsTheScale())
-    {
-        // Shorter on a short window rather than pushing the answers under
-        // the control bar: at 620px the two answer cards used to lose
-        // their lower half behind the mode pills the moment a hint was
-        // bought. The answers are what the round is for; the picture can
-        // give up height first.
-        constexpr int answerFloor = 230;
-        const auto spare = area.getHeight() - (controlBarHeight + 22 + Spacing::medium) - answerFloor - Spacing::large;
-        const auto panelHeight = juce::jlimit (56, hintPanelHeight, spare);
-        const auto rowHeight = panelHeight - (hintPanelHeight - hintRowHeight);
-
-        hintSection = area.removeFromTop (panelHeight);
-
-        auto inner = hintSection;
-        inner.removeFromTop (Spacing::small);
-
-        auto hintRow = inner.removeFromTop (juce::jmax (40, rowHeight)).reduced (Spacing::small, 0);
-
-        // Whichever view this exercise's question is actually visible in
-        // gets the whole row - see Game::getHintView. A stereo exercise
-        // keeps the square vectorscope beside its spectrum, because
-        // "where is it" and "what is it made of" are both worth seeing
-        // there; the other two views stand alone.
-        switch (activeHintView())
-        {
-            case Game::HintView::stereo:
-                vectorscope.setBounds (hintRow.removeFromLeft (hintRow.getHeight()));
-                hintRow.removeFromLeft (Spacing::small);
-                hintSpectrum.setBounds (hintRow);
-                break;
-
-            case Game::HintView::envelope:
-                hintWaveform.setBounds (hintRow);
-                break;
-
-            case Game::HintView::spectrum:
-            default:
-                hintSpectrum.setBounds (hintRow);
-                break;
-        }
-
-        area.removeFromTop (Spacing::large);
-    }
-    else
-    {
-        hintSection = {};
-    }
+    // It used to take a band from the top of the answer section, so buying
+    // a hint pushed the heading, the A/B pair and the answers down the
+    // screen - the author's word for it was "ужасно". Its place now is the
+    // free band under the answers (laid out below, once the answers have
+    // taken what they need), so a hint adds a picture without moving
+    // anything you were already looking at.
+    hintSection = {};
 
     {
         const auto showing = hintRevealed && ! hintNarrowsTheScale()
@@ -1695,14 +1651,7 @@ void EarTrainerEditor::resized()
             restartButton.setBounds (slot);
         }
 
-        controlRow.removeFromRight (Spacing::medium);
-
-        // The hint used to be a 30px glyph with a caption beside it, and
-        // the glyph read as a "no entry" sign - so the one control you
-        // reach for when stuck looked disabled and unlabelled. It is one
-        // button now, with its price written on it.
-        hintButton.setBounds (controlRow.removeFromRight (176)
-                                  .withSizeKeepingCentre (176, 34));
+        // The hint button moved up beside A/B (see the answer section).
     }
 
     // --- answer section: the caption, the A/B pair, and the scale -------
@@ -1732,6 +1681,14 @@ void EarTrainerEditor::resized()
             beforeButton.setBounds (pair.removeFromLeft (half));
             pair.removeFromLeft (Spacing::hairline);
             afterButton.setBounds (pair);
+
+            // The hint beside the A/B pair, level with it (the author's
+            // request): it is a way of listening to this round, like A/B,
+            // not a way of playing the run like the mode pills it sat
+            // among at the bottom.
+            headingRow.removeFromRight (Spacing::medium);
+            hintButton.setBounds (headingRow.removeFromRight (176).withSizeKeepingCentre (176, 34));
+            headingRow.removeFromRight (Spacing::medium);
 
             answerHeadingRow = headingRow;
         }
@@ -1781,7 +1738,46 @@ void EarTrainerEditor::resized()
         // heading and the thing the heading names - which reads as
         // something missing between them. Below, the same slack is the
         // margin over the control bar.
-        choiceSlider.setBounds (inner.removeFromTop (juce::jmin (inner.getHeight(), naturalHeight)));
+        // A bought hint's picture goes in the free band under the answers,
+        // right-aligned and not full width. If that band is too short on a
+        // small window, the answers give up the difference - never the
+        // heading above them.
+        const auto hintShowing = hintRevealed && ! hintNarrowsTheScale();
+        constexpr int hintMinHeight = 64;
+        auto sliderHeight = juce::jmin (inner.getHeight(), naturalHeight);
+
+        if (hintShowing && inner.getHeight() - sliderHeight < hintMinHeight + Spacing::small)
+            sliderHeight = juce::jmax (180, inner.getHeight() - hintMinHeight - Spacing::small);
+
+        choiceSlider.setBounds (inner.removeFromTop (sliderHeight));
+
+        if (hintShowing)
+        {
+            inner.removeFromTop (Spacing::small);
+            const auto width = juce::jmin (560, (int) (answerSection.getWidth() * 0.55f));
+            const auto height = juce::jlimit (hintMinHeight, hintRowHeight + Spacing::large, inner.getHeight());
+            hintSection = juce::Rectangle<int> (answerSection.getRight() - width, inner.getY(), width, height);
+
+            auto hintRow = hintSection.reduced (Spacing::small);
+
+            switch (activeHintView())
+            {
+                case Game::HintView::stereo:
+                    vectorscope.setBounds (hintRow.removeFromLeft (hintRow.getHeight()));
+                    hintRow.removeFromLeft (Spacing::small);
+                    hintSpectrum.setBounds (hintRow);
+                    break;
+
+                case Game::HintView::envelope:
+                    hintWaveform.setBounds (hintRow);
+                    break;
+
+                case Game::HintView::spectrum:
+                default:
+                    hintSpectrum.setBounds (hintRow);
+                    break;
+            }
+        }
     }
 
     area.removeFromTop (Spacing::large);
@@ -2044,6 +2040,31 @@ void EarTrainerEditor::showRunResults (int finalScore)
         runResults.setModeOffer ({}, {}, 0);
     }
 
+    summary.marks = runMarks;
+    {
+        auto& game = gameManager.getActiveGame();
+        const auto levelNow = progress.getLevelForGame (gameIndex);
+        summary.levelBefore = formatLevel (game, runStartLevel, localisation);
+        summary.levelAfter = formatLevel (game, levelNow, localisation);
+        summary.levelDelta = levelNow - runStartLevel;
+    }
+
+    {
+        RunResultsComponent::DetailStrings d;
+        d.rounds = localisation.getText ("ui.res.rounds");
+        d.ofInBand = localisation.getText ("ui.res.ofInBand");
+        d.precision = localisation.getText ("ui.res.precision");
+        d.precisionNote = localisation.getText ("ui.res.precisionNote");
+        d.threshold = localisation.getText ("ui.res.threshold");
+        d.narrower = localisation.getText ("ui.res.narrower");
+        d.wider = localisation.getText ("ui.res.wider");
+        d.unchanged = localisation.getText ("ui.res.unchanged");
+        d.roundByRound = localisation.getText ("ui.res.roundByRound");
+        d.byRange = localisation.getText ("ui.res.byRange");
+        d.lastMiss = localisation.getText ("ui.res.lastMiss");
+        runResults.setDetailStrings (std::move (d));
+    }
+
     runResults.show (std::move (summary));
 }
 
@@ -2072,6 +2093,37 @@ bool EarTrainerEditor::shouldShowInstructions() const
     return processor.getProgressManager().getStatsForGame (index).correctAnswers < 3;
 }
 
+void EarTrainerEditor::beginRunLog()
+{
+    runMarks.clear();
+    auto& gameManager = processor.getGameManager();
+    runStartLevel = processor.getProgressManager().getLevelForGame (gameManager.getActiveGameIndex());
+}
+
+void EarTrainerEditor::logRoundForRun (bool correct)
+{
+    // What the results card shows round by round: right or wrong, how
+    // close, and - for a miss - what was answered for what, in the
+    // exercise's own words ("1.6 kHz for 1.0 kHz", "Hall for Room").
+    auto& game = processor.getGameManager().getActiveGame();
+    RunResultsComponent::Summary::RoundMark mark;
+    mark.correct = correct;
+    mark.quality = game.getAnswerQuality();
+
+    if (game.usesContinuousScale())
+    {
+        mark.target = game.formatNormalisedValue (game.getCorrectNormalised());
+        mark.answer = game.formatNormalisedValue (game.getChosenNormalised());
+    }
+    else if (game.getCorrectChoiceIndex() >= 0 && game.getChosenChoiceIndex() >= 0)
+    {
+        mark.target = translateChoiceLabel (game.getChoiceLabel (game.getCorrectChoiceIndex()), localisation);
+        mark.answer = translateChoiceLabel (game.getChoiceLabel (game.getChosenChoiceIndex()), localisation);
+    }
+
+    runMarks.push_back (std::move (mark));
+}
+
 void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressManager::AnswerOutcome& outcome)
 {
     // Answers land from the active game's own change broadcast, so a
@@ -2079,6 +2131,9 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
     if (scoredGameIndex != processor.getGameManager().getActiveGameIndex()
         || currentScreen != Screen::training)
         return;
+
+    if (isRunHudActive())
+        logRoundForRun (outcome.wasCorrect);
 
     promotionPips.setVisible (true);
     promotionPips.set (outcome.stepRun, processor.getProgressManager().getStepUpAfter());
@@ -2263,6 +2318,7 @@ void EarTrainerEditor::beginRunWithCountdown()
     runCountdown.start (caption, [this]
     {
         runStarted = true;
+        beginRunLog();
         processor.setSignalEnabled (currentScreen == Screen::training);
         startNewRun();
         resized();
@@ -2971,6 +3027,9 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.exerciseSound      = localisation.getText ("ui.soundsExercise");
         sounds.trainingOnExerciseSound = localisation.getText ("ui.soundsOnExercise");
         sounds.credits            = localisation.getText ("ui.credits");
+        sounds.clipsCaption       = localisation.getText ("ui.sounds.clipsCaption");
+        sounds.allClips           = localisation.getText ("ui.sounds.allClips");
+        sounds.thisClip           = localisation.getText ("ui.sounds.thisClip");
         sounds.languageCode       = localisation.getCurrentLanguage();
 
         trainingSounds.setStrings (std::move (sounds));
