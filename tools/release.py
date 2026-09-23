@@ -53,8 +53,11 @@ def main():
     if run("git", "status", "--porcelain"):
         sys.exit("В репозитории есть незакоммиченные изменения — сначала закоммитьте или уберите их")
 
-    run("git", "fetch", "--tags", "origin")
-    if run("git", "tag", "-l", tag):
+    # Не --tags: локальный тег, отличающийся от одноимённого на GitHub,
+    # роняет fetch целиком ("would clobber existing tag"). Сам новый тег
+    # проверяем и здесь, и на GitHub.
+    run("git", "fetch", "origin", "main")
+    if run("git", "tag", "-l", tag) or run("git", "ls-remote", "--tags", "origin", f"refs/tags/{tag}"):
         sys.exit(f"Тег {tag} уже есть")
 
     behind = run("git", "rev-list", "--count", "HEAD..origin/main")
