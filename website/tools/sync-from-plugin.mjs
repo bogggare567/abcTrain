@@ -86,7 +86,9 @@ const toleranceRamp = (source, game) =>
 // The same `git describe` the plugin builds its own version string from
 // (ADR 012), so a tagged release updates the download links by existing
 // rather than by somebody remembering.
-const describe = execSync('git describe --tags --abbrev=0', { cwd: root })
+// Stable tags only: a pre-release (v1.8.0-beta.1) is for testers, and the
+// site's download links must keep pointing at the last stable build.
+const describe = execSync('git describe --tags --abbrev=0 --exclude "*-*"', { cwd: root })
   .toString()
   .trim();
 

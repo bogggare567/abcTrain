@@ -217,3 +217,8 @@ jobs:
             artifacts/installer-linux/*.tar.gz
           generate_release_notes: true
           body_path: .github/release-body.md
+          # A tag with a suffix (v1.8.0-beta.1) is a pre-release: the stable
+          # update check skips it, the beta channel offers it, and the
+          # site keeps pointing at the last stable build.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          make_latest: ${{ !contains(github.ref_name, '-') }}

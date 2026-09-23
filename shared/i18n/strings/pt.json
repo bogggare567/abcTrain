@@ -800,5 +800,8 @@
   "ui.soundsExercise": "Som próprio do exercício",
   "ui.soundsOnExercise": "Cada exercício toca o seu próprio material: um acorde, um loop de bateria, um golpe isolado - ruído rosa onde esse é o material certo",
   "ui.credits": "Créditos dos sons",
-  "ui.creditsIntro": "Cada som que o treinador pode tocar: quem o fez, de onde vem e sob que licença."
+  "ui.creditsIntro": "Cada som que o treinador pode tocar: quem o fez, de onde vem e sob que licença.",
+  "ui.feedback": "Relatar ou sugerir…",
+  "ui.betaOn": "Versões beta: sim",
+  "ui.betaOff": "Versões beta: não"
 }

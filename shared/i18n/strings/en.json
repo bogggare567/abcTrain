@@ -800,5 +800,8 @@
   "ui.soundsExercise": "Exercise's own sound",
   "ui.soundsOnExercise": "Each exercise plays its own sound: a chord, a drum loop, a single hit - pink noise where that is the right material",
   "ui.credits": "Sound credits",
-  "ui.creditsIntro": "Every sound the trainer can play: who made it, where it is from and under which licence."
+  "ui.creditsIntro": "Every sound the trainer can play: who made it, where it is from and under which licence.",
+  "ui.feedback": "Report a problem or suggest…",
+  "ui.betaOn": "Beta versions: on",
+  "ui.betaOff": "Beta versions: off"
 }

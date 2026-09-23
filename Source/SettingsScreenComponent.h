@@ -142,6 +142,21 @@ private:
     // About
     juce::TextEditor licenceView;
     juce::TextButton licenceToggle;
+
+    // Feedback without telemetry: opens a prefilled GitHub issue with the
+    // version and system filled in - the person decides what to send.
+    juce::TextButton feedbackButton;
+
+    // "Offer beta versions" - read by every plugin's update check
+    // (UpdateChecker::betaOptInKey in the shared settings file).
+    juce::TextButton betaToggle;
+    void refreshBetaToggle();
+
+public:
+    // The prefilled issue URL, public so a test can check what is sent.
+    static juce::URL feedbackUrl (const juce::String& version, const juce::String& system);
+
+private:
     bool licenceExpanded = false;
 
     juce::TextButton closeButton;

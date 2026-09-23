@@ -37,6 +37,28 @@ public:
             expect (! UpdateChecker::isNewerVersion ("v1.0.0-beta", "v1.0.0"));
         }
 
+        beginTest ("a release is newer than its own betas, and betas order among themselves");
+        {
+            // Without this a tester on 1.8.0-beta.1 was never offered 1.8.0:
+            // the numbers are equal and the suffix used to be ignored.
+            expect (UpdateChecker::isNewerVersion ("v1.8.0", "v1.8.0-beta.1"));
+            expect (UpdateChecker::isNewerVersion ("v1.8.0-beta.2", "v1.8.0-beta.1"));
+            expect (UpdateChecker::isNewerVersion ("v1.8.0-rc.1", "v1.8.0-beta.3"));
+            expect (! UpdateChecker::isNewerVersion ("v1.8.0-beta.1", "v1.8.0-beta.1"));
+            expect (! UpdateChecker::isNewerVersion ("v1.8.0-beta.1", "v1.8.0"));
+
+            // A build past the beta tag is not offered that same beta.
+            expect (! UpdateChecker::isNewerVersion ("v1.8.0-beta.1", "v1.8.0-beta.1-2-gabc1234"));
+        }
+
+        beginTest ("the channel: beta when asked for, or when running a beta");
+        {
+            using C = UpdateChecker::Channel;
+            expect (UpdateChecker::channelFor ("v1.7.1", false) == C::stable);
+            expect (UpdateChecker::channelFor ("v1.7.1", true) == C::beta);
+            expect (UpdateChecker::channelFor ("v1.8.0-beta.1", false) == C::beta);
+        }
+
         beginTest ("a version that is only metadata is still rejected");
         {
             // No numeric part at all - there is nothing to compare, so

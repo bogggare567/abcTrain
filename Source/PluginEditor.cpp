@@ -888,7 +888,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         const auto updatesText = localisation.getText ("ui.updates");
         const auto upToDateText = localisation.getText ("ui.upToDate");
 
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, [safeThis, handled, updateAvailableText, openReleasePageText, laterText, updatesText, upToDateText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        const auto channel = UpdateChecker::channelFor (CurrentVersion::string,
+                                                        localisationProperties.getBoolValue (UpdateChecker::betaOptInKey, false));
+
+        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, channel, [safeThis, handled, updateAvailableText, openReleasePageText, laterText, updatesText, upToDateText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
         {
             if (safeThis == nullptr || *handled)
                 return;

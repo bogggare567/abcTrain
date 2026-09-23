@@ -1,4 +1,5 @@
 #include "shared/updates/UpdateChecker.h"
+#include <tuple>
 #include <juce_events/juce_events.h>
 #include <vector>
 
@@ -64,7 +65,42 @@ namespace UpdateChecker
                 return l > c;
         }
 
-        return false; // equal versions - not "newer"
+        // Same numbers. A pre-release (1.8.0-beta.1) comes *before* the
+        // release it leads up to (1.8.0), so a beta tester is offered the
+        // release when it lands - comparing the numbers alone called them
+        // equal and left testers on the beta for ever. A suffix that
+        // starts with a digit is git describe's "commits past the tag"
+        // (1.8.0-3-gabc), which is after the tag, not before.
+        const auto preRank = [] (const juce::String& version)
+        {
+            auto v = version.trim();
+            if (v.startsWithIgnoreCase ("v"))
+                v = v.substring (1);
+
+            const auto dash = v.indexOfChar ('-');
+            if (dash < 0)
+                return std::tuple<int, int, int> { 1, 0, 0 };          // a release
+
+            const auto suffix = v.substring (dash + 1);
+            if (suffix.isEmpty() || juce::CharacterFunctions::isDigit (suffix[0]))
+                return std::tuple<int, int, int> { 2, 0, 0 };          // past the tag
+
+            // alpha < beta < rc, then the number after it (beta.2 > beta.1),
+            // then whether this is a build past that pre-release tag.
+            const auto label = suffix.upToFirstOccurrenceOf ("-", false, false);
+            const auto kind = label.startsWithIgnoreCase ("rc") ? 3
+                            : label.startsWithIgnoreCase ("beta") ? 2 : 1;
+            return std::tuple<int, int, int> { 0, kind * 1000 + label.retainCharacters ("0123456789").getIntValue(),
+                                               suffix.containsChar ('-') ? 1 : 0 };
+        };
+
+        return preRank (latest) > preRank (current);
+    }
+
+    Channel channelFor (const juce::String& currentVersion, bool betaOptIn) noexcept
+    {
+        // Somebody running a beta already chose betas.
+        return betaOptIn || currentVersion.containsIgnoreCase ("-beta") ? Channel::beta : Channel::stable;
     }
 
     juce::String installerSuffixForThisPlatform()

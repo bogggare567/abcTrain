@@ -800,5 +800,8 @@
   "ui.soundsExercise": "Son propre à l'exercice",
   "ui.soundsOnExercise": "Chaque exercice joue son propre son : un accord, une boucle de batterie, un coup isolé - du bruit rose là où c'est la bonne matière",
   "ui.credits": "Crédits des sons",
-  "ui.creditsIntro": "Chaque son que l'entraîneur peut jouer : qui l'a fait, d'où il vient et sous quelle licence."
+  "ui.creditsIntro": "Chaque son que l'entraîneur peut jouer : qui l'a fait, d'où il vient et sous quelle licence.",
+  "ui.feedback": "Signaler ou suggérer…",
+  "ui.betaOn": "Versions bêta : oui",
+  "ui.betaOff": "Versions bêta : non"
 }

@@ -86,6 +86,12 @@ namespace UpdateChecker
                                 std::function<void (float progress)> onProgress,
                                 std::function<void (juce::File)> onFinished);
 
+    // The settings key (in the product-wide "abcTrain" settings file) for
+    // "offer me beta versions", and which channel a build should check:
+    // beta if asked for, or if the running build is itself a beta.
+    inline constexpr const char* betaOptInKey = "updates.beta";
+    Channel channelFor (const juce::String& currentVersion, bool betaOptIn) noexcept;
+
     inline void checkForUpdatesAsync (const juce::String& currentVersion,
                                        std::function<void (bool foundNewer, ReleaseInfo release)> callback)
     {

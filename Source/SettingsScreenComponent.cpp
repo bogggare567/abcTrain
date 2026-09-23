@@ -3,6 +3,7 @@
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/updates/Version.h"
+#include "shared/updates/UpdateChecker.h"
 #include <BrandBinaryData.h>
 
 namespace
@@ -253,6 +254,21 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     };
     addAndMakeVisible (licenceToggle);
 
+    feedbackButton.onClick = []
+    {
+        feedbackUrl (CurrentVersion::string, juce::SystemStats::getOperatingSystemName()).launchInDefaultBrowser();
+    };
+    addAndMakeVisible (feedbackButton);
+
+    betaToggle.onClick = [this]
+    {
+        properties.setValue (UpdateChecker::betaOptInKey,
+                             ! properties.getBoolValue (UpdateChecker::betaOptInKey, false));
+        properties.saveIfNeeded();
+        refreshBetaToggle();
+    };
+    addAndMakeVisible (betaToggle);
+
     // Not shown: this is a page reached from a tab, and the way out is
     // another tab. Kept as a child for the key handler and the tests.
     closeButton.onClick = [this]
@@ -403,6 +419,8 @@ void SettingsScreenComponent::refresh()
 
     chooseBackgroundButton.setButtonText (t ("ui.chooseImage"));
     clearBackgroundButton.setButtonText (t ("ui.clearImage"));
+    feedbackButton.setButtonText (t ("ui.feedback"));
+    refreshBetaToggle();
     closeButton.setButtonText (t ("ui.close"));
 
     // A Slider's text box keeps the colours it was built with; the light
@@ -442,6 +460,23 @@ void SettingsScreenComponent::refreshLicenceView()
     licenceView.applyColourToAllText (licenceView.findColour (juce::TextEditor::textColourId));
     licenceView.moveCaretToTop (false);
     licenceToggle.setButtonText (localisation.getText (licenceExpanded ? "ui.licenceLess" : "ui.licenceMore"));
+}
+
+void SettingsScreenComponent::refreshBetaToggle()
+{
+    betaToggle.setButtonText (localisation.getText (properties.getBoolValue (UpdateChecker::betaOptInKey, false)
+                                                        ? "ui.betaOn" : "ui.betaOff"));
+}
+
+juce::URL SettingsScreenComponent::feedbackUrl (const juce::String& version, const juce::String& system)
+{
+    const auto body = juce::String ("**Version:** ") + version + "\n"
+                    + "**System:** " + system + "\n\n"
+                    + "**What happened, or what would you suggest? / Что случилось или что предложить?**\n\n";
+
+    return juce::URL ("https://github.com/bogggare567/abcTrain/issues/new")
+               .withParameter ("labels", "feedback")
+               .withParameter ("body", body);
 }
 
 juce::String SettingsScreenComponent::licenceText (bool full)
@@ -605,6 +640,8 @@ void SettingsScreenComponent::selectPage (Page page)
     resetButton.setVisible (page == Page::training && settings.getMode() == TrainerSettings::Mode::pro);
     licenceView.setVisible (page == Page::about);
     licenceToggle.setVisible (page == Page::about);
+    feedbackButton.setVisible (page == Page::about);
+    betaToggle.setVisible (page == Page::about);
 
     syncControlsFromSettings();
     visibilityChanged();
@@ -681,7 +718,13 @@ void SettingsScreenComponent::resized()
         auto body = page.removeFromTop (juce::jmin (page.getHeight() - 44, 420))
                         .removeFromLeft (juce::jmin (page.getWidth(), 760));
         licenceView.setBounds (body);
-        licenceToggle.setBounds (body.getX(), body.getBottom() + AbcTrainTheme::Spacing::small, 240, controlHeight);
+        auto row = juce::Rectangle<int> (body.getX(), body.getBottom() + AbcTrainTheme::Spacing::small,
+                                         body.getWidth(), controlHeight);
+        licenceToggle.setBounds (row.removeFromLeft (juce::jmin (240, row.getWidth() / 3)));
+        row.removeFromLeft (AbcTrainTheme::Spacing::small);
+        feedbackButton.setBounds (row.removeFromLeft (juce::jmin (280, row.getWidth() / 2)));
+        row.removeFromLeft (AbcTrainTheme::Spacing::small);
+        betaToggle.setBounds (row.removeFromLeft (juce::jmin (220, row.getWidth())));
     }
 
     closeButton.setBounds (pageBounds().removeFromBottom (32).removeFromRight (100));

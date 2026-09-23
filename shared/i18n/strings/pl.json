@@ -800,5 +800,8 @@
   "ui.soundsExercise": "Własny dźwięk ćwiczenia",
   "ui.soundsOnExercise": "Każde ćwiczenie gra własny materiał: akord, pętlę perkusyjną, pojedyncze uderzenie - szum różowy tam, gdzie to właściwy materiał",
   "ui.credits": "Autorzy dźwięków",
-  "ui.creditsIntro": "Każdy dźwięk, który może zagrać trener: kto go stworzył, skąd pochodzi i na jakiej licencji."
+  "ui.creditsIntro": "Każdy dźwięk, który może zagrać trener: kto go stworzył, skąd pochodzi i na jakiej licencji.",
+  "ui.feedback": "Zgłoś lub zaproponuj…",
+  "ui.betaOn": "Wersje beta: wł.",
+  "ui.betaOff": "Wersje beta: wył."
 }

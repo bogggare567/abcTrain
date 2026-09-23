@@ -800,5 +800,8 @@
   "ui.soundsExercise": "Eigener Klang der Übung",
   "ui.soundsOnExercise": "Jede Übung spielt ihr eigenes Material: einen Akkord, einen Drum-Loop, einen Einzelschlag - rosa Rauschen, wo es das richtige Material ist",
   "ui.credits": "Klangquellen",
-  "ui.creditsIntro": "Jeder Klang, den der Trainer spielen kann: wer ihn gemacht hat, woher er stammt und unter welcher Lizenz."
+  "ui.creditsIntro": "Jeder Klang, den der Trainer spielen kann: wer ihn gemacht hat, woher er stammt und unter welcher Lizenz.",
+  "ui.feedback": "Melden oder vorschlagen…",
+  "ui.betaOn": "Beta-Versionen: an",
+  "ui.betaOff": "Beta-Versionen: aus"
 }

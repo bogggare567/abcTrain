@@ -241,6 +241,7 @@ void LearnerEditorBase::checkForUpdates()
     showGuide (localisation.getText ("ui.checkingForUpdates"));
 
     UpdateChecker::checkForUpdatesAsync (CurrentVersion::string,
+        UpdateChecker::channelFor (CurrentVersion::string, settingsFile.getBoolValue (UpdateChecker::betaOptInKey, false)),
         [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
     {
         if (safeThis == nullptr || *handled)

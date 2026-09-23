@@ -50,7 +50,7 @@ DRY = False
 
 def gh(*args, parse=False):
     cmd = ["gh", *args]
-    mutating = {"create", "edit", "item-add", "item-edit", "field-create", "link"}
+    mutating = {"create", "edit", "item-add", "item-edit", "field-create", "link", "comment"}
     if DRY and len(args) > 1 and args[1] in mutating:
         print("  [dry-run]", " ".join(cmd)[:160])
         return {} if parse else ""
@@ -144,11 +144,39 @@ def ensure_items(number, project_id, field, cards, urls, sync_stages):
         print(f"  → {card['stage']}: {card['title'][:60]}")
 
 
+DONE_MARKER = "<!-- abctrain-done -->"
+
+
+def comment_done(cards, urls, release_tag):
+    """Один комментарий «сделано» на карточку с полем done. Повторный запуск
+    не дублирует: ищет свой маркер в уже оставленных комментариях."""
+    for card in cards:
+        done = card.get("done")
+        if not done:
+            continue
+
+        url = urls[card["title"]]
+        number = url.rstrip("/").split("/")[-1]
+        existing = gh("issue", "view", number, "-R", REPO, "--json", "comments", parse=True) or {}
+        if any(DONE_MARKER in (c.get("body") or "") for c in existing.get("comments", [])):
+            continue
+
+        where = (f"в коммите https://github.com/{REPO}/commit/{done}" if done != "release"
+                 else "в этом выпуске")
+        body = (f"{DONE_MARKER}\n✅ Сделано {where}.\n\n"
+                f"Входит в **{release_tag}**: https://github.com/{REPO}/releases/tag/{release_tag}\n"
+                f"Что проверить: https://github.com/{REPO}/blob/main/BETA_TESTING.md\n\n"
+                "Карточка остаётся открытой в «Проверяют люди», пока тестировщики не подтвердят.")
+        print(f"  ✎ {card['title'][:60]}")
+        gh("issue", "comment", number, "-R", REPO, "--body", body)
+
+
 def main():
     global DRY
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--sync-stages", action="store_true")
+    parser.add_argument("--release", metavar="TAG", help="отметить сделанное комментарием со ссылкой на выпуск")
     args = parser.parse_args()
     DRY = args.dry_run
 
@@ -166,6 +194,9 @@ def main():
         return
     field = ensure_stage_field(number)
     ensure_items(number, project_id, field, cards, urls, args.sync_stages)
+
+    if args.release:
+        comment_done(cards, urls, args.release)
 
     print(f"\nГотово: https://github.com/users/{OWNER}/projects/{number}")
     print(f"Осталось один раз в браузере: вид Board → Group by «{STAGE_FIELD}».")

@@ -800,5 +800,8 @@
   "ui.soundsExercise": "练习自带的声音",
   "ui.soundsOnExercise": "每个练习播放自己的素材：和弦、鼓循环、单次敲击——在合适的地方使用粉红噪声",
   "ui.credits": "声音来源",
-  "ui.creditsIntro": "训练器可以播放的每一个声音：由谁制作、来自哪里、采用何种许可。"
+  "ui.creditsIntro": "训练器可以播放的每一个声音：由谁制作、来自哪里、采用何种许可。",
+  "ui.feedback": "报告问题或提出建议…",
+  "ui.betaOn": "测试版：开",
+  "ui.betaOff": "测试版：关"
 }

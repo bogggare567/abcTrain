@@ -800,5 +800,8 @@
   "ui.soundsExercise": "Suono proprio dell'esercizio",
   "ui.soundsOnExercise": "Ogni esercizio suona il proprio materiale: un accordo, un loop di batteria, un colpo singolo - rumore rosa dove è il materiale giusto",
   "ui.credits": "Crediti dei suoni",
-  "ui.creditsIntro": "Ogni suono che l'allenatore può riprodurre: chi l'ha creato, da dove viene e con quale licenza."
+  "ui.creditsIntro": "Ogni suono che l'allenatore può riprodurre: chi l'ha creato, da dove viene e con quale licenza.",
+  "ui.feedback": "Segnala o suggerisci…",
+  "ui.betaOn": "Versioni beta: sì",
+  "ui.betaOff": "Versioni beta: no"
 }
