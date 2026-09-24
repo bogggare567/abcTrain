@@ -39,9 +39,89 @@
 #include "../Source/PluginEditor.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/i18n/LocalisationManager.h"
+#include "../Source/LiveLink.h"
 
 namespace
 {
+    // A small library for the Sounds shots: the player's own folders sorted
+    // by instrument, and a pack split by instrument - the shape a real
+    // library has after an import and a pack install. Synthesized, made
+    // once per run in the temp folder.
+    juce::File snapshotLibrary()
+    {
+        static const juce::File root = []
+        {
+            const auto base = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("abcTrainSnapshotLibrary");
+            base.deleteRecursively();
+            const auto library = base.getChildFile ("Training Sounds");
+            constexpr double rate = 44100.0;
+
+            const auto write = [] (const juce::File& file, double seconds, double bpm, float pitch, float noise, float wide)
+            {
+                juce::AudioBuffer<float> audio (2, (int) (seconds * rate));
+                juce::Random random (file.getFileName().hashCode());
+                const auto beat = 60.0 / bpm * rate;
+
+                for (int i = 0; i < audio.getNumSamples(); ++i)
+                {
+                    const auto t = std::fmod ((double) i, beat) / rate;
+                    const auto env = (float) std::exp (-t * 9.0);
+                    const auto body = std::sin (juce::MathConstants<double>::twoPi * pitch * (double) i / rate);
+                    const auto phrase = 0.55f + 0.45f * (float) std::sin ((double) i / rate * 0.35);
+                    const auto n = random.nextFloat() * 2.0f - 1.0f;
+                    const auto v = phrase * (env * (0.7f * (float) body + noise * n));
+                    audio.setSample (0, i, v);
+                    audio.setSample (1, i, v * (1.0f - wide) + wide * (random.nextFloat() * 2.0f - 1.0f) * 0.2f);
+                }
+
+                file.getParentDirectory().createDirectory();
+                juce::WavAudioFormat wav;
+                auto stream = file.createOutputStream();
+                std::unique_ptr<juce::AudioFormatWriter> writer (wav.createWriterFor (stream.get(), rate, 2, 16, {}, 0));
+                if (writer != nullptr)
+                {
+                    stream.release();
+                    writer->writeFromAudioSampleBuffer (audio, 0, audio.getNumSamples());
+                }
+            };
+
+            write (library.getChildFile ("Kick/kick in 1.wav"), 8.0, 92.0, 55.0f, 0.05f, 0.0f);
+            write (library.getChildFile ("Kick/kick in 2.wav"), 8.0, 92.0, 60.0f, 0.05f, 0.0f);
+            write (library.getChildFile ("Kick/kick out 1.wav"), 8.0, 92.0, 50.0f, 0.1f, 0.0f);
+            write (library.getChildFile ("Full Mix/80 1.wav"), 9.9, 97.0, 110.0f, 0.4f, 0.4f);
+            write (library.getChildFile ("Other/Audio 3 1.wav"), 8.5, 120.0, 330.0f, 0.1f, 0.1f);
+
+            const auto pack = library.getChildFile ("bogdan-own");
+            juce::StringArray clips;
+            const auto add = [&] (const juce::String& file, double bpm, float pitch, float noise, float wide)
+            {
+                write (pack.getChildFile (file), 4 * 4 * 60.0 / bpm, bpm, pitch, noise, wide);
+                clips.add ("{\"file\":\"" + file + "\",\"source\":{\"author\":\"Bogdan Korablev\",\"license\":\"CC-BY-4.0\"}}");
+            };
+
+            add ("kick/live-01-kick-in.wav", 92.0, 55.0f, 0.05f, 0.0f);
+            add ("kick/live-02-kick-out.wav", 92.0, 52.0f, 0.08f, 0.0f);
+            add ("kick/beat-01-kick-bus.wav", 110.0, 58.0f, 0.1f, 0.0f);
+            add ("snare/live-01-snare-top.wav", 92.0, 200.0f, 0.7f, 0.0f);
+            add ("hihat/live-01-hh.wav", 92.0, 4000.0f, 0.9f, 0.0f);
+            add ("bass/live-01-bass.wav", 92.0, 65.0f, 0.02f, 0.0f);
+            add ("guitar/live-01-guitar.wav", 92.0, 196.0f, 0.1f, 0.0f);
+            add ("mix/2-10-01.wav", 110.0, 110.0f, 0.4f, 0.5f);
+            add ("mix/2-14-01.wav", 140.0, 98.0f, 0.4f, 0.5f);
+            add ("other/1-2-01.wav", 118.0, 440.0f, 0.1f, 0.05f);
+
+            pack.getChildFile ("pack.json").replaceWithText (
+                "{\"abcTrainPack\":1,\"id\":\"bogdan-own\",\"version\":\"1.0.0\","
+                "\"title\":{\"en\":\"Bogdan Korablev's recordings\",\"ru\":\"" + juce::String::fromUTF8 ("Записи Богдана Кораблёва") + "\"},"
+                "\"clips\":[" + clips.joinIntoString (",") + "]}");
+
+            write (base.getChildFile ("Rehearsal take 3.wav"), 75.0, 104.0, 82.0f, 0.3f, 0.3f);
+            return library;
+        }();
+
+        return root;
+    }
+
     // Second CLI argument; "en" when absent. See the language note below.
     juce::String& snapshotLanguage()
     {
@@ -88,7 +168,8 @@ namespace
                        answered, survivalRun, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
                        studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
-                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, eqSlope };
+                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, eqSlope,
+                       liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -175,6 +256,19 @@ namespace
                 if (extra == Extra::liveRoom)    editor.openLiveForSnapshot (3);
                 if (extra == Extra::liveInvites) editor.openLiveForSnapshot (4);
                 if (extra == Extra::liveSignIn)  editor.openLiveForSnapshot (5);
+                if (extra == Extra::liveNoInternet) editor.openLiveForSnapshot (6);
+                if (extra == Extra::liveNoLan)   editor.openLiveForSnapshot (7);
+
+                if (extra == Extra::soundsLibrary || extra == Extra::soundsSelect
+                    || extra == Extra::soundsDelete || extra == Extra::soundsTrack)
+                {
+                    const auto root = snapshotLibrary();
+                    editor.openSoundsLibraryForSnapshot (root, root.getSiblingFile ("Rehearsal take 3.wav"),
+                                                         extra == Extra::soundsDelete ? "Kick" : "bogdan-own/kick",
+                                                         extra == Extra::soundsSelect ? 1
+                                                         : extra == Extra::soundsDelete ? 2
+                                                         : extra == Extra::soundsTrack ? 3 : 0);
+                }
                 if (extra == Extra::settingsLive)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::live, false);
 
@@ -349,6 +443,15 @@ int main (int argc, char* argv[])
 
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
 
+    // A picture must not depend on the network of whatever machine draws it.
+    LiveLink::networkAllowed = false;
+
+    // The Sounds shots point the library at a temporary folder, and that
+    // choice is saved. Keep the player's own settings file to put back.
+    const auto librarySettingsFile = ReferenceAudioLibrary::makeDefaultOptions().getDefaultFile();
+    const auto librarySettingsExisted = librarySettingsFile.existsAsFile();
+    const auto librarySettingsBefore = librarySettingsExisted ? librarySettingsFile.loadFileAsString() : juce::String();
+
     const auto outputDir = argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile (argv[1])
                                     : juce::File::getCurrentWorkingDirectory().getChildFile ("editor-snapshots");
     outputDir.createDirectory();
@@ -467,6 +570,12 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioRevisit", -1, Extra::studioRevisit);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioVerb", -1, Extra::studioVerb);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSeminar", -1, Extra::liveSeminar);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveNoInternet", -1, Extra::liveNoInternet);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveNoLan", -1, Extra::liveNoLan);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundsLibrary", -1, Extra::soundsLibrary);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundsSelect", -1, Extra::soundsSelect);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundsDelete", -1, Extra::soundsDelete);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundsTrack", -1, Extra::soundsTrack);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRoom", -1, Extra::liveRoom);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveInvites", -1, Extra::liveInvites);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveBattle", -1, Extra::liveBattle);
@@ -506,6 +615,19 @@ int main (int argc, char* argv[])
         properties.setValue ("themeMode", originalThemeMode);
         properties.setValue ("language", originalLanguage);
         properties.saveIfNeeded();
+    }
+
+    // The Sounds shots pointed the library at a temporary folder; put the
+    // player's own setting back, as the theme and language are above.
+    {
+        const auto file = ReferenceAudioLibrary::makeDefaultOptions().getDefaultFile();
+
+        if (librarySettingsExisted)
+            file.replaceWithText (librarySettingsBefore);
+        else
+            file.deleteFile();
+
+        snapshotLibrary().getParentDirectory().deleteRecursively();
     }
 
     if (failures > 0)

@@ -22,6 +22,7 @@
 
 #include "../Source/PluginProcessor.h"
 #include "../Source/PluginEditor.h"
+#include "../Source/LiveLink.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/i18n/LocalisationManager.h"
 
@@ -271,6 +272,8 @@ namespace
 
 int main (int argc, char* argv[])
 {
+    LiveLink::networkAllowed = false;   // no network from a test tool
+
     // Always the design size, whatever the virtual display is (shared/ui/WindowFit.h).
    #if JUCE_WINDOWS
     _putenv_s ("ABC_DESIGN_SIZE", "1");   // Windows has no setenv (CI caught it)

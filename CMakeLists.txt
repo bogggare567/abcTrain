@@ -255,6 +255,7 @@ add_library(abc_audio INTERFACE)
 target_sources(abc_audio INTERFACE
     ${abcShared}/audio/ReferenceAudioLibrary.cpp
     ${abcShared}/audio/AudioSliceAnalyzer.cpp
+    ${abcShared}/audio/InstrumentLabel.cpp
     ${abcShared}/audio/LessonAudioBed.cpp
 )
 target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -379,6 +380,7 @@ target_sources(EarTrainer
         Source/AchievementsScreenComponent.cpp
         Source/StudioScreenComponent.cpp
         Source/LiveScreenComponent.cpp
+        Source/LiveLink.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -581,6 +583,9 @@ target_sources(EarTrainerTests
         tests/MicroLessonTest.cpp
         tests/UpdateCheckerTest.cpp
         tests/ReferenceAudioLibraryTest.cpp
+        tests/InstrumentLabelTest.cpp
+        tests/LiveLinkTest.cpp
+        Source/LiveLink.cpp
         tests/TestSignalGeneratorTest.cpp
         tests/SharedEnginesTest.cpp
         tests/HintTest.cpp
@@ -645,6 +650,7 @@ set(abcTrainEditorToolSources
         Source/TrainingSoundsComponent.cpp
         Source/StudioScreenComponent.cpp
         Source/LiveScreenComponent.cpp
+        Source/LiveLink.cpp
 )
 
 juce_add_console_app(EditorSnapshots

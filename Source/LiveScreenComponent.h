@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "shared/ui/SegmentedChoice.h"
+#include "LiveLink.h"
 #include <functional>
 #include <vector>
 
@@ -74,6 +75,24 @@ public:
         juce::String noPasswords { "No passwords in the app: you sign in on the site, the app gets a key you can revoke." };
 
         juce::String notYet { "Not connected yet: this is the layout, the Live server comes next." };
+
+        // Connection (LiveLink). Titles are short; hints are one per line.
+        juce::String linkChecking { "Checking the connection..." };
+        juce::String linkOnline { "soundkorb.ru is reachable" };
+        juce::String linkNoNetwork { "No network connection" };
+        juce::String linkNoInternet { "Network, but no internet" };
+        juce::String linkServerDown { "The server is not answering" };
+        juce::String linkServerError { "The server answered with an error ({{code}})" };
+        juce::String linkAppTooOld { "This version of abcTrain is too old for Live" };
+        juce::String checkAgain { "Check again" };
+        juce::String hintNoNetwork { "Turn on Wi-Fi or plug in a cable.\nA local seminar needs no internet - only a Wi-Fi shared with the phones." };
+        juce::String hintNoInternet { "Open any website: if it does not load, the problem is the network, not abcTrain.\nPublic Wi-Fi (cafe, university) may want a sign-in page first.\nA VPN or proxy can block it - try without.\nTo run a seminar right now, choose Local." };
+        juce::String hintServerDown { "The internet works but soundkorb.ru does not answer - probably maintenance; try again in a few minutes.\nIf soundkorb.ru does not open in a browser either, the fault is on our side.\nA work or school network may block it - try another network or mobile data.\nTo run a seminar right now, choose Local." };
+        juce::String hintAppTooOld { "Update abcTrain: Settings - About - Check for updates.\nTraining and local seminars keep working in this version." };
+        juce::String lanNone { "This computer is not on a local network" };
+        juce::String lanNoneHint { "Connect to the venue's Wi-Fi.\nNo Wi-Fi? Share a hotspot from this laptop (macOS: Settings - General - Sharing - Internet Sharing; Windows: Settings - Mobile hotspot) and connect the phones to it." };
+        juce::String lanLinkLocal { "The address starts with 169.254: the network has no router, phones will probably not reach it. Use a router or a hotspot." };
+        juce::String lanTrouble { "Phones cannot open the address? Guest Wi-Fi often keeps devices apart - use a normal network or a hotspot. Allow abcTrain incoming connections in the firewall. Turn off mobile data on the phone." };
     };
 
     LiveScreenComponent();
@@ -93,6 +112,15 @@ public:
 
     void paint (juce::Graphics&) override;
     void resized() override;
+    void visibilityChanged() override;
+
+    // Checks the way to the server now (a worker thread). Called when the
+    // page is shown - at most once a minute - and by "Check again".
+    void checkConnection (bool evenIfRecent = false);
+
+    // For tools/EditorSnapshots: a fixed connection state instead of
+    // whatever the rendering machine's network happens to be.
+    void setLinkForSnapshot (LiveLink::State state, bool lanPresent);
 
 private:
     void timerCallback() override;
@@ -159,7 +187,25 @@ private:
     std::vector<Invitee> invitees;
 
     juce::String note;
-    juce::Rectangle<int> cardA, cardB, overlayBox, tableArea;
+    juce::Rectangle<int> cardA, cardB, overlayBox, tableArea, bannerBox;
+
+    // ---- the connection ----
+    LiveLink::State link = LiveLink::State::unknown;
+    int linkHttpStatus = 0;
+    LiveLink::LanInfo lan;
+    double lastCheckMs = -1.0e9;
+    juce::TextButton checkAgainButton;
+    class Checker;
+    std::unique_ptr<Checker> checker;
+
+    // What stands in the way of what this page is showing, if anything:
+    // no server for an online view, no local network for a local room.
+    struct Problem { juce::String title, hints; };
+    Problem currentProblem() const;
+    bool needsServer() const;
+    bool requireServer();    // false, with the reason in the note line, when it is not there
+    void paintLinkStatus (juce::Graphics&, juce::Rectangle<int>);
+    void paintBanner (juce::Graphics&);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LiveScreenComponent)
 };

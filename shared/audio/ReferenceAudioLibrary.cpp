@@ -1,7 +1,9 @@
 #include "shared/audio/ReferenceAudioLibrary.h"
 #include "shared/audio/AudioSliceAnalyzer.h"
+#include "shared/audio/InstrumentLabel.h"
 #include "SampleBinaryData.h"
 #include <array>
+#include <map>
 
 namespace
 {
@@ -46,18 +48,118 @@ namespace
         return true;
     }
 
-    // Writes each slice of `audio` as a faded WAV clip in the folder
-    // `folderFor` picks for it, named after the source. Returns how many
-    // were written. Shared by the plain slice import and the stem import,
-    // so both get the same fades, bit depth and naming.
+    // Crossfade at the seam. On the bar grid the loop's end and start are
+    // the same point of the music, so a few milliseconds hides the join;
+    // off the grid they are two different moments, and it takes a longer
+    // blend to stop the jump from being heard as one.
+    constexpr double gridCrossfadeSeconds = 0.015;
+    constexpr double freeCrossfadeSeconds = 0.12;
+
+    // Writes audio[start, start + length) as a 16-bit WAV that loops on
+    // its own.
+    //
+    // The seam is closed by folding what came *after* the cut into its
+    // first moments (equal-power): when a player wraps from the last
+    // sample back to the first, the first is now what followed the last in
+    // the source, so there is no jump to click on. The earlier version
+    // faded both ends to silence, which removes the click and puts a hole
+    // in the groove on every repeat instead - a dip the ear locks onto as
+    // surely as a click. Where the source ends right at the cut, there is
+    // nothing to fold in and short fades remain the fallback.
+    bool writeLoopFile (const juce::AudioBuffer<float>& audio, int start, int length, int crossfade,
+                        double sampleRate, const juce::File& destination)
+    {
+        if (length <= 0 || start < 0 || start + length > audio.getNumSamples())
+            return false;
+
+        std::unique_ptr<juce::FileOutputStream> stream (destination.createOutputStream());
+
+        if (stream == nullptr)
+            return false;
+
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> writer (
+            // 16-bit, not 24: these are training loops, not masters.
+            // The exercises hide changes of a decibel or more in them,
+            // and 24-bit buys nothing against that while costing half
+            // as much disk again.
+            wav.createWriterFor (stream.get(), sampleRate,
+                                  (unsigned int) audio.getNumChannels(), 16, {}, 0));
+
+        if (writer == nullptr)
+            return false;
+
+        stream.release();   // the writer owns it now
+
+        juce::AudioBuffer<float> clip (audio.getNumChannels(), length);
+
+        for (int channel = 0; channel < audio.getNumChannels(); ++channel)
+            clip.copyFrom (channel, 0, audio, channel, start, length);
+
+        const auto fold = juce::jmin (crossfade, length / 4, audio.getNumSamples() - (start + length));
+
+        if (fold > 8)
+        {
+            for (int channel = 0; channel < audio.getNumChannels(); ++channel)
+            {
+                auto* head = clip.getWritePointer (channel);
+                const auto* tail = audio.getReadPointer (channel, start + length);
+
+                for (int i = 0; i < fold; ++i)
+                {
+                    const auto phase = ((float) i + 0.5f) / (float) fold * juce::MathConstants<float>::halfPi;
+                    head[i] = head[i] * std::sin (phase) + tail[i] * std::cos (phase);
+                }
+            }
+        }
+        else
+        {
+            const auto fadeSamples = juce::jmin (length / 8, (int) (sampleRate * 0.01));
+            clip.applyGainRamp (0, fadeSamples, 0.0f, 1.0f);
+            clip.applyGainRamp (length - fadeSamples, fadeSamples, 1.0f, 0.0f);
+        }
+
+        return writer->writeFromAudioSampleBuffer (clip, 0, clip.getNumSamples());
+    }
+
+    int crossfadeFor (bool onBeatGrid, double sampleRate)
+    {
+        return (int) ((onBeatGrid ? gridCrossfadeSeconds : freeCrossfadeSeconds) * sampleRate);
+    }
+
+    // What instrument a whole source file is: its name (or its folder's),
+    // checked against the median of how its slices sound.
+    InstrumentLabel::Verdict labelFor (const juce::File& file, const juce::AudioBuffer<float>& audio,
+                                       double sampleRate, const std::vector<std::pair<int, int>>& ranges,
+                                       double sourceSeconds)
+    {
+        std::vector<InstrumentLabel::Features> measured;
+
+        for (const auto& [start, length] : ranges)
+            measured.push_back (InstrumentLabel::measure (audio, start, length, sampleRate));
+
+        auto name = InstrumentLabel::fromName (file.getFileNameWithoutExtension());
+
+        if (! name.has_value())
+            name = InstrumentLabel::fromName (file.getParentDirectory().getFileName());
+
+        const auto songShaped = sourceSeconds >= 60.0 && sourceSeconds <= 1200.0;
+        return InstrumentLabel::decide (name, InstrumentLabel::median (measured), songShaped);
+    }
+
+    // Writes each slice of `audio` as a loop in `folder`, named after the
+    // source. Returns how many were written.
     int writeClips (const juce::AudioBuffer<float>& audio,
                     double sampleRate,
                     const std::vector<AudioSliceAnalyzer::Slice>& slices,
                     const juce::String& baseName,
-                    const std::function<juce::File (const AudioSliceAnalyzer::Slice&)>& folderFor,
+                    const juce::File& folder,
                     const std::function<bool()>& shouldStop)
     {
         auto written = 0;
+
+        if (! folder.createDirectory())
+            return 0;
 
         for (size_t i = 0; i < slices.size(); ++i)
         {
@@ -66,53 +168,21 @@ namespace
 
             const auto& slice = slices[i];
 
-            const auto folder = folderFor (slice);
-
-            if (! folder.createDirectory())
-                continue;
-
             const auto destination = folder.getChildFile (
                 baseName + " " + juce::String ((int) i + 1) + ".wav")
                     .getNonexistentSibling();
 
-            std::unique_ptr<juce::FileOutputStream> stream (destination.createOutputStream());
-
-            if (stream == nullptr)
-                continue;
-
-            juce::WavAudioFormat wav;
-            std::unique_ptr<juce::AudioFormatWriter> writer (
-                // 16-bit, not 24: these are training loops, not masters.
-                // The exercises hide changes of a decibel or more in them,
-                // and 24-bit buys nothing against that while costing half
-                // as much disk again.
-                wav.createWriterFor (stream.get(), sampleRate,
-                                      (unsigned int) audio.getNumChannels(), 16, {}, 0));
-
-            if (writer == nullptr)
-                continue;
-
-            stream.release();   // the writer owns it now
-
-            juce::AudioBuffer<float> clip (audio.getNumChannels(), slice.numSamples);
-
-            for (int channel = 0; channel < audio.getNumChannels(); ++channel)
-                clip.copyFrom (channel, 0, audio, channel, slice.startSample, slice.numSamples);
-
-            // A short fade at each end. Every clip here is going to be
-            // looped, and a loop that starts or ends mid-waveform clicks on
-            // every repeat - which the ear locks onto instead of the thing
-            // being trained.
-            const auto fadeSamples = juce::jmin (slice.numSamples / 8,
-                                                  (int) (sampleRate * 0.01));
-            clip.applyGainRamp (0, fadeSamples, 0.0f, 1.0f);
-            clip.applyGainRamp (slice.numSamples - fadeSamples, fadeSamples, 1.0f, 0.0f);
-
-            if (writer->writeFromAudioSampleBuffer (clip, 0, clip.getNumSamples()))
+            if (writeLoopFile (audio, slice.startSample, slice.numSamples,
+                               crossfadeFor (slice.onBeatGrid, sampleRate), sampleRate, destination))
                 ++written;
         }
 
         return written;
+    }
+
+    bool holdsAudio (const juce::File& folder)
+    {
+        return ! folder.findChildFiles (juce::File::findFiles, true, "*.wav;*.aif;*.aiff;*.flac;*.mp3;*.ogg").isEmpty();
     }
 }
 
@@ -253,6 +323,10 @@ void ReferenceAudioLibrary::rescan()
 
     for (const auto& subDir : rootFolder.findChildFiles (juce::File::findDirectories, false))
     {
+        if (subDir.getFileName().startsWithChar ('.'))
+            continue;   // an install in progress, or the OS's own
+
+
         // A folder with a pack.json is a pack: its clips, tags and authors
         // come from the manifest. Anything else is a folder somebody made,
         // and every playable file in it is a clip with nothing known about
@@ -263,8 +337,52 @@ void ReferenceAudioLibrary::rescan()
         {
             auto pack = readPack (subDir, manifest);
 
-            if (! pack.files.isEmpty())
-                categories.add (std::move (pack));
+            if (pack.files.isEmpty())
+                continue;
+
+            // A pack sorted into subfolders (prepare_audio.py writes one per
+            // instrument) is shown as one category per subfolder: two
+            // hundred clips in one list is not a library, it is a pile.
+            // Clips at the pack's top level stay together under its name.
+            std::map<juce::String, Category> parts;
+            juce::StringArray order;
+
+            for (int i = 0; i < pack.files.size(); ++i)
+            {
+                const auto relative = pack.files[i].getRelativePathFrom (subDir).replaceCharacter ('\\', '/');
+                const auto sub = relative.containsChar ('/') ? relative.upToFirstOccurrenceOf ("/", false, false)
+                                                             : juce::String();
+                auto [it, fresh] = parts.try_emplace (sub);
+                auto& part = it->second;
+
+                if (fresh)
+                {
+                    part = pack;
+                    part.files.clear();
+                    part.clips.clear();
+                    part.name = sub.isEmpty() ? pack.name : pack.name + "/" + sub;
+                    part.packPart = sub;
+                    order.add (sub);
+                }
+
+                part.files.add (pack.files[i]);
+                part.clips.add (pack.clips[i]);
+            }
+
+            // Instruments in their usual order (kick first, other last),
+            // anything else after them alphabetically.
+            std::sort (order.begin(), order.end(), [] (const juce::String& a, const juce::String& b)
+            {
+                const auto rank = [] (const juce::String& id)
+                {
+                    const auto i = InstrumentLabel::fromId (id);
+                    return i.has_value() ? (int) *i : InstrumentLabel::numInstruments;
+                };
+                return rank (a) != rank (b) ? rank (a) < rank (b) : a < b;
+            });
+
+            for (const auto& sub : order)
+                categories.add (std::move (parts[sub]));
 
             continue;
         }
@@ -546,11 +664,21 @@ int ReferenceAudioLibrary::importAndSlice (const juce::File& source)
 
         const auto slices = AudioSliceAnalyzer::analyse (audio, sampleRate);
 
+        if (slices.empty())
+            continue;
+
+        // One folder per source file: its instrument, decided once from the
+        // name and all of its slices together. Sorting slice by slice put
+        // the verse of a song in one folder and its chorus in another.
+        std::vector<std::pair<int, int>> ranges;
+        for (const auto& slice : slices)
+            ranges.emplace_back (slice.startSample, slice.numSamples);
+
+        const auto verdict = labelFor (file, audio, sampleRate, ranges,
+                                       (double) audio.getNumSamples() / sampleRate);
+
         written += writeClips (audio, sampleRate, slices, file.getFileNameWithoutExtension(),
-                               [this] (const AudioSliceAnalyzer::Slice& slice)
-                               {
-                                   return rootFolder.getChildFile (AudioSliceAnalyzer::folderNameFor (slice.character));
-                               },
+                               rootFolder.getChildFile (InstrumentLabel::folderNameFor (verdict.instrument)),
                                nullptr);
     }
 
@@ -578,6 +706,16 @@ int ReferenceAudioLibrary::importAndSliceMany (const juce::Array<juce::File>& so
         if (onProgress != nullptr)
             onProgress ((float) i / (float) juce::jmax (1, sources.size()),
                          sources[i].getFileName());
+
+        // A pack is installed, not sliced: its clips are already cut,
+        // tagged and credited.
+        if (looksLikePack (sources[i]))
+        {
+            if (installPack (sources[i]).isEmpty())
+                written += lastInstalledPack.findChildFiles (juce::File::findFiles, true,
+                                                             "*.flac;*.wav;*.aif;*.aiff;*.ogg;*.mp3").size();
+            continue;
+        }
 
         written += importAndSlice (sources[i]);
     }
@@ -655,4 +793,277 @@ void ReferenceAudioLibrary::advanceToRandomClip (double sampleRate)
 
         return;
     }
+}
+
+// ---- packs, fragments, deleting ---------------------------------------------
+
+bool ReferenceAudioLibrary::looksLikePack (const juce::File& file)
+{
+    if (file.isDirectory())
+        return file.getChildFile ("pack.json").existsAsFile();
+
+    if (! file.hasFileExtension ("zip"))
+        return false;
+
+    juce::ZipFile zip (file);
+
+    for (int i = 0; i < zip.getNumEntries(); ++i)
+        if (const auto* entry = zip.getEntry (i); entry != nullptr
+                && (entry->filename == "pack.json" || entry->filename.endsWith ("/pack.json")))
+            return true;
+
+    return false;
+}
+
+juce::String ReferenceAudioLibrary::installPack (const juce::File& source)
+{
+    lastInstalledPack = juce::File();
+
+    if (! rootFolder.createDirectory())
+        return "cannot create the library folder";
+
+    juce::File packFolder;
+
+    // Unpacked beside the library, then copied in, then removed - whatever
+    // happens in between. A dot folder: rescan() skips those.
+    struct Scratch
+    {
+        juce::File dir;
+        ~Scratch() { if (dir != juce::File()) dir.deleteRecursively(); }
+    } unpacked;
+
+    if (source.isDirectory())
+    {
+        packFolder = source;
+    }
+    else
+    {
+        juce::ZipFile zip (source);
+        unpacked.dir = rootFolder.getChildFile (".installing").getNonexistentSibling();
+        const auto target = unpacked.dir;
+        target.createDirectory();
+
+        if (zip.uncompressTo (target, true).failed())
+            return "the zip could not be unpacked";
+
+        // pack.json at the top of the zip, or one folder down - both are
+        // how people zip a folder.
+        if (target.getChildFile ("pack.json").existsAsFile())
+            packFolder = target;
+        else
+            for (const auto& sub : target.findChildFiles (juce::File::findDirectories, false))
+                if (sub.getChildFile ("pack.json").existsAsFile())
+                    packFolder = sub;
+    }
+
+    if (! packFolder.isDirectory() || ! packFolder.getChildFile ("pack.json").existsAsFile())
+        return "no pack.json inside";
+
+    const auto json = juce::JSON::parse (packFolder.getChildFile ("pack.json"));
+
+    if (! json.isObject() || (int) json.getProperty ("abcTrainPack", 0) != 1)
+        return "pack.json is not an abcTrain pack";
+
+    // The folder name: the pack's id, so a newer version lands on top of
+    // the older one instead of beside it.
+    auto name = juce::File::createLegalFileName (json.getProperty ("id", "").toString());
+    if (name.isEmpty())
+        name = source.getFileNameWithoutExtension();
+
+    const auto destination = rootFolder.getChildFile (name);
+
+    if (destination == packFolder)
+    {
+        lastInstalledPack = destination;
+        return {};
+    }
+
+    if (destination.exists())
+        destination.deleteRecursively();
+
+    if (! packFolder.copyDirectoryTo (destination))
+        return "copying the pack failed";
+
+    lastInstalledPack = destination;
+    return {};
+}
+
+bool ReferenceAudioLibrary::canDelete (const juce::File& file) const
+{
+    return file.existsAsFile() && rootFolder.isDirectory() && file.isAChildOf (rootFolder);
+}
+
+bool ReferenceAudioLibrary::deleteClip (const juce::File& file)
+{
+    if (! canDelete (file))
+        return false;
+
+    if (file == selectedFile)
+    {
+        unpinFile();
+        clearSelection();
+    }
+
+    // The trash, so a wrong click can be undone in Finder. Where there is
+    // no trash (some Linux desktops) the file is deleted outright - the
+    // screen asked first.
+    if (! file.moveToTrash() && ! file.deleteFile())
+        return false;
+
+    // A folder the import made, now empty, would stay in the list as a
+    // category of nothing. A pack folder keeps its pack.json until its last
+    // clip is gone, then goes the same way.
+    for (auto folder = file.getParentDirectory(); folder.isAChildOf (rootFolder); folder = folder.getParentDirectory())
+    {
+        if (holdsAudio (folder))
+            break;
+
+        folder.deleteRecursively();
+    }
+
+    return true;
+}
+
+ReferenceAudioLibrary::Fragment ReferenceAudioLibrary::saveFragment (const juce::File& source,
+                                                                     double startSeconds, double endSeconds)
+{
+    Fragment result;
+
+    juce::AudioFormatManager formats;
+    formats.registerBasicFormats();
+    std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (source));
+
+    if (reader == nullptr || reader->sampleRate <= 0.0 || reader->lengthInSamples <= 0)
+        return result;
+
+    const auto rate = reader->sampleRate;
+    const auto total = reader->lengthInSamples;
+
+    if (endSeconds < startSeconds)
+        std::swap (startSeconds, endSeconds);
+
+    auto selStart = (juce::int64) (juce::jmax (0.0, startSeconds) * rate);
+    auto selEnd = juce::jmin (total, (juce::int64) (endSeconds * rate));
+
+    if (selEnd - selStart < (juce::int64) (0.2 * rate))
+        return result;   // a click, not a selection
+
+    // Read the selection with room around it: context for the tempo, slack
+    // to move the ends, and what follows the end to fold into the seam.
+    const auto context = (juce::int64) (8.0 * rate);
+    const auto readStart = juce::jmax ((juce::int64) 0, selStart - context);
+    const auto readEnd = juce::jmin (total, selEnd + context);
+    const auto readLength = (int) juce::jmin ((juce::int64) (rate * 20.0 * 60.0), readEnd - readStart);
+
+    juce::AudioBuffer<float> audio ((int) juce::jmax (1u, reader->numChannels), readLength);
+    reader->read (&audio, 0, readLength, readStart, true, true);
+
+    auto start = (int) (selStart - readStart);
+    auto length = (int) (selEnd - selStart);
+
+    AudioSliceAnalyzer::Options options;
+    const auto tempo = AudioSliceAnalyzer::detectTempo (audio, rate, options);
+
+    if (tempo.detected)
+    {
+        // Onto the grid: start on the nearest beat, length in whole bars
+        // (whole beats below one bar - a single hit is a fair thing to want).
+        const auto beat = 60.0 / tempo.bpm * rate;
+        const auto bar = beat * options.beatsPerBar;
+        const auto offset = std::round (((double) start - tempo.firstBeatSample) / beat);
+        start = juce::jmax (0, (int) std::lround (tempo.firstBeatSample + offset * beat));
+
+        const auto wantedBars = (double) length / bar;
+
+        if (wantedBars >= 0.75)
+        {
+            result.bars = juce::jmax (1, (int) std::lround (wantedBars));
+            length = (int) std::lround (result.bars * bar);
+        }
+        else
+        {
+            result.beats = juce::jmax (1, (int) std::lround ((double) length / beat));
+            length = (int) std::lround (result.beats * beat);
+        }
+
+        // A grid that runs off the end of what was read shortens by a bar
+        // rather than failing.
+        while (start + length > audio.getNumSamples() && result.bars > 1)
+        {
+            --result.bars;
+            length = (int) std::lround (result.bars * bar);
+        }
+
+        result.onBeatGrid = start + length <= audio.getNumSamples();
+        result.bpm = tempo.bpm;
+    }
+
+    if (! result.onBeatGrid)
+    {
+        result.bars = result.beats = 0;
+        length = (int) (selEnd - selStart);
+        start = (int) (selStart - readStart);
+
+        // Off the grid: each end to the quietest point within 100 ms.
+        const auto quietest = [&] (int around)
+        {
+            const auto radius = (int) (0.1 * rate);
+            const auto probe = juce::jmax (32, (int) (rate / 1000.0));
+            auto best = around;
+            auto bestEnergy = std::numeric_limits<float>::max();
+
+            for (int p = juce::jmax (0, around - radius); p <= juce::jmin (audio.getNumSamples() - probe, around + radius); p += probe)
+            {
+                auto energy = 0.0f;
+                for (int ch = 0; ch < audio.getNumChannels(); ++ch)
+                    energy += audio.getRMSLevel (ch, p, probe);
+
+                if (energy < bestEnergy)
+                {
+                    bestEnergy = energy;
+                    best = p;
+                }
+            }
+
+            return best;
+        };
+
+        const auto end = quietest (start + length);
+        start = quietest (start);
+        length = end - start;
+    }
+
+    if (length <= (int) (0.1 * rate) || start + length > audio.getNumSamples())
+        return result;
+
+    // Where it goes: beside its source if that is already in the library,
+    // else in the folder of the instrument it is.
+    juce::File folder;
+
+    if (source.isAChildOf (rootFolder))
+    {
+        folder = source.getParentDirectory();
+    }
+    else
+    {
+        const auto verdict = labelFor (source, audio, rate, { { start, length } }, (double) total / rate);
+        folder = rootFolder.getChildFile (InstrumentLabel::folderNameFor (verdict.instrument));
+    }
+
+    if (! folder.createDirectory())
+        return result;
+
+    const auto destination = folder.getChildFile (source.getFileNameWithoutExtension() + " fragment.wav")
+                                 .getNonexistentSibling();
+
+    if (! writeLoopFile (audio, start, length, crossfadeFor (result.onBeatGrid, rate), rate, destination))
+    {
+        destination.deleteFile();
+        return result;
+    }
+
+    result.file = destination;
+    result.seconds = (double) length / rate;
+    result.folderName = folder.getFileName();
+    return result;
 }

@@ -1,6 +1,7 @@
 #include "PluginEditor.h"
 #include "Games/ReverbGame.h"
 #include "shared/ui/WindowFit.h"
+#include "shared/audio/InstrumentLabel.h"
 #include <algorithm>
 #include "shared/updates/UpdatePrompt.h"
 #include "Achievements.h"
@@ -3144,6 +3145,26 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.clipsCaption       = localisation.getText ("ui.sounds.clipsCaption");
         sounds.allClips           = localisation.getText ("ui.sounds.allClips");
         sounds.thisClip           = localisation.getText ("ui.sounds.thisClip");
+
+        for (int i = 0; i < InstrumentLabel::numInstruments; ++i)
+            sounds.instrumentNames.add (localisation.getText (InstrumentLabel::nameKeyFor ((InstrumentLabel::Instrument) i)));
+
+        sounds.mySounds           = localisation.getText ("ui.sounds.mySounds");
+        sounds.fragmentFromTrack  = localisation.getText ("ui.sounds.fragmentFromTrack");
+        sounds.selectHint         = localisation.getText ("ui.sounds.selectHint");
+        sounds.trackHint          = localisation.getText ("ui.sounds.trackHint");
+        sounds.saveFragment       = localisation.getText ("ui.sounds.saveFragment");
+        sounds.cancelSelection    = localisation.getText ("ui.sounds.cancelSelection");
+        sounds.fragmentOnGrid     = localisation.getText ("ui.sounds.fragmentOnGrid");
+        sounds.fragmentOnBeats    = localisation.getText ("ui.sounds.fragmentOnBeats");
+        sounds.fragmentFree       = localisation.getText ("ui.sounds.fragmentFree");
+        sounds.fragmentSaved      = localisation.getText ("ui.sounds.fragmentSaved");
+        sounds.fragmentTooShort   = localisation.getText ("ui.sounds.fragmentTooShort");
+        sounds.deleteClip         = localisation.getText ("ui.sounds.deleteClip");
+        sounds.deleteConfirm      = localisation.getText ("ui.sounds.deleteConfirm");
+        sounds.deleteYes          = localisation.getText ("ui.sounds.deleteYes");
+        sounds.deleteNo           = localisation.getText ("ui.sounds.deleteNo");
+        sounds.deleted            = localisation.getText ("ui.sounds.deleted");
         sounds.languageCode       = localisation.getCurrentLanguage();
 
         trainingSounds.setStrings (std::move (sounds));
@@ -3763,6 +3784,22 @@ void EarTrainerEditor::refreshLiveStrings()
     s.cancel = g ("live.cancel", s.cancel);
     s.noPasswords = g ("live.noPasswords", s.noPasswords);
     s.notYet = g ("live.notYet", s.notYet);
+    s.linkChecking = g ("live.linkChecking", s.linkChecking);
+    s.linkOnline = g ("live.linkOnline", s.linkOnline);
+    s.linkNoNetwork = g ("live.linkNoNetwork", s.linkNoNetwork);
+    s.linkNoInternet = g ("live.linkNoInternet", s.linkNoInternet);
+    s.linkServerDown = g ("live.linkServerDown", s.linkServerDown);
+    s.linkServerError = g ("live.linkServerError", s.linkServerError);
+    s.linkAppTooOld = g ("live.linkAppTooOld", s.linkAppTooOld);
+    s.checkAgain = g ("live.checkAgain", s.checkAgain);
+    s.hintNoNetwork = g ("live.hintNoNetwork", s.hintNoNetwork);
+    s.hintNoInternet = g ("live.hintNoInternet", s.hintNoInternet);
+    s.hintServerDown = g ("live.hintServerDown", s.hintServerDown);
+    s.hintAppTooOld = g ("live.hintAppTooOld", s.hintAppTooOld);
+    s.lanNone = g ("live.lanNone", s.lanNone);
+    s.lanNoneHint = g ("live.lanNoneHint", s.lanNoneHint);
+    s.lanLinkLocal = g ("live.lanLinkLocal", s.lanLinkLocal);
+    s.lanTrouble = g ("live.lanTrouble", s.lanTrouble);
 
     liveScreen.setStrings (std::move (s));
 }

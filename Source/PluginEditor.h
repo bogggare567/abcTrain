@@ -170,8 +170,14 @@ public:
         if (topNav.onItemChosen != nullptr)
             topNav.onItemChosen (TopNavComponent::Item::live);
 
+        // A fixed connection, not the rendering machine's: online with a
+        // Wi-Fi address, except for the two views that show a problem.
+        liveScreen.setLinkForSnapshot (view == 6 ? LiveLink::State::noInternet : LiveLink::State::online, view != 7);
+
         switch (view)
         {
+            case 6: liveScreen.showTab (LiveScreenComponent::Tab::battle); return;   // no internet
+            case 7: liveScreen.showTab (LiveScreenComponent::Tab::seminar); return;  // local room, no network
             case 1: liveScreen.showTab (LiveScreenComponent::Tab::battle); break;
             case 2: liveScreen.showTab (LiveScreenComponent::Tab::rating); break;
             case 3: liveScreen.openRoomForSnapshot (true); break;
@@ -251,6 +257,27 @@ public:
         trainingSounds.toFront (false);
         hideContentUnderNavPage();
         refreshRailStatus();
+    }
+
+    // Sounds with a library that has something in it: the player's own
+    // instrument folders and a pack split by instrument. view 0 browse,
+    // 1 a selection on the waveform, 2 "delete?", 3 a whole track to cut from.
+    void openSoundsLibraryForSnapshot (const juce::File& root, const juce::File& track,
+                                       const juce::String& category, int view)
+    {
+        processor.getGameManager().getReferenceAudioLibrary().setRootFolder (root);
+        openSoundsForSnapshot();
+
+        if (view == 3)
+        {
+            trainingSounds.openTrackForSnapshot (track);
+            return;
+        }
+
+        trainingSounds.browseForSnapshot (category, 0);
+
+        if (view == 1) trainingSounds.selectForSnapshot (0.22f, 0.61f);
+        if (view == 2) trainingSounds.askDeleteForSnapshot (1);
     }
 
     void openSoundClipsForSnapshot()

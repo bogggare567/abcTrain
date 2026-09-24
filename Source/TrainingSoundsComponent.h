@@ -71,6 +71,20 @@ public:
         juce::String exerciseSound, trainingOnExerciseSound, credits;
         juce::String clipsCaption, allClips, thisClip;   // "{{n}} clips · click to hear..."
 
+        // 2026-09-24: instruments, fragments, deleting.
+        juce::StringArray instrumentNames;     // InstrumentLabel order
+        juce::String mySounds;                 // rail heading over the player's own folders
+        juce::String fragmentFromTrack;        // rail button
+        juce::String selectHint;               // under the big waveform
+        juce::String trackHint;                // caption in track mode
+        juce::String saveFragment, cancelSelection;
+        juce::String fragmentOnGrid;           // "{{bars}} bars at {{bpm}} BPM"
+        juce::String fragmentOnBeats;          // "{{beats}} beats at {{bpm}} BPM"
+        juce::String fragmentFree;             // "{{seconds}} s, no steady tempo"
+        juce::String fragmentSaved;            // "Saved: {{what}} -> {{folder}}"
+        juce::String fragmentTooShort;
+        juce::String deleteClip, deleteConfirm, deleteYes, deleteNo, deleted;
+
         juce::String languageCode;   // picks a pack's title: "ru" or anything else
     };
 
@@ -78,6 +92,12 @@ public:
 
     // For tools/EditorSnapshots: show a category's clips with one focused,
     // without changing what the library trains on (that is persisted).
+    // For tools/EditorSnapshots: a selection on the big waveform, and a
+    // row asking whether to delete.
+    void selectForSnapshot (float from, float to) { selectionStart = from; selectionEnd = to; updateModeButtons(); resized(); repaint(); }
+    void askDeleteForSnapshot (int row) { pendingDelete = row; repaint(); }
+    void openTrackForSnapshot (const juce::File& file) { openTrack (file); }
+
     void browseForSnapshot (const juce::String& categoryName, int fileToFocus)
     {
         const auto& categories = processor.getGameManager().getReferenceAudioLibrary().getCategories();
@@ -110,6 +130,40 @@ private:
 
     void importAndSort();
     juce::TextButton importButton;
+
+    // ---- your own fragment (2026-09-24) ----
+    // Drag across the big waveform to select; Save cuts it into a loop
+    // (ReferenceAudioLibrary::saveFragment). In "track" mode the big
+    // waveform is a whole file picked from disk rather than a library clip.
+    juce::TextButton fragmentButton, saveSelectionButton, cancelSelectionButton;
+    juce::File sourceTrack;
+    juce::Array<juce::File> trackFiles;     // { sourceTrack } - what filesForSelection returns then
+    float selectionStart = -1.0f, selectionEnd = -1.0f;   // fractions of the focused file
+    bool selecting = false;
+    int dragStartX = 0;
+    void chooseTrackForFragment();
+    void openTrack (const juce::File&);
+    void clearSelection();
+    bool hasSelection() const noexcept { return selectionStart >= 0.0f && selectionEnd > selectionStart; }
+    void saveSelection();
+
+    // Playing a stretch of a long file: the buffer covers [offset, offset
+    // + span) of it, as fractions, so the playhead lands in the right place.
+    float playOffset = 0.0f, playSpan = 1.0f;
+
+    // ---- deleting ----
+    int pendingDelete = -1;                 // row asking "delete?"
+    juce::Rectangle<int> rowDeleteBounds (int index) const;
+    juce::Rectangle<int> confirmYesBounds (int index) const;
+    juce::Rectangle<int> confirmNoBounds (int index) const;
+    void deleteFile (int index);
+
+    // ---- the rail as a list with headings, scrolled when it is long ----
+    struct RailEntry { int category; juce::String heading; };   // category == noRow for a heading
+    std::vector<RailEntry> railEntries;
+    void rebuildRail();
+    juce::Rectangle<int> railListBounds() const;
+    float railScroll = 0.0f;
 
     void chooseFilesToImport();
 
@@ -182,6 +236,7 @@ private:
 
     // Peaks and length per file, read once and kept for the page's life.
     const ClipPreview::Overview& overviewFor (const juce::File&);
+    const ClipPreview::Overview& longOverviewFor (const juce::File&);   // a whole track, streamed
     std::map<juce::String, ClipPreview::Overview> overviews;
     juce::AudioFormatManager formats;
 
@@ -203,6 +258,8 @@ private:
 
 public:
     void mouseMove (const juce::MouseEvent&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;

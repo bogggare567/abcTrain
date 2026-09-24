@@ -102,6 +102,13 @@ namespace AudioSliceAnalyzer
         float spectralCentroidHz = 0.0f;
         float stereoCorrelation = 1.0f;
         float rms = 0.0f;
+
+        // Cut on the bar grid: a whole number of bars from a downbeat, so
+        // the loop repeats in time. The writer then needs only a short
+        // crossfade at the seam; a free cut needs a long one.
+        bool onBeatGrid = false;
+        double bpm = 0.0;
+        int bars = 0;
     };
 
     struct Options

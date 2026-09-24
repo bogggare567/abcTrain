@@ -36,3 +36,6 @@ tools/.fontcache/
 # website brief) live in docs/screenshots/; render the rest when you need
 # to look.
 /editor-snapshots/
+
+# Python bytecode from tools/library and its tests
+__pycache__/

@@ -43,6 +43,10 @@ public:
         // Set when the folder carries a pack.json.
         bool isPack = false;
         juce::String packId, packVersion, titleEn, titleRu;
+
+        // For a pack split by subfolder: the subfolder ("kick", "mix"...);
+        // empty for a pack shown whole. `name` is then "pack/subfolder".
+        juce::String packPart;
     };
 
     // Licences a pack clip may carry to be offered at all.
@@ -116,6 +120,48 @@ public:
                             std::function<void (float, juce::String)> onProgress,
                             std::function<bool()> shouldStop);
 
+    // ---- the player's own hands on the library (2026-09-24) ----
+
+    // A pack from a .zip or a folder holding a pack.json, copied into the
+    // library folder under the pack's own folder name. An older copy of
+    // the same pack is replaced: installing a newer version is the point.
+    // Returns an empty string on success, otherwise what went wrong in
+    // plain English (the screen shows its own translated line).
+    juce::String installPack (const juce::File& zipOrFolder);
+
+    // Is this a zip or folder installPack would take?
+    static bool looksLikePack (const juce::File&);
+
+    // One loop cut by hand from any audio file - a clip already in the
+    // library or a whole track. The selection is a wish, not an order:
+    // with a steady tempo the start moves to the nearest beat and the
+    // length to whole bars (whole beats under a bar), because a loop that
+    // is not a whole number of bars does not repeat in time however the
+    // edges are faded. Without a tempo the ends move to the nearest quiet
+    // point. Either way the seam is closed by folding the tail into the
+    // head, so the file loops on its own.
+    //
+    // Goes next to the source when the source is in the library, otherwise
+    // into the folder its instrument decides (InstrumentLabel).
+    struct Fragment
+    {
+        juce::File file;              // empty = nothing written
+        bool onBeatGrid = false;
+        double bpm = 0.0;
+        int bars = 0, beats = 0;
+        double seconds = 0.0;
+        juce::String folderName;      // where it went
+    };
+
+    Fragment saveFragment (const juce::File& source, double startSeconds, double endSeconds);
+
+    // Moves a clip to the system trash - recoverable, like deleting in
+    // Finder. Only files under the library folder, never a built-in sound
+    // (those are re-created from the binary anyway). A folder left with no
+    // audio in it goes too. Rescan afterwards.
+    bool deleteClip (const juce::File&);
+    bool canDelete (const juce::File&) const;
+
     // Where imported clips go. The app's own storage, not somewhere the
     // player has to find and pick: the folder-choosing step was a question
     // nobody wanted to answer before they could try the feature. A folder
@@ -186,6 +232,7 @@ private:
     // rather than duplicating it for an in-memory source. See decisions/018.
     void addBuiltInCategories();
     Category readPack (const juce::File& folder, const juce::File& manifest);
+    juce::File lastInstalledPack;
     int rejectedClips = 0;
 
     juce::PropertiesFile& properties;

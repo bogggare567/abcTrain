@@ -519,6 +519,7 @@ namespace AudioSliceAnalyzer
         auto stepSamples = sliceSamples;
         auto gridOrigin = 0;
         auto clipSamples = sliceSamples;
+        auto barsPerClip = 0;
 
         if (tempo.detected)
         {
@@ -533,6 +534,7 @@ namespace AudioSliceAnalyzer
                                              (int) std::lround (wanted));
 
             clipSamples = (int) std::lround (barSamples * (double) bars);
+            barsPerClip = bars;
             stepSamples = clipSamples;
             gridOrigin = tempo.firstBeatSample;
         }
@@ -582,6 +584,20 @@ namespace AudioSliceAnalyzer
 
             if (slice.rms < options.minimumRms)
                 continue;   // an intro, a fade or a gap - not training material
+
+            // Loud enough overall is not enough: a clip whose first second is
+            // silence - a count-in, the gap before a stem comes in - starts
+            // every repeat with a hole. The first second has to carry sound
+            // too (the same rule build_pack.py applies).
+            {
+                const auto head = juce::jmin (sliceSamples, (int) sampleRate);
+                if (rmsOf (monoSum (audio, start, head)) < options.minimumRms * 0.5f)
+                    continue;
+            }
+
+            slice.onBeatGrid = tempo.detected;
+            slice.bpm = tempo.detected ? tempo.bpm : 0.0;
+            slice.bars = barsPerClip;
 
             const auto summary = summarise (mono, sampleRate);
 

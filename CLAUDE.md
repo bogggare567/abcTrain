@@ -19,7 +19,7 @@ understanding.
 |---|---|
 | [docs/orientation.md](docs/orientation.md) | the map, the load-bearing ideas, **the rules from the literature** — read first |
 | [docs/code-map.md](docs/code-map.md) | per-file breakdown (was the body of this file) — read the part you change |
-| [docs/decisions/](docs/decisions/) | ADRs, 001–043: why each shape was chosen |
+| [docs/decisions/](docs/decisions/) | ADRs, 001–044: why each shape was chosen |
 | [docs/process.md](docs/process.md) | how a task goes from idea to release; the scenario checklist |
 | [docs/research/](docs/research/) | the literature review every current proposal rests on |
 | [docs/design/](docs/design/) | sound library, education/live, the redesign spec |

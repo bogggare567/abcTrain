@@ -1,4 +1,5 @@
 #include "LiveScreenComponent.h"
+#include "shared/updates/Version.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
 
@@ -50,11 +51,21 @@ LiveScreenComponent::LiveScreenComponent()
     codeEditor.setTextToShowWhenEmpty ("482 913", AbcTrainTheme::current().textDim);
     addChildComponent (codeEditor);
 
-    joinButton.onClick = [this] { setNote (text.notYet); };
+    joinButton.onClick = [this] { if (requireServer()) setNote (text.notYet); };
     addChildComponent (joinButton);
 
     // ---- seminar: host ----
-    whereChoice.onChange = [this] (int) { refreshVisibility(); repaint(); };
+    whereChoice.onChange = [this] (int)
+    {
+        if (whereChoice.getValue() == 1)
+            lan = LiveLink::scanLan();   // local: only this machine's own addresses, no network traffic
+        else
+            checkConnection();
+
+        refreshVisibility();
+        resized();
+        repaint();
+    };
     whoChoice.onChange = [this] (int) { refreshVisibility(); repaint(); };
     whereChoice.setValue (1);
     whoChoice.setValue (0);
@@ -88,6 +99,25 @@ LiveScreenComponent::LiveScreenComponent()
 
     openRoomButton.onClick = [this]
     {
+        // A local room needs an address phones can reach; an online one
+        // needs the server. Say which is missing instead of opening a room
+        // nobody can enter.
+        if (whereChoice.getValue() == 1)
+        {
+            lan = LiveLink::scanLan();
+
+            if (! lan.any())
+            {
+                setNote (text.lanNone);
+                resized();
+                return;
+            }
+        }
+        else if (! requireServer())
+        {
+            return;
+        }
+
         juce::Random r;
         roomCode = randomRoomCode (r);
         roomOpen = true;
@@ -98,7 +128,7 @@ LiveScreenComponent::LiveScreenComponent()
     addChildComponent (openRoomButton);
 
     projectorButton.onClick = [this] { setNote (text.notYet); };
-    startButton.onClick = [this] { setNote (text.notYet); };
+    startButton.onClick = [this] { if (whereChoice.getValue() == 1 || requireServer()) setNote (text.notYet); };
     LnF::makePrimary (startButton, true);
     closeRoomButton.onClick = [this]
     {
@@ -114,8 +144,8 @@ LiveScreenComponent::LiveScreenComponent()
     battleFamily.setValue (0);
     battleFamily.setUppercase (false);
     addChildComponent (battleFamily);
-    searchButton.onClick = [this] { setNote (text.notYet); };
-    challengeButton.onClick = [this] { setNote (text.notYet); };
+    searchButton.onClick = [this] { if (requireServer()) setNote (text.notYet); };
+    challengeButton.onClick = [this] { if (requireServer()) setNote (text.notYet); };
     battleSignInButton.onClick = [this] { openSignIn(); };
     LnF::makePrimary (searchButton, true);
 
@@ -180,11 +210,21 @@ LiveScreenComponent::LiveScreenComponent()
 
     addChildComponent (overlayLayer);
 
+    checkAgainButton.onClick = [this]
+    {
+        lan = LiveLink::scanLan();   // a local room's problem is this machine's own network
+        checkConnection (true);
+        resized();
+        repaint();
+    };
+    addChildComponent (checkAgainButton);
+
+    lan = LiveLink::scanLan();
+
     setStrings ({});
     showTab (Tab::seminar);
 }
 
-LiveScreenComponent::~LiveScreenComponent() = default;
 
 void LiveScreenComponent::setStrings (Strings newStrings)
 {
@@ -193,6 +233,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
     tabs.setOptions ({ 0, 1, 2 }, { text.seminar, text.battle, text.rating });
     tabs.setValue ((int) tab);
     accountButton.setButtonText (text.signIn);
+    checkAgainButton.setButtonText (text.checkAgain);
     joinButton.setButtonText (text.join);
     whereChoice.setOptions ({ 0, 1 }, { text.online, text.local });
     whoChoice.setOptions ({ 0, 1 }, { text.anyone, text.listOnly });
@@ -240,6 +281,9 @@ void LiveScreenComponent::showTab (Tab newTab)
     tab = newTab;
     tabs.setValue ((int) tab);
     note.clear();
+
+    if (needsServer() && isShowing())
+        checkConnection();
     refreshVisibility();
     resized();
     repaint();
@@ -308,7 +352,7 @@ void LiveScreenComponent::makeCodes()
 juce::String LiveScreenComponent::roomAddress() const
 {
     if (whereChoice.getValue() == 1)
-        return juce::IPAddress::getLocalAddress().toString() + ":8930";
+        return lan.any() ? lan.address.toString() + ":8930" : juce::String ("-");
 
     return "soundkorb.ru/live/" + roomCode.removeCharacters (" ");
 }
@@ -397,6 +441,20 @@ void LiveScreenComponent::resized()
 
     area.removeFromTop (Spacing::large);
     area.removeFromBottom (28);   // the note line
+
+    // The banner takes the top of the page when something is in the way of
+    // what it shows - above the cards, not over them.
+    bannerBox = {};
+    const auto problem = currentProblem();
+    checkAgainButton.setVisible (problem.title.isNotEmpty() && overlay == Overlay::none);
+
+    if (problem.title.isNotEmpty())
+    {
+        const auto lines = juce::StringArray::fromLines (problem.hints).size();
+        bannerBox = area.removeFromTop (52 + 19 * juce::jmin (4, lines));
+        area.removeFromTop (Spacing::medium);
+        checkAgainButton.setBounds (bannerBox.reduced (Spacing::medium).removeFromTop (controlHeight).removeFromRight (170));
+    }
 
     if (tab == Tab::seminar)       layoutSeminar (area);
     else if (tab == Tab::battle)   layoutBattle (area);
@@ -549,6 +607,10 @@ void LiveScreenComponent::paint (juce::Graphics& g)
         LnF::fitText (g, text.notSignedIn, top.removeFromRight (220), juce::Justification::centredRight, true);
     }
 
+    paintLinkStatus (g, tabs.getBounds().withX (tabs.getRight() + AbcTrainTheme::Spacing::large)
+                            .withRight (accountButton.getX() - 230));
+    paintBanner (g);
+
     if (tab == Tab::seminar)       paintSeminar (g);
     else if (tab == Tab::battle)   paintBattle (g);
     else                           paintRating (g);
@@ -632,6 +694,14 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
             g.setColour (theme.textDim);
             g.setFont (LnF::captionFont());
             LnF::fitLines (g, text.resultsLocal, rest.removeFromTop (36), juce::Justification::topLeft, 2, 0.9f);
+
+            // What to do when a phone cannot open the address - the one
+            // question every local seminar gets, answered where it is asked.
+            rest.removeFromTop (Spacing::small);
+            g.setColour (lan.linkLocal ? theme.accentWarm : theme.textDim);
+            LnF::fitLines (g, lan.linkLocal ? text.lanLinkLocal + "\n" + text.lanTrouble : text.lanTrouble,
+                           rest.removeFromTop (juce::jmin (rest.getHeight() - controlHeight - 40, 90)),
+                           juce::Justification::topLeft, 5, 0.9f);
         }
 
         return;
@@ -822,4 +892,202 @@ void LiveScreenComponent::paintOverlay (juce::Graphics& g)
         g.setFont (LnF::captionFont());
         LnF::fitText (g, text.localNoMail, hint, juce::Justification::centredLeft, true);
     }
+}
+
+// ---- the connection ---------------------------------------------------------
+
+class LiveScreenComponent::Checker : public juce::Thread
+{
+public:
+    explicit Checker (LiveScreenComponent& ownerToUse) : juce::Thread ("abcTrain live check"), owner (ownerToUse) {}
+    ~Checker() override { stopThread (7000); }
+
+    void run() override
+    {
+        const auto result = LiveLink::check (CurrentVersion::string);
+        juce::Component::SafePointer<LiveScreenComponent> safe (&owner);
+
+        juce::MessageManager::callAsync ([safe, result]
+        {
+            if (safe == nullptr)
+                return;
+
+            safe->link = result.state;
+            safe->linkHttpStatus = result.httpStatus;
+            safe->lan = result.lan;
+            safe->resized();
+            safe->repaint();
+        });
+    }
+
+private:
+    LiveScreenComponent& owner;
+};
+
+void LiveScreenComponent::checkConnection (bool evenIfRecent)
+{
+    const auto now = juce::Time::getMillisecondCounterHiRes();
+
+    if (! LiveLink::networkAllowed.load())
+        return;
+
+    if (checker != nullptr && checker->isThreadRunning())
+        return;
+
+    if (! evenIfRecent && now - lastCheckMs < 60000.0 && link != LiveLink::State::unknown)
+        return;
+
+    lastCheckMs = now;
+    link = LiveLink::State::checking;
+    checker = std::make_unique<Checker> (*this);
+    checker->startThread();
+    resized();
+    repaint();
+}
+
+void LiveScreenComponent::visibilityChanged()
+{
+    // Opening Live is the player using Live - the one moment the app may
+    // look for the server (the offline rule).
+    if (isShowing())
+        checkConnection();
+}
+
+void LiveScreenComponent::setLinkForSnapshot (LiveLink::State state, bool lanPresent)
+{
+    link = state;
+    lan = {};
+
+    if (lanPresent)
+        lan.address = juce::IPAddress ("192.168.1.24");
+
+    resized();
+    repaint();
+}
+
+bool LiveScreenComponent::needsServer() const
+{
+    if (tab != Tab::seminar)
+        return true;
+
+    // A seminar page needs the server only for an online room; joining by
+    // code is online too, but a whole-page banner over a local setup would
+    // be noise - that button says so itself when pressed.
+    return whereChoice.getValue() == 0;
+}
+
+LiveScreenComponent::Problem LiveScreenComponent::currentProblem() const
+{
+    using S = LiveLink::State;
+
+    if (tab == Tab::seminar && whereChoice.getValue() == 1)
+    {
+        if (! lan.any())
+            return { text.lanNone, text.lanNoneHint };
+
+        return {};
+    }
+
+    if (! needsServer())
+        return {};
+
+    switch (link)
+    {
+        case S::noNetwork:   return { text.linkNoNetwork, text.hintNoNetwork };
+        case S::noInternet:  return { text.linkNoInternet, text.hintNoInternet };
+        case S::serverDown:  return { text.linkServerDown, text.hintServerDown };
+        case S::serverError: return { text.linkServerError.replace ("{{code}}", juce::String (linkHttpStatus)), text.hintServerDown };
+        case S::appTooOld:   return { text.linkAppTooOld, text.hintAppTooOld };
+        case S::unknown: case S::checking: case S::online: break;
+    }
+
+    return {};
+}
+
+bool LiveScreenComponent::requireServer()
+{
+    if (link == LiveLink::State::online)
+        return true;
+
+    if (link == LiveLink::State::checking)
+    {
+        setNote (text.linkChecking);
+        return false;
+    }
+
+    checkConnection (true);
+
+    auto problem = currentProblem();
+    setNote (problem.title.isNotEmpty() ? problem.title : text.linkChecking);
+    return false;
+}
+
+void LiveScreenComponent::paintLinkStatus (juce::Graphics& g, juce::Rectangle<int> area)
+{
+    using S = LiveLink::State;
+
+    if (link == S::unknown || area.getWidth() < 60)
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+    juce::String label;
+    juce::Colour colour;
+
+    switch (link)
+    {
+        case S::checking:    label = text.linkChecking;   colour = theme.textDim; break;
+        case S::online:      label = text.linkOnline;     colour = theme.positive; break;
+        case S::noNetwork:   label = text.linkNoNetwork;  colour = theme.negative; break;
+        case S::noInternet:  label = text.linkNoInternet; colour = theme.negative; break;
+        case S::serverDown:  label = text.linkServerDown; colour = theme.accentWarm; break;
+        case S::serverError: label = text.linkServerError.replace ("{{code}}", juce::String (linkHttpStatus)); colour = theme.accentWarm; break;
+        case S::appTooOld:   label = text.linkAppTooOld;  colour = theme.accentWarm; break;
+        case S::unknown:     break;
+    }
+
+    auto dot = area.removeFromLeft (14).withSizeKeepingCentre (8, 8).toFloat();
+    g.setColour (colour);
+    g.fillEllipse (dot);
+    area.removeFromLeft (4);
+    g.setColour (theme.textDim);
+    g.setFont (LnF::labelFont());
+    LnF::fitText (g, label, area, juce::Justification::centredLeft, true);
+}
+
+void LiveScreenComponent::paintBanner (juce::Graphics& g)
+{
+    if (bannerBox.isEmpty())
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+    const auto problem = currentProblem();
+
+    g.setColour (theme.panelBackground);
+    g.fillRect (bannerBox);
+    g.setColour (theme.accentWarm);
+    g.fillRect (bannerBox.withWidth (3));
+    g.setColour (theme.outline);
+    g.drawRect (bannerBox, 1);
+
+    auto body = bannerBox.reduced (AbcTrainTheme::Spacing::medium).withTrimmedLeft (8);
+    body.removeFromRight (170 + AbcTrainTheme::Spacing::medium);   // "Check again"
+
+    g.setColour (theme.textBright);
+    g.setFont (LnF::headingFont().withHeight (18.0f));
+    LnF::fitText (g, problem.title, body.removeFromTop (26), juce::Justification::centredLeft, true);
+    body.removeFromTop (4);
+
+    g.setFont (LnF::captionFont());
+    g.setColour (theme.text);
+
+    const auto lines = juce::StringArray::fromLines (problem.hints);
+    for (int i = 0; i < juce::jmin (4, lines.size()); ++i)
+        LnF::fitText (g, juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xa2  ")) + lines[i],
+                      body.removeFromTop (19), juce::Justification::centredLeft, true);
+}
+
+// Out of line and after Checker: a unique_ptr to it needs the whole type.
+LiveScreenComponent::~LiveScreenComponent()
+{
+    checker.reset();
 }

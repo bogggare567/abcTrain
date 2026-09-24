@@ -2,6 +2,7 @@
 #include <juce_audio_formats/juce_audio_formats.h>
 #include "shared/audio/ReferenceAudioLibrary.h"
 #include "shared/audio/AudioSliceAnalyzer.h"
+#include "shared/audio/InstrumentLabel.h"
 #include "TestUtils.h"
 
 namespace
@@ -210,7 +211,9 @@ public:
 
             // A 30-second source: 4 clicks a second, which is
             // unambiguously percussive by construction.
-            const auto source = root.getChildFile ("source.wav");
+            // Named like a percussion loop, and sounding like one: the name
+            // picks the instrument, the sound does not argue.
+            const auto source = root.getChildFile ("perc loop.wav");
             writeClickTrain (source, 44100.0, 30.0, 4.0);
 
             auto options = makeTempOptions ("import");
@@ -223,9 +226,9 @@ public:
             expect (written > 0, "nothing was written from a perfectly usable file");
 
             const auto percussive = root.getChildFile (
-                AudioSliceAnalyzer::folderNameFor (AudioSliceAnalyzer::Character::percussive));
+                InstrumentLabel::folderNameFor (InstrumentLabel::Instrument::percussion));
 
-            expect (percussive.isDirectory(), "the character folder was not created");
+            expect (percussive.isDirectory(), "the instrument folder was not created");
 
             const auto clips = percussive.findChildFiles (juce::File::findFiles, false, "*.wav");
             expectEquals (clips.size(), written, "the count reported does not match the files on disk");
