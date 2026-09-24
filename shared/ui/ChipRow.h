@@ -36,6 +36,7 @@ public:
         for (int i = 0; i < labels.size(); ++i)
         {
             auto* chip = chips.add (new Chip (*this, i, labels[i]));
+            chip->setTooltip (iconPainter != nullptr ? labels[i] : juce::String());
             addAndMakeVisible (chip);
         }
 
@@ -77,6 +78,26 @@ public:
     }
 
     std::function<void (int)> onChosen;
+
+    // The pointer came onto a chip - for a guide line about it.
+    std::function<void (int)> onHovered;
+
+    // Chips as pictures instead of words (Learner EQ's filter shapes). The
+    // label becomes the chip's tooltip and accessible title; `chipWidth` is
+    // the width of every chip.
+    using IconPainter = std::function<void (juce::Graphics&, int index, juce::Rectangle<float>, juce::Colour)>;
+
+    void setIconPainter (IconPainter painter, int chipWidth)
+    {
+        iconPainter = std::move (painter);
+        iconChipWidth = chipWidth;
+
+        for (auto* c : chips)
+            c->setTooltip (iconPainter != nullptr ? c->text : juce::String());
+
+        resized();
+        repaint();
+    }
 
     // The width this row would like at its natural chip widths.
     int getPreferredWidth() const
@@ -125,6 +146,8 @@ public:
 
 private:
     static constexpr int gap = 6;
+    IconPainter iconPainter;
+    int iconChipWidth = 44;
 
     int captionWidth() const
     {
@@ -135,7 +158,8 @@ private:
                                                                         AbcTrainLookAndFeel::microFont(), 1.4f));
     }
 
-    struct Chip : public juce::Component
+    struct Chip : public juce::Component,
+                  public juce::SettableTooltipClient
     {
         Chip (ChipRow& ownerToUse, int indexToUse, juce::String textToShow)
             : owner (ownerToUse), index (indexToUse), text (std::move (textToShow))
@@ -146,6 +170,9 @@ private:
 
         int preferredWidth() const
         {
+            if (owner.iconPainter != nullptr)
+                return owner.iconChipWidth;
+
             return (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (AbcTrainLookAndFeel::toCaps (text),
                                                                             AbcTrainLookAndFeel::microFont(), 1.2f))
                    + 28 + (marked ? 14 : 0);
@@ -178,13 +205,25 @@ private:
                 g.strokePath (tick, juce::PathStrokeType (1.6f));
             }
 
+            if (owner.iconPainter != nullptr)
+            {
+                owner.iconPainter (g, index, label.toFloat(), on ? theme.textBright : theme.text);
+                return;
+            }
+
             AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (text), label.toFloat(),
                                                   AbcTrainLookAndFeel::microFont(),
                                                   on ? theme.textBright : theme.text, 1.2f,
                                                   juce::Justification::centred);
         }
 
-        void mouseEnter (const juce::MouseEvent&) override { repaint(); }
+        void mouseEnter (const juce::MouseEvent&) override
+        {
+            repaint();
+
+            if (owner.onHovered != nullptr)
+                owner.onHovered (index);
+        }
         void mouseExit (const juce::MouseEvent&) override { repaint(); }
 
         void mouseUp (const juce::MouseEvent& e) override

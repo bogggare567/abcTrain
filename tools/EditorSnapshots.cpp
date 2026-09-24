@@ -87,7 +87,7 @@ namespace
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
-                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit };
+                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -226,8 +226,30 @@ namespace
             }
 
             if constexpr (std::is_same_v<EditorType, LearnerEQEditor>)
-                if (extra == Extra::eqKick)
+                if (extra == Extra::eqKick || extra == Extra::companion)
                     editor.kickLessonForSnapshot();
+
+            // The companion window's content, rendered on its own next to
+            // the plugin it was taken out of.
+            juce::Component* companionShot = nullptr;
+
+            if constexpr (std::is_base_of_v<LearnerEditorBase, EditorType>)
+            {
+                if (extra == Extra::companionApp)
+                    editor.setHearingProvider ([]
+                    {
+                        CompanionHearing h;
+                        h.sessionMinutes = 38;
+                        h.levelDbA = 74.0;
+                        h.calibrated = true;
+                        h.weekFraction = 0.36;
+                        h.minutesUntilBreak = 12;
+                        return h;
+                    });
+
+                if (extra == Extra::companion || extra == Extra::companionApp)
+                    companionShot = &editor.openCompanionForSnapshot();
+            }
 
             if constexpr (std::is_same_v<EditorType, LearnerCompEditor>
                           || std::is_same_v<EditorType, LearnerVerbEditor>
@@ -272,6 +294,16 @@ namespace
             AbcTrainLookAndFeel::setTextAuditContext (snapshotLanguage() + "\t" + name);
 
             const auto written = writeSnapshot (editor, file);
+
+            if (companionShot != nullptr)
+            {
+                const auto windowFile = outputDir.getChildFile (name + "-Window" + suffix + ".png");
+
+                if (writeSnapshot (*companionShot, windowFile))
+                    std::cout << "  " << windowFile.getFileName() << "\n";
+                else
+                    ++failures;
+            }
 
             for (const auto& line : AbcTrainLookAndFeel::takeTextAudit())
                 std::cout << "OVERFLOW\t" << line << "\n";
@@ -326,6 +358,8 @@ int main (int argc, char* argv[])
     auto failures = 0;
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ");
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Kick", -1, Extra::eqKick);
+    failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Companion", -1, Extra::companion);
+    failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Companion", -1, Extra::companionApp);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Stretched",

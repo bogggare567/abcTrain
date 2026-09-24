@@ -182,3 +182,35 @@ Steps 1 and 2 are pure additions to `abc_trainer_engine` and `website/`;
 nothing about the installed product changes shape. Step 3 is the first
 thing in abcTrain that needs a server, and it should stay a separate,
 optional deployable.
+
+## Accounts, rating and closed seminars (2026-09-24)
+
+Mockups: the canvas «abcTrain Live и рейтинги». The seminar screens are
+still the ones on «экраны, одно приложение и Live» (23.09).
+
+- **One server:** the Node server behind soundkorb.ru gets an abcTrain
+  module. It handles accounts, battles, the seminar rooms and an event
+  stream for the site. The database stays SQLite.
+- **Sign-in:**
+  - an **e-mail code** (6 digits, 10 minutes, one use) always works.
+  - **Telegram** is an extra where it is reachable; closed seminars and
+    school networks often block it.
+  - The app never shows a password field. It shows a code, you confirm
+    it on the site, and the app gets a key that can be revoked in the
+    profile.
+- **Rating:** Decibelo from 1-on-1 battles only. The server runs each
+  round and keeps the answer. Training results never leave the computer,
+  so there is nothing to inflate.
+- **Live site:** `/abctrain/rating` updates over SSE. A finished battle
+  moves the table and appears in the "just finished" feed within a
+  second.
+- **Closed seminar, online:** the room is "list only". The presenter
+  pastes the list of e-mails and the codes go out by mail from the same
+  mailbox that sends the site's digest.
+- **Closed seminar, offline:**
+  - The presenter's app serves the room itself on the venue Wi-Fi
+    (address + QR). Phones load the page from the laptop.
+  - With no internet there is no mail, so the codes are printed (a
+    sheet with name, code and QR per person) or shown on screen.
+  - No accounts are involved. Results stay on the laptop and go to the
+    site only if the presenter uploads them.

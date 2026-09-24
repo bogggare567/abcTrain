@@ -8,6 +8,7 @@
 #include "shared/ui/GuideTooltip.h"
 #include "shared/learning/ModuleProgress.h"
 #include "shared/learning/ModuleScreenComponent.h"
+#include "shared/learning/CompanionPanel.h"
 #include "shared/learning/PracticeSourceSelector.h"
 #include "shared/updates/UpdateWindow.h"
 #include "shared/ui/WindowFit.h"
@@ -68,6 +69,18 @@ public:
     // top of the page, as in docs/design/approved-2026-09.
     void setEmbedded (bool shouldBeEmbedded);
     bool isEmbedded() const noexcept { return embedded; }
+
+    // The teaching layer in a window of its own (CompanionPanel.h). The
+    // modules button toggles it; it remembers whether it was open.
+    void setCompanionOpen (bool shouldBeOpen);
+    bool isCompanionOpen() const noexcept { return companionOpen; }
+
+    // In the app's Studio the app knows the ears' week; a DAW does not.
+    void setHearingProvider (std::function<CompanionHearing()> provider) { hearingProvider = std::move (provider); }
+
+    // For tools/EditorSnapshots: the panel laid out as the window shows it,
+    // without a window (the tools have no desktop to open one on).
+    CompanionPanel& openCompanionForSnapshot();
 
     // For tools/EditorSnapshots.
     void openModuleShelfForSnapshot()                     { moduleScreen.openShelf(); moduleScreen.completeAnimation(); }
@@ -145,7 +158,20 @@ protected:
              + " " + t ("unit.dB", "dB");
     }
 
-    void showGuide (const juce::String& text, int autoDismissMs = 0) { guideTooltip.setText (text, autoDismissMs); }
+    void showGuide (const juce::String& text, int autoDismissMs = 0)
+    {
+        if (companionOpen)
+            companion.setGuide (text);
+        else
+            guideTooltip.setText (text, autoDismissMs);
+    }
+
+    // A lesson component the subclass shows beside its analysis, which
+    // moves into the companion window while that is open (Learner EQ's
+    // instrument lesson). The subclass lays it out only while
+    // lessonInCompanion() is false.
+    virtual juce::Component* companionLesson() { return nullptr; }
+    bool lessonInCompanion() const noexcept { return companionOpen && lessonLent; }
 
     // Declared first so it outlives every child (see AbcTrainLookAndFeel).
     AbcTrainLookAndFeel lookAndFeel;
@@ -176,6 +202,9 @@ private:
     void checkForUpdates();
     ModuleScreenComponent::Strings moduleStrings() const;
 
+    // Names of the icon-only controls (the EQ's filter shapes) on hover.
+    juce::TooltipWindow tooltipWindow { this, 500 };
+
     AppIconComponent pluginIcon;
     juce::TextButton bypassButton;
     juce::TextButton slotA { "A" }, slotB { "B" };
@@ -190,6 +219,19 @@ private:
     UpdateWindow updateWindow;
 
     juce::TextButton lessonsButton;
+
+    CompanionPanel companion;
+    std::unique_ptr<CompanionWindow> companionWindow;   // after moduleScreen: goes first
+    std::function<CompanionHearing()> hearingProvider;
+    bool companionOpen = false;
+    bool lessonLent = false;
+    int tickCount = 0;
+    double openedAtMs = 0.0;
+    void lendToCompanion();
+    void takeBackFromCompanion();
+    void refreshCompanion();
+    CompanionPanel::Strings companionStrings() const;
+
     bool embedded = false;
     bool setupFinished = false;
 

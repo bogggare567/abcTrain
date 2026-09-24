@@ -1,5 +1,7 @@
 #pragma once
 
+#include "shared/learning/CompanionPanel.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "shared/ui/AbcTrainTheme.h"
@@ -32,6 +34,9 @@ public:
 
         // The processor whose editor the screen shows.
         std::function<juce::AudioProcessor& (int)> processorFor;
+
+        // What the Learner's companion window shows as "Hearing today".
+        std::function<CompanionHearing()> hearing;
     };
 
     explicit StudioScreenComponent (Host);

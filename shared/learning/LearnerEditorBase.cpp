@@ -95,13 +95,13 @@ LearnerEditorBase::LearnerEditorBase (juce::AudioProcessor& p, Services s, Ident
     addAndMakeVisible (themeButton);
 
     modulesButton.setTooltip (localisation.getText ("module.shelfTitle"));
-    modulesButton.onClick = [this] { moduleScreen.openShelf(); };
+    modulesButton.onClick = [this] { setCompanionOpen (! companionOpen); };
     addAndMakeVisible (modulesButton);
 
     // The same shelf, as a word, for the toolbar inside the app - where
     // there is no title row for the icon to live in.
     lessonsButton.setButtonText (localisation.getText ("module.shelfTitle"));
-    lessonsButton.onClick = [this] { moduleScreen.openShelf(); };
+    lessonsButton.onClick = [this] { setCompanionOpen (! companionOpen); };
     addChildComponent (lessonsButton);
 
     soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false, juce::Justification::centredRight);
@@ -115,11 +115,191 @@ LearnerEditorBase::LearnerEditorBase (juce::AudioProcessor& p, Services s, Ident
     moduleScreen.setStrings (moduleStrings());
     moduleScreen.onClosed = [this] { repaint(); };
     moduleScreen.prepare (processor.getSampleRate());
+
+    companion.setStrings (companionStrings());
+    openedAtMs = juce::Time::getMillisecondCounterHiRes();
 }
 
 LearnerEditorBase::~LearnerEditorBase()
 {
+    // The window first: it shows the module screen and the lesson, which
+    // are this editor's members.
+    if (companionWindow != nullptr)
+        settingsFile.setValue ("companionBounds." + identity.title, companionWindow->getBounds().toString());
+
+    companionWindow.reset();
+
+    if (companionOpen)
+        takeBackFromCompanion();
+
     setLookAndFeel (nullptr);
+}
+
+CompanionPanel::Strings LearnerEditorBase::companionStrings() const
+{
+    CompanionPanel::Strings s;
+    s.modules = localisation.getText ("module.shelfTitle");
+    s.lesson = t ("companion.lesson", s.lesson);
+    s.underPointer = t ("companion.underPointer", s.underPointer);
+    s.underPointerEmpty = t ("companion.underPointerEmpty", s.underPointerEmpty);
+    s.hearing = t ("companion.hearing", s.hearing);
+    s.session = t ("companion.session", s.session);
+    s.week = t ("companion.week", s.week);
+    s.untilBreak = t ("companion.untilBreak", s.untilBreak);
+    s.minutes = t ("companion.minutes", s.minutes);
+    s.inMinutes = t ("companion.inMinutes", s.inMinutes);
+    s.notCalibrated = t ("companion.notCalibrated", s.notCalibrated);
+    s.pluginTime = t ("companion.pluginTime", s.pluginTime);
+    s.pluginNote = t ("companion.pluginNote", s.pluginNote);
+    return s;
+}
+
+void LearnerEditorBase::lendToCompanion()
+{
+    removeChildComponent (&moduleScreen);
+    moduleScreen.setFillsHost (true);
+
+    if (! moduleScreen.isRunning())
+        moduleScreen.openShelf();
+
+    auto* lesson = companionLesson();
+    lessonLent = lesson != nullptr;
+
+    if (lesson != nullptr)
+        removeChildComponent (lesson);
+
+    companion.attach (moduleScreen, lesson);
+}
+
+void LearnerEditorBase::takeBackFromCompanion()
+{
+    auto* lesson = lessonLent ? companionLesson() : nullptr;
+    companion.detach();
+
+    moduleScreen.setFillsHost (false);
+    moduleScreen.setVisible (false);
+    addChildComponent (moduleScreen);
+    updateWindow.toFront (false);
+
+    if (lesson != nullptr)
+        addAndMakeVisible (lesson);
+
+    lessonLent = false;
+}
+
+void LearnerEditorBase::setCompanionOpen (bool shouldBeOpen)
+{
+    if (shouldBeOpen == companionOpen)
+        return;
+
+    companionOpen = shouldBeOpen;
+
+    if (shouldBeOpen)
+    {
+        lendToCompanion();
+        companion.setStrings (companionStrings());
+        companion.setAccent (accent);
+        guideTooltip.setVisible (false);
+
+        if (! WindowFit::fittingDisabled())
+        {
+            companionWindow = std::make_unique<CompanionWindow> (identity.title, companion,
+                                                                 AbcTrainTheme::current().panelBackground);
+            juce::Component::SafePointer<LearnerEditorBase> safeThis (this);
+            companionWindow->onCloseRequested = [safeThis]
+            {
+                // Not from inside the window's own callback: closing deletes it.
+                juce::MessageManager::callAsync ([safeThis]
+                {
+                    if (safeThis != nullptr)
+                        safeThis->setCompanionOpen (false);
+                });
+            };
+
+            // Where it was last time; the first time, beside the plugin.
+            auto bounds = juce::Rectangle<int>::fromString (settingsFile.getValue ("companionBounds." + identity.title));
+
+            if (bounds.isEmpty())
+            {
+                const auto editorOnScreen = getScreenBounds();
+                bounds = { editorOnScreen.getRight() + 12, editorOnScreen.getY(), 380,
+                           juce::jmax (600, editorOnScreen.getHeight()) };
+            }
+
+            if (const auto* display = juce::Desktop::getInstance().getDisplays().getDisplayForRect (bounds))
+                bounds = bounds.constrainedWithin (display->userArea);
+
+            companionWindow->setBounds (bounds);
+            companionWindow->setVisible (true);
+            companionWindow->toFront (false);
+        }
+
+        refreshCompanion();
+    }
+    else
+    {
+        if (companionWindow != nullptr)
+            settingsFile.setValue ("companionBounds." + identity.title, companionWindow->getBounds().toString());
+
+        companionWindow.reset();
+        takeBackFromCompanion();
+        guideTooltip.setVisible (true);
+    }
+
+    // Not from the snapshot tools: a picture must not reopen a window on
+    // the next real launch.
+    if (! WindowFit::fittingDisabled())
+    {
+        settingsFile.setValue ("companionOpen." + identity.title, shouldBeOpen);
+        settingsFile.saveIfNeeded();
+    }
+    resized();
+    repaint();
+}
+
+CompanionPanel& LearnerEditorBase::openCompanionForSnapshot()
+{
+    if (! companionOpen)
+        setCompanionOpen (true);
+
+    companion.setSize (380, 820);
+    refreshCompanion();
+    return companion;
+}
+
+void LearnerEditorBase::refreshCompanion()
+{
+    if (! companionOpen)
+        return;
+
+    CompanionHearing h;
+
+    if (hearingProvider != nullptr)
+    {
+        h = hearingProvider();
+        h.fromApp = true;
+    }
+    else
+    {
+        h.sessionMinutes = (int) ((juce::Time::getMillisecondCounterHiRes() - openedAtMs) / 60000.0);
+    }
+
+    companion.setHearing (h);
+
+    if (companionWindow != nullptr)
+    {
+        // Above the host while the host is the app in front, an ordinary
+        // window otherwise; hidden while the plugin's own window is.
+        const auto front = juce::Process::isForegroundProcess();
+
+        if (companionWindow->isAlwaysOnTop() != front)
+            companionWindow->setAlwaysOnTop (front);
+
+        const auto showing = isShowing();
+
+        if (companionWindow->isVisible() != showing)
+            companionWindow->setVisible (showing);
+    }
 }
 
 void LearnerEditorBase::refreshMaterialChips()
@@ -284,6 +464,17 @@ void LearnerEditorBase::finishSetup (std::vector<TrainingModule::Definition> mod
     applyTheme();
     tick();
     startTimerHz (30);
+
+    // Open again if it was open when the plugin last closed.
+    if (! WindowFit::fittingDisabled() && settingsFile.getBoolValue ("companionOpen." + identity.title, false))
+    {
+        juce::Component::SafePointer<LearnerEditorBase> safeThis (this);
+        juce::MessageManager::callAsync ([safeThis]
+        {
+            if (safeThis != nullptr && safeThis->isShowing())
+                safeThis->setCompanionOpen (true);
+        });
+    }
 }
 
 void LearnerEditorBase::applyTheme()
@@ -295,6 +486,10 @@ void LearnerEditorBase::applyTheme()
     pluginIcon.setIconColour (accent);
     moduleScreen.setAccentColour (accent);
     materialChips.setAccent (accent);
+    companion.setAccent (accent);
+
+    if (companionWindow != nullptr)
+        companionWindow->setBackgroundColour (theme.panelBackground);
 
     themeChanged();
     repaint();
@@ -508,8 +703,15 @@ void LearnerEditorBase::resized()
     // It used to float over the bottom of the analysis - exactly the part
     // of the picture the knob being explained was changing (the author:
     // "перекрывают обзор").
-    const auto guideStrip = area.removeFromBottom (44);
-    area.removeFromBottom (Spacing::small);
+    // With the companion window open the guide is there, and the strip's
+    // height goes back to the plugin.
+    juce::Rectangle<int> guideStrip;
+
+    if (! companionOpen)
+    {
+        guideStrip = area.removeFromBottom (44);
+        area.removeFromBottom (Spacing::small);
+    }
 
     const auto controlsHeight = controlsContentHeight() + 2 * Spacing::medium;
 
@@ -523,7 +725,8 @@ void LearnerEditorBase::resized()
     layoutAnalysis (analysisSection);
     layoutControls (controlSection.reduced (Spacing::medium));
 
-    moduleScreen.setBounds (analysisSection);
+    if (! companionOpen)
+        moduleScreen.setBounds (analysisSection);
 
     guideTooltip.setBounds (guideStrip);
 }
@@ -549,6 +752,9 @@ void LearnerEditorBase::timerCallback()
         slotA.setEnabled (slotsLive);
         slotB.setEnabled (slotsLive);
     }
+
+    if (++tickCount % 15 == 0)
+        refreshCompanion();
 
     tick();
 }

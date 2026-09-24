@@ -97,6 +97,11 @@ public:
 
     bool isRunning() const noexcept { return isVisible() && phase != Phase::shelf; }
 
+    // In the companion window the panel is the whole window: no short
+    // panel over a spectrum, and "close" goes back to the shelf rather
+    // than hiding a window's only content.
+    void setFillsHost (bool shouldFill);
+
     void paint (juce::Graphics&) override;
     void resized() override;
     bool hitTest (int x, int y) override;
@@ -164,6 +169,7 @@ private:
     juce::Colour accent { 0xff5b8def };
 
     Phase phase = Phase::shelf;
+    bool fillsHost = false;
     int moduleIndex = -1;
     int demoStep = 0;
     int hoveredRow = -1;

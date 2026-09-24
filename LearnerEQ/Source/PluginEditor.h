@@ -41,6 +41,7 @@ private:
     void themeChanged() override;
     void tick() override;
     void paintOverChildren (juce::Graphics&) override;
+    juce::Component* companionLesson() override { return &lessonPanel; }
 
     void selectBand (int band);
     void pushSelectedBandToControls();

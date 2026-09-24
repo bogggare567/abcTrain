@@ -10,6 +10,60 @@
 
 namespace
 {
+    // A filter's response, drawn small: flat line through the middle, the
+    // shape where the filter acts. Gain types bulge up (the way they are
+    // usually shown), cuts go down.
+    juce::Path filterShapeIcon (EQCoefficients::BandType type, juce::Rectangle<float> box)
+    {
+        using T = EQCoefficients::BandType;
+        const auto b = box.reduced (box.getWidth() * 0.16f, box.getHeight() * 0.26f);
+        const auto l = b.getX(), r = b.getRight(), w = b.getWidth();
+        const auto mid = b.getCentreY(), top = b.getY(), bottom = b.getBottom();
+        juce::Path p;
+
+        switch (type)
+        {
+            case T::bell:
+                p.startNewSubPath (l, mid);
+                p.lineTo (l + w * 0.22f, mid);
+                p.cubicTo (l + w * 0.38f, mid, l + w * 0.40f, top, l + w * 0.5f, top);
+                p.cubicTo (l + w * 0.60f, top, l + w * 0.62f, mid, l + w * 0.78f, mid);
+                p.lineTo (r, mid);
+                break;
+            case T::lowShelf:
+                p.startNewSubPath (l, top);
+                p.lineTo (l + w * 0.28f, top);
+                p.cubicTo (l + w * 0.45f, top, l + w * 0.45f, mid, l + w * 0.62f, mid);
+                p.lineTo (r, mid);
+                break;
+            case T::highShelf:
+                p.startNewSubPath (l, mid);
+                p.lineTo (l + w * 0.38f, mid);
+                p.cubicTo (l + w * 0.55f, mid, l + w * 0.55f, top, l + w * 0.72f, top);
+                p.lineTo (r, top);
+                break;
+            case T::highPass:
+                p.startNewSubPath (l + w * 0.05f, bottom);
+                p.cubicTo (l + w * 0.30f, bottom - (bottom - mid) * 0.2f, l + w * 0.30f, mid, l + w * 0.55f, mid);
+                p.lineTo (r, mid);
+                break;
+            case T::lowPass:
+                p.startNewSubPath (l, mid);
+                p.lineTo (l + w * 0.45f, mid);
+                p.cubicTo (l + w * 0.70f, mid, l + w * 0.70f, bottom - (bottom - mid) * 0.2f, l + w * 0.95f, bottom);
+                break;
+            case T::notch:
+                p.startNewSubPath (l, mid);
+                p.lineTo (l + w * 0.40f, mid);
+                p.cubicTo (l + w * 0.47f, mid, l + w * 0.48f, bottom, l + w * 0.5f, bottom);
+                p.cubicTo (l + w * 0.52f, bottom, l + w * 0.53f, mid, l + w * 0.60f, mid);
+                p.lineTo (r, mid);
+                break;
+        }
+
+        return p;
+    }
+
     LearnerEditorBase::Services servicesFor (LearnerEQProcessor& p)
     {
         return { p.apvts, LearnerEQProcessor::bypassParamId, p.getSharedProperties(),
@@ -128,7 +182,24 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
 
         juce::ignoreUnused (values);
         typeChips.setItems (labels);
+
+        // The shape of each filter rather than its name: an engineer reads
+        // a bell, a shelf and a slope faster than the words (the author,
+        // 2026-09-24). The name stays as the tooltip.
+        typeChips.setIconPainter ([] (juce::Graphics& g, int index, juce::Rectangle<float> box, juce::Colour colour)
+        {
+            g.setColour (colour);
+            g.strokePath (filterShapeIcon (EQCoefficients::typeFromIndex (index), box),
+                          juce::PathStrokeType (1.7f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }, 46);
     }
+
+    typeChips.onHovered = [this] (int value)
+    {
+        const auto type = EQCoefficients::typeFromIndex (value);
+        showGuide (typeName (type) + " - " + t (juce::String ("guide.eq.type.") + juce::String (value),
+                                                 juce::String (EQCoefficients::nameForType (type))));
+    };
 
     typeChips.onChosen = [this] (int value)
     {
@@ -298,7 +369,14 @@ void LearnerEQEditor::layoutToolbar (juce::Rectangle<int> area)
 void LearnerEQEditor::layoutAnalysis (juce::Rectangle<int> area)
 {
     // The curve is the instrument and gets most of the width; the lesson
-    // sits beside it, never over it.
+    // sits beside it, never over it - or, with the companion window open,
+    // is in that window and the curve takes the whole width.
+    if (lessonInCompanion())
+    {
+        spectrum.setBounds (area);
+        return;
+    }
+
     const auto panelWidth = juce::jlimit (240, 360, area.getWidth() * 3 / 10);
     lessonPanel.setBounds (area.removeFromRight (panelWidth));
     area.removeFromRight (AbcTrainTheme::Spacing::medium);

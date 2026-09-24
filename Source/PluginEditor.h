@@ -1480,7 +1480,22 @@ private:
     // live in EarTrainerProcessor; this page owns only the editor on show.
     StudioScreenComponent studioScreen { StudioScreenComponent::Host {
         [this] (int index) { processor.setStudioEffect (index); },
-        [this] (int index) -> juce::AudioProcessor& { return processor.getStudioProcessor (index); } } };
+        [this] (int index) -> juce::AudioProcessor& { return processor.getStudioProcessor (index); },
+        // The companion window's "Hearing today", from the app's own guard.
+        [this]
+        {
+            CompanionHearing h;
+            const auto& config = hearingGuard.getConfig();
+            h.sessionMinutes = hearingGuard.sessionSeconds() / 60;
+            h.levelDbA = hearingGuard.lastLevelDbA();
+            h.calibrated = config.enabled && hearingGuard.isCalibrated();
+            h.weekFraction = hearingGuard.weeklyFraction (HearingGuard::dayNumber (juce::Time::getCurrentTime()));
+
+            if (config.enabled && config.breakMinutes > 0)
+                h.minutesUntilBreak = juce::jmax (0, config.breakMinutes - hearingGuard.continuousSeconds() / 60);
+
+            return h;
+        } } };
 
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four

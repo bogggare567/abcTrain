@@ -422,10 +422,24 @@ void ModuleScreenComponent::closeModule()
     openShelf();
 }
 
+void ModuleScreenComponent::setFillsHost (bool shouldFill)
+{
+    fillsHost = shouldFill;
+    layoutButtons();
+    repaint();
+}
+
 void ModuleScreenComponent::closePanel()
 {
     stopBed();
     restoreParameters();
+
+    if (fillsHost)
+    {
+        openShelf();
+        return;
+    }
+
     setVisible (false);
 
     if (onClosed != nullptr)
@@ -488,7 +502,7 @@ juce::Rectangle<int> ModuleScreenComponent::panelBounds() const
 {
     auto area = getLocalBounds();
 
-    if (phase == Phase::demo || phase == Phase::tryIt)
+    if (! fillsHost && (phase == Phase::demo || phase == Phase::tryIt))
         return area.withHeight (juce::jmin (area.getHeight(), heightFor (phase == Phase::demo ? 1 : 2)));
 
     return area;
@@ -538,6 +552,10 @@ void ModuleScreenComponent::layoutButtons()
         {
             // Top right, beside the title - the shelf needs every row of
             // height for cards, and a page's close lives up there anyway.
+            // In the companion window the window's own close does this.
+            if (fillsHost)
+                break;
+
             auto top = panelBounds().reduced (AbcTrainTheme::Spacing::large).removeFromTop (buttonHeight);
             closeButton.setVisible (true);
             closeButton.setBounds (top.removeFromRight (110));
@@ -619,7 +637,7 @@ juce::Rectangle<int> ModuleScreenComponent::shelfListBounds() const
 int ModuleScreenComponent::shelfColumns() const
 {
     const auto width = shelfListBounds().getWidth();
-    return width >= 760 ? 4 : width >= 540 ? 3 : 2;
+    return width >= 760 ? 4 : width >= 540 ? 3 : width >= 330 ? 2 : 1;
 }
 
 int ModuleScreenComponent::shelfContentHeight() const

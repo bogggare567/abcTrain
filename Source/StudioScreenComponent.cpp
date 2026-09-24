@@ -88,7 +88,10 @@ void StudioScreenComponent::showEditorFor (Effect effect)
         editor->setResizable (false, false);
 
         if (auto* learner = dynamic_cast<LearnerEditorBase*> (editor.get()))
+        {
             learner->setEmbedded (true);
+            learner->setHearingProvider (host.hearing);
+        }
 
         addAndMakeVisible (*editor);
     }

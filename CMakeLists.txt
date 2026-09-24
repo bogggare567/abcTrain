@@ -280,6 +280,7 @@ target_sources(abc_learning INTERFACE
     ${abcShared}/learning/ModuleProgress.cpp
     ${abcShared}/learning/ModuleScreenComponent.cpp
     ${abcShared}/learning/LearnerEditorBase.cpp
+    ${abcShared}/learning/CompanionPanel.cpp
     ${abcShared}/learning/PracticeSourceSelector.cpp
 )
 target_link_libraries(abc_learning INTERFACE abc_ui abc_analysis abc_audio abc_dsp abc_updates)
