@@ -534,6 +534,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         const auto onAchievements = (item == TopNavComponent::Item::achievements);
         const auto onSounds       = (item == TopNavComponent::Item::sounds);
         const auto onSettings     = (item == TopNavComponent::Item::settings);
+        const auto onLive         = (item == TopNavComponent::Item::live);
+
+        liveScreen.setVisible (onLive);
+
+        if (onLive)
+            liveScreen.toFront (false);
 
         achievementsScreen.setVisible (onAchievements);
         trainingSounds.setVisible (onSounds);
@@ -572,6 +578,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         else
             hideContentUnderNavPage();
 
+        refreshRailStatus();
         resized();
         repaint();
     };
@@ -973,6 +980,23 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     };
     addChildComponent (settingsScreen);
     addChildComponent (studioScreen);
+    addChildComponent (liveScreen);
+
+    // Live can be switched off in Settings (ADR 042's offline rule: off,
+    // the app does not even know the server's address).
+    topNav.setItemHidden (TopNavComponent::Item::live,
+                          ! localisationProperties.getBoolValue (SettingsScreenComponent::liveTabKey, true));
+    settingsScreen.onLiveTabChanged = [this] (bool on)
+    {
+        topNav.setItemHidden (TopNavComponent::Item::live, ! on);
+    };
+    settingsScreen.onSignIn = [this]
+    {
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::live);
+
+        liveScreen.openSignIn();
+    };
 
     // The hearing strip. "Break" goes home, which is also what silences
     // the signal; "later" moves the reminder on by fifteen minutes.
@@ -1031,6 +1055,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                || tour.isRunning()
                || trainingSounds.isVisible()
                || settingsScreen.isVisible()
+               || liveScreen.isVisible()
                || studioScreen.isOpen();
     };
 
@@ -1902,6 +1927,7 @@ void EarTrainerEditor::resized()
     settingsScreen.setBounds (contentBounds());
     achievementsScreen.setBounds (contentBounds());
     studioScreen.setBounds (contentBounds());
+    liveScreen.setBounds (contentBounds());
 
     // The run result still covers everything: it is not a destination, it
     // is what a finished run leaves on the screen.
@@ -2618,6 +2644,7 @@ void EarTrainerEditor::refreshRailStatus()
     else if (achievementsScreen.isVisible()) active = TopNavComponent::Item::achievements;
     else if (trainingSounds.isVisible())  active = TopNavComponent::Item::sounds;
     else if (settingsScreen.isVisible())  active = TopNavComponent::Item::settings;
+    else if (liveScreen.isVisible())      active = TopNavComponent::Item::live;
     topNav.setActiveItem (active);
     topNav.setVisible (railIsVisible());
 }
@@ -2894,6 +2921,7 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     // Leaving for a screen closes whichever page was open over it.
     settingsScreen.setVisible (false);
+    liveScreen.setVisible (false);
     trainingSounds.setVisible (false);
     achievementsScreen.setVisible (false);
     studioScreen.setVisible (false);
@@ -3123,11 +3151,13 @@ void EarTrainerEditor::refreshLocalisedText()
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
     studioScreen.setLabels (localisation.getText ("ui.studio.caption"));
+    refreshLiveStrings();
     topNav.setLabels ({ localisation.getText ("ui.trainings"),
                         localisation.getText ("ui.studio"),
                         localisation.getText ("ui.achievements"),
                         localisation.getText ("ui.trainingSounds"),
-                        localisation.getText ("ui.settings") },
+                        localisation.getText ("ui.settings"),
+                        localisation.getText ("ui.live") },
                       localisation.getText ("ui.streak"));
 
 
@@ -3653,4 +3683,86 @@ void EarTrainerEditor::refreshFromProgressState()
     banner.challengeAccent = tintForGame (challengeEnglishName);
 
     focusBand.setState (std::move (banner));
+}
+
+void EarTrainerEditor::refreshLiveStrings()
+{
+    LiveScreenComponent::Strings s;
+    const auto g = [this] (const char* key, const juce::String& fallback)
+    {
+        const auto text = localisation.getText (key);
+        return text == key || text.isEmpty() ? fallback : text;
+    };
+
+    s.seminar = g ("live.seminar", s.seminar);
+    s.battle = g ("live.battle", s.battle);
+    s.rating = g ("live.rating", s.rating);
+    s.notSignedIn = g ("live.notSignedIn", s.notSignedIn);
+    s.signIn = g ("live.signIn", s.signIn);
+    s.signOut = g ("live.signOut", s.signOut);
+    s.joinTitle = g ("live.joinTitle", s.joinTitle);
+    s.joinHint = g ("live.joinHint", s.joinHint);
+    s.joinCode = g ("live.joinCode", s.joinCode);
+    s.join = g ("live.join", s.join);
+    s.hostTitle = g ("live.hostTitle", s.hostTitle);
+    s.where = g ("live.where", s.where);
+    s.online = g ("live.online", s.online);
+    s.local = g ("live.local", s.local);
+    s.localHint = g ("live.localHint", s.localHint);
+    s.onlineHint = g ("live.onlineHint", s.onlineHint);
+    s.who = g ("live.who", s.who);
+    s.anyone = g ("live.anyone", s.anyone);
+    s.listOnly = g ("live.listOnly", s.listOnly);
+    s.families = g ("live.families", s.families);
+    s.rounds = g ("live.rounds", s.rounds);
+    s.freq = g ("live.freq", s.freq);
+    s.dyn = g ("live.dyn", s.dyn);
+    s.space = g ("live.space", s.space);
+    s.character = g ("live.character", s.character);
+    s.invites = g ("live.invites", s.invites);
+    s.openRoom = g ("live.openRoom", s.openRoom);
+    s.roomOpenLocal = g ("live.roomOpenLocal", s.roomOpenLocal);
+    s.roomOpenOnline = g ("live.roomOpenOnline", s.roomOpenOnline);
+    s.typeAddress = g ("live.typeAddress", s.typeAddress);
+    s.sameWifi = g ("live.sameWifi", s.sameWifi);
+    s.joined = g ("live.joined", s.joined);
+    s.projector = g ("live.projector", s.projector);
+    s.start = g ("live.start", s.start);
+    s.closeRoom = g ("live.closeRoom", s.closeRoom);
+    s.resultsLocal = g ("live.resultsLocal", s.resultsLocal);
+    s.invitesTitle = g ("live.invitesTitle", s.invitesTitle);
+    s.invitesHint = g ("live.invitesHint", s.invitesHint);
+    s.makeCodes = g ("live.makeCodes", s.makeCodes);
+    s.printCodes = g ("live.printCodes", s.printCodes);
+    s.mailCodes = g ("live.mailCodes", s.mailCodes);
+    s.done = g ("live.done", s.done);
+    s.localNoMail = g ("live.localNoMail", s.localNoMail);
+    s.decibelo = g ("live.decibelo", s.decibelo);
+    s.decibeloHint = g ("live.decibeloHint", s.decibeloHint);
+    s.findTitle = g ("live.findTitle", s.findTitle);
+    s.battleRules = g ("live.battleRules", s.battleRules);
+    s.search = g ("live.search", s.search);
+    s.challenge = g ("live.challenge", s.challenge);
+    s.battleNeedsAccount = g ("live.battleNeedsAccount", s.battleNeedsAccount);
+    s.fairPlay = g ("live.fairPlay", s.fairPlay);
+    s.world = g ("live.world", s.world);
+    s.country = g ("live.country", s.country);
+    s.season = g ("live.season", s.season);
+    s.allTime = g ("live.allTime", s.allTime);
+    s.colRank = g ("live.colRank", s.colRank);
+    s.colNick = g ("live.colNick", s.colNick);
+    s.colCountry = g ("live.colCountry", s.colCountry);
+    s.colRating = g ("live.colRating", s.colRating);
+    s.colRecord = g ("live.colRecord", s.colRecord);
+    s.ratingEmpty = g ("live.ratingEmpty", s.ratingEmpty);
+    s.openOnSite = g ("live.openOnSite", s.openOnSite);
+    s.signInTitle = g ("live.signInTitle", s.signInTitle);
+    s.signInSteps = g ("live.signInSteps", s.signInSteps);
+    s.waiting = g ("live.waiting", s.waiting);
+    s.openSite = g ("live.openSite", s.openSite);
+    s.cancel = g ("live.cancel", s.cancel);
+    s.noPasswords = g ("live.noPasswords", s.noPasswords);
+    s.notYet = g ("live.notYet", s.notYet);
+
+    liveScreen.setStrings (std::move (s));
 }

@@ -3,6 +3,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include <array>
 #include <cmath>
+#include <complex>
 
 // Shared between the processor (real-time filtering) and the editor
 // (drawing the response curve for display only) so both always agree on
@@ -166,6 +167,96 @@ namespace EQCoefficients
             case BandType::bell:
             default:                  return makeMatchedBell (sampleRate, freq, safeQ, gainDb);
         }
+    }
+
+    // Slope of a pass filter, as real EQs offer it: 6, 12, 24 or 48 dB per
+    // octave. Stored as an index; 12 is what every band had before.
+    inline constexpr int numSlopes = 4;
+    inline constexpr int defaultSlope = 1;
+
+    inline int slopeDbPerOctave (int index) noexcept
+    {
+        constexpr int values[] { 6, 12, 24, 48 };
+        return values[juce::jlimit (0, numSlopes - 1, index)];
+    }
+
+    inline bool usesSlope (BandType type) noexcept
+    {
+        return type == BandType::highPass || type == BandType::lowPass;
+    }
+
+    // A band as a cascade of up to four biquads - one for every type but
+    // a steep pass filter. 24 and 48 dB/oct are Butterworth cascades whose
+    // last section carries the band's Q (0.707 = plain Butterworth, higher
+    // = a resonant bump at the corner, as on the EQs this teaches).
+    // Allocation-free: the audio thread calls it.
+    struct Sections
+    {
+        std::array<std::array<float, 6>, 4> coefficients {};
+        int count = 1;
+    };
+
+    inline Sections makeSections (BandType type, double sampleRate, float freqHz, float gainDb, float q,
+                                  int slopeIndex) noexcept
+    {
+        Sections out;
+
+        if (! usesSlope (type) || juce::jlimit (0, numSlopes - 1, slopeIndex) == 1)
+        {
+            out.coefficients[0] = makeArray (type, sampleRate, freqHz, gainDb, q);
+            return out;
+        }
+
+        const auto freq = juce::jlimit (10.0f, (float) (sampleRate * 0.49), freqHz);
+        const auto resonance = juce::jmax (0.05f, q) / 0.70710678f;
+        const auto high = type == BandType::highPass;
+        using A = juce::dsp::IIR::ArrayCoefficients<float>;
+
+        const auto section = [&] (float sectionQ)
+        {
+            return high ? A::makeHighPass (sampleRate, freq, sectionQ) : A::makeLowPass (sampleRate, freq, sectionQ);
+        };
+
+        switch (juce::jlimit (0, numSlopes - 1, slopeIndex))
+        {
+            case 0:
+            {
+                // First order, written as a biquad with its second-order
+                // terms at zero so it shares the stage storage.
+                const auto c = high ? A::makeFirstOrderHighPass (sampleRate, freq)
+                                    : A::makeFirstOrderLowPass (sampleRate, freq);
+                out.coefficients[0] = { c[0], c[1], 0.0f, c[2], c[3], 0.0f };
+                out.count = 1;
+                break;
+            }
+
+            case 2:
+                out.coefficients[0] = section (0.54119610f);
+                out.coefficients[1] = section (1.30656296f * resonance);
+                out.count = 2;
+                break;
+
+            default:
+                out.coefficients[0] = section (0.50979558f);
+                out.coefficients[1] = section (0.60134489f);
+                out.coefficients[2] = section (0.89997622f);
+                out.coefficients[3] = section (2.56291545f * resonance);
+                out.count = 4;
+                break;
+        }
+
+        return out;
+    }
+
+    // |H| of one {b0, b1, b2, a0, a1, a2} section at a frequency - for the
+    // editor's curve, which has to draw exactly what the stages do.
+    inline double magnitudeOf (const std::array<float, 6>& c, double freqHz, double sampleRate) noexcept
+    {
+        const auto w = juce::MathConstants<double>::twoPi * freqHz / sampleRate;
+        const std::complex<double> z1 = std::polar (1.0, -w), z2 = z1 * z1;
+        const auto num = (double) c[0] + (double) c[1] * z1 + (double) c[2] * z2;
+        const auto den = (double) c[3] + (double) c[4] * z1 + (double) c[5] * z2;
+        return std::abs (num) / juce::jmax (1.0e-12, std::abs (den));
     }
 
     inline juce::dsp::IIR::Coefficients<float>::Ptr make (BandType type, double sampleRate,

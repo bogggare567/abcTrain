@@ -22,6 +22,7 @@ void LearnerEQProcessor::cacheParameterPointers()
         p.freq = apvts.getRawParameterValue (freqParamId (band));
         p.gain = apvts.getRawParameterValue (gainParamId (band));
         p.q    = apvts.getRawParameterValue (qParamId (band));
+        p.slope = apvts.getRawParameterValue (slopeParamId (band));
     }
 
     bypassParam = apvts.getRawParameterValue (bypassParamId);
@@ -74,6 +75,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout LearnerEQProcessor::createPa
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID (bypassParamId, 1), "Bypass", false));
 
+    // Added after everything that already existed, so the parameter order
+    // a host may have saved automation against does not move.
+    for (int band = 0; band < maxBands; ++band)
+        params.push_back (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID (slopeParamId (band), 1), "Band " + juce::String (band + 1) + " Slope",
+            juce::StringArray { "6 dB/oct", "12 dB/oct", "24 dB/oct", "48 dB/oct" }, EQCoefficients::defaultSlope));
+
     return { params.begin(), params.end() };
 }
 
@@ -108,6 +116,15 @@ void LearnerEQProcessor::prepareToPlay (double newSampleRate, int samplesPerBloc
         *filter.state = EQCoefficients::makeArray (EQCoefficients::BandType::bell, sampleRate, 1000.0f, 0.0f, 0.7f);
         filter.prepare (spec);
     }
+
+    for (auto& stages : extraStages)
+        for (auto& filter : stages)
+        {
+            *filter.state = EQCoefficients::makeArray (EQCoefficients::BandType::bell, sampleRate, 1000.0f, 0.0f, 0.7f);
+            filter.prepare (spec);
+        }
+
+    stagesInUse.fill (1);
 
     for (auto& g : glide)
     {
@@ -158,6 +175,10 @@ void LearnerEQProcessor::updateFilters()
             g.q.setCurrentAndTargetValue (q);
             g.gain.setCurrentAndTargetValue (gain);
             filters[(size_t) band].reset();
+
+            for (auto& extra : extraStages[(size_t) band])
+                extra.reset();
+
             g.wasOn = true;
         }
         else
@@ -264,11 +285,29 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
                 auto& g = glide[(size_t) band];
                 const auto type = EQCoefficients::typeFromIndex ((int) read (bandParams[(size_t) band].type));
 
+                const auto slope = (int) read (bandParams[(size_t) band].slope);
+                auto& inUse = stagesInUse[(size_t) band];
+
                 if (start == 0 || g.freq.isSmoothing() || g.q.isSmoothing() || g.gain.isSmoothing())
-                    *filters[(size_t) band].state = EQCoefficients::makeArray (type, sampleRate,
-                                                                       g.freq.getCurrentValue(),
-                                                                       g.gain.getCurrentValue(),
-                                                                       g.q.getCurrentValue());
+                {
+                    const auto sections = EQCoefficients::makeSections (type, sampleRate,
+                                                                        g.freq.getCurrentValue(),
+                                                                        g.gain.getCurrentValue(),
+                                                                        g.q.getCurrentValue(), slope);
+                    *filters[(size_t) band].state = sections.coefficients[0];
+
+                    for (int stage = 1; stage < sections.count; ++stage)
+                    {
+                        auto& extra = extraStages[(size_t) band][(size_t) (stage - 1)];
+                        *extra.state = sections.coefficients[(size_t) stage];
+
+                        if (stage >= inUse)
+                            extra.reset();
+                    }
+
+                    inUse = sections.count;
+                }
+
                 g.freq.skip (n);
                 g.q.skip (n);
                 g.gain.skip (n);
@@ -277,6 +316,9 @@ void LearnerEQProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
                 auto sub = block.getSubBlock ((size_t) start, (size_t) n);
                 juce::dsp::ProcessContextReplacing<float> context (sub);
                 filters[(size_t) band].process (context);
+
+                for (int stage = 1; stage < inUse; ++stage)
+                    extraStages[(size_t) band][(size_t) (stage - 1)].process (context);
             }
         }
 

@@ -65,21 +65,17 @@ Name: "eartrainer\standalone"; Description: "The app (runs on its own, no DAW ne
 
 Name: "learnereq"; Description: "ABC Learner EQ - real 4-band EQ with live spectrum + response curve, a guided Lesson"; Types: full compact custom
 Name: "learnereq\vst3"; Description: "VST3 format (Ableton Live, Cubase, Reaper, Studio One, and most other DAWs)"; Types: full compact custom
-Name: "learnereq\standalone"; Description: "Standalone app (runs on its own, no DAW needed)"; Types: full custom
 
 Name: "learnercomp"; Description: "ABC Learner Comp - real compressor with live spectrum, GR/peak meters, 4 presets, a guided Lesson"; Types: full compact custom
 Name: "learnercomp\vst3"; Description: "VST3 format (Ableton Live, Cubase, Reaper, Studio One, and most other DAWs)"; Types: full compact custom
-Name: "learnercomp\standalone"; Description: "Standalone app (runs on its own, no DAW needed)"; Types: full custom
 
 Name: "learnerverb"; Description: "ABC Learner Verb - real reverb (Room/Hall/Plate/Spring) with live spectrum, 4 presets, a guided Lesson"; Types: full compact custom
 Name: "learnerverb\vst3"; Description: "VST3 format (Ableton Live, Cubase, Reaper, Studio One, and most other DAWs)"; Types: full compact custom
-Name: "learnerverb\standalone"; Description: "Standalone app (runs on its own, no DAW needed)"; Types: full custom
 
 [Files]
 ; VST3 (JUCE builds these as bundle-style folders on Windows, same shape
 ; as the macOS .vst3 - hence the "\*" + recursesubdirs pattern rather than
 ; copying a single file).
-Source: "{#RepoRoot}build\EarTrainer_artefacts\Release\VST3\ABC Ear Trainer.vst3\*"; DestDir: "{code:GetVST3Dir}\ABC Ear Trainer.vst3"; Components: eartrainer\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#RepoRoot}build\LearnerEQ_artefacts\Release\VST3\ABC Learner EQ.vst3\*"; DestDir: "{code:GetVST3Dir}\ABC Learner EQ.vst3"; Components: learnereq\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#RepoRoot}build\LearnerComp_artefacts\Release\VST3\ABC Learner Comp.vst3\*"; DestDir: "{code:GetVST3Dir}\ABC Learner Comp.vst3"; Components: learnercomp\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
 Source: "{#RepoRoot}build\LearnerVerb_artefacts\Release\VST3\ABC Learner Verb.vst3\*"; DestDir: "{code:GetVST3Dir}\ABC Learner Verb.vst3"; Components: learnerverb\vst3; Flags: recursesubdirs createallsubdirs ignoreversion
@@ -88,15 +84,9 @@ Source: "{#RepoRoot}build\LearnerVerb_artefacts\Release\VST3\ABC Learner Verb.vs
 ; chosen on the standard Select Destination Location page, default
 ; {pf}\abcTrain).
 Source: "{#RepoRoot}build\EarTrainer_artefacts\Release\Standalone\ABC Ear Trainer.exe"; DestDir: "{app}"; Components: eartrainer\standalone; Flags: ignoreversion
-Source: "{#RepoRoot}build\LearnerEQ_artefacts\Release\Standalone\ABC Learner EQ.exe"; DestDir: "{app}"; Components: learnereq\standalone; Flags: ignoreversion
-Source: "{#RepoRoot}build\LearnerComp_artefacts\Release\Standalone\ABC Learner Comp.exe"; DestDir: "{app}"; Components: learnercomp\standalone; Flags: ignoreversion
-Source: "{#RepoRoot}build\LearnerVerb_artefacts\Release\Standalone\ABC Learner Verb.exe"; DestDir: "{app}"; Components: learnerverb\standalone; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\ABC Ear Trainer"; Filename: "{app}\ABC Ear Trainer.exe"; Components: eartrainer\standalone
-Name: "{group}\ABC Learner EQ"; Filename: "{app}\ABC Learner EQ.exe"; Components: learnereq\standalone
-Name: "{group}\ABC Learner Comp"; Filename: "{app}\ABC Learner Comp.exe"; Components: learnercomp\standalone
-Name: "{group}\ABC Learner Verb"; Filename: "{app}\ABC Learner Verb.exe"; Components: learnerverb\standalone
 Name: "{group}\Documentation && License"; Filename: "{#MyAppURL}"
 Name: "{group}\Uninstall abcTrain"; Filename: "{uninstallexe}"
 

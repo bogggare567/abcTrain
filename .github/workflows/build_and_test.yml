@@ -61,6 +61,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # The version comes from `git describe --tags`; a shallow clone
+          # has no tags and every build called itself 0.0.0.
+          fetch-depth: 0
 
       # JUCE's GUI modules need X11/GL headers to compile on Linux even
       # though nothing here actually opens a window in CI - alsa/freetype
@@ -160,6 +164,9 @@ jobs:
         run: |
           $version = (Get-Content build/abctrain-version.txt).Trim()
           iscc "installer\windows_setup.iss" "/DMyAppVersion=$version"
+          # pwsh does not stop on a native command's failure: without this a
+          # script error surfaced only as "setup.exe not found" one line later.
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Move-Item "installer\abcTrain-$version-setup.exe" "abcTrain-Windows-$version-setup.exe"
 
       - name: Upload Windows installer

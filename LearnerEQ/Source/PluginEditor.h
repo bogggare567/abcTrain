@@ -32,6 +32,16 @@ public:
         refreshLesson();
     }
 
+    // The high-pass of the kick lesson selected, at 24 dB/oct: the Slope
+    // knob in the gain knob's place.
+    void slopeForSnapshot()
+    {
+        kickLessonForSnapshot();
+        writeParameter (LearnerEQProcessor::slopeParamId (0), 2.0f);
+        selectBand (0);
+        tick();
+    }
+
 private:
     int analysisContentHeight() const override { return 280; }
     int controlsContentHeight() const override { return isCompact() ? 104 : 124; }
@@ -73,6 +83,10 @@ private:
     juce::String formatFrequency (double hz) const;
     juce::Slider freqSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
     juce::Slider gainSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    // A pass filter has no gain; its slope takes the gain knob's place
+    // (6 / 12 / 24 / 48 dB/oct, four detents).
+    juce::Slider slopeSlider { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
+    bool selectedUsesSlope() const;
     juce::Slider qSlider    { juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow };
     std::array<juce::Rectangle<int>, 3> knobCaptions;
 

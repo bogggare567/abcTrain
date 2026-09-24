@@ -72,6 +72,7 @@ public:
     static juce::String qParamId (int band)    { return "band" + juce::String (band) + "Q"; }
     static juce::String typeParamId (int band) { return "band" + juce::String (band) + "Type"; }
     static juce::String onParamId (int band)   { return "band" + juce::String (band) + "On"; }
+    static juce::String slopeParamId (int band) { return "band" + juce::String (band) + "Slope"; }
 
     // ---- band bookkeeping, for the editor ----
     bool isBandOn (int band) const noexcept;
@@ -122,6 +123,13 @@ private:
     // atomics, because both happen on the same thread inside one block.
     std::array<bool, maxBands> bandActive {};
 
+    // Stages 2-4 of a steep pass filter (EQCoefficients::makeSections);
+    // stage 1 is `filters`. How many each band ran last block, so stages
+    // coming into use start from silence rather than old state.
+    std::array<std::array<juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>,
+                                                          juce::dsp::IIR::Coefficients<float>>, 3>, maxBands> extraStages;
+    std::array<int, maxBands> stagesInUse {};
+
     // Raw-parameter pointers, resolved once. getRawParameterValue looks up
     // a std::map keyed by string, and every call site above builds that
     // string fresh - "band3Freq" is a juce::String with no small-string
@@ -137,6 +145,7 @@ private:
         std::atomic<float>* freq = nullptr;
         std::atomic<float>* gain = nullptr;
         std::atomic<float>* q = nullptr;
+        std::atomic<float>* slope = nullptr;
     };
 
     std::array<BandParams, maxBands> bandParams {};

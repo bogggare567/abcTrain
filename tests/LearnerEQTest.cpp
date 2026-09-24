@@ -133,6 +133,39 @@ public:
                 for (int i = 0; i < blockSize; ++i)
                     expectWithinAbsoluteError (buffer.getSample (ch, i), input.getSample (ch, i), 1.0e-6f);
         }
+
+        beginTest ("a steeper high-pass slope cuts more an octave below the corner, and each is a real slope");
+        {
+            using T = EQCoefficients::BandType;
+            const auto sr = 48000.0;
+
+            const auto dbAt = [sr] (int slope, double hz)
+            {
+                const auto sections = EQCoefficients::makeSections (T::highPass, sr, 1000.0f, 0.0f, 0.7071f, slope);
+                double db = 0.0;
+
+                for (int s = 0; s < sections.count; ++s)
+                    db += juce::Decibels::gainToDecibels (EQCoefficients::magnitudeOf (sections.coefficients[(size_t) s], hz, sr));
+
+                return db;
+            };
+
+            // Two octaves below the corner the skirt is close to its
+            // nominal slope: 6/12/24/48 dB per octave.
+            const int nominal[] { 6, 12, 24, 48 };
+
+            for (int slope = 0; slope < EQCoefficients::numSlopes; ++slope)
+            {
+                const auto perOctave = dbAt (slope, 250.0) - dbAt (slope, 125.0);
+                expectWithinAbsoluteError (perOctave, (double) nominal[slope], 1.5);
+                expectLessThan (dbAt (slope, 5000.0), 0.2);          // the top passes
+                expectGreaterThan (dbAt (slope, 5000.0), -0.5);
+            }
+
+            expectLessThan (dbAt (3, 500.0), dbAt (2, 500.0));
+            expectLessThan (dbAt (2, 500.0), dbAt (1, 500.0));
+            expectLessThan (dbAt (1, 500.0), dbAt (0, 500.0));
+        }
     }
 };
 

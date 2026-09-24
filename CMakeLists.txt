@@ -378,6 +378,7 @@ target_sources(EarTrainer
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/StudioScreenComponent.cpp
+        Source/LiveScreenComponent.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -643,6 +644,7 @@ set(abcTrainEditorToolSources
         Source/AchievementsScreenComponent.cpp
         Source/TrainingSoundsComponent.cpp
         Source/StudioScreenComponent.cpp
+        Source/LiveScreenComponent.cpp
 )
 
 juce_add_console_app(EditorSnapshots

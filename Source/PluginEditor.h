@@ -12,6 +12,7 @@
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
 #include "StudioScreenComponent.h"
+#include "LiveScreenComponent.h"
 #include "RunResultsComponent.h"
 #include "TopNavComponent.h"
 #include "AchievementsScreenComponent.h"
@@ -159,6 +160,26 @@ public:
     // Snapshot and ClickMap seam: the switch pressed the way a player
     // presses it, after the page is already open.
     bool isStudioShowingEditorForSnapshot() const { return studioScreen.isOpen(); }
+
+    // Live, for tools/EditorSnapshots: 0 seminar, 1 battle, 2 rating;
+    // 3 a local room open, 4 the list and codes, 5 sign-in.
+    void openLiveForSnapshot (int view)
+    {
+        showScreen (Screen::home);
+
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::live);
+
+        switch (view)
+        {
+            case 1: liveScreen.showTab (LiveScreenComponent::Tab::battle); break;
+            case 2: liveScreen.showTab (LiveScreenComponent::Tab::rating); break;
+            case 3: liveScreen.openRoomForSnapshot (true); break;
+            case 4: liveScreen.openInvitesForSnapshot(); break;
+            case 5: liveScreen.openSignIn(); break;
+            default: liveScreen.showTab (LiveScreenComponent::Tab::seminar); break;
+        }
+    }
     bool isSignalEnabledForSnapshot() const { return processor.isSignalEnabled(); }
     void openSoundsFromTrainingForSnapshot() { topNav.onItemChosen (TopNavComponent::Item::sounds); }
 
@@ -1475,6 +1496,11 @@ private:
     // once. Added after trainingSounds so it paints over it, and before
     // the toast, which paints over everything.
     SettingsScreenComponent settingsScreen { localisation, localisationProperties };
+
+    // Seminars, battles, the rating - the screens and buttons, no network
+    // yet (LiveScreenComponent.h).
+    LiveScreenComponent liveScreen;
+    void refreshLiveStrings();
 
     // Learner EQ / Comp / Verb inside the app (ADR 041). The processors
     // live in EarTrainerProcessor; this page owns only the editor on show.

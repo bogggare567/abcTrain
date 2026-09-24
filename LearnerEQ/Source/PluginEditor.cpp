@@ -264,6 +264,35 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
             writeParameter (LearnerEQProcessor::qParamId (selectedBand), (float) qSlider.getValue());
     };
 
+    slopeSlider.setRange (0.0, EQCoefficients::numSlopes - 1, 1.0);
+    slopeSlider.textFromValueFunction = [] (double index)
+    {
+        return juce::String (EQCoefficients::slopeDbPerOctave ((int) std::round (index))) + " dB/oct";
+    };
+    slopeSlider.valueFromTextFunction = [] (const juce::String& text)
+    {
+        const auto db = text.retainCharacters ("0123456789").getIntValue();
+        return db >= 48 ? 3.0 : db >= 24 ? 2.0 : db >= 12 ? 1.0 : 0.0;
+    };
+    slopeSlider.onValueChange = [this]
+    {
+        if (selectedBand < 0)
+            return;
+
+        writeParameter (LearnerEQProcessor::slopeParamId (selectedBand), (float) slopeSlider.getValue());
+        showGuide (t ("guide.eq.slope", "Slope: how fast the filter cuts beyond its frequency. 12 dB/oct is gentle, 48 is a wall."));
+    };
+    addChildComponent (slopeSlider);
+    slopeSlider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 96, 20);
+
+    spectrum.onBandSlopeChanged = [this] (int band, int slope)
+    {
+        writeParameter (LearnerEQProcessor::slopeParamId (band), (float) slope);
+
+        if (band == selectedBand)
+            pushSelectedBandToControls();
+    };
+
     for (auto* slider : { &freqSlider, &gainSlider, &qSlider })
     {
         addAndMakeVisible (slider);
@@ -406,13 +435,23 @@ void LearnerEQEditor::layoutControls (juce::Rectangle<int> area)
         auto column = area.removeFromLeft (width).reduced (Spacing::tight, 0);
         knobCaptions[(size_t) i] = column.removeFromTop (20);
         sliders[i]->setBounds (column);
+
+        if (i == 1)
+            slopeSlider.setBounds (column);
     }
+}
+
+bool LearnerEQEditor::selectedUsesSlope() const
+{
+    return selectedBand >= 0 && EQCoefficients::usesSlope (eqProcessor.getBandType (selectedBand));
 }
 
 void LearnerEQEditor::paintOverChildren (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
-    const juce::String captions[] { t ("eq.freq", "Frequency"), t ("eq.gain", "Gain"), t ("eq.q", "Q") };
+    const juce::String captions[] { t ("eq.freq", "Frequency"),
+                                    selectedUsesSlope() ? t ("eq.slope", "Slope") : t ("eq.gain", "Gain"),
+                                    t ("eq.q", "Q") };
 
     for (int i = 0; i < 3; ++i)
         AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (captions[i]), knobCaptions[(size_t) i].toFloat(),
@@ -521,7 +560,7 @@ void LearnerEQEditor::themeChanged()
 {
     const auto& theme = AbcTrainTheme::current();
 
-    for (auto* slider : { &freqSlider, &gainSlider, &qSlider })
+    for (auto* slider : { &freqSlider, &gainSlider, &qSlider, &slopeSlider })
     {
         slider->setColour (juce::Slider::textBoxTextColourId, theme.textBright);
         slider->setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
@@ -575,6 +614,13 @@ void LearnerEQEditor::pushSelectedBandToControls()
 
     if (! hasBand)
     {
+        if (slopeSlider.isVisible())
+        {
+            slopeSlider.setVisible (false);
+            gainSlider.setVisible (true);
+            repaint (knobCaptions[1]);
+        }
+
         gainSlider.setEnabled (false);
         typeChips.setChosen (-1);
         repaint (bandCaptionArea);
@@ -583,8 +629,20 @@ void LearnerEQEditor::pushSelectedBandToControls()
 
     const auto type = eqProcessor.getBandType (selectedBand);
 
-    // Gain is greyed for the shapes that have none.
+    // Gain is greyed for the shapes that have none; a pass filter shows
+    // its slope in the same place instead.
+    const auto slope = EQCoefficients::usesSlope (type);
+
+    if (slopeSlider.isVisible() != slope)
+    {
+        gainSlider.setVisible (! slope);
+        slopeSlider.setVisible (slope);
+        repaint (knobCaptions[1]);
+    }
+
     gainSlider.setEnabled (EQCoefficients::usesGain (type));
+    slopeSlider.setValue (eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::slopeParamId (selectedBand))->load(),
+                          juce::dontSendNotification);
 
     if (typeChips.getChosen() != (int) type)
     {
@@ -621,6 +679,7 @@ void LearnerEQEditor::pushBandsToDisplay()
         entry.freqHz = eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::freqParamId (band))->load();
         entry.gainDb = eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::gainParamId (band))->load();
         entry.q = eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::qParamId (band))->load();
+        entry.slope = (int) eqProcessor.apvts.getRawParameterValue (LearnerEQProcessor::slopeParamId (band))->load();
         active.push_back (entry);
     }
 

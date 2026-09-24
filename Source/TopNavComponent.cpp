@@ -40,7 +40,7 @@ namespace
 
 TopNavComponent::TopNavComponent()
 {
-    labels = { "Trainings", "Achievements", "Sounds", "Settings" };
+    labels = { "Trainings", "Studio", "Achievements", "Sounds", "Settings", "Live" };
     setInterceptsMouseClicks (true, true);
     startTimerHz (60);
 }
@@ -95,9 +95,24 @@ juce::String TopNavComponent::streakCaption() const
     return streakTemplate.replace ("{{days}}", juce::String (streakDays));
 }
 
+int TopNavComponent::lastTabRight() const
+{
+    for (int i = numItems - 1; i >= 0; --i)
+        if (! hidden[(size_t) i])
+            return tabBounds (i).getRight();
+
+    return tabsLeft;
+}
+
+void TopNavComponent::setItemHidden (Item item, bool shouldBeHidden)
+{
+    hidden[(size_t) item] = shouldBeHidden;
+    repaint();
+}
+
 juce::Rectangle<int> TopNavComponent::tabBounds (int index) const
 {
-    if (index < 0 || index >= numItems)
+    if (index < 0 || index >= numItems || hidden[(size_t) index])
         return {};
 
     const auto font = AbcTrainLookAndFeel::headingFont();
@@ -105,6 +120,9 @@ juce::Rectangle<int> TopNavComponent::tabBounds (int index) const
 
     for (int i = 0; i < index; ++i)
     {
+        if (hidden[(size_t) i])
+            continue;
+
         const auto w = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (
                             AbcTrainLookAndFeel::toCaps (labels[i]), font, tabTracking)) + tabPadding * 2;
         x += w + tabGap;
@@ -262,6 +280,9 @@ void TopNavComponent::paint (juce::Graphics& g)
         {
             const auto tab = tabBounds (i);
 
+            if (tab.isEmpty())
+                continue;
+
             if (tab.getRight() > getWidth() - rightCluster - pagePad)
                 break;   // no room; better a missing tab than one drawn over the streak
 
@@ -304,7 +325,7 @@ void TopNavComponent::paint (juce::Graphics& g)
         auto area = juce::Rectangle<int> (right - textWidth - 10 - dotsWidth, 0,
                                            textWidth + 10 + dotsWidth, getHeight());
 
-        if (area.getX() > tabBounds (numItems - 1).getRight() + 16)
+        if (area.getX() > lastTabRight() + 16)
         {
             AbcTrainLookAndFeel::drawTrackedText (g, caption,
                                                    area.removeFromLeft (textWidth).toFloat(),
@@ -342,7 +363,7 @@ void TopNavComponent::paint (juce::Graphics& g)
         auto area = juce::Rectangle<int> (statusLeftEdge - textWidth - 10 - barWidth, 0,
                                            textWidth + 10 + barWidth, getHeight());
 
-        if (area.getX() > tabBounds (numItems - 1).getRight() + 16)
+        if (area.getX() > lastTabRight() + 16)
         {
             const auto colour = hearingFraction >= 0.5f ? theme.accentWarm : theme.textDim;
 

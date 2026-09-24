@@ -32,6 +32,7 @@ public:
         float freqHz = 1000.0f;
         float gainDb = 0.0f;
         float q = 0.7f;
+        int slope = EQCoefficients::defaultSlope;
     };
 
     // Called from the message thread once per frame with the current
@@ -81,6 +82,10 @@ public:
     // place rather than two.
     std::function<void (int band, float freqHz, float gainDb)> onBandMoved;
     std::function<void (int band, float q)> onBandQChanged;
+
+    // A pass filter's slope (EQCoefficients slope index), from the wheel
+    // or a pinch over its node.
+    std::function<void (int band, int slopeIndex)> onBandSlopeChanged;
     std::function<void (float freqHz, float gainDb)> onBandAdded;
     std::function<void (int band)> onBandRemoved;
     std::function<void (int band)> onBandSelected;
@@ -93,6 +98,10 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDoubleClick (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    void mouseMagnify (const juce::MouseEvent&, float scaleFactor) override;
+    void stepSlopeOrQ (int band, int direction, bool forceQ);
+    float wheelAccumulator = 0.0f;
+    float pinchAccumulator = 1.0f;
 
 protected:
     void paintOverlay (juce::Graphics&, juce::Rectangle<float> bounds) override;

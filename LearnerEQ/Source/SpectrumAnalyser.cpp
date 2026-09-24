@@ -107,12 +107,14 @@ juce::Path SpectrumAnalyserComponent::buildResponseCurvePath (juce::Rectangle<fl
     // allocate/design/free cycles per paint, at 30 Hz, for a curve that
     // needs eight. That was the single largest source of "the plugin feels
     // slow", and it got worse with every band the user added.
-    std::vector<juce::dsp::IIR::Coefficients<float>::Ptr> coefficients;
+    // A steep pass filter is several sections; the curve multiplies them
+    // exactly as the processor runs them.
+    std::vector<EQCoefficients::Sections> coefficients;
     coefficients.reserve (bands.size());
 
     for (const auto& band : bands)
-        coefficients.push_back (EQCoefficients::make (band.type, eqSampleRate,
-                                                      band.freqHz, band.gainDb, band.q));
+        coefficients.push_back (EQCoefficients::makeSections (band.type, eqSampleRate,
+                                                              band.freqHz, band.gainDb, band.q, band.slope));
 
     for (int i = 0; i < numPoints; ++i)
     {
@@ -125,9 +127,10 @@ juce::Path SpectrumAnalyserComponent::buildResponseCurvePath (juce::Rectangle<fl
         // just as much a part of the curve as a bell's bump.
         float totalDb = 0.0f;
 
-        for (const auto& coeffs : coefficients)
-            totalDb += juce::Decibels::gainToDecibels (
-                coeffs->getMagnitudeForFrequency ((double) freq, eqSampleRate));
+        for (const auto& sections : coefficients)
+            for (int stage = 0; stage < sections.count; ++stage)
+                totalDb += juce::Decibels::gainToDecibels ((float)
+                    EQCoefficients::magnitudeOf (sections.coefficients[(size_t) stage], (double) freq, eqSampleRate));
 
         const auto x = area.getX() + area.getWidth() * proportion;
         const auto y = yForGain (totalDb, area);
@@ -388,21 +391,62 @@ void SpectrumAnalyserComponent::mouseDoubleClick (const juce::MouseEvent& event)
 void SpectrumAnalyserComponent::mouseWheelMove (const juce::MouseEvent& event,
                                                  const juce::MouseWheelDetails& wheel)
 {
-    // Q on the wheel, over the node it belongs to. Nothing happens when
-    // the pointer is not over a node, rather than the wheel silently
-    // editing whatever was last selected.
+    // Over a node: Q on the wheel - or, for a high-/low-pass, its slope,
+    // the one thing about a pass filter worth turning (Alt: Q anyway).
+    // Nothing happens when the pointer is not over a node, rather than the
+    // wheel silently editing whatever was last selected.
     const auto target = bandAtPosition (event.position);
 
-    if (target < 0 || onBandQChanged == nullptr)
+    if (target < 0 || wheel.deltaY == 0.0f)
         return;
 
+    // A trackpad sends a stream of small deltas; a step per notch-sized
+    // amount keeps the slope from racing through 6-48 in one flick.
+    // A mouse wheel's notch is one step.
+    wheelAccumulator += wheel.isSmooth ? wheel.deltaY : (wheel.deltaY > 0.0f ? 1.0f : -1.0f);
+
+    if (std::abs (wheelAccumulator) < 0.12f)
+        return;
+
+    const auto direction = wheelAccumulator > 0.0f ? 1 : -1;
+    wheelAccumulator = 0.0f;
+    stepSlopeOrQ (target, direction, event.mods.isAltDown());
+}
+
+void SpectrumAnalyserComponent::mouseMagnify (const juce::MouseEvent& event, float scaleFactor)
+{
+    // Pinch over a node: the same as the wheel.
+    const auto target = bandAtPosition (event.position);
+
+    if (target < 0)
+        return;
+
+    pinchAccumulator *= scaleFactor;
+
+    if (pinchAccumulator > 0.85f && pinchAccumulator < 1.18f)
+        return;
+
+    const auto direction = pinchAccumulator >= 1.18f ? 1 : -1;
+    pinchAccumulator = 1.0f;
+    stepSlopeOrQ (target, direction, event.mods.isAltDown());
+}
+
+void SpectrumAnalyserComponent::stepSlopeOrQ (int target, int direction, bool forceQ)
+{
     const auto* band = findBand (target);
 
     if (band == nullptr)
         return;
 
+    if (EQCoefficients::usesSlope (band->type) && ! forceQ)
+    {
+        if (onBandSlopeChanged != nullptr)
+            onBandSlopeChanged (target, juce::jlimit (0, EQCoefficients::numSlopes - 1, band->slope + direction));
+        return;
+    }
+
     // Multiplied, not added: Q is a ratio, and a fixed step would crawl at
     // 0.2 and leap at 12.
-    const auto factor = std::pow (1.25f, wheel.deltaY > 0.0f ? 1.0f : -1.0f);
-    onBandQChanged (target, juce::jlimit (0.1f, 18.0f, band->q * factor));
+    if (onBandQChanged != nullptr)
+        onBandQChanged (target, juce::jlimit (0.1f, 18.0f, band->q * std::pow (1.25f, (float) direction)));
 }

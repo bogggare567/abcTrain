@@ -34,8 +34,11 @@ class TopNavComponent : public juce::Component,
 public:
     // Order is the order they appear. Kept as an enum rather than indices
     // so a caller cannot quietly mean the wrong tab.
-    enum class Item { trainings, studio, achievements, sounds, settings };
-    static constexpr int numItems = 5;
+    enum class Item { trainings, studio, achievements, sounds, settings, live };
+    static constexpr int numItems = 6;
+
+    // Live can be switched off in Settings; a hidden tab takes no room.
+    void setItemHidden (Item, bool shouldBeHidden);
 
     TopNavComponent();
     ~TopNavComponent() override;
@@ -83,6 +86,7 @@ private:
     // being clipped by a fixed column width.
     juce::Rectangle<int> tabBounds (int index) const;
     int tabAt (juce::Point<int>) const;
+    int lastTabRight() const;
     juce::Rectangle<int> rightCell (int slotFromRight) const;
     juce::String streakCaption() const;
 
@@ -92,6 +96,7 @@ private:
     bool hearingShown = false;
     juce::String hearingCaption;
     Item active = Item::trainings;
+    std::array<bool, numItems> hidden {};
 
     int hovered = -1;
 

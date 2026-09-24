@@ -87,7 +87,8 @@ namespace
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
-                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp };
+                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
+                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, eqSlope };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -168,6 +169,15 @@ namespace
                 if (extra == Extra::settingsHearing)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true);
 
+                if (extra == Extra::liveSeminar) editor.openLiveForSnapshot (0);
+                if (extra == Extra::liveBattle)  editor.openLiveForSnapshot (1);
+                if (extra == Extra::liveRating)  editor.openLiveForSnapshot (2);
+                if (extra == Extra::liveRoom)    editor.openLiveForSnapshot (3);
+                if (extra == Extra::liveInvites) editor.openLiveForSnapshot (4);
+                if (extra == Extra::liveSignIn)  editor.openLiveForSnapshot (5);
+                if (extra == Extra::settingsLive)
+                    editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::live, false);
+
                 if (extra == Extra::settingsAppearance)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::appearance, false);
 
@@ -228,6 +238,10 @@ namespace
             if constexpr (std::is_same_v<EditorType, LearnerEQEditor>)
                 if (extra == Extra::eqKick || extra == Extra::companion)
                     editor.kickLessonForSnapshot();
+
+            if constexpr (std::is_same_v<EditorType, LearnerEQEditor>)
+                if (extra == Extra::eqSlope)
+                    editor.slopeForSnapshot();
 
             // The companion window's content, rendered on its own next to
             // the plugin it was taken out of.
@@ -359,6 +373,7 @@ int main (int argc, char* argv[])
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ");
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Kick", -1, Extra::eqKick);
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Companion", -1, Extra::companion);
+    failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Slope", -1, Extra::eqSlope);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Companion", -1, Extra::companionApp);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
@@ -451,6 +466,13 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioComp", -1, Extra::studioComp);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioRevisit", -1, Extra::studioRevisit);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioVerb", -1, Extra::studioVerb);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSeminar", -1, Extra::liveSeminar);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRoom", -1, Extra::liveRoom);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveInvites", -1, Extra::liveInvites);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveBattle", -1, Extra::liveBattle);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRating", -1, Extra::liveRating);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSignIn", -1, Extra::liveSignIn);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsLive", -1, Extra::settingsLive);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);

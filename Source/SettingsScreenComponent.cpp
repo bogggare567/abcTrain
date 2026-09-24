@@ -179,6 +179,25 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         addAndMakeVisible (languageChoice);
     }
 
+    // ---- Live and the account ------------------------------------------
+    liveTabChoice.setValue (properties.getBoolValue (liveTabKey, true) ? 1 : 0);
+    liveTabChoice.onChange = [this] (int value)
+    {
+        properties.setValue (liveTabKey, value == 1);
+        properties.saveIfNeeded();
+
+        if (onLiveTabChanged != nullptr)
+            onLiveTabChanged (value == 1);
+    };
+    addAndMakeVisible (liveTabChoice);
+
+    accountButton.onClick = [this]
+    {
+        if (onSignIn != nullptr)
+            onSignIn();
+    };
+    addAndMakeVisible (accountButton);
+
     // ---- updates and the audio device ----------------------------------
     autoUpdateChoice.setValue (properties.getBoolValue (autoUpdateKey, true) ? 1 : 0);
     autoUpdateChoice.onChange = [this] (int value)
@@ -385,6 +404,9 @@ void SettingsScreenComponent::buildRows()
         { "ui.backgroundImage",     "set.background.hint",   &backgroundButtons, 0, false, Page::background },
         { "ui.backgroundDim",       "set.backgroundDim.hint", &scrimSlider,      0, false, Page::background },
 
+        { "set.liveTab.title",      "set.liveTab.hint",      &liveTabChoice,    0,   false, Page::live },
+        { "set.account.title",      "set.account.hint",      &accountButton,    220, false, Page::live },
+
         { "set.autoUpdate.title",   "set.autoUpdate.hint",   &autoUpdateChoice, 0,   false, Page::about },
         { "set.checkNow.title",     "set.checkNow.hint",     &checkNowButton,   220, false, Page::about },
     };
@@ -509,6 +531,8 @@ void SettingsScreenComponent::refresh()
                                   juce::dontSendNotification);
     autoUpdateChoice.setOptions ({ 0, 1 }, { t ("set.autoUpdate.manual"), t ("set.autoUpdate.auto") });
     checkNowButton.setButtonText (t ("set.checkNow.button"));
+    liveTabChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
+    accountButton.setButtonText (t ("set.account.signIn"));
     audioDeviceButton.setButtonText (t ("set.audioDevice.button"));
     closeButton.setButtonText (t ("ui.close"));
 
@@ -721,7 +745,7 @@ int SettingsScreenComponent::menuRowAt (juce::Point<int> p) const
     auto area = sideMenuBounds().withTrimmedTop (menuTop())
                                 .reduced (AbcTrainTheme::Spacing::small, 0);
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < numPages; ++i)
     {
         if (area.removeFromTop (menuRowHeight).contains (p))
             return i;
@@ -883,11 +907,12 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
                                    localisation.getText ("set.page.hearing"),
                                    localisation.getText ("ui.settingsAppearance"),
                                    localisation.getText ("ui.settingsBackground"),
+                                   localisation.getText ("set.page.live"),
                                    localisation.getText ("ui.about") };
 
     auto rowArea = area.withTrimmedTop (menuTop() - area.getY()).reduced (AbcTrainTheme::Spacing::small, 0);
 
-    for (int i = 0; i < 5; ++i)
+    for (int i = 0; i < numPages; ++i)
     {
         const auto bounds = rowArea.removeFromTop (menuRowHeight);
         rowArea.removeFromTop (2);
@@ -928,6 +953,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
                                : currentPage == Page::hearing    ? localisation.getText ("set.page.hearing")
                                : currentPage == Page::appearance ? localisation.getText ("ui.settingsAppearance")
                                : currentPage == Page::background ? localisation.getText ("ui.settingsBackground")
+                               : currentPage == Page::live       ? localisation.getText ("set.page.live")
                                                                  : localisation.getText ("ui.about");
 
     g.setColour (theme.textBright);

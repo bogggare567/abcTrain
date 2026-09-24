@@ -73,9 +73,16 @@ public:
     // Read by the editor at launch. On unless the player turned it off.
     static constexpr const char* autoUpdateKey = "autoUpdateCheck";
 
+    // Live: the tab on or off (off - the app does not know the server's
+    // address at all), and signing in, which the Live page runs.
+    static constexpr const char* liveTabKey = "liveTab";
+    std::function<void (bool)> onLiveTabChanged;
+    std::function<void()> onSignIn;
+
     void refresh();
 
-    enum class Page { training, hearing, appearance, background, about };
+    enum class Page { training, hearing, appearance, background, live, about };
+    static constexpr int numPages = 6;
     void selectPage (Page);
     Page getPage() const noexcept { return currentPage; }
 
@@ -181,6 +188,10 @@ private:
     SegmentedChoice autoUpdateChoice;
     juce::TextButton checkNowButton;
     juce::String updateStatusText;
+
+    // Live
+    SegmentedChoice liveTabChoice;
+    juce::TextButton accountButton;
 
     // Hearing: which output the sound goes to.
     juce::TextButton audioDeviceButton;
