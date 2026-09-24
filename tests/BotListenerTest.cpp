@@ -21,6 +21,7 @@ public:
         for (int b = 0; b < numBots; ++b)
             for (int game = 0; game < numGames; ++game)
                 for (int choices : { 2, 3, 5 })
+                for (int bucket = -1; bucket < 7; ++bucket)
                 {
                     const auto bot = (Bot) b;
                     const auto guess = 1.0f / (float) choices;
@@ -28,37 +29,50 @@ public:
 
                     for (int level = 1; level <= 10; ++level)
                     {
-                        const auto p = chanceOfRight (bot, game, level, choices);
+                        const auto p = chanceOfRight (bot, game, level, choices, bucket);
                         expect (p <= previous + 1.0e-6f, juce::String (idOf (bot)) + ": level " + juce::String (level) + " easier than the one before");
                         expect (p >= guess - 1.0e-6f, "never worse than guessing");
                         expect (p <= 1.0f - profileOf (bot).lapse + 1.0e-6f, "never better than its attention allows");
                         previous = p;
                     }
 
-                    expect (chanceOfRight (bot, game, 1, choices) > 0.8f, "level 1 is nearly sure for anyone");
+                    expect (chanceOfRight (bot, game, 1, choices, bucket) > 0.75f, "level 1 is nearly sure, even in a bot's weakest part");
                 }
 
-        beginTest ("each specialist is the strongest bot on its own exercises");
+        beginTest ("the literature shows through: who is best where (docs/research/2026-09-bot-hearing.md)");
         {
-            const auto best = [] (int game)
+            const auto best = [] (int game, int bucket)
             {
                 auto bestBot = Bot::hound;
-                auto bestP = -1.0f;
+                auto bestT = -1.0f;
                 for (int b = 0; b < numBots; ++b)
                 {
-                    const auto p = chanceOfRight ((Bot) b, game, 7);
-                    if (p > bestP) { bestP = p; bestBot = (Bot) b; }
+                    const auto t = thresholdOf ((Bot) b, game, bucket);
+                    if (t > bestT) { bestT = t; bestBot = (Bot) b; }
                 }
                 return bestBot;
             };
 
-            expect (best (0) == Bot::cat, "band: the cat");
-            expect (best (3) == Bot::owl, "pan: the owl");
-            expect (best (6) == Bot::owl, "width: the owl");
-            expect (best (4) == Bot::bat, "delay: the bat");
-            expect (best (5) == Bot::viper, "distortion: the viper");
-            expect (best (8) == Bot::viper, "range: the viper");
-            expect (best (7) == Bot::elephant, "gain: the elephant");
+            expect (best (0, 0) == Bot::viper, "sub-bass: the python (best 80-160 Hz, by vibration)");
+            expect (best (0, 1) == Bot::viper, "bass: the python");
+            expect (best (8, 0) == Bot::viper, "range, sub-bass: the python");
+            expect (best (3, 2) == Bot::elephant, "pan, centre: the elephant (MAA ~1 deg)");
+            expect (best (6, 3) == Bot::elephant, "width: the elephant");
+            expect (best (4, 0) == Bot::bat, "slapback delay: the bat");
+            expect (best (1, 0) == Bot::bat, "weak compression (transients): the bat");
+
+            // Within one bot, the parts of an exercise differ the way its ear does.
+            expect (thresholdOf (Bot::cat, 0, 6) > thresholdOf (Bot::cat, 0, 0) + 3.0f, "the cat: air far above sub-bass");
+            expect (thresholdOf (Bot::viper, 0, 0) > thresholdOf (Bot::viper, 0, 6) + 2.5f, "the python: the reverse");
+            expect (thresholdOf (Bot::owl, 0, 5) > thresholdOf (Bot::owl, 0, 1) + 3.0f, "the owl: presence over bass");
+        }
+
+        beginTest ("an unknown part of the exercise falls back to the exercise's mean");
+        {
+            expectWithinAbsoluteError (thresholdOf (Bot::owl, 3, -1), profileOf (Bot::owl).threshold[3], 1.0e-5f);
+            expectWithinAbsoluteError (thresholdOf (Bot::owl, 3, 99), profileOf (Bot::owl).threshold[3], 1.0e-5f);
+            expectWithinAbsoluteError (chanceOfRight (Bot::owl, 3, 5, 2, -1),
+                                       chanceOfRight (Bot::owl, 3, 5, 2, 99), 1.0e-6f);
         }
 
         beginTest ("out-of-range input is clamped, not a crash");

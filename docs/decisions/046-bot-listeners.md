@@ -15,31 +15,45 @@ characters, not biology.
 
 ## The decision
 
-**A bot is a psychometric function per exercise.** For exercise *g* at
+**A bot is a one-neuron perceptron per exercise** with a logistic output —
+the psychometric function. For exercise *g*, part *b* of it (the round's
+skill bucket: frequency range, pan zone, delay class, reverb type…) and
 level *L* (1–10):
 
-    P(right) = guess + (1 − guess − lapse) / (1 + exp(slope · (L − threshold[g])))
+    P(right) = guess + (1 − guess − lapse) / (1 + exp(slope[g] · (L − threshold[g][b])))
 
 - `threshold` — the level where the bot is half-way between guessing and
-  certain. The profile is nine numbers, one per exercise.
+  certain, per part of the exercise: the Cat is sure of a boost at 8 kHz and
+  guesses at 35 Hz on the same level.
 - `slope` — how sharply it goes from hearing to not hearing.
 - `lapse` — wrong on an easy round anyway (a stray tap). Nobody is 100 %.
 - `guess` — 1 / number of answers: never worse than chance.
 
-This is the standard shape of a detection curve from psychoacoustics, so a
-bot behaves like a listener: good where its profile is good, worse as the
-round gets harder — exactly as the player does — and occasionally wrong on
-an easy one. `Source/BotListener` is pure (no GUI, no audio) and the tests
-drive it with a seeded `Random`.
+**The weights are trained, and the data are honest about what they are.**
+`tools/bots/train_bots.py` builds a teacher from published animal hearing
+data (audiograms, minimum audible angle, timing — every number with its
+source in `docs/research/2026-09-bot-hearing.md`, the gaps marked as game
+choices), simulates 40 000 rounds per bot and fits the perceptron by maximum
+likelihood; the result is `Source/BotWeights.h` (generated, not edited). No
+animal has ever answered an EQ round and no player data exist yet, so the
+student can only recover its teacher (to ~0.1 level) — the point of the
+pipeline is the next step: the same fit on real answers
+(`--answers game,bucket,level,correct`) for bots tuned on the pilot group or a
+"twin" of a player.
 
-| Bot | Strong at | Reaction |
-|---|---|---|
-| Hound | all-round, best on level and dynamics | 1.8 s |
-| Cat | highs, air, transients (band, compression) | 1.2 s |
-| Viper | lows, resonance, saturation (distortion, range) | 1.5 s |
-| Owl | space: pan, width, reverb | 2.2 s |
-| Bat | time: delay, attack | 0.9 s |
-| Elephant | lows and level, slow and careful (lowest lapse) | 3.0 s |
+The data overturned the first, folk-biology version (2026-09-24):
+
+| Bot | Strong at (from the data) | Weak at | Reaction |
+|---|---|---|---|
+| Hound | even hearing, mids and highs, dynamics | direction (MAA ~8°) | 1.8 s |
+| Cat | highs and air, transients | sub-bass, space | 1.2 s |
+| Viper (python data) | sub-bass and bass, by vibration | anything above ~1 kHz | 1.5 s |
+| Owl | presence 4–8 kHz, direction | the lows | 2.2 s |
+| Bat | time: delay, attack; air | below ~2 kHz | 0.9 s |
+| Elephant | space: pan, width, reverb (MAA ~1°); mids | air | 3.0 s |
+
+Overall strength per bot is a game choice so that each is a fair opponent;
+the *shape* is the biology.
 
 **A battle is a run mode** (`SessionManager::Mode::duel`): seven rounds of
 one exercise picked at random from the family the player chooses

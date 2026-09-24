@@ -110,13 +110,16 @@ juce::String LiveAccount::platform()
    #endif
 }
 
-bool LiveAccount::isSignedIn() const       { return properties->getValue (tokenKey).isNotEmpty(); }
-juce::String LiveAccount::getNick() const  { return properties->getValue (nickKey); }
+bool LiveAccount::isSignedIn() const       { return snapshotNick.isNotEmpty() || properties->getValue (tokenKey).isNotEmpty(); }
+juce::String LiveAccount::getNick() const  { return snapshotNick.isNotEmpty() ? snapshotNick : properties->getValue (nickKey); }
 juce::String LiveAccount::getCountry() const { return properties->getValue (countryKey); }
 bool LiveAccount::isSyncEnabled() const    { return properties->getBoolValue (syncEnabledKey, true); }
 
 juce::Time LiveAccount::getLastSyncTime() const
 {
+    if (snapshotNick.isNotEmpty())
+        return juce::Time (2026, 8, 25, 0, 12);   // 25.09 00:12, a fixed time for the picture
+
     return juce::Time ((juce::int64) properties->getDoubleValue (lastSyncKey, 0.0));
 }
 

@@ -3,11 +3,29 @@
 // Individual UnitTest subclasses (EQGameTest, CompressionGameTest, ...)
 // self-register into JUCE's global unit test list via file-scope static
 // instances - see the other files in this directory.
-int main (int, char**)
+//
+//   EarTrainerTests                 every test
+//   EarTrainerTests ReverbCharacter only the tests with that name (or category)
+int main (int argc, char** argv)
 {
     juce::UnitTestRunner runner;
     runner.setAssertOnFailure (false);
-    runner.runAllTests();
+
+    if (argc > 1)
+    {
+        const juce::String only (argv[1]);
+        juce::Array<juce::UnitTest*> chosen;
+
+        for (auto* test : juce::UnitTest::getAllTests())
+            if (test->getName() == only || test->getCategory() == only)
+                chosen.add (test);
+
+        runner.runTests (chosen);
+    }
+    else
+    {
+        runner.runAllTests();
+    }
 
     int numFailures = 0;
     for (int i = 0; i < runner.getNumResults(); ++i)

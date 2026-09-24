@@ -77,6 +77,15 @@ public:
 
     void signOut();
 
+    // tools/EditorSnapshots: a signed-in account without a server or a
+    // token on disk (nothing is written, so later renders start signed out).
+    void signInForSnapshot (const juce::String& nick)
+    {
+        snapshotNick = nick;
+        lastSync = SyncResult::ok;
+        notify();
+    }
+
     // ---- sync ---------------------------------------------------------------
     void setSyncEnabled (bool);
     bool isSyncEnabled() const;
@@ -139,6 +148,7 @@ private:
     Link link;
     juce::String pollToken;
     SyncResult lastSync = SyncResult::none;
+    juce::String snapshotNick;
     juce::uint64 syncedChangeCounter = 0;
     int syncTicks = 0;
 

@@ -600,6 +600,9 @@ target_sources(EarTrainerTests
         tests/InstrumentLabelTest.cpp
         tests/LiveLinkTest.cpp
         tests/BotListenerTest.cpp
+        tests/ReverbCharacterTest.cpp
+        tests/GoldenAudioTest.cpp
+        tests/CompressorCheckTest.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
         tests/TestSignalGeneratorTest.cpp

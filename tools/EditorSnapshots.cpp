@@ -168,7 +168,7 @@ namespace
                        answered, survivalRun, duelRun, duelResults, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
                        studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
-                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, eqSlope,
+                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, eqSlope,
                        liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack };
 
     template <typename ProcessorType, typename EditorType>
@@ -274,6 +274,15 @@ namespace
                 }
                 if (extra == Extra::settingsLive)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::live, false);
+
+                if (extra == Extra::settingsLiveSignedIn || extra == Extra::liveBattleSignedIn)
+                {
+                    processor.getLiveAccount().signInForSnapshot ("bogdan");
+                    if (extra == Extra::settingsLiveSignedIn)
+                        editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::live, false);
+                    else
+                        editor.openLiveForSnapshot (1);
+                }
 
                 if (extra == Extra::settingsAppearance)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::appearance, false);
@@ -587,6 +596,8 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRating", -1, Extra::liveRating);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSignIn", -1, Extra::liveSignIn);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsLive", -1, Extra::settingsLive);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsLiveSignedIn", -1, Extra::settingsLiveSignedIn);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveBattleSignedIn", -1, Extra::liveBattleSignedIn);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);

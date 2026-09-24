@@ -3566,7 +3566,8 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
         const auto index = processor.getGameManager().getActiveGameIndex();
         const auto level = processor.getProgressManager().getLevelForGame (index);
         const auto botRight = BotListener::answers (session.getOpponent(), index, level, duelRandom,
-                                                    game.usesContinuousScale() ? 5 : 2);
+                                                    game.usesContinuousScale() ? 5 : 2,
+                                                    game.getSkillBucketForRound());
         session.registerDuelRound (wasCorrect, botRight, precision);
     }
     else

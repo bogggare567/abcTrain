@@ -52,6 +52,13 @@ SNAP_DARK=1 SNAP_SIZE=1100x780 xvfb-run -a ./build/EditorSnapshots_artefacts/Rel
   `TEXT_AUDIT=1` on EditorSnapshots lists every line that still does not fit;
   run it on all 12 languages before calling a screen done.
 - `tests/RealtimeSafetyTest` enforces the audio-thread rule below.
+- `EarTrainerTests <name>` runs one test (or category). `GoldenAudio`
+  compares each plugin's output with `tests/golden/*.flac`; a change that is
+  *meant* to change the sound regenerates them (`GOLDEN_WRITE=1`) and says
+  why in the commit. `REVERB_REPORT=1 … ReverbCharacter` prints what every
+  reverb knob measurably does.
+- Bots: `python3 tools/bots/train_bots.py` regenerates `Source/BotWeights.h`
+  (never edit that by hand).
 
 ## Structure (ADR 039, 040)
 

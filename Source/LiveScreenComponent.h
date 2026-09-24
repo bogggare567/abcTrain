@@ -72,7 +72,7 @@ public:
         juce::String openOnSite { "Open on soundkorb.ru" };
 
         juce::String signInTitle { "Sign in on soundkorb.ru" };
-        juce::String signInSteps { "1. Open the site - the code fills itself in.\n2. Sign in with your e-mail (a code arrives) or Telegram.\n3. Come back here." };
+        juce::String signInSteps { "1. Open the site - the code fills itself in.\n2. Sign in with your e-mail: a 6-digit code arrives.\n3. Press Connect, then come back here." };
         juce::String waiting { "Waiting for confirmation - the code works for {{time}}" };
         juce::String openSite { "Open the site" }, cancel { "Cancel" };
         juce::String noPasswords { "No passwords in the app: you sign in on the site, the app gets a key you can revoke." };

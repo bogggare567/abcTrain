@@ -36,8 +36,16 @@
 //                 is what makes the "drip" and the chirp on every repeat.
 //
 // Damping in all four is the ratio of the high-frequency decay time to the
-// low one: 0 keeps the top end as long as the bottom, 100% makes it die
-// about seven times faster. Width is mid/side on the wet signal only.
+// low one, measured the way an acoustician reads a hall's treble ratio - RT60
+// at 5 kHz over RT60 at low frequencies: 0 keeps the top end as long as the
+// bottom, 100% makes it die about seven times faster. Every loop (FDN line,
+// plate branch, spring) gets the same absorption filter, solved for its own
+// length (absorptionFor), so one Damping value means one sound on all four.
+// Until 2026-09-25 the filter was aimed at Nyquist instead of 5 kHz, the
+// feedback lines lost treble to linear interpolation, and the plate and the
+// spring had fixed low-passes of their own: measured, the room's treble
+// ratio went 0.57-0.44 instead of 1-0.14, and the spring's 0.41-0.22
+// (tests/ReverbCharacterTest). Width is mid/side on the wet signal only.
 //
 // Always renders 100% wet; the processor blends.
 class ReverbEngine
@@ -99,12 +107,14 @@ public:
         {
             std::fill (spring.loop.begin(), spring.loop.end(), 0.0f);
             spring.allpassState.fill (0.0f);
-            spring.lowpass = 0.0f;
+            spring.lowpass = {};
+            spring.tone = 0.0f;
             spring.writePos = 0;
         }
 
-        fdnLowpass.fill (0.0f);
-        plateLowpass = { 0.0f, 0.0f };
+        fdnLowpass = {};
+        fdnReader = {};
+        plateLowpass = {};
         plateBandwidth = 0.0f;
         plateTailL = plateTailR = 0.0f;
         writePos = 0;
@@ -263,17 +273,91 @@ private:
 
     // One-pole absorption, per Jot: DC gain g, Nyquist gain g * r, where r
     // is the ratio the damping asks for over this line's length.
-    struct Absorption { float gain = 0.0f; float pole = 0.0f; };
+    struct Absorption { float gain = 0.0f; float pole = 0.0f; int stages = 1; };
+    static constexpr int maxAbsorbStages = 8;
 
+    // `stages` identical one-poles in a row, then the gain.
+    static float absorb (const Absorption& a, std::array<float, maxAbsorbStages>& state, float x) noexcept
+    {
+        for (int k = 0; k < a.stages; ++k)
+        {
+            state[(size_t) k] = (1.0f - a.pole) * x + a.pole * state[(size_t) k];
+            x = state[(size_t) k];
+        }
+        return x * a.gain;
+    }
+
+    // The low-pass is y = (1 - p) x + p y[-1], the loop gain g. Solved so the
+    // loop loses what the low RT60 asks for at 500 Hz and what the high one
+    // asks for at 5 kHz:
+    //     |H(5 kHz)| / |H(500 Hz)| = gHigh / gLow.
+    // One one-pole falls at most about 20 dB between those two, so a long
+    // loop with a short treble decay (a big plate, a hall line, damping
+    // near 100 %) gets up to eight in a row, each taking its root of the
+    // ratio - the loss spread along the loop, as it is in a real plate.
+    // The old code aimed a single pole at Nyquist, which at 5 kHz is a much
+    // gentler cut - the knob did a third of what it said.
     Absorption absorptionFor (double lengthSamples) const noexcept
     {
         const auto rtLow = (double) rt60;
         const auto rtHigh = rtLow * (1.0 - 0.86 * (double) dampingAmount);
-        const auto gDc = std::pow (10.0, -3.0 * lengthSamples / (rtLow * sampleRate));
-        const auto gNy = std::pow (10.0, -3.0 * lengthSamples / (rtHigh * sampleRate));
-        const auto ratio = juce::jlimit (0.0, 1.0, gNy / gDc);
+        const auto gLow = std::pow (10.0, -3.0 * lengthSamples / (rtLow * sampleRate));
+        const auto gHigh = std::pow (10.0, -3.0 * lengthSamples / (rtHigh * sampleRate));
+        const auto target = juce::jlimit (1.0e-9, 1.0, gHigh / gLow);
 
-        return { (float) gDc, (float) ((1.0 - ratio) / (1.0 + ratio)) };
+        const auto twoPi = juce::MathConstants<double>::twoPi;
+        const auto cosLow = std::cos (twoPi * 500.0 / sampleRate);
+        const auto cosHigh = std::cos (twoPi * juce::jmin (5000.0, 0.4 * sampleRate) / sampleRate);
+        const auto mag = [] (double pole, double c) { return (1.0 - pole) / std::sqrt (1.0 - 2.0 * pole * c + pole * pole); };
+        const auto ratioAt = [&] (double pole) { return mag (pole, cosHigh) / mag (pole, cosLow); };
+
+        // Enough stages that each asks for no more than a factor of 0.25.
+        const auto stages = juce::jlimit (1, maxAbsorbStages, (int) std::ceil (std::log (target) / std::log (0.25) - 1.0e-9));
+        const auto perStage = std::pow (target, 1.0 / stages);
+
+        // ratioAt falls monotonically from 1 (p = 0) as p grows.
+        double lo = 0.0, hi = 0.9999;
+        for (int i = 0; i < 40; ++i)
+        {
+            const auto mid = 0.5 * (lo + hi);
+            (ratioAt (mid) > perStage ? lo : hi) = mid;
+        }
+        const auto pole = 0.5 * (lo + hi);
+
+        // Gain set at 500 Hz; never above unity at DC (the filters' DC gain is 1).
+        const auto gain = juce::jmin (0.9995, gLow / std::pow (mag (pole, cosLow), stages));
+
+        return { (float) gain, (float) pole, stages };
+    }
+
+    // First-order all-pass interpolation (Dattorro 1997, part 2): a
+    // fractional, moving delay that keeps every frequency's level. Linear
+    // interpolation is a low-pass that changes with the fraction - inside a
+    // feedback loop it takes treble on every trip round.
+    struct AllpassReader { float previous = 0.0f; };
+
+    static float readAllpass (const std::vector<float>& buffer, int writeIndex, float delaySamples, AllpassReader& state) noexcept
+    {
+        const auto size = (int) buffer.size();
+        const auto d = juce::jlimit (2.0f, (float) (size - 3), delaySamples);
+        const auto whole = (int) d - 1;                  // frac in [1, 2): eta in (-1/3, 0], well away from the pole at -1
+        const auto frac = d - (float) whole;
+        const auto eta = (1.0f - frac) / (1.0f + frac);
+
+        auto a = writeIndex - whole;
+        if (a < 0) a += size;
+        auto b = a - 1;
+        if (b < 0) b += size;
+
+        const auto y = eta * buffer[(size_t) a] + buffer[(size_t) b] - eta * state.previous;
+        state.previous = y;
+        return y;
+    }
+
+    // Group delay of one first-order all-pass (-a + z^-1)/(1 - a z^-1) at w.
+    static double allpassGroupDelay (double a, double w) noexcept
+    {
+        return (1.0 - a * a) / (1.0 - 2.0 * a * std::cos (w) + a * a);
     }
 
     void updateCoefficients()
@@ -307,19 +391,35 @@ private:
                                    * (double) plateScale / sampleRate;
         // The loss is applied twice per branch (inside it and on the way
         // across to the other), so each takes half of the branch's share.
-        plateDecay = (float) std::pow (10.0, -1.5 * branchSeconds / (double) rt60);
-        plateDamp = 0.05f + 0.7f * dampingAmount;
+        // Damping: the same absorption as a room line of the branch's length.
+        plateAbsorb = absorptionFor (branchSeconds * sampleRate);
+        plateDecay = std::sqrt (plateAbsorb.gain);
+        plateAbsorb.gain = 1.0f;          // the decay is applied as plateDecay, twice
 
-        // Springs: transit time is the spring's length.
+        // Springs: transit time is the spring's length, and so is the
+        // dispersion - a longer coil spreads the chirp further, the way a
+        // longer spring in a tank does (Parker & Bilbao; Valimaki et al.
+        // 2010). The all-pass chain is part of the transit: its delay at
+        // low frequencies is taken out of the plain delay, so Size still
+        // sets the time round the coil and Decay stays in seconds.
+        const auto w500 = juce::MathConstants<double>::twoPi * 500.0 / sampleRate;
+
         for (size_t s = 0; s < springs.size(); ++s)
         {
             auto& spring = springs[s];
-            spring.length = juce::jlimit (16.0, (double) spring.loop.size() - 4.0,
-                                          (0.024 + 0.036 * (double) sizeAmount) * (s == 0 ? 1.0 : 1.17) * sampleRate);
-            spring.feedback = gainForRt60 (spring.length, rt60, sampleRate);
-            const auto cutoff = 7000.0 - 4500.0 * (double) dampingAmount;
-            spring.lowpassCoeff = (float) std::exp (-juce::MathConstants<double>::twoPi * cutoff / sampleRate);
+            const auto transit = (0.024 + 0.036 * (double) sizeAmount) * (s == 0 ? 1.0 : 1.17) * sampleRate;
+
+            spring.stages = juce::jlimit (8, Spring::maxStages, (int) std::round (40.0 + 80.0 * (double) sizeAmount));
+            spring.dispersion = s == 0 ? 0.72f : 0.68f;
+            const auto chainDelay = spring.stages * allpassGroupDelay (spring.dispersion, w500);
+
+            spring.length = juce::jlimit (16.0, (double) spring.loop.size() - 4.0, transit - chainDelay);
+            spring.absorption = absorptionFor (spring.length + chainDelay);
         }
+
+        // A spring's own bandwidth ends around 5 kHz; that is its tone, not
+        // its decay, so it is outside the loop.
+        springTone = (float) std::exp (-juce::MathConstants<double>::twoPi * juce::jmin (5500.0, 0.4 * sampleRate) / sampleRate);
     }
 
     // ---- Room / Hall ----
@@ -349,12 +449,14 @@ private:
 
         for (size_t i = 0; i < 8; ++i)
         {
-            const auto length = (float) fdnLength[i] + (i == 1 ? wobble : i == 5 ? -wobble : 0.0f);
-            auto v = readFractional (fdn[i], writePos, length);
+            // Two lines move (all-pass interpolation keeps their treble);
+            // the other six sit on whole samples.
+            auto v = i == 1 ? readAllpass (fdn[i], writePos, (float) fdnLength[i] + wobble, fdnReader[0])
+                   : i == 5 ? readAllpass (fdn[i], writePos, (float) fdnLength[i] - wobble, fdnReader[1])
+                            : readAt (fdn[i], writePos, (int) std::lround (fdnLength[i]));
 
-            // Absorption: gain for the RT60, one pole for the damping.
-            fdnLowpass[i] = (1.0f - fdnAbsorb[i].pole) * v + fdnAbsorb[i].pole * fdnLowpass[i];
-            y[i] = fdnLowpass[i] * fdnAbsorb[i].gain;
+            // Absorption: gain for the RT60, one-poles for the damping.
+            y[i] = absorb (fdnAbsorb[i], fdnLowpass[i], v);
         }
 
         // Householder feedback: x - (2/N) * sum(x). Lossless, fully mixing.
@@ -419,16 +521,14 @@ private:
         // Left branch.
         auto l = allpass (plateTank[0], plateTankWrite[0], len (672) + excursion, -0.7f, leftIn);
         l = delay (plateTank[1], plateTankWrite[1], len (4453), l);
-        plateLowpass[0] = (1.0f - plateDamp) * l + plateDamp * plateLowpass[0];
-        l = plateLowpass[0] * plateDecay;
+        l = absorb (plateAbsorb, plateLowpass[0], l) * plateDecay;
         l = allpass (plateTank[2], plateTankWrite[2], len (1800), 0.5f, l);
         plateTailL = delay (plateTank[3], plateTankWrite[3], len (3720), l);
 
         // Right branch.
         auto r = allpass (plateTank[4], plateTankWrite[4], len (908) + excursion / 2, -0.7f, rightIn);
         r = delay (plateTank[5], plateTankWrite[5], len (4217), r);
-        plateLowpass[1] = (1.0f - plateDamp) * r + plateDamp * plateLowpass[1];
-        r = plateLowpass[1] * plateDecay;
+        r = absorb (plateAbsorb, plateLowpass[1], r) * plateDecay;
         r = allpass (plateTank[6], plateTankWrite[6], len (2656), 0.5f, r);
         plateTailR = delay (plateTank[7], plateTankWrite[7], len (3163), r);
 
@@ -446,10 +546,13 @@ private:
         std::vector<float> loop;
         int writePos = 0;
         double length = 1000.0;
-        float feedback = 0.5f;
-        float lowpass = 0.0f;
-        float lowpassCoeff = 0.5f;
-        std::array<float, 40> allpassState {};
+        Absorption absorption;
+        std::array<float, maxAbsorbStages> lowpass {};
+        float tone = 0.0f;
+        float dispersion = 0.7f;
+        int stages = 40;
+        static constexpr int maxStages = 128;
+        std::array<float, maxStages> allpassState {};
     };
 
     void processSprings (float monoIn, float& outL, float& outR)
@@ -459,26 +562,29 @@ private:
             auto& spring = springs[s];
 
             // What comes back round the coil.
-            auto v = readFractional (spring.loop, spring.writePos, (float) spring.length);
+            auto v = readAt (spring.loop, spring.writePos, (int) std::lround (spring.length));
 
             // Dispersion: a long chain of first-order all-passes delays low
             // frequencies more than high ones, so every trip round the loop
-            // arrives as a chirp rather than a copy.
-            const auto a = s == 0 ? 0.62f : 0.58f;
+            // arrives as a chirp rather than a copy. Size sets how many.
+            const auto a = spring.dispersion;
 
-            for (auto& state : spring.allpassState)
+            for (int k = 0; k < spring.stages; ++k)
             {
+                auto& state = spring.allpassState[(size_t) k];
                 const auto out = state - a * v;
                 state = v + a * out;
                 v = out;
             }
 
-            spring.lowpass = (1.0f - spring.lowpassCoeff) * v + spring.lowpassCoeff * spring.lowpass;
+            // Absorption: the same filter a room line of this length gets.
+            const auto back = absorb (spring.absorption, spring.lowpass, v);
 
-            spring.loop[(size_t) spring.writePos] = monoIn * 0.6f + spring.lowpass * spring.feedback;
+            spring.loop[(size_t) spring.writePos] = monoIn * 0.6f + back;
             spring.writePos = (spring.writePos + 1) % (int) spring.loop.size();
 
-            (s == 0 ? outL : outR) = spring.lowpass * 1.4f;
+            spring.tone = (1.0f - springTone) * back + springTone * spring.tone;
+            (s == 0 ? outL : outR) = spring.tone * 1.4f;
         }
     }
 
@@ -505,7 +611,8 @@ private:
     std::array<std::vector<float>, 8> fdn;
     std::array<double, 8> fdnLength {};
     std::array<Absorption, 8> fdnAbsorb {};
-    std::array<float, 8> fdnLowpass {};
+    std::array<std::array<float, maxAbsorbStages>, 8> fdnLowpass {};
+    std::array<AllpassReader, 2> fdnReader {};
     int writePos = 0;
     double lfoPhase = 0.0;
 
@@ -518,9 +625,11 @@ private:
     std::array<int, 4> plateInWrite {};
     std::array<std::vector<float>, 8> plateTank;
     std::array<int, 8> plateTankWrite {};
-    std::array<float, 2> plateLowpass {};
+    std::array<std::array<float, maxAbsorbStages>, 2> plateLowpass {};
+    Absorption plateAbsorb;
     float plateBandwidth = 0.0f, plateTailL = 0.0f, plateTailR = 0.0f;
-    float plateScale = 1.0f, plateDecay = 0.5f, plateDamp = 0.3f;
+    float plateScale = 1.0f, plateDecay = 0.5f;
 
     std::array<Spring, 2> springs;
+    float springTone = 0.5f;
 };

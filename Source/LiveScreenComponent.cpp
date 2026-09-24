@@ -854,7 +854,8 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
         a.removeFromTop (2 * (controlHeight + 4) + Spacing::small + Spacing::medium);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitLines (g, text.battlesNext + "\n" + text.battleNeedsAccount,
+        const auto signedIn = account != nullptr && account->isSignedIn();
+        LnF::fitLines (g, signedIn ? text.battlesNext : text.battlesNext + "\n" + text.battleNeedsAccount,
                        a.withTrimmedBottom (controlHeight + 4 + Spacing::medium), juce::Justification::topLeft, 6, 0.85f);
     }
 

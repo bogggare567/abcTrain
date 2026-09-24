@@ -7,11 +7,17 @@
 // a Cat, a Hound, a Viper, an Owl, a Bat and an Elephant.
 //
 // The idea is the owner's; the shape is from the review in notes/ ("each bot
-// a model of a hearing profile, not a filter"). Each bot is a
-// psychometric function per exercise - the probability of answering right at
-// each of the exercise's ten levels:
+// a model of a hearing profile, not a filter"). Each bot is a one-neuron
+// perceptron per exercise with a logistic output - the psychometric function:
 //
-//     P(correct | level) = guess + (1 - guess - lapse) / (1 + exp(slope * (level - threshold)))
+//     P(correct | bucket, level) = guess + (1 - guess - lapse) / (1 + exp(slope * (level - threshold[bucket])))
+//
+// `bucket` is the part of the exercise the round fell in (the frequency
+// range, the pan zone, the reverb type - Game::getSkillBucketForRound), so
+// the Cat is sure of a boost at 8 kHz and guesses at 35 Hz on the same level.
+// The weights (BotWeights.h) are trained by tools/bots/train_bots.py on
+// rounds simulated from published animal hearing data
+// (docs/research/2026-09-bot-hearing.md); the same script fits real answers.
 //
 // the standard shape of a listener's detection curve. `threshold` is where it
 // gets half-way between guessing and certain; `lapse` the rate of answering
@@ -39,12 +45,12 @@ namespace BotListener
 
     struct Profile
     {
-        const char* id;            // stable, for settings and i18n keys: bots.<id>.name
-        std::array<float, numGames> threshold;   // level 1..10 where it is half-way
-        float slope;               // per level
-        float lapse;               // wrong on an easy round anyway
-        int reactionMs;            // typical time to answer
-        int rating;                // its Decibelo, for the list (fixed: bots do not climb)
+        const char* id = "";       // stable, for settings and i18n keys: bots.<id>.name
+        std::array<float, numGames> threshold {};   // per exercise, mean over its parts (level 1..10, half-way)
+        float slope = 1.0f;        // mean over exercises, per level
+        float lapse = 0.05f;       // wrong on an easy round anyway
+        int reactionMs = 1500;     // typical time to answer
+        int rating = 1500;         // its Decibelo, for the list (fixed: bots do not climb)
     };
 
     const Profile& profileOf (Bot) noexcept;
@@ -53,10 +59,15 @@ namespace BotListener
     // The chance of a right answer on exercise `gameIndex` at `level`
     // (1..10). `choices`: how many answers the round offers - two for a
     // named pair, more for a ruler's zones - which sets the guessing floor.
-    float chanceOfRight (Bot, int gameIndex, int level, int choices = 2) noexcept;
+    // `bucket`: Game::getSkillBucketForRound(), or -1 for "not known" (the
+    // exercise's mean threshold).
+    float chanceOfRight (Bot, int gameIndex, int level, int choices = 2, int bucket = -1) noexcept;
+
+    // The level where the bot is half-way, for one part of an exercise.
+    float thresholdOf (Bot, int gameIndex, int bucket) noexcept;
 
     // One round: right or wrong, drawn from chanceOfRight.
-    bool answers (Bot, int gameIndex, int level, juce::Random&, int choices = 2);
+    bool answers (Bot, int gameIndex, int level, juce::Random&, int choices = 2, int bucket = -1);
 
     // How long it "thinks": the profile's reaction time, longer on harder
     // rounds, with some scatter. For pacing the reveal, not for scoring.
