@@ -77,7 +77,7 @@ public:
         {
             juce::AttributedString text;
             const auto colour = step.state == State::current ? theme.textBright
-                              : step.state == State::done ? theme.text : theme.textDim;
+                              : step.state == State::done ? theme.textDim : theme.text;
             text.append (step.text, bodyFont, colour);
             juce::TextLayout layout;
             layout.createLayout (text, (float) area.getWidth() - 22.0f);

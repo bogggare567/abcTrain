@@ -272,8 +272,13 @@ juce::Font AbcTrainLookAndFeel::labelFont()
 {
     // Meta lines - "58% accuracy, 26 rounds". Semi-condensed, because
     // these sit under something and must not compete with it for width.
+    //
+    // Medium, not Regular (2026-09-24): semi-condensed Regular at 13-14 px
+    // in the dim colour was the "unreadable" the author reported - a
+    // narrow face at a small size loses its stems first, and no amount of
+    // window scaling fixes a weight.
     const auto h = labelFontHeight * sharedTextScale;
-    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Regular")
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Medium")
                                 : systemFallback (h, false);
 }
 
@@ -305,8 +310,9 @@ juce::Font AbcTrainLookAndFeel::monoFont()
 
 juce::Font AbcTrainLookAndFeel::captionFont()
 {
+    // Medium for the same reason as labelFont.
     const auto h = captionFontHeight * sharedTextScale;
-    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Regular")
+    return usingEmbeddedFonts() ? AbcTrainFonts::semiCondensed (h, "Medium")
                                 : systemFallback (h, false);
 }
 

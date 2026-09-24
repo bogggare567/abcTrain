@@ -55,6 +55,24 @@ public:
     // builds it from the sound library's packs (ADR 040).
     std::function<juce::String()> soundCredits;
 
+    // What the top bar's right corner used to hold (ADR 042): the editor
+    // owns the theme, the language and the update check; this page only
+    // offers them.
+    std::function<void (bool dark)> onThemeChosen;
+    std::function<void (juce::String languageCode)> onLanguageChosen;
+    std::function<void()> onCheckForUpdates;
+
+    // The standalone's audio device dialog; null where there is none (the
+    // snapshot tools), and the button is greyed.
+    std::function<void()> onAudioDevice;
+
+    // "Checking...", "Up to date", "Couldn't check" - shown under the
+    // "Check now" button. Empty clears it.
+    void setUpdateStatus (const juce::String&);
+
+    // Read by the editor at launch. On unless the player turned it off.
+    static constexpr const char* autoUpdateKey = "autoUpdateCheck";
+
     void refresh();
 
     enum class Page { training, hearing, appearance, background, about };
@@ -93,6 +111,7 @@ private:
     void timerCallback() override;
     void syncControlsFromSettings();
     juce::String hintFor (const Row&) const;
+    bool rowIsOffered (const Row&) const;
 
     juce::Rectangle<int> sideMenuBounds() const;
     juce::Rectangle<int> pageBounds() const;
@@ -135,6 +154,8 @@ private:
     bool noisePlaying = false;
 
     // Appearance
+    SegmentedChoice themeChoice;
+    CompactSelector languageChoice;
     juce::Slider textScaleSlider { juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight };
     CompactSelector typefaceSelector, screensaverSelector;
 
@@ -155,6 +176,14 @@ private:
     // (UpdateChecker::betaOptInKey in the shared settings file).
     juce::TextButton betaToggle;
     void refreshBetaToggle();
+
+    // Updates: on their own (default) or only when asked; and asking.
+    SegmentedChoice autoUpdateChoice;
+    juce::TextButton checkNowButton;
+    juce::String updateStatusText;
+
+    // Hearing: which output the sound goes to.
+    juce::TextButton audioDeviceButton;
 
 public:
     // The prefilled issue URL, public so a test can check what is sent.

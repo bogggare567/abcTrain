@@ -77,6 +77,25 @@ public:
     bool isRunActive() const noexcept { return runActive; }
     int getLivesRemaining() const noexcept { return livesRemaining; }
     int getRunScore() const noexcept { return runScore; }
+
+    // Points, weighted by precision (the author's call): a right answer is
+    // worth 1, and on a ruler exercise up to 0.9 more for how close to the
+    // target it landed - "I heard the octave" and "I heard the frequency"
+    // are not the same answer. In tenths, so the arithmetic is exact.
+    int getRunPointsTenths() const noexcept { return runPointsTenths; }
+    float getRunPoints() const noexcept { return (float) runPointsTenths / 10.0f; }
+    int getLastPointsTenths() const noexcept { return lastPointsTenths; }
+
+    // The tenths a correct answer earns: 10, plus 0..9 for precision (0..1)
+    // when the answer was placed on a scale. `precision` < 0 means a
+    // categorical answer, which is right or wrong and earns the flat 10.
+    static int pointsTenthsFor (bool wasCorrect, float precision) noexcept
+    {
+        if (! wasCorrect)
+            return 0;
+
+        return 10 + (precision >= 0.0f ? juce::roundToInt (juce::jlimit (0.0f, 1.0f, precision) * 9.0f) : 0);
+    }
     int getRoundsThisRun() const noexcept { return roundsThisRun; }
 
     // The longest run of correct answers *in this run*, which is what a
@@ -91,7 +110,7 @@ public:
 
     // Call once per answer. Returns true if the run is still going
     // afterwards, false if this answer ended it.
-    bool registerAnswer (bool wasCorrect);
+    bool registerAnswer (bool wasCorrect, float precision = -1.0f);
 
     // Call once a second while a run is active. Returns true if this tick
     // ended the run (Blitz clock hit zero).
@@ -129,6 +148,8 @@ private:
     bool runActive = true;
     int livesRemaining = survivalLives;
     int runScore = 0;
+    int runPointsTenths = 0;
+    int lastPointsTenths = 0;
     int roundsThisRun = 0;
     int currentStreak = 0;
     int bestStreakThisRun = 0;

@@ -272,7 +272,11 @@ namespace
 int main (int argc, char* argv[])
 {
     // Always the design size, whatever the virtual display is (shared/ui/WindowFit.h).
+   #if JUCE_WINDOWS
+    _putenv_s ("ABC_DESIGN_SIZE", "1");   // Windows has no setenv (CI caught it)
+   #else
     setenv ("ABC_DESIGN_SIZE", "1", 1);
+   #endif
 
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
 

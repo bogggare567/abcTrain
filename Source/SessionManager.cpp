@@ -18,6 +18,8 @@ void SessionManager::startRun()
 
     runActive = true;
     runScore = 0;
+    runPointsTenths = 0;
+    lastPointsTenths = 0;
     roundsThisRun = 0;
     livesRemaining = mode == Mode::survival ? rules.survivalLives : 0;
     secondsRemaining = mode == Mode::blitz ? rules.blitzSeconds : 0;
@@ -36,12 +38,14 @@ void SessionManager::endRun()
         onRunEnded (runScore);
 }
 
-bool SessionManager::registerAnswer (bool wasCorrect)
+bool SessionManager::registerAnswer (bool wasCorrect, float precision)
 {
     if (! runActive)
         return false;
 
     ++roundsThisRun;
+    lastPointsTenths = pointsTenthsFor (wasCorrect, precision);
+    runPointsTenths += lastPointsTenths;
 
     if (wasCorrect)
     {

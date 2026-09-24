@@ -139,6 +139,29 @@ lost and not half-built. None of them has been started; each is listed
 with what it would actually cost, because that is the part that decides
 whether it happens.
 
+### Lessons for the plugins written by invited authors
+
+Raised by the author on 2026-09-24, **for later**. People whose opinion
+counts (engineers, teachers) would write their own lessons for the
+Learner EQ / Comp / Verb: the steps, the targets the curve or the knobs
+must reach, and the text. The author decides who gets that access.
+
+What it would take:
+- The lesson format moves out of C++. It becomes data: JSON with the
+  steps, targets, tolerances and text in each language, and the author's
+  name.
+- The plugin gets a loader and a "by <author>" line. The data must be
+  validated, because a lesson file is untrusted input.
+- An authoring path. Either an editor inside the plugin ("record what I
+  did as a step") or a documented format plus a checker in `tools/`.
+- Distribution without a server in the app: lessons come as packs, like
+  sound packs (ADR 040), signed or reviewed by the author before they are
+  published. With Live, lessons can come through the account.
+
+The cost is mostly the format and its validation, not the UI. Start
+after the built-in lessons have settled, so the format is not frozen
+around a shape that is still changing.
+
 ### A mini-DAW inside abcTrain
 
 Raised by the author, 2026-09-23, **for after** the standalone apps are

@@ -86,7 +86,7 @@ namespace
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
-                       settingsPro, settingsHearing, settingsAbout, hearingNotice, moduleResult,
+                       settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
                        studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit };
 
     template <typename ProcessorType, typename EditorType>
@@ -167,6 +167,9 @@ namespace
 
                 if (extra == Extra::settingsHearing)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true);
+
+                if (extra == Extra::settingsAppearance)
+                    editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::appearance, false);
 
                 if (extra == Extra::settingsAbout)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::about, false);
@@ -292,7 +295,11 @@ namespace
 int main (int argc, char* argv[])
 {
     // Always the design size, whatever the virtual display is (shared/ui/WindowFit.h).
+   #if JUCE_WINDOWS
+    _putenv_s ("ABC_DESIGN_SIZE", "1");   // Windows has no setenv (CI caught it)
+   #else
     setenv ("ABC_DESIGN_SIZE", "1", 1);
+   #endif
 
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
 
@@ -424,6 +431,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsPro", -1, Extra::settingsPro);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsHearing", -1, Extra::settingsHearing);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsAbout", -1, Extra::settingsAbout);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsAppearance", -1, Extra::settingsAppearance);
 
             if (hadSettings)
             {

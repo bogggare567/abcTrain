@@ -36,7 +36,7 @@ public:
                 LocalisationManager manager (props);
 
                 expectEquals (manager.getCurrentLanguage(), code);
-                expect (manager.getText ("ui.bypass").isNotEmpty());
+                expect (manager.getText ("ui.close").isNotEmpty());
                 expect (manager.getText ("game.eq.name").isNotEmpty());
             }
         }
@@ -102,7 +102,7 @@ public:
             LocalisationManager manager (props);
 
             expect (LocalisationManager::getSupportedLanguageCodes().contains (manager.getCurrentLanguage()));
-            expect (manager.getText ("ui.bypass").isNotEmpty());
+            expect (manager.getText ("ui.close").isNotEmpty());
         }
 
         beginTest ("setLanguage switches the active language and its getText output");
@@ -120,12 +120,12 @@ public:
             props.setValue ("language", "en");
             LocalisationManager manager (props);
 
-            const auto englishBypass = manager.getText ("ui.bypass");
+            const auto englishBypass = manager.getText ("ui.close");   // not ui.bypass: that one stays English everywhere now
             manager.setLanguage ("ru");
 
             expectEquals (manager.getCurrentLanguage(), juce::String ("ru"));
-            expect (manager.getText ("ui.bypass").isNotEmpty());
-            expect (manager.getText ("ui.bypass") != englishBypass);
+            expect (manager.getText ("ui.close").isNotEmpty());
+            expect (manager.getText ("ui.close") != englishBypass);
         }
 
         beginTest ("setLanguage is a no-op for an unsupported code");

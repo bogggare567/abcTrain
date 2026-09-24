@@ -230,9 +230,22 @@ void RunResultsComponent::paint (juce::Graphics& g)
         };
 
         auto column = row.removeFromLeft (columnWidth);
-        paintStat (g, column, detail.rounds, juce::String (juce::roundToInt ((float) summary.score * counted)),
-                   summary.isNewBest ? theme.positive : theme.textBright);
-        note (column, bestCaption + " " + juce::String (juce::jmax (summary.previousBest, summary.score)));
+        if (summary.pointsText.isNotEmpty())
+        {
+            // Points first - precision counts - with the count and the
+            // record (still kept in right answers) underneath.
+            paintStat (g, column, detail.points, counted >= 0.999f ? summary.pointsText
+                                                                    : juce::String (juce::roundToInt ((float) summary.score * counted)),
+                       summary.isNewBest ? theme.positive : theme.textBright);
+            note (column, fillIn (detail.pointsNote, { { "n", juce::String (summary.score) },
+                                                       { "best", juce::String (juce::jmax (summary.previousBest, summary.score)) } }));
+        }
+        else
+        {
+            paintStat (g, column, detail.rounds, juce::String (juce::roundToInt ((float) summary.score * counted)),
+                       summary.isNewBest ? theme.positive : theme.textBright);
+            note (column, bestCaption + " " + juce::String (juce::jmax (summary.previousBest, summary.score)));
+        }
 
         column = row.removeFromLeft (columnWidth);
         paintStat (g, column, accuracyCaption,

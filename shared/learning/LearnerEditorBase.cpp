@@ -504,6 +504,13 @@ void LearnerEditorBase::resized()
         area.removeFromBottom (Spacing::small);
     }
 
+    // The guide text has a strip of its own at the foot of the window.
+    // It used to float over the bottom of the analysis - exactly the part
+    // of the picture the knob being explained was changing (the author:
+    // "перекрывают обзор").
+    const auto guideStrip = area.removeFromBottom (44);
+    area.removeFromBottom (Spacing::small);
+
     const auto controlsHeight = controlsContentHeight() + 2 * Spacing::medium;
 
     // In a short window the analysis section gives way first: a display
@@ -518,9 +525,7 @@ void LearnerEditorBase::resized()
 
     moduleScreen.setBounds (analysisSection);
 
-    guideTooltip.setBounds (analysisSection.reduced (Spacing::large, 0)
-                                           .withHeight (72)
-                                           .withY (analysisSection.getBottom() - 84));
+    guideTooltip.setBounds (guideStrip);
 }
 
 void LearnerEditorBase::timerCallback()

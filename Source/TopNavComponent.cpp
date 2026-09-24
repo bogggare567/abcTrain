@@ -17,7 +17,10 @@ namespace
     constexpr float brandTracking = 0.8f;
 
     constexpr int rightCellWidth = 34;
-    constexpr int rightCells     = 4;   // theme, update, size, language
+    // None any more: theme, updates and language moved to Settings and the
+    // size picker went away (ADR 042). The corner holds the streak and the
+    // week's dose, which are things you glance at, not things you set.
+    constexpr int rightCells     = 0;
     // No volume in the bar (ADR 035): in a plugin the level is the
     // channel fader, in the standalone it is the interface and the system,
     // and a third volume here only moved the reference the gain exercise
@@ -356,12 +359,5 @@ void TopNavComponent::paint (juce::Graphics& g)
                 g.fillRect (area.getX() + i * 6, y, 4, dotSize);
             }
         }
-    }
-
-    // --- the divider before the app's own controls ------------------------
-    {
-        const auto x = getWidth() - pagePad - rightCluster - 10;
-        g.setColour (theme.divider);
-        g.fillRect (x, bounds.getY() + 12, 1, bounds.getHeight() - 25);
     }
 }

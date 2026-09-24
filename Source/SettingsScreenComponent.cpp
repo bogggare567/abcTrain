@@ -149,6 +149,59 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         timerCallback();
     };
 
+    // ---- appearance: theme and language -------------------------------
+    themeChoice.setValue (AbcTrainTheme::getMode() == AbcTrainTheme::Mode::dark ? 1 : 0);
+    themeChoice.onChange = [this] (int value)
+    {
+        if (onThemeChosen != nullptr)
+            onThemeChosen (value == 1);
+    };
+    addAndMakeVisible (themeChoice);
+
+    {
+        // Each language in its own name - somebody who cannot read the
+        // current one still finds theirs.
+        const auto& codes = LocalisationManager::getSupportedLanguageCodes();
+
+        for (int i = 0; i < codes.size(); ++i)
+            languageChoice.addItem (LocalisationManager::getDisplayName (codes[i]), i + 1,
+                                    LocalisationManager::getDisplayName (codes[i]));
+
+        languageChoice.setSelectedId (codes.indexOf (localisation.getCurrentLanguage()) + 1, juce::dontSendNotification);
+        languageChoice.onChange = [this]
+        {
+            const auto& all = LocalisationManager::getSupportedLanguageCodes();
+            const auto index = languageChoice.getSelectedId() - 1;
+
+            if (index >= 0 && index < all.size() && onLanguageChosen != nullptr)
+                onLanguageChosen (all[index]);
+        };
+        addAndMakeVisible (languageChoice);
+    }
+
+    // ---- updates and the audio device ----------------------------------
+    autoUpdateChoice.setValue (properties.getBoolValue (autoUpdateKey, true) ? 1 : 0);
+    autoUpdateChoice.onChange = [this] (int value)
+    {
+        properties.setValue (autoUpdateKey, value == 1);
+        properties.saveIfNeeded();
+    };
+    addAndMakeVisible (autoUpdateChoice);
+
+    checkNowButton.onClick = [this]
+    {
+        if (onCheckForUpdates != nullptr)
+            onCheckForUpdates();
+    };
+    addAndMakeVisible (checkNowButton);
+
+    audioDeviceButton.onClick = [this]
+    {
+        if (onAudioDevice != nullptr)
+            onAudioDevice();
+    };
+    addAndMakeVisible (audioDeviceButton);
+
     // ---- appearance ----------------------------------------------------
     //
     // 0.8 to 1.4: below 0.8 the layout can no longer hold the text it was
@@ -315,6 +368,7 @@ void SettingsScreenComponent::buildRows()
         { "set.blitz.title",        "set.blitz.hint",        &blitzSeconds,   0, true,  Page::training },
         { "set.penalty.title",      "set.penalty.hint",      &blitzPenalty,   0, true,  Page::training },
 
+        { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, 220, false, Page::hearing },
         { "set.hearingOn.title",    "set.hearingOn.hint",    &hearingOn,      0, false, Page::hearing },
         { "set.break.title",        "set.break.hint",        &breakMinutes,   0, true,  Page::hearing },
         { "set.fatigue.title",      "set.fatigue.hint",      &fatigueHint,    0, true,  Page::hearing },
@@ -322,12 +376,17 @@ void SettingsScreenComponent::buildRows()
         { "set.weekly.title",       "set.weekly.hint",       &weeklyLimit,    0, true,  Page::hearing },
         { "set.exposure.title",     "set.exposure.hint",     &exposureRow,    0, true,  Page::hearing },
 
+        { "set.theme.title",        "set.theme.hint",        &themeChoice,         0,   false, Page::appearance },
+        { "set.language.title",     "set.language.hint",     &languageChoice,      220, false, Page::appearance },
         { "ui.textSize",            "set.textSize.hint",     &textScaleSlider,     0,   false, Page::appearance },
         { "set.typeface.title",     "set.typeface.hint",     &typefaceSelector,    140, false, Page::appearance },
         { "set.screensaver.title",  "set.screensaver.hint",  &screensaverSelector, 140, false, Page::appearance },
 
         { "ui.backgroundImage",     "set.background.hint",   &backgroundButtons, 0, false, Page::background },
         { "ui.backgroundDim",       "set.backgroundDim.hint", &scrimSlider,      0, false, Page::background },
+
+        { "set.autoUpdate.title",   "set.autoUpdate.hint",   &autoUpdateChoice, 0,   false, Page::about },
+        { "set.checkNow.title",     "set.checkNow.hint",     &checkNowButton,   220, false, Page::about },
     };
 }
 
@@ -378,12 +437,22 @@ void SettingsScreenComponent::syncControlsFromSettings()
     refresh();
 }
 
+bool SettingsScreenComponent::rowIsOffered (const Row& row) const
+{
+    // No audio device to choose where there is no standalone holder (the
+    // snapshot tools): the row is left out rather than shown dead.
+    return row.control != &audioDeviceButton || onAudioDevice != nullptr;
+}
+
 juce::String SettingsScreenComponent::hintFor (const Row& row) const
 {
     // A few hints say what the *current* value does, which is the whole
     // point of having them.
     if (row.control == &stepRule)
         return localisation.getText ("set.stepRule.hint" + n (stepRule.getValue()));
+
+    if (row.control == &checkNowButton && updateStatusText.isNotEmpty())
+        return updateStatusText;
 
     if (row.control == &calibrationRow)
     {
@@ -433,6 +502,14 @@ void SettingsScreenComponent::refresh()
     clearBackgroundButton.setButtonText (t ("ui.clearImage"));
     feedbackButton.setButtonText (t ("ui.feedback"));
     refreshBetaToggle();
+
+    themeChoice.setOptions ({ 0, 1 }, { t ("set.theme.light"), t ("set.theme.dark") });
+    themeChoice.setValue (AbcTrainTheme::getMode() == AbcTrainTheme::Mode::dark ? 1 : 0);
+    languageChoice.setSelectedId (LocalisationManager::getSupportedLanguageCodes().indexOf (localisation.getCurrentLanguage()) + 1,
+                                  juce::dontSendNotification);
+    autoUpdateChoice.setOptions ({ 0, 1 }, { t ("set.autoUpdate.manual"), t ("set.autoUpdate.auto") });
+    checkNowButton.setButtonText (t ("set.checkNow.button"));
+    audioDeviceButton.setButtonText (t ("set.audioDevice.button"));
     closeButton.setButtonText (t ("ui.close"));
 
     // A Slider's text box keeps the colours it was built with; the light
@@ -472,6 +549,13 @@ void SettingsScreenComponent::refreshLicenceView()
     licenceView.applyColourToAllText (licenceView.findColour (juce::TextEditor::textColourId));
     licenceView.moveCaretToTop (false);
     licenceToggle.setButtonText (localisation.getText (licenceExpanded ? "ui.licenceLess" : "ui.licenceMore"));
+}
+
+void SettingsScreenComponent::setUpdateStatus (const juce::String& text)
+{
+    updateStatusText = text;
+    checkNowButton.setEnabled (text != localisation.getText ("ui.checkingForUpdates"));
+    repaint();
 }
 
 void SettingsScreenComponent::refreshBetaToggle()
@@ -653,7 +737,7 @@ void SettingsScreenComponent::selectPage (Page page)
     currentPage = page;
 
     for (auto& row : rows)
-        row.control->setVisible (row.page == page);
+        row.control->setVisible (row.page == page && rowIsOffered (row));
 
     resetButton.setVisible (page == Page::training && settings.getMode() == TrainerSettings::Mode::pro);
     licenceView.setVisible (page == Page::about);
@@ -674,12 +758,16 @@ void SettingsScreenComponent::resized()
 
     if (currentPage == Page::training || currentPage == Page::hearing)
         page.removeFromTop (26);                                // the mode note / status line
+    else if (currentPage == Page::about)
+        page.removeFromTop (22);                                // the version line
 
     const auto contentWidth = juce::jmin (page.getWidth(), 980);
 
     for (auto& row : rows)
     {
-        if (row.page != currentPage)
+        row.bounds = {};
+
+        if (row.page != currentPage || ! rowIsOffered (row))
             continue;
 
         // Calibration gets a second line and the whole width for its fader:
@@ -751,7 +839,7 @@ void SettingsScreenComponent::resized()
 
     if (currentPage == Page::about)
     {
-        page.removeFromTop (22);
+        page.removeFromTop (AbcTrainTheme::Spacing::medium);
         auto body = page.removeFromTop (juce::jmin (page.getHeight() - 44, 420))
                         .removeFromLeft (juce::jmin (page.getWidth(), 760));
         licenceView.setBounds (body);
@@ -873,7 +961,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     // Rows: title and what it does on the left, hairline between rows.
     for (const auto& row : rows)
     {
-        if (row.page != currentPage)
+        if (row.page != currentPage || row.bounds.isEmpty())
             continue;
 
         const auto enabled = row.control->isEnabled();

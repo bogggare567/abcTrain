@@ -19,7 +19,7 @@ understanding.
 |---|---|
 | [docs/orientation.md](docs/orientation.md) | the map, the load-bearing ideas, **the rules from the literature** — read first |
 | [docs/code-map.md](docs/code-map.md) | per-file breakdown (was the body of this file) — read the part you change |
-| [docs/decisions/](docs/decisions/) | ADRs, 001–041: why each shape was chosen |
+| [docs/decisions/](docs/decisions/) | ADRs, 001–042: why each shape was chosen |
 | [docs/process.md](docs/process.md) | how a task goes from idea to release; the scenario checklist |
 | [docs/research/](docs/research/) | the literature review every current proposal rests on |
 | [docs/design/](docs/design/) | sound library, education/live, the redesign spec |
@@ -36,7 +36,7 @@ cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 ninja -C build EarTrainerTests && ./build/EarTrainerTests_artefacts/Release/EarTrainerTests
 ninja -C build ClickMap EditorSnapshots
 xvfb-run -a ./build/ClickMap_artefacts/Release/ClickMap
-SNAP_DARK=1 SNAP_SIZE=940x620 xvfb-run -a ./build/EditorSnapshots_artefacts/Release/EditorSnapshots <dir>
+SNAP_DARK=1 SNAP_SIZE=1100x780 xvfb-run -a ./build/EditorSnapshots_artefacts/Release/EditorSnapshots <dir>
 ```
 
 - Build targets separately in the cloud container (two cores, LTO): a full
@@ -83,9 +83,11 @@ Learner*/Source (no PluginEntry) abc_learner_eq/comp/verb, abc_learners — plug
   call or wait. Data leaves through atomics or lock-free FIFOs.
 - **Answer mechanics:** no "Submit" button in the trainer; moving the scale
   never plays the answer (literature: ISA vs ICA — see orientation.md).
-- **Answer names are not translated** (Room, Plate, Low-mids) and neither
-  are the English family names under headings — they are the words on
-  real plugins.
+- **Answer names and technical parameter names are not translated**
+  (Room, Plate, Low-mids; Threshold, Ratio, Attack, Pre-delay, Q, Bell,
+  Low shelf, Bypass) and neither are the English family names under
+  headings — they are the words on real plugins. Explanations around
+  them are translated.
 - **The hint region in "Guess the Band" stays three bands wide**
   (`tests/HintTest` holds it).
 - **Level is never the tell:** every exercise matches loudness on the
@@ -93,8 +95,10 @@ Learner*/Source (no PluginEntry) abc_learner_eq/comp/verb, abc_learners — plug
 - **Every string in all 12 languages** (`shared/i18n/strings/*.json`); the
   tests check that each table has every English key.
 - **Offline-first:** no account, no server, no telemetry in anything
-  installed. Live (seminars, battles) is a separate deployable; the app
-  may only connect when the player opens Live himself.
+  installed. The one request the app makes on its own is the release
+  list for the update check, and it has a switch in Settings (ADR 042).
+  Live (seminars, battles) is a separate deployable; the app connects to
+  it only when the player opens Live himself.
 - **Learner modules have no hearing check** (ADR 041): watch → try → Done.
   Naming a setting by ear is the trainer's job.
 - **Sound packs:** only CC0 / PD / CC BY / CC BY-SA / written permission,

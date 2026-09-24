@@ -64,7 +64,7 @@ public:
         showScreen (Screen::training);
 
         for (int i = 0; i < 14; ++i)
-            session.registerAnswer (i % 4 != 3);
+            session.registerAnswer (i % 4 != 3, 0.45f + 0.1f * (float) (i % 5));
 
         // Twelve rounds of a run, as the round-by-round strip draws them:
         // one miss in the mids, the rest inside the band at varying depth.
@@ -332,10 +332,8 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void paintOverChildren (juce::Graphics&) override;
 
-    // Where update progress and outcomes go on this editor. The Learner
-    // plugins have a guide card to put a line of text in; this one has the
-    // Updates button's own tooltip, which is small but is at least where
-    // the pointer already is.
+    // Where update progress and outcomes go on this editor: the status
+    // line under "Check now" on Settings -> About.
     void showUpdateOutcome (const juce::String& text);
 
 private:
@@ -662,6 +660,13 @@ private:
             repaint();
         }
 
+        // The run's points as the player reads them, "14,3" - set after
+        // set(), which keeps the count for the lives/clock logic.
+        void setScoreText (juce::String text)
+        {
+            if (text != scoreText) { scoreText = std::move (text); repaint(); }
+        }
+
         void paint (juce::Graphics& g) override
         {
             const auto& theme = AbcTrainTheme::current();
@@ -671,7 +676,8 @@ private:
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::titleFont());
             const auto scoreBox = area.removeFromLeft (52.0f);
-            AbcTrainLookAndFeel::fitText (g, juce::String (score), scoreBox, juce::Justification::centredLeft, false);
+            AbcTrainLookAndFeel::fitText (g, scoreText.isNotEmpty() ? scoreText : juce::String (score), scoreBox,
+                                          juce::Justification::centredLeft, false);
 
             if (mode == SessionManager::Mode::survival)
             {
@@ -749,6 +755,7 @@ private:
 
         SessionManager::Mode mode = SessionManager::Mode::practice;
         int lives = -1, seconds = 0, score = 0, maxLives = SessionManager::survivalLives;
+        juce::String scoreText;
         float flash = 0.0f;
         juce::Animator flashAnimator = juce::ValueAnimatorBuilder{}.build();
         juce::VBlankAnimatorUpdater updater { this };
@@ -1012,7 +1019,7 @@ private:
     // explicitly (the LookAndFeel can't reach those). Called at construction
     // and again whenever the theme is toggled.
     void applyTheme();
-    void toggleTheme();
+    void setThemeMode (AbcTrainTheme::Mode);
 
     void timerCallback() override;          // 1 Hz, drives the Blitz clock
 
@@ -1056,7 +1063,7 @@ private:
     // starts a round, including the auto-advance - which is why it is its
     // own method rather than a few lines inside startNewRun().
     void clearHint();
-    void languageSelected();
+    void chooseLanguage (const juce::String& code);
 
     // Declared first so it's constructed before, and destroyed after,
     // every other Component below that might still reference it during
@@ -1086,7 +1093,6 @@ private:
     EarTrainerProcessor& processor;
 
     juce::Label titleLabel;
-    CompactSelector languageSelector;
     // Icon for whichever game is currently selected (see AppIcons) - kept
     // in sync with the active game in refreshFromGameState(), so a pick
     // from the card grid or a difficulty-driven change both update it.
@@ -1231,9 +1237,27 @@ private:
     // separately is what lets both be true.
     int heightWithoutHint = minLogicalHeight;
 
-    void setUiScale (float newScale, bool remember = true);
+    // The whole design drawn through one transform, and the factor chosen
+    // from the window's own size rather than from a picker (ADR 042): drag
+    // the corner and the layout gets more room *and* bigger text, in the
+    // proportion that keeps it at or above the size it was drawn for.
+    void setUiScale (float newScale);
     float uiScale = 1.0f;
-    CompactSelector sizeSelector;
+    static float scaleForWindow (int physicalWidth, int physicalHeight) noexcept;
+    void adaptScaleToWindow();
+    bool adaptPending = false;
+
+    // Once, when the editor lands in its standalone window: the system's
+    // own title bar (traffic lights on the left, where a Mac user looks
+    // for them) instead of JUCE's drawn one with the close button on the
+    // right, and without the "Options" button that bar carried.
+    void adoptNativeWindow();
+    bool nativeWindowAdopted = false;
+    void parentHierarchyChanged() override;
+
+    // Automatic update check (ADR 042), and the one Settings asks for.
+    // Silent: only a newer release is worth interrupting for.
+    void checkForUpdates (bool silent);
 
     // Output level. Deliberately a plain slider rather than a
     // CompactSelector: volume is the one control here you want to nudge
@@ -1363,12 +1387,9 @@ private:
 
     void showAchievementToast (const juce::String& achievementId);
 
-    IconButton updateButton { AppIcons::Icon::download };
-
-    // Light/dark switch. The chosen mode is stored in the same shared
-    // "abcTrain" PropertiesFile the language preference uses, so it's one
-    // product-wide preference rather than per-plugin or per-instance.
-    IconButton themeButton { AppIcons::Icon::sun };
+    // Theme, language and updates used to sit in the top bar's right
+    // corner. They are settings, chosen once, and live on the Settings
+    // pages now (Appearance, About) - the corner is empty on purpose.
 
     // Section backdrops, computed in resized() and drawn in paint(). Held
     // as members because JUCE gives paint() no access to the layout pass,

@@ -9,6 +9,12 @@
 #include <memory>
 #include <map>
 
+#if JucePlugin_Build_Standalone
+ #include <juce_audio_utils/juce_audio_utils.h>
+ #include <juce_audio_plugin_client/juce_audio_plugin_client.h>
+ #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
+#endif
+
 namespace
 {
     // Every caption the update window shows, localised here because shared
@@ -45,7 +51,10 @@ namespace
     // The key the light/dark choice is stored under, in the same shared
     // "abcTrain" PropertiesFile the language preference already uses.
     constexpr const char* themeModeKey = "themeMode";
-    constexpr const char* uiScaleKey = "uiScale";
+    // The window's last size in screen points (ADR 042) - not a scale: the
+    // scale follows from the size.
+    constexpr const char* windowWidthKey = "windowWidth";
+    constexpr const char* windowHeightKey = "windowHeight";
     constexpr const char* outputGainKey = "outputGainDb";
     // Not "have you seen the welcome screen" any more - that shows every
     // launch now, by request. This only remembers whether the walkthrough
@@ -485,24 +494,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     titleLabel.setJustificationType (juce::Justification::centredLeft);
     titleLabel.setVisible (false);
 
-    themeButton.onClick = [this] { toggleTheme(); };
-    addAndMakeVisible (themeButton);
-
-    sizeSelector.addItem ("Small", 1, "S");
-    sizeSelector.addItem ("Medium", 2, "M");
-    sizeSelector.addItem ("Large", 3, "L");
-    sizeSelector.addItem ("Extra large", 4, "XL");
-    sizeSelector.onChange = [this]
-    {
-        switch (sizeSelector.getSelectedId())
-        {
-            case 1:  setUiScale (0.85f); break;
-            case 3:  setUiScale (1.15f); break;
-            case 4:  setUiScale (1.30f); break;
-            default: setUiScale (1.00f); break;
-        }
-    };
-    addAndMakeVisible (sizeSelector);
 
     // Output level. The range stops at +6 rather than 0 because the games
     // deliberately run well below full scale to leave the treated side
@@ -524,14 +515,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     volumeIcon.setIconColour (AbcTrainTheme::current().textDim);
     addAndMakeVisible (volumeIcon);
 
-    for (const auto& code : LocalisationManager::getSupportedLanguageCodes())
-        languageSelector.addItem (LocalisationManager::getDisplayName (code),
-                                   LocalisationManager::getSupportedLanguageCodes().indexOf (code) + 1,
-                                   AbcTrainLookAndFeel::toCaps (code.upToFirstOccurrenceOf ("-", false, false)));
-    languageSelector.setSelectedId (LocalisationManager::getSupportedLanguageCodes().indexOf (localisation.getCurrentLanguage()) + 1,
-                                     juce::dontSendNotification);
-    languageSelector.onChange = [this] { languageSelected(); };
-    addAndMakeVisible (languageSelector);
 
     // Added before the training children and every overlay, so it sits
     // behind all of them: the rail is the floor of the window, not a
@@ -882,89 +865,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     processor.getProgressManager().addChangeListener (this);
     localisation.addChangeListener (this);
 
-    updateButton.onClick = [this]
-    {
-        // Real bug reported by an actual user: clicking "Updates" gave no
-        // visible reaction at all whenever no newer release was found (or
-        // this repo simply had no releases yet) - checkForUpdatesAsync's
-        // callback deliberately never fires in that case (see
-        // decisions/007-update-checker.md), which used to leave the
-        // button looking like it did nothing. It now shows "Checking...",
-        // then either the existing "update available" prompt, a brief
-        // "up to date" acknowledgement, or - if nothing came back at all
-        // within a few seconds (offline, rate-limited, no releases) - a
-        // brief "couldn't check" message, so every click gets *some*
-        // visible outcome.
-        juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
-        auto handled = std::make_shared<bool> (false);
-
-        updateButton.setEnabled (false);
-        updateButton.setTooltip (localisation.getText ("ui.checkingForUpdates"));
-
-        // Captured now (editor definitely alive), not read from
-        // `localisation` inside the async callback below, which may run
-        // after the editor has been destroyed; the safeThis null check
-        // guards every actual use of the editor/its components.
-        const auto updateAvailableText = localisation.getText ("ui.updateAvailable");
-        const auto openReleasePageText = localisation.getText ("ui.openReleasePage");
-        const auto laterText = localisation.getText ("ui.later");
-        const auto updatesText = localisation.getText ("ui.updates");
-        const auto upToDateText = localisation.getText ("ui.upToDate");
-
-        const auto channel = UpdateChecker::channelFor (CurrentVersion::string,
-                                                        localisationProperties.getBoolValue (UpdateChecker::betaOptInKey, false));
-
-        UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, channel, [safeThis, handled, updateAvailableText, openReleasePageText, laterText, updatesText, upToDateText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
-        {
-            if (safeThis == nullptr || *handled)
-                return;
-            *handled = true;
-
-            safeThis->updateButton.setEnabled (true);
-
-            if (! foundNewer)
-            {
-                safeThis->updateButton.setTooltip (upToDateText);
-                juce::Timer::callAfterDelay (2500, [safeThis, updatesText]
-                {
-                    if (safeThis != nullptr)
-                        safeThis->updateButton.setTooltip (updatesText);
-                });
-                return;
-            }
-
-            safeThis->updateButton.setTooltip (updatesText);
-
-            // A window, not a tooltip. The progress was always real and
-            // always went somewhere nobody was looking.
-            safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
-            safeThis->updateWindow.show (release,
-                juce::JUCEApplicationBase::isStandaloneApp());
-        });
-
-        // checkForUpdatesAsync's callback never fires at all on failure
-        // (no internet, rate limiting, no releases published yet) - so
-        // without this, the button would be stuck showing "Checking..."
-        // forever. 6s comfortably outlasts the network call's own 5s
-        // connection timeout.
-        const auto checkFailedText = localisation.getText ("ui.checkFailed");
-        juce::Timer::callAfterDelay (6000, [safeThis, handled, updatesText, checkFailedText]
-        {
-            if (safeThis == nullptr || *handled)
-                return;
-            *handled = true;
-
-            safeThis->updateButton.setEnabled (true);
-            safeThis->updateButton.setTooltip (checkFailedText);
-
-            juce::Timer::callAfterDelay (2500, [safeThis, updatesText]
-            {
-                if (safeThis != nullptr)
-                    safeThis->updateButton.setTooltip (updatesText);
-            });
-        });
-    };
-    addAndMakeVisible (updateButton);
 
 
     soundkorbLink.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f), false,
@@ -1001,6 +901,25 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         repaint();
     };
     settingsScreen.onTrainerSettingsChanged = [this] { applyTrainerSettings(); };
+
+    // What the top bar's right corner used to hold (ADR 042).
+    settingsScreen.onThemeChosen = [this] (bool dark)
+    {
+        setThemeMode (dark ? AbcTrainTheme::Mode::dark : AbcTrainTheme::Mode::light);
+    };
+    settingsScreen.onLanguageChosen = [this] (juce::String code) { chooseLanguage (code); };
+    settingsScreen.onCheckForUpdates = [this] { checkForUpdates (false); };
+
+   #if JucePlugin_Build_Standalone
+    // The audio device used to be behind JUCE's "Options" button in the
+    // drawn title bar, which the native one does not have.
+    settingsScreen.onAudioDevice = []
+    {
+        if (auto* holder = juce::StandalonePluginHolder::getInstance())
+            holder->showAudioSettingsDialog();
+    };
+   #endif
+
     settingsScreen.onCalibrationNoise = [this] (bool play) { processor.setCalibrationNoise (play); };
     settingsScreen.onAddExposure = [this] (double hours, double levelDbA)
     {
@@ -1126,31 +1045,54 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (achievementToast);
     trainingSounds.onClosed = [this] { resized(); };
 
-    // Grown again for the grouping/whitespace pass: the three section
-    // panels each carry their own padding and caption, which is what buys
-    // the "everything breathes" feel, and that space has to come from
-    // somewhere. Same "grew the window to fit new content" precedent as
-    // the slider redesign (015) and the Learner guide labels (010).
-    // Restore the persisted UI scale; the logical layout never changes,
-    // only the transform applied to it.
-    // Draggable, within limits that keep the layout honest: the floor is
-    // the height the sections actually need, and the ceiling stops a 5K
-    // display leaving nine tiles the size of postage stamps.
-    setResizable (true, true);
-    setResizeLimits (minLogicalWidth, minLogicalHeight,
-                      (int) (logicalWidth * 2.0), (int) (logicalBaseHeight * 2.0));
+    // A window like any other (ADR 042): dragged by its edges, no corner
+    // grip, no ceiling. The floor is the smallest layout the screens are
+    // built for; in screen points it is lower still, because the scale
+    // follows the window down to 0.8.
+    setResizable (true, false);
+    setResizeLimits (minLogicalWidth, minLogicalHeight, 16000, 16000);
 
-    // Open at the design size where the screen has room for it, and at
-    // whatever part of it the screen can show where it has not
-    // (shared/ui/WindowFit.h). The saved text scale is capped the same way:
-    // chosen on a big monitor, it must not push the window off a laptop.
+    // Open at the size it was closed at, or - the first time - at most of
+    // the screen it appears on. No fixed pixel size: the scale is derived
+    // from whatever size that turns out to be.
+    if (WindowFit::fittingDisabled())
     {
-        const auto wanted = (float) localisationProperties.getDoubleValue (uiScaleKey, 1.0);
-        const auto scale = WindowFit::fitScale (wanted, { minLogicalWidth, minLogicalHeight });
-        const auto fitted = WindowFit::fit ({ logicalWidth, logicalBaseHeight },
-                                            { minLogicalWidth, minLogicalHeight }, scale);
-        setSize (fitted.x, fitted.y);
-        setUiScale (scale, juce::approximatelyEqual (scale, wanted));
+        setUiScale (1.0f);
+        setSize (logicalWidth, logicalBaseHeight);
+    }
+    else
+    {
+        const auto area = WindowFit::usableArea();
+        auto w = localisationProperties.getIntValue (windowWidthKey, 0);
+        auto h = localisationProperties.getIntValue (windowHeightKey, 0);
+
+        if (w <= 0 || h <= 0)
+        {
+            h = juce::roundToInt (area.getHeight() * 0.88);
+            w = juce::jmin (juce::roundToInt (area.getWidth() * 0.88), juce::roundToInt (h * 1.5));
+        }
+
+        w = juce::jlimit (juce::jmin (minLogicalWidth, area.getWidth()), juce::jmax (minLogicalWidth, area.getWidth()), w);
+        h = juce::jlimit (juce::jmin (minLogicalHeight, area.getHeight()), juce::jmax (minLogicalHeight, area.getHeight()), h);
+
+        const auto scale = scaleForWindow (w, h);
+        setUiScale (scale);
+        setSize (juce::jmax (minLogicalWidth, juce::roundToInt ((float) w / scale)),
+                 juce::jmax (minLogicalHeight, juce::roundToInt ((float) h / scale)));
+    }
+
+    // Updates on their own, when the player left that on (ADR 042) - a
+    // few seconds after launch, so the first screen is never waiting on
+    // the network, and never in the tools that render screens.
+    if (! WindowFit::fittingDisabled()
+        && localisationProperties.getBoolValue (SettingsScreenComponent::autoUpdateKey, true))
+    {
+        juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+        juce::Timer::callAfterDelay (4000, [safeThis]
+        {
+            if (safeThis != nullptr)
+                safeThis->checkForUpdates (true);
+        });
     }
     // Unity, always. The slider left the bar (ADR 035); a level saved by
     // it earlier must not keep the app quiet with no control left to undo
@@ -1233,12 +1175,6 @@ void EarTrainerEditor::applyTheme()
     soundkorbLink.setColour (juce::HyperlinkButton::textColourId, theme.accent);
     donateLink.setColour (juce::HyperlinkButton::textColourId, theme.accentWarm);
 
-    // The icon shows the mode you'd switch *to*, and morphs between the
-    // two rather than cutting - see IconButton.
-    themeButton.setIcon (theme.mode == AbcTrainTheme::Mode::light ? AppIcons::Icon::moon
-                                                                  : AppIcons::Icon::sun);
-    themeButton.setTooltip (localisation.getText (theme.mode == AbcTrainTheme::Mode::light
-                                                       ? "ui.themeDark" : "ui.themeLight"));
 
     currentGameLabel.setColour (juce::Label::textColourId, theme.textBright);
     feedbackLabel.setColour (juce::Label::textColourId, theme.text);
@@ -1257,11 +1193,10 @@ void EarTrainerEditor::applyTheme()
     repaint();
 }
 
-void EarTrainerEditor::toggleTheme()
+void EarTrainerEditor::setThemeMode (AbcTrainTheme::Mode newMode)
 {
-    const auto newMode = AbcTrainTheme::getMode() == AbcTrainTheme::Mode::light
-                             ? AbcTrainTheme::Mode::dark
-                             : AbcTrainTheme::Mode::light;
+    if (newMode == AbcTrainTheme::getMode())
+        return;
 
     AbcTrainTheme::setMode (newMode);
     localisationProperties.setValue (themeModeKey,
@@ -1274,6 +1209,141 @@ void EarTrainerEditor::toggleTheme()
     // repaint of the whole tree is all that's needed - no rebuild.
     for (auto* child : getChildren())
         child->repaint();
+}
+
+void EarTrainerEditor::checkForUpdates (bool silent)
+{
+    // Every asked-for check ends in *some* visible outcome - "checking",
+    // then the update window, "up to date" or "couldn't check" - because
+    // checkForUpdatesAsync's callback never fires on failure (ADR 007) and
+    // a button that does nothing reads as broken. The automatic one says
+    // nothing unless there is something newer.
+    juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+    auto handled = std::make_shared<bool> (false);
+
+    if (! silent)
+        showUpdateOutcome (localisation.getText ("ui.checkingForUpdates"));
+
+    // Captured now, not read inside the callbacks, which may run after the
+    // editor is gone; safeThis guards every use of the editor itself.
+    const auto upToDateText = localisation.getText ("ui.upToDate");
+    const auto checkFailedText = localisation.getText ("ui.checkFailed");
+
+    const auto channel = UpdateChecker::channelFor (CurrentVersion::string,
+                                                    localisationProperties.getBoolValue (UpdateChecker::betaOptInKey, false));
+
+    UpdateChecker::checkForUpdatesAsync (CurrentVersion::string, channel,
+        [safeThis, handled, silent, upToDateText] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+    {
+        if (safeThis == nullptr || *handled)
+            return;
+        *handled = true;
+
+        if (! foundNewer)
+        {
+            if (! silent)
+                safeThis->showUpdateOutcome (upToDateText);
+            return;
+        }
+
+        safeThis->showUpdateOutcome ({});
+        safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
+        safeThis->updateWindow.show (release, juce::JUCEApplicationBase::isStandaloneApp());
+    });
+
+    // 6 s outlasts the network call's own 5 s timeout.
+    juce::Timer::callAfterDelay (6000, [safeThis, handled, silent, checkFailedText]
+    {
+        if (safeThis == nullptr || *handled)
+            return;
+        *handled = true;
+
+        if (! silent)
+            safeThis->showUpdateOutcome (checkFailedText);
+    });
+}
+
+float EarTrainerEditor::scaleForWindow (int physicalWidth, int physicalHeight) noexcept
+{
+    // The reference is a size between the layout's floor (940 x 620) and
+    // the size it was drawn at (1180 x 880). Taking the smaller of the two
+    // ratios means the layout always gets at least the reference in both
+    // directions - the other one gets more room rather than stretched text.
+    // So a wide window shows more, a big one shows everything bigger, and
+    // nothing is ever squeezed below what the screens were built for.
+    constexpr float referenceWidth = 1100.0f, referenceHeight = 780.0f;
+    const auto s = juce::jmin ((float) physicalWidth / referenceWidth,
+                               (float) physicalHeight / referenceHeight);
+
+    // Steps of 1/40, so a drag does not re-lay text out at every pixel.
+    return juce::jlimit (0.8f, 2.4f, std::round (s * 40.0f) / 40.0f);
+}
+
+void EarTrainerEditor::adaptScaleToWindow()
+{
+    adaptPending = false;
+
+    if (WindowFit::fittingDisabled() || getWidth() <= 0 || getHeight() <= 0)
+        return;
+
+    const auto physicalWidth = juce::roundToInt ((float) getWidth() * uiScale);
+    const auto physicalHeight = juce::roundToInt ((float) getHeight() * uiScale);
+
+    localisationProperties.setValue (windowWidthKey, physicalWidth);
+    localisationProperties.setValue (windowHeightKey, physicalHeight);
+
+    const auto wanted = scaleForWindow (physicalWidth, physicalHeight);
+
+    if (std::abs (wanted - uiScale) < 0.005f)
+        return;
+
+    // Same size on screen, new scale: the logical size is what changes.
+    setUiScale (wanted);
+    setSize (juce::jmax (minLogicalWidth, juce::roundToInt ((float) physicalWidth / wanted)),
+             juce::jmax (minLogicalHeight, juce::roundToInt ((float) physicalHeight / wanted)));
+}
+
+void EarTrainerEditor::parentHierarchyChanged()
+{
+    AudioProcessorEditor::parentHierarchyChanged();
+
+    if (nativeWindowAdopted || WindowFit::fittingDisabled())
+        return;
+
+    juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+    juce::MessageManager::callAsync ([safeThis]
+    {
+        if (safeThis != nullptr)
+            safeThis->adoptNativeWindow();
+    });
+}
+
+void EarTrainerEditor::adoptNativeWindow()
+{
+   #if JucePlugin_Build_Standalone && ! (JUCE_IOS || JUCE_ANDROID)
+    if (nativeWindowAdopted)
+        return;
+
+    auto* window = findParentComponentOfClass<juce::DocumentWindow>();
+
+    if (window == nullptr)
+        return;
+
+    nativeWindowAdopted = true;
+
+    // JUCE's standalone window draws its own title bar - close and
+    // minimise on the right, an "Options" button on the left - which on a
+    // Mac looks like nothing else on the screen. The system's own bar has
+    // the traffic lights where they belong, full-screen and the usual
+    // edge resizing. The audio device the Options menu offered is on
+    // Settings -> Hearing now.
+    window->setUsingNativeTitleBar (true);
+    window->setResizable (true, false);
+
+    for (auto* child : window->getChildren())
+        if (dynamic_cast<juce::Button*> (child) != nullptr)
+            child->setVisible (false);
+   #endif
 }
 
 EarTrainerEditor::~EarTrainerEditor()
@@ -1388,7 +1458,7 @@ void EarTrainerEditor::paint (juce::Graphics& g)
 
 void EarTrainerEditor::showUpdateOutcome (const juce::String& text)
 {
-    updateButton.setTooltip (text);
+    settingsScreen.setUpdateStatus (text);
 }
 
 void EarTrainerEditor::mouseMove (const juce::MouseEvent&)
@@ -1415,6 +1485,19 @@ bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
 
 void EarTrainerEditor::resized()
 {
+    // The window was dragged: pick the scale for its new size once the
+    // drag's own resize has finished, not in the middle of it.
+    if (! adaptPending && ! WindowFit::fittingDisabled())
+    {
+        adaptPending = true;
+        juce::Component::SafePointer<EarTrainerEditor> safeThis (this);
+        juce::MessageManager::callAsync ([safeThis]
+        {
+            if (safeThis != nullptr)
+                safeThis->adaptScaleToWindow();
+        });
+    }
+
     updateWindow.setBounds (getLocalBounds());
 
     // The welcome follows the window. It used to be sized only when shown,
@@ -1472,19 +1555,10 @@ void EarTrainerEditor::resized()
         // the editor's own widgets - see TopNavComponent for why moving
         // ownership was not worth it. Their slots come from the bar, so
         // its painted background and the controls on it cannot drift.
-        themeButton.setBounds (topNav.getThemeSlot());
-        updateButton.setBounds (topNav.getUpdateSlot());
         volumeSlider.setBounds ({});
         volumeSlider.setVisible (false);
         volumeIcon.setBounds ({});   // the bar captions this itself
 
-        // The two indicators go on the bar with the rest of the app
-        // chrome. Floating under the exercise with nothing holding them,
-        // they read as two loose fragments - which is what they were.
-        sizeSelector.setBounds (topNav.getSizeSlot()
-                                    .withWidth (sizeSelector.getPreferredWidth()));
-        languageSelector.setBounds (topNav.getLanguageSlot()
-                                        .withWidth (languageSelector.getPreferredWidth()));
 
         // What is left in the content area: the two links, and nothing
         // else. Ten things became two.
@@ -1755,10 +1829,17 @@ void EarTrainerEditor::resized()
         // empty, that looked like a leftover rather than part of the round.
         // Now the two cards give up height (their lower half was air
         // anyway) and the picture takes the rest, across the whole width.
+        //
+        // The room is kept whether or not the hint has been bought: taking
+        // it only when the hint appeared made the cards shrink and the
+        // screen jump up at the moment of buying (the author: "начал
+        // скакать экран"). Nothing moves now; the picture fills a space
+        // that was already there.
         const auto hintShowing = hintRevealed && ! hintNarrowsTheScale();
+        const auto reserveHint = ! hintNarrowsTheScale() && session.areHintsAllowed();
         auto sliderHeight = juce::jmin (inner.getHeight(), naturalHeight);
 
-        if (hintShowing)
+        if (reserveHint)
         {
             constexpr int cardsFloor = 166;
             const auto pictureHeight = juce::jlimit (90, 240, (inner.getHeight() - Spacing::medium) * 40 / 100);
@@ -1934,6 +2015,7 @@ void EarTrainerEditor::showRunResults (int finalScore)
                                                   ? "ui.modeSurvival" : "ui.modeBlitz");
 
     summary.score = finalScore;
+    summary.pointsText = localDecimal (session.getRunPoints(), 1, localisation);
     summary.rounds = stats.roundsPlayed;
     summary.bestStreakThisRun = session.getBestStreakThisRun();
     summary.previousBest = pendingPreviousBest;
@@ -2070,6 +2152,8 @@ void EarTrainerEditor::showRunResults (int finalScore)
         RunResultsComponent::DetailStrings d;
         d.rounds = localisation.getText ("ui.res.rounds");
         d.ofInBand = localisation.getText ("ui.res.ofInBand");
+        d.points = localisation.getText ("ui.res.points");
+        d.pointsNote = localisation.getText ("ui.res.pointsNote");
         d.precision = localisation.getText ("ui.res.precision");
         d.precisionNote = localisation.getText ("ui.res.precisionNote");
         d.threshold = localisation.getText ("ui.res.threshold");
@@ -2187,14 +2271,12 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
     }
 }
 
-void EarTrainerEditor::languageSelected()
+void EarTrainerEditor::chooseLanguage (const juce::String& code)
 {
-    const auto& codes = LocalisationManager::getSupportedLanguageCodes();
-    const auto index = languageSelector.getSelectedId() - 1;
-    if (index < 0 || index >= codes.size())
+    if (! LocalisationManager::getSupportedLanguageCodes().contains (code))
         return;
 
-    localisation.setLanguage (codes[index]);
+    localisation.setLanguage (code);
     refreshLocalisedText();
 }
 
@@ -2376,30 +2458,14 @@ void EarTrainerEditor::applyVolumeFromSlider()
     localisationProperties.saveIfNeeded();
 }
 
-void EarTrainerEditor::setUiScale (float newScale, bool remember)
+void EarTrainerEditor::setUiScale (float newScale)
 {
-    uiScale = juce::jlimit (0.8f, 1.4f, newScale);
+    uiScale = newScale;
 
-    // One layout, drawn through a transform - rather than four sets of
+    // One layout, drawn through a transform - rather than several sets of
     // hand-tuned sizes that would drift apart. Everything stays exactly
     // the same design at every size.
     setTransform (juce::AffineTransform::scale (uiScale));
-
-    // Keep whatever size the window has been dragged to - scaling is a
-    // separate axis from sizing, and resetting the width here would undo a
-    // deliberate drag every time somebody changed the text size.
-    setSize (juce::jmax (minLogicalWidth, getWidth()),
-              juce::jmax (minLogicalHeight, getHeight()));
-
-    // Keep the picker in step with the actual scale, including on the
-    // restore path - without this it came up blank on launch.
-    const auto id = uiScale < 0.93f ? 1 : uiScale < 1.08f ? 2 : uiScale < 1.23f ? 3 : 4;
-    sizeSelector.setSelectedId (id, juce::dontSendNotification);
-
-    // Not when the scale was only capped to fit this screen: the choice
-    // made on a bigger one should come back there.
-    if (remember)
-        localisationProperties.setValue (uiScaleKey, (double) uiScale);
 }
 
 void EarTrainerEditor::applyWindowSize()
@@ -2603,8 +2669,6 @@ void EarTrainerEditor::applyRunLock()
 
     for (auto* c : { (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
                      (juce::Component*) &blitzButton,    (juce::Component*) &instructionsButton,
-                     (juce::Component*) &themeButton,    (juce::Component*) &updateButton,
-                     (juce::Component*) &sizeSelector,   (juce::Component*) &languageSelector,
                      (juce::Component*) &soundkorbLink })
     {
         c->setEnabled (! locked);
@@ -2661,9 +2725,12 @@ void EarTrainerEditor::refreshRunStatus()
         }
 
         if (hudNow)
+        {
             runHud.set (session.getMode(), session.getLivesRemaining(),
                         session.getSecondsRemaining(), session.getRunScore(),
                         session.getRules().survivalLives);
+            runHud.setScoreText (localDecimal (session.getRunPoints(), 1, localisation));
+        }
 
         if (hudWasVisible != (onTraining && hudNow))
             resized();
@@ -2776,12 +2843,7 @@ void EarTrainerEditor::showScreen (Screen screen)
     // Everything that belongs to the training screen.
     // The title-row controls belong to Home and Training, not the
     // one-time support screen.
-    for (auto* c : { (juce::Component*) &themeButton, (juce::Component*) &updateButton,
-                     (juce::Component*) &sizeSelector,
-                     (juce::Component*) &languageSelector, (juce::Component*) &soundkorbLink })
-    {
-        c->setVisible (! onSupport);
-    }
+    soundkorbLink.setVisible (! onSupport);
 
     for (auto* c : { (juce::Component*) &gameIcon,
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
@@ -3060,7 +3122,6 @@ void EarTrainerEditor::refreshLocalisedText()
     }
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
-    updateButton.setTooltip (localisation.getText ("ui.updates"));
     studioScreen.setLabels (localisation.getText ("ui.studio.caption"));
     topNav.setLabels ({ localisation.getText ("ui.trainings"),
                         localisation.getText ("ui.studio"),
@@ -3385,7 +3446,15 @@ void EarTrainerEditor::refreshHintButton()
 
 void EarTrainerEditor::afterAnswer (bool wasCorrect)
 {
-    session.registerAnswer (wasCorrect);
+    // Precision counts (the author's call): on a ruler exercise a right
+    // answer earns up to 0.9 more for how close it landed.
+    const auto& game = processor.getGameManager().getActiveGame();
+    const auto precision = game.usesContinuousScale() ? game.getAnswerQuality() : -1.0f;
+    session.registerAnswer (wasCorrect, precision);
+
+    if (wasCorrect && session.getLastPointsTenths() > 0)
+        pointsFlyup.show ("+" + localDecimal ((float) session.getLastPointsTenths() / 10.0f, 1, localisation),
+                          AbcTrainTheme::current().positive);
     refreshRunStatus();
     refreshBeforeAfter();
 

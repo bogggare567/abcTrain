@@ -26,7 +26,7 @@ namespace AbcTrainTheme
             p.divider = juce::Colour (0xff32323f);
 
             p.text       = juce::Colour (0xffe0e0e0);
-            p.textDim    = juce::Colour (0xffa0a0b0);
+            p.textDim    = juce::Colour (0xffb0b0bf);   // was a0a0b0: too faint for small text
             p.textBright = juce::Colour (0xfff2f2f7);
 
             p.accent     = juce::Colour (0xff5b9bd5);
@@ -72,7 +72,7 @@ namespace AbcTrainTheme
             // the dark mode's off-white text has, instead of maximum
             // contrast that reads as harsh on a warm ground.
             p.text       = juce::Colour (0xff33322f);
-            p.textDim    = juce::Colour (0xff6d6a64);
+            p.textDim    = juce::Colour (0xff5f5c56);   // was 6d6a64
             p.textBright = juce::Colour (0xff1b1a18);
 
             // Deeper and slightly desaturated versions of the dark accents.

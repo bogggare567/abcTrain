@@ -40,6 +40,10 @@ public:
 
         int score = 0;
         int rounds = 0;
+
+        // Points weighted by precision, already written the player's way
+        // ("14,3"); empty falls back to the count.
+        juce::String pointsText;
         int bestStreakThisRun = 0;
 
         // The record before this run, so "personal best" can be an event
@@ -108,6 +112,8 @@ public:
     struct DetailStrings
     {
         juce::String rounds       { "Rounds" };
+        juce::String points       { "Points" };
+        juce::String pointsNote   { "{{n}} right, best {{best}}" };
         juce::String ofInBand     { "{{n}} of {{m}} inside the band" };
         juce::String precision    { "Precision" };
         juce::String precisionNote{ "median closeness" };

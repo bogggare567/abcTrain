@@ -266,6 +266,26 @@ public:
             session.startRun();
             expectEquals (session.getBestStreakThisRun(), 0);
         }
+
+        beginTest ("precision earns tenths on top of a right answer");
+        {
+            // 1 point for right, up to 0.9 more for landing on the target;
+            // a categorical answer (precision < 0) is the flat 1; wrong is 0.
+            expectEquals (SessionManager::pointsTenthsFor (true, -1.0f), 10);
+            expectEquals (SessionManager::pointsTenthsFor (true, 0.0f), 10);
+            expectEquals (SessionManager::pointsTenthsFor (true, 1.0f), 19);
+            expectEquals (SessionManager::pointsTenthsFor (true, 0.6f), 15);
+            expectEquals (SessionManager::pointsTenthsFor (false, 1.0f), 0);
+
+            SessionManager session;
+            session.setMode (SessionManager::Mode::practice);
+            session.startRun();
+            session.registerAnswer (true, 1.0f);
+            session.registerAnswer (true, 0.0f);
+            session.registerAnswer (false, 0.9f);
+            expectEquals (session.getRunPointsTenths(), 29);
+            expectEquals (session.getRunScore(), 2);
+        }
     }
 };
 
