@@ -203,6 +203,23 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Only for the release name list: the title carries the city of this
+      # release line (shared/updates/release-names.txt), like the app does.
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: shared/updates/release-names.txt
+          sparse-checkout-cone-mode: false
+
+      - name: Release title
+        id: title
+        shell: bash
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          line="$(echo "$v" | cut -d. -f1,2)"
+          city="$(grep -E "^${line} " shared/updates/release-names.txt | head -1 | cut -d' ' -f2- || true)"
+          echo "title=abcTrain ${v}${city:+ — ${city}}" >> "$GITHUB_OUTPUT"
+
       - name: Download build artifacts
         uses: actions/download-artifact@v7
         with:
@@ -218,6 +235,7 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3
         with:
+          name: ${{ steps.title.outputs.title }}
           files: |
             artifacts/installer-macos/*.dmg
             artifacts/installer-windows/*.exe

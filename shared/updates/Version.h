@@ -21,4 +21,7 @@
 namespace CurrentVersion
 {
     constexpr const char* string = VersionInfo::versionString;
+
+    // "Saint Petersburg" for 2.0.x (shared/updates/release-names.txt).
+    constexpr const char* codename = VersionInfo::codename;
 }

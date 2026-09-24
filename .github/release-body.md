@@ -1,24 +1,46 @@
-## 1.8.0-beta.1 — бета для тестирования / a beta for testers
+## 2.0 Saint Petersburg
 
-**Это пре-релиз.** Он для тех, кто согласился попробовать и рассказать, что не так: что проверить и как сообщить, написано в [BETA_TESTING.md](https://github.com/bogggare567/abcTrain/blob/main/BETA_TESTING.md). Обычная проверка обновлений его не предлагает. Бета-версии включаются в «Настройки → О программе».
+С этого выпуска у версий abcTrain есть имена городов. **2.0 называется Saint Petersburg.**
 
 ### Что нового
 
-- **Тренажёр звучит теми же движками, что и плагины.** Реверберация раньше была Freeverb, компрессор — стандартный компрессор JUCE. Теперь это FDN и пластина Dattorro из Learner Verb и компрессор с мягким коленом из Learner Comp. Вы учитесь слышать тот же прибор, который потом крутите.
-- **У трёх упражнений свой звук вместо шума.** Дисторшн звучит на аккорде: у шума нет высоты тона, значит нет гармоник. Компрессия звучит на барабанах, реверберация на одиночном ударе. Розовый шум остаётся для частоты, громкости и панорамы, и его можно выбрать для всего.
-- **Эквалайзер точнее на верхних частотах.** Колокол теперь строится по методу Vicanek и не сужается у верхней границы. Раньше на 16 кГц он был почти вдвое уже, чем нарисован.
-- **Дисторшн без алиасинга.** Добавлено подавление ADAA: негармонических призвуков в 4–5 раз меньше.
-- **Сначала подъёмы, вырезы позже.** Провал слышно хуже пика той же величины, поэтому вырезы появляются с 4-й ступени.
-- **Упражнение чаще спрашивает там, где вы ошибаетесь.**
-- **Порог вместо рекорда.** Главный экран показывает измеренный порог: среднее по разворотам лестницы, по методу Левитта. Рекорд систематически завышен, это вершина случайного блуждания.
-- **Пакеты звуков** с жанром, вокалом, инструментами, автором и лицензией у каждого клипа. Все авторы собраны в «Настройки → О программе».
-- **«Разделить на стемы» убрано.** Без обученной модели разделение не окупало своей сложности.
-- **Бета-канал** обновлений и кнопка **«Сообщить или предложить»**.
+- **Одно приложение вместо четырёх.** abcTrain теперь одна программа с вкладками: Тренировки, Студия, Live. Learner EQ, Comp и Verb остались плагинами VST3/AU и работают внутри приложения на вкладке «Студия». Плагин и Студия собираются из одного кода.
+- **Live.**
+  - Можно войти на soundkorb.ru по почте и коду, без пароля. Компьютер привязывается коротким кодом.
+  - Синхронизация прогресса включается отдельно: на сервер уходит сводка около 1 КБ, история ответов остаётся на компьютере.
+  - Если Live не работает, приложение пишет, в чём дело: нет сети, нет интернета, сервер не отвечает или версия устарела.
+  - Есть рейтинг Decibelo.
+- **Батлы с ботами.** Шесть «слушателей» с разным профилем слуха: Гончая, Кошка, Гадюка, Сова, Летучая мышь, Слон. Батл идёт семь раундов на одном и том же материале для обоих и работает без сети. Звери здесь игровые персонажи, а не биология.
+- **Свои звуки по инструментам.**
+  - Импорт определяет инструмент. Если не уверен, кладёт звук в «Другое».
+  - Нарезает петли без шва по темпу.
+  - Фрагмент из трека можно выделить мышью.
+  - Клип можно удалить прямо в приложении.
+- **Окно как у macOS.** Масштаб интерфейса зависит от размера окна. Модули и урок открываются в отдельном окне.
+- **EQ.**
+  - У HP/LP выбирается крутизна: 6, 12, 24 или 48 дБ/окт.
+  - Типы фильтров показаны значками.
+- **Очки за точность.** Верный ответ даёт 1 очко и ещё до 0,9 за меткость.
+- **Исправлено:**
+  - кнопки ведущего заходили на карточку открытой онлайн-комнаты;
+  - заголовок «Твой ответ» иногда рисовался дважды;
+  - сборка под Windows.
 
-Почему сделано именно так, с источниками: [сверка с литературой](https://github.com/bogggare567/abcTrain/blob/main/docs/research/2026-09-literature-audit.md) и [ADR 040](https://github.com/bogggare567/abcTrain/blob/main/docs/decisions/040-one-engine-per-effect.md).
+Сервер Live стоит в России (soundkorb.ru). Из некоторых стран он может открываться медленно или не открываться. Тренировки, Студия и батлы с ботами работают без него.
+
+Почему сделано так: [ADR 041–046](https://github.com/bogggare567/abcTrain/tree/main/docs/decisions).
 
 ---
 
-**This is a pre-release** for testers — see [BETA_TESTING.md](https://github.com/bogggare567/abcTrain/blob/main/BETA_TESTING.md). The trainer now runs the same reverb and compressor engines as the Learner plugins. Distortion, compression and reverb play their own material (a chord, a drum loop, a single hit) instead of pink noise. The EQ bell is Vicanek's matched design, and distortion is anti-aliased (ADAA). Cuts come after boosts, the exercise asks more where you miss, and the home screen shows a measured threshold (mean of staircase reversals) instead of the record. Sound packs carry per-clip authors and licences. Stem splitting is removed. There is a beta update channel and an in-app "Report a problem" button.
+**abcTrain 2.0 "Saint Petersburg"**: from now on each release line is named after a city.
+
+- **One app.** It has Training, Studio and Live tabs. The Learner plugins also run inside the app, in the Studio tab.
+- **Live.** Optional sign-in on soundkorb.ru with an e-mail code. A computer is linked with a short code. Progress sync is opt-in and sends a ~1 KB summary. The app tells you why Live is unreachable, and shows the Decibelo rating.
+- **Offline battles against six bot listeners.** Each bot has its own hearing profile. They are game characters, not biology.
+- **Your own sounds, sorted by instrument.** Import cuts seamless tempo-aware loops. You can pick a fragment from a track by hand, and delete clips in the app.
+- **Window and EQ.** macOS-style window with scale set by the window size. EQ HP/LP slopes of 6 to 48 dB/oct. Precision points.
+- **Fixes.** The Live room overlap, a doubled answer heading and the Windows build.
+
+The Live server is in Russia, so it may be slow or unreachable from some countries. Everything else works offline.
 
 Builds are **unsigned**: macOS and Windows will warn on first launch.

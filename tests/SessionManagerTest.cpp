@@ -286,6 +286,40 @@ public:
             expectEquals (session.getRunPointsTenths(), 29);
             expectEquals (session.getRunScore(), 2);
         }
+        beginTest ("a duel: seven rounds, both scores counted, no hints, an outcome at the end");
+        {
+            SessionManager session;
+            session.setOpponent (BotListener::Bot::owl);
+            session.setMode (SessionManager::Mode::duel);
+            session.startRun();
+            expect (! session.areHintsAllowed(), "no hints in a battle - the bot gets none either");
+            expect (! session.spendHint());
+
+            const bool player[] { true, true, false, true, false, true, true };
+            const bool bot[]    { true, false, false, true, true, false, true };
+            for (int i = 0; i < SessionManager::duelRounds; ++i)
+            {
+                const auto going = session.registerDuelRound (player[i], bot[i], -1.0f);
+                expect (going == (i < SessionManager::duelRounds - 1), "ends on the seventh round, not before");
+                expectEquals ((int) session.getLastOpponentAnswer(), (int) bot[i]);
+            }
+
+            expect (! session.isRunActive());
+            expectEquals (session.getRunScore(), 5);
+            expectEquals (session.getOpponentScore(), 4);
+            expect (session.getDuelOutcome() == SessionManager::Outcome::won);
+            expect (session.getOpponent() == BotListener::Bot::owl);
+
+            expect (! session.registerDuelRound (true, true, -1.0f), "no rounds after the end");
+
+            session.startRun();
+            expectEquals (session.getOpponentScore(), 0, "a new battle starts at 0:0");
+            expect (session.getDuelOutcome() == SessionManager::Outcome::draw);
+
+            SessionManager practice;
+            practice.startRun();
+            expect (! practice.registerDuelRound (true, true, -1.0f), "a duel round outside a duel is ignored");
+        }
     }
 };
 

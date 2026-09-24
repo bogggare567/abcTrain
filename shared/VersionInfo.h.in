@@ -8,4 +8,8 @@ namespace VersionInfo
 {
     constexpr const char* versionString = "@ABCTRAIN_VERSION_STRING@";
     constexpr const char* gitDescribe = "@ABCTRAIN_GIT_DESCRIBE@";
+
+    // The city this release line is named after (shared/updates/release-names.txt),
+    // or empty for a line that has none (every release before 2.0).
+    constexpr const char* codename = "@ABCTRAIN_CODENAME@";
 }

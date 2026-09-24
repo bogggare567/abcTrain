@@ -3,6 +3,8 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "shared/ui/SegmentedChoice.h"
 #include "LiveLink.h"
+#include "LiveAccount.h"
+#include "BotListener.h"
 #include <functional>
 #include <vector>
 
@@ -23,7 +25,8 @@
 // Nothing here opens a socket. The offline rule holds: the app connects
 // only when the player uses Live, and today Live does not connect at all.
 class LiveScreenComponent : public juce::Component,
-                            private juce::Timer
+                            private juce::Timer,
+                            private juce::ChangeListener
 {
 public:
     struct Strings
@@ -92,6 +95,28 @@ public:
         juce::String lanNone { "This computer is not on a local network" };
         juce::String lanNoneHint { "Connect to the venue's Wi-Fi.\nNo Wi-Fi? Share a hotspot from this laptop (macOS: Settings - General - Sharing - Internet Sharing; Windows: Settings - Mobile hotspot) and connect the phones to it." };
         juce::String lanLinkLocal { "The address starts with 169.254: the network has no router, phones will probably not reach it. Use a router or a hotspot." };
+        // Account (ADR 045).
+        juce::String signedInAs { "Signed in: {{nick}}" };
+        juce::String signedInNoNick { "Signed in" };
+        juce::String linkStarting { "Asking soundkorb.ru for a code..." };
+        juce::String linkFailed { "Could not get a code from soundkorb.ru. Check the connection and try again." };
+        juce::String linkExpired { "The code has expired - get a new one." };
+        juce::String newCode { "New code" };
+        juce::String signedInDone { "This computer is now linked to {{nick}}. Your progress will sync." };
+        juce::String serverInRussia { "The server is in Russia: from some countries it can be slow or blocked - a VPN usually helps." };
+        juce::String ratingLoading { "Loading the rating..." };
+        juce::String ratingFailed { "Could not load the rating. Check the connection." };
+        juce::String battlesNext { "Battles open in the next update: the round server is not running yet. The rating already works." };
+        // Battles with a virtual listener (ADR 046).
+        juce::String botTitle { "Against a bot" };
+        juce::String botHint { "Works offline. Seven rounds, the same round for both; the bot answers from its hearing profile at your level." };
+        juce::StringArray botNames { "Hound", "Cat", "Viper", "Owl", "Bat", "Elephant" };
+        juce::StringArray botSpecialty { "", "", "", "", "", "" };
+        juce::String botStart { "Start the battle" };
+        juce::String botFamily { "Exercises" };
+        juce::String botSpeedFast { "answers fast" }, botSpeedSlow { "thinks long, rarely slips" };
+        juce::String botDisclaimer { "Characters inspired by differences in animal hearing - game profiles, not biology." };
+        juce::String humansTitle { "Against people" };
         juce::String lanTrouble { "Phones cannot open the address? Guest Wi-Fi often keeps devices apart - use a normal network or a hotspot. Allow abcTrain incoming connections in the firewall. Turn off mobile data on the phone." };
     };
 
@@ -105,6 +130,14 @@ public:
 
     // For Settings -> Live and account.
     void openSignIn();
+
+    // The account this page signs in and out (the processor owns it).
+    void setAccount (LiveAccount*);
+
+    // "Start the battle" against a bot: which bot, and which family
+    // (0 frequency, 1 dynamics, 2 space, 3 character). The editor picks
+    // the exercise and runs it in the duel mode.
+    std::function<void (BotListener::Bot, int family)> onStartBotBattle;
 
     // For tools/EditorSnapshots.
     void openRoomForSnapshot (bool local);
@@ -124,6 +157,14 @@ public:
 
 private:
     void timerCallback() override;
+    void changeListenerCallback (juce::ChangeBroadcaster*) override;
+    void accountChanged();
+    void loadRating();
+    void refreshAccountButton();
+
+    LiveAccount* account = nullptr;
+    juce::Array<LiveAccount::RatingRow> ratingRows;
+    enum class RatingState { idle, loading, loaded, failed } ratingState = RatingState::idle;
     void layoutSeminar (juce::Rectangle<int>);
     void layoutBattle (juce::Rectangle<int>);
     void layoutRating (juce::Rectangle<int>);
@@ -160,8 +201,8 @@ private:
     juce::TextButton projectorButton, startButton, closeRoomButton;
 
     // Battle
-    SegmentedChoice battleFamily;
-    juce::TextButton searchButton, challengeButton, battleSignInButton;
+    SegmentedChoice battleFamily, botChoice;
+    juce::TextButton searchButton, challengeButton, battleSignInButton, botStartButton;
 
     // Rating
     SegmentedChoice ratingFamily, scopeChoice, periodChoice;

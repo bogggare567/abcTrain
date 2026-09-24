@@ -85,6 +85,18 @@ endif()
 file(WRITE "${CMAKE_BINARY_DIR}/abctrain-version.txt" "${ABCTRAIN_VERSION_PLAIN}")
 message(STATUS "abcTrain packaging version: ${ABCTRAIN_VERSION_PLAIN}")
 
+# The release line's name - a city (shared/updates/release-names.txt).
+set(ABCTRAIN_CODENAME "")
+string(REGEX MATCH "^[0-9]+\\.[0-9]+" ABCTRAIN_VERSION_LINE "${ABCTRAIN_VERSION_PLAIN}")
+file(STRINGS "${CMAKE_SOURCE_DIR}/shared/updates/release-names.txt" ABCTRAIN_RELEASE_NAMES REGEX "^[0-9]+\\.[0-9]+ ")
+foreach(line IN LISTS ABCTRAIN_RELEASE_NAMES)
+    if(line MATCHES "^${ABCTRAIN_VERSION_LINE} (.+)$")
+        set(ABCTRAIN_CODENAME "${CMAKE_MATCH_1}")
+    endif()
+endforeach()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/shared/updates/release-names.txt")
+message(STATUS "abcTrain release name: '${ABCTRAIN_CODENAME}'")
+
 configure_file(
     shared/VersionInfo.h.in
     ${CMAKE_BINARY_DIR}/generated/shared/VersionInfo.h
@@ -303,6 +315,7 @@ add_library(abc_trainer_engine INTERFACE)
 target_sources(abc_trainer_engine INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/GameManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SessionManager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/BotListener.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ProgressManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Achievements.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/HearingGuard.cpp
@@ -381,6 +394,7 @@ target_sources(EarTrainer
         Source/StudioScreenComponent.cpp
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
+        Source/LiveAccount.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -585,7 +599,9 @@ target_sources(EarTrainerTests
         tests/ReferenceAudioLibraryTest.cpp
         tests/InstrumentLabelTest.cpp
         tests/LiveLinkTest.cpp
+        tests/BotListenerTest.cpp
         Source/LiveLink.cpp
+        Source/LiveAccount.cpp
         tests/TestSignalGeneratorTest.cpp
         tests/SharedEnginesTest.cpp
         tests/HintTest.cpp
@@ -651,6 +667,7 @@ set(abcTrainEditorToolSources
         Source/StudioScreenComponent.cpp
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
+        Source/LiveAccount.cpp
 )
 
 juce_add_console_app(EditorSnapshots
@@ -771,7 +788,7 @@ foreach(abcTrainTarget EarTrainer LearnerEQ LearnerComp LearnerVerb EarTrainerTe
     target_include_directories(${abcTrainTarget} PRIVATE ${CMAKE_BINARY_DIR}/generated)
 endforeach()
 
-# Temporary: measures what a round transition costs on the message thread.
+# Measurement tool (not shipped): what a round transition costs on the message thread.
 juce_add_console_app(RoundBench PRODUCT_NAME "RoundBench")
 target_sources(RoundBench PRIVATE
     tools/RoundBench.cpp
@@ -784,3 +801,13 @@ target_link_libraries(RoundBench PRIVATE abc_audio abc_dsp juce::juce_dsp juce::
     juce::juce_audio_basics juce::juce_core juce::juce_events
     juce::juce_data_structures SampleData
     juce::juce_recommended_config_flags juce::juce_recommended_lto_flags)
+
+# LiveSmoke - the Live account round trip (link two computers, sync, sign
+# out) against a real server: the site's, run locally with
+# ABCTRAIN_TEST_HOOKS=1. Not in CI; see tools/LiveSmoke.cpp.
+juce_add_console_app(LiveSmoke PRODUCT_NAME "LiveSmoke")
+target_sources(LiveSmoke PRIVATE tools/LiveSmoke.cpp Source/LiveLink.cpp Source/LiveAccount.cpp)
+target_compile_definitions(LiveSmoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+target_include_directories(LiveSmoke PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_link_libraries(LiveSmoke PRIVATE abc_trainer_engine abc_shared juce::juce_audio_utils juce::juce_dsp
+    I18nData FontData SampleData BrandData juce::juce_recommended_config_flags)

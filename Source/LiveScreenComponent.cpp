@@ -41,7 +41,15 @@ LiveScreenComponent::LiveScreenComponent()
     tabs.onChange = [this] (int value) { showTab ((Tab) value); };
     addAndMakeVisible (tabs);
 
-    accountButton.onClick = [this] { openSignIn(); };
+    accountButton.onClick = [this]
+    {
+        // Signed in, the same button signs out: this computer forgets its
+        // key and tells the server if it can.
+        if (account != nullptr && account->isSignedIn())
+            account->signOut();
+        else
+            openSignIn();
+    };
     addAndMakeVisible (accountButton);
 
     // ---- seminar: join ----
@@ -121,6 +129,7 @@ LiveScreenComponent::LiveScreenComponent()
         juce::Random r;
         roomCode = randomRoomCode (r);
         roomOpen = true;
+        refreshVisibility();   // the host controls give way to the room - without this they stayed on top of it
         resized();
         repaint();
     };
@@ -133,6 +142,7 @@ LiveScreenComponent::LiveScreenComponent()
     closeRoomButton.onClick = [this]
     {
         roomOpen = false;
+        refreshVisibility();
         resized();
         repaint();
     };
@@ -144,13 +154,27 @@ LiveScreenComponent::LiveScreenComponent()
     battleFamily.setValue (0);
     battleFamily.setUppercase (false);
     addChildComponent (battleFamily);
-    searchButton.onClick = [this] { if (requireServer()) setNote (text.notYet); };
-    challengeButton.onClick = [this] { if (requireServer()) setNote (text.notYet); };
+    searchButton.onClick = [this] { if (requireServer()) setNote (text.battlesNext); };
+    challengeButton.onClick = [this] { if (requireServer()) setNote (text.battlesNext); };
     battleSignInButton.onClick = [this] { openSignIn(); };
-    LnF::makePrimary (searchButton, true);
 
     for (auto* b : { &searchButton, &challengeButton, &battleSignInButton })
         addChildComponent (b);
+
+    // ---- battle: a bot ----
+    botChoice.setValue (0);
+    botChoice.setUppercase (false);
+    botChoice.onChange = [this] (int) { repaint(); };
+    addChildComponent (botChoice);
+
+    botStartButton.onClick = [this]
+    {
+        if (onStartBotBattle != nullptr)
+            onStartBotBattle ((BotListener::Bot) juce::jlimit (0, BotListener::numBots - 1, botChoice.getValue()),
+                              juce::jlimit (0, 3, battleFamily.getValue()));
+    };
+    LnF::makePrimary (botStartButton, true);
+    addChildComponent (botStartButton);
 
     // ---- rating ----
     ratingFamily.setValue (0);
@@ -159,6 +183,7 @@ LiveScreenComponent::LiveScreenComponent()
 
     for (auto* c : { &ratingFamily, &scopeChoice, &periodChoice })
     {
+        c->onChange = [this] (int) { loadRating(); };
         c->setUppercase (false);
         addChildComponent (*c);
     }
@@ -171,9 +196,21 @@ LiveScreenComponent::LiveScreenComponent()
     {
         if (overlay == Overlay::signIn)
         {
-            // A browser opened by a click is the player's own request; the
-            // app itself sends nothing.
-            juce::URL ("https://soundkorb.ru/link").withParameter ("code", signInCode).launchInDefaultBrowser();
+            // A browser opened by a click is the player's own request.
+            if (account == nullptr)
+            {
+                juce::URL ("https://soundkorb.ru/link").withParameter ("code", signInCode).launchInDefaultBrowser();
+                return;
+            }
+
+            const auto stage = account->getLink().stage;
+            const auto again = stage == LiveAccount::LinkStage::expired || stage == LiveAccount::LinkStage::failed
+                            || stage == LiveAccount::LinkStage::idle;
+
+            if (again)
+                account->cancelSignIn();
+
+            account->startSignIn (! again);
             return;
         }
 
@@ -187,6 +224,9 @@ LiveScreenComponent::LiveScreenComponent()
     {
         if (overlay == Overlay::signIn)
         {
+            if (account != nullptr)
+                account->cancelSignIn();
+
             overlay = Overlay::none;
             stopTimer();
             refreshVisibility();
@@ -234,6 +274,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
     tabs.setValue ((int) tab);
     accountButton.setButtonText (text.signIn);
     checkAgainButton.setButtonText (text.checkAgain);
+    refreshAccountButton();
     joinButton.setButtonText (text.join);
     whereChoice.setOptions ({ 0, 1 }, { text.online, text.local });
     whoChoice.setOptions ({ 0, 1 }, { text.anyone, text.listOnly });
@@ -256,6 +297,13 @@ void LiveScreenComponent::setStrings (Strings newStrings)
     searchButton.setButtonText (text.search);
     challengeButton.setButtonText (text.challenge);
     battleSignInButton.setButtonText (text.signIn);
+    botStartButton.setButtonText (text.botStart);
+    {
+        std::vector<int> ids;
+        for (int i = 0; i < BotListener::numBots; ++i)
+            ids.push_back (i);
+        botChoice.setOptions (ids, text.botNames);
+    }
     openSiteButton.setButtonText (text.openOnSite);
     inviteEditor.setTextToShowWhenEmpty (juce::String::fromUTF8 ("\xd0\x98\xd0\xb2\xd0\xb0\xd0\xbd \xd0\x9f\xd0\xb5\xd1\x82\xd1\x80\xd0\xbe\xd0\xb2, ivan@school.ru"),
                                          AbcTrainTheme::current().textDim);
@@ -284,6 +332,9 @@ void LiveScreenComponent::showTab (Tab newTab)
 
     if (needsServer() && isShowing())
         checkConnection();
+
+    if (tab == Tab::rating && isShowing())
+        loadRating();
     refreshVisibility();
     resized();
     repaint();
@@ -293,6 +344,18 @@ void LiveScreenComponent::openSignIn()
 {
     juce::Random r;
     signInCode = randomSignInCode (r);
+
+    if (account != nullptr)
+    {
+        if (account->isSignedIn())
+            return;
+
+        if (LiveLink::networkAllowed.load())
+            account->startSignIn (false);
+        else
+            account->showLinkForSnapshot (signInCode);
+    }
+
     signInStartedMs = juce::Time::getMillisecondCounterHiRes();
     overlay = Overlay::signIn;
     startTimer (1000);
@@ -306,10 +369,14 @@ void LiveScreenComponent::openRoomForSnapshot (bool local)
     showTab (Tab::seminar);
     whereChoice.setValue (local ? 1 : 0);
     whoChoice.setValue (1);
+
+    // Through the real button, not around it: a shortcut here once hid
+    // the host controls staying on top of the open room.
+    if (openRoomButton.onClick != nullptr)
+        openRoomButton.onClick();
+
     roomCode = "482 913";
-    roomOpen = true;
-    refreshVisibility();
-    resized();
+    repaint();
 }
 
 void LiveScreenComponent::openInvitesForSnapshot()
@@ -397,7 +464,8 @@ void LiveScreenComponent::refreshVisibility()
         b->setVisible (seminar && roomOpen);
 
     for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &searchButton,
-                     (juce::Component*) &challengeButton, (juce::Component*) &battleSignInButton })
+                     (juce::Component*) &challengeButton, (juce::Component*) &battleSignInButton,
+                     (juce::Component*) &botChoice, (juce::Component*) &botStartButton })
         c->setVisible (battle);
 
     for (auto* c : { (juce::Component*) &ratingFamily, (juce::Component*) &scopeChoice,
@@ -416,7 +484,9 @@ void LiveScreenComponent::refreshVisibility()
 
     if (overlay == Overlay::signIn)
     {
-        overlayPrimary.setButtonText (text.openSite);
+        const auto stage = account != nullptr ? account->getLink().stage : LiveAccount::LinkStage::waiting;
+        const auto again = stage == LiveAccount::LinkStage::expired || stage == LiveAccount::LinkStage::failed;
+        overlayPrimary.setButtonText (again ? text.newCode : text.openSite);
         overlaySecondary.setButtonText (text.cancel);
     }
     else if (overlay == Overlay::invites)
@@ -426,6 +496,8 @@ void LiveScreenComponent::refreshVisibility()
         overlayTertiary.setButtonText (text.makeCodes);
     }
 
+
+    refreshAccountButton();
 }
 
 // ---- layout -----------------------------------------------------------
@@ -529,16 +601,20 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
     area.removeFromLeft (Spacing::large);
     cardB = area;
 
-    auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
+    // Right: a bot - the battle that works today, offline.
+    auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 26);
+    botChoice.setBounds (b.removeFromTop (controlHeight).withWidth (juce::jmin (b.getWidth(), juce::jmax (480, botChoice.getPreferredWidth()))));
+    b.removeFromTop (Spacing::medium + 150);   // the bot's profile, painted
+    b.removeFromTop (22);                      // "Exercises"
     battleFamily.setBounds (b.removeFromTop (controlHeight).withWidth (juce::jmin (b.getWidth(), juce::jmax (420, battleFamily.getPreferredWidth()))));
-    b.removeFromTop (Spacing::medium + 30);   // the rules line
-    auto buttons = b.removeFromTop (controlHeight + 4);
-    searchButton.setBounds (buttons.removeFromLeft (220));
-    buttons.removeFromLeft (Spacing::small);
-    challengeButton.setBounds (buttons.removeFromLeft (220));
+    botStartButton.setBounds (cardB.reduced (Spacing::large).removeFromBottom (controlHeight + 4).removeFromRight (260));
 
-    auto bottom = b.removeFromBottom (controlHeight + 4);
-    battleSignInButton.setBounds (bottom.removeFromLeft (160));
+    // Left: people - Decibelo, and the buttons that wait for the round server.
+    auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 4 * 40 + Spacing::medium + 44 + Spacing::large + 30);
+    searchButton.setBounds (a.removeFromTop (controlHeight + 4));
+    a.removeFromTop (Spacing::small);
+    challengeButton.setBounds (a.removeFromTop (controlHeight + 4));
+    battleSignInButton.setBounds (cardA.reduced (Spacing::large).removeFromBottom (controlHeight + 4).removeFromLeft (160));
 }
 
 void LiveScreenComponent::layoutRating (juce::Rectangle<int> area)
@@ -604,7 +680,13 @@ void LiveScreenComponent::paint (juce::Graphics& g)
         top.removeFromRight (160 + AbcTrainTheme::Spacing::medium);
         g.setColour (theme.textDim);
         g.setFont (LnF::labelFont());
-        LnF::fitText (g, text.notSignedIn, top.removeFromRight (220), juce::Justification::centredRight, true);
+
+        juce::String who = text.notSignedIn;
+        if (account != nullptr && account->isSignedIn())
+            who = account->getNick().isNotEmpty() ? text.signedInAs.replace ("{{nick}}", account->getNick())
+                                                  : text.signedInNoNick;
+
+        LnF::fitText (g, who, top.removeFromRight (220), juce::Justification::centredRight, true);
     }
 
     paintLinkStatus (g, tabs.getBounds().withX (tabs.getRight() + AbcTrainTheme::Spacing::large)
@@ -735,12 +817,12 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
 {
     using namespace AbcTrainTheme;
     const auto& theme = current();
+    const Family families[] { Family::frequency, Family::dynamics, Family::space, Family::character };
+    const juce::String fams[] { text.freq, text.dyn, text.space, text.character };
 
     paintCard (g, cardA, text.decibelo);
     {
         auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
-        const juce::String fams[] { text.freq, text.dyn, text.space, text.character };
-        const Family families[] { Family::frequency, Family::dynamics, Family::space, Family::character };
 
         for (int i = 0; i < 4; ++i)
         {
@@ -761,24 +843,79 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
         a.removeFromTop (Spacing::medium);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitLines (g, text.decibeloHint, a.removeFromTop (40), juce::Justification::topLeft, 2, 0.9f);
+        LnF::fitLines (g, text.decibeloHint, a.removeFromTop (44), juce::Justification::topLeft, 2, 0.9f);
+
+        a.removeFromTop (Spacing::large);
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (18.0f));
+        LnF::fitText (g, text.humansTitle, a.removeFromTop (30), juce::Justification::centredLeft, true);
+
+        // Under the two buttons: why they only explain themselves for now.
+        a.removeFromTop (2 * (controlHeight + 4) + Spacing::small + Spacing::medium);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.battlesNext + "\n" + text.battleNeedsAccount,
+                       a.withTrimmedBottom (controlHeight + 4 + Spacing::medium), juce::Justification::topLeft, 6, 0.85f);
     }
 
-    paintCard (g, cardB, text.findTitle);
+    paintCard (g, cardB, text.botTitle);
     {
-        auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + controlHeight + 6);
+        auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitText (g, text.battleRules, b.removeFromTop (24), juce::Justification::centredLeft, true);
+        LnF::fitText (g, text.botHint, b.removeFromTop (22), juce::Justification::topLeft, true);
+        b.removeFromTop (4 + controlHeight + Spacing::medium);
 
-        auto bottom = cardB.reduced (Spacing::large);
-        bottom = bottom.removeFromBottom (controlHeight + 4 + Spacing::medium + 60);
+        // The selected bot: what it is good at, as four bars - one per
+        // family, from its psychometric thresholds - and how it answers.
+        const auto bot = (BotListener::Bot) juce::jlimit (0, BotListener::numBots - 1, botChoice.getValue());
+        const auto& profile = BotListener::profileOf (bot);
+        auto profileBox = b.removeFromTop (150);
+
         g.setColour (theme.text);
         g.setFont (LnF::bodyFont());
-        LnF::fitLines (g, text.battleNeedsAccount, bottom.removeFromTop (44), juce::Justification::topLeft, 2, 0.85f);
+        LnF::fitText (g, text.botSpecialty[(int) bot], profileBox.removeFromTop (26), juce::Justification::centredLeft, true);
+
+        const std::vector<int> gamesOf[] { { 0, 8 }, { 1, 7 }, { 2, 3, 4, 6 }, { 5 } };
+
+        for (int f = 0; f < 4; ++f)
+        {
+            auto row = profileBox.removeFromTop (22);
+            float sum = 0.0f;
+            for (auto gi : gamesOf[f])
+                sum += profile.threshold[(size_t) gi];
+            const auto strength = juce::jlimit (0.05f, 1.0f, (sum / (float) gamesOf[f].size() - 3.5f) / 5.0f);
+
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, fams[f], row.removeFromLeft (150), juce::Justification::centredLeft, true);
+            auto bar = row.removeFromLeft (juce::jmin (320, row.getWidth() - 20)).withSizeKeepingCentre (juce::jmin (320, row.getWidth() - 20), 8).toFloat();
+            g.setColour (theme.displayBackground);
+            g.fillRect (bar);
+            g.setColour (accentFor (families[f]));
+            g.fillRect (bar.withWidth (bar.getWidth() * strength));
+        }
+
+        profileBox.removeFromTop (6);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitText (g, text.fairPlay, bottom.removeFromTop (20), juce::Justification::centredLeft, true);
+        // Only the extremes get a word: the Bat and the Cat are quick, the
+        // Owl and the Elephant take their time; the rest say nothing.
+        const auto speed = profile.reactionMs <= 1300 ? text.botSpeedFast
+                         : profile.reactionMs >= 2200 ? text.botSpeedSlow : juce::String();
+        LnF::fitText (g, "Decibelo " + juce::String (profile.rating)
+                           + (speed.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  ")) + speed : juce::String()),
+                      profileBox.removeFromTop (20), juce::Justification::centredLeft, true);
+
+        g.setColour (theme.text);
+        g.setFont (LnF::labelFont());
+        LnF::fitText (g, text.botFamily, b.removeFromTop (22), juce::Justification::centredLeft, true);
+
+        auto foot = cardB.reduced (Spacing::large).removeFromBottom (controlHeight + 4);
+        foot.removeFromRight (260 + Spacing::large);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.botDisclaimer, foot, juce::Justification::centredLeft, 2, 0.85f);
     }
 }
 
@@ -803,9 +940,57 @@ void LiveScreenComponent::paintRating (juce::Graphics& g)
     g.setColour (theme.divider);
     g.fillRect (area.getX(), area.getY(), area.getWidth(), 1);
 
-    g.setColour (theme.textDim);
-    g.setFont (LnF::bodyFont());
-    LnF::fitText (g, text.ratingEmpty, area.withSizeKeepingCentre (area.getWidth(), 40), juce::Justification::centred, true);
+    if (ratingState != RatingState::loaded || ratingRows.isEmpty())
+    {
+        const auto message = ratingState == RatingState::loading ? text.ratingLoading
+                           : ratingState == RatingState::failed  ? text.ratingFailed
+                                                                 : text.ratingEmpty;
+        g.setColour (theme.textDim);
+        g.setFont (LnF::bodyFont());
+        LnF::fitText (g, message, area.withSizeKeepingCentre (area.getWidth(), 40), juce::Justification::centred, true);
+        return;
+    }
+
+    // The rows the server returned, the player's own highlighted. Deviation
+    // beside the number and "?" for provisional, as on the site.
+    const auto me = account != nullptr ? account->getNick() : juce::String();
+    constexpr int rowHeight = 30;
+
+    for (const auto& r : ratingRows)
+    {
+        if (area.getHeight() < rowHeight)
+            break;
+
+        auto row = area.removeFromTop (rowHeight);
+
+        if (me.isNotEmpty() && r.nick.equalsIgnoreCase (me))
+        {
+            g.setColour (theme.accent.withAlpha (0.15f));
+            g.fillRect (row);
+        }
+
+        const juce::String cells[] {
+            juce::String (r.place),
+            r.nick + (r.provisional ? " ?" : ""),
+            r.country.isNotEmpty() ? r.country : juce::String ("-"),
+            juce::String (r.rating) + juce::String (juce::CharPointer_UTF8 (" \xc2\xb1")) + juce::String (r.deviation),
+            juce::String (r.wins) + juce::String (juce::CharPointer_UTF8 ("\xe2\x80\x93")) + juce::String (r.losses)
+        };
+
+        auto cx = (float) row.getX();
+        for (int i = 0; i < 5; ++i)
+        {
+            const auto w = widths[i] * (float) row.getWidth();
+            g.setColour (i == 1 ? theme.textBright : theme.text);
+            g.setFont (i == 1 ? LnF::bodyFont() : LnF::monoFont().withHeight (14.0f));
+            LnF::fitText (g, cells[i], juce::Rectangle<float> (cx, (float) row.getY(), w - 8.0f, (float) row.getHeight()).toNearestInt(),
+                          juce::Justification::centredLeft, true);
+            cx += w;
+        }
+
+        g.setColour (theme.divider.withAlpha (0.5f));
+        g.fillRect (row.getX(), row.getBottom() - 1, row.getWidth(), 1);
+    }
 }
 
 void LiveScreenComponent::paintOverlay (juce::Graphics& g)
@@ -837,9 +1022,13 @@ void LiveScreenComponent::paintOverlay (juce::Graphics& g)
         g.fillRect (codeBox);
         g.setColour (theme.outline);
         g.drawRect (codeBox, 1);
+        const auto* linkState = account != nullptr ? &account->getLink() : nullptr;
+        const auto shownCode = linkState == nullptr ? signInCode
+                             : linkState->code.isNotEmpty() ? linkState->code
+                                                            : juce::String (juce::CharPointer_UTF8 ("\xc2\xb7 \xc2\xb7 \xc2\xb7"));
         g.setColour (theme.textBright);
         g.setFont (LnF::monoFont().withHeight (40.0f));
-        LnF::fitText (g, signInCode, codeBox, juce::Justification::centred, true);
+        LnF::fitText (g, shownCode, codeBox, juce::Justification::centred, true);
 
         codeRow.removeFromLeft (Spacing::large);
         g.setColour (theme.text);
@@ -847,16 +1036,30 @@ void LiveScreenComponent::paintOverlay (juce::Graphics& g)
         LnF::fitLines (g, text.signInSteps, codeRow, juce::Justification::centredLeft, 3, 0.85f);
 
         box.removeFromTop (Spacing::large);
-        const auto left = juce::jmax (0, 600 - (int) ((juce::Time::getMillisecondCounterHiRes() - signInStartedMs) / 1000.0));
+        const auto endsAt = linkState != nullptr ? linkState->expiresAtMs : signInStartedMs + 600000.0;
+        const auto left = juce::jmax (0, (int) ((endsAt - juce::Time::getMillisecondCounterHiRes()) / 1000.0));
         const auto time = juce::String (left / 60) + ":" + juce::String (left % 60).paddedLeft ('0', 2);
-        g.setColour (theme.accentWarm);
-        g.setFont (LnF::labelFont());
-        LnF::fitText (g, text.waiting.replace ("{{time}}", time), box.removeFromTop (22), juce::Justification::centredLeft, true);
 
-        box.removeFromTop (Spacing::medium);
+        juce::String status = text.waiting.replace ("{{time}}", time);
+        auto statusColour = theme.accentWarm;
+
+        if (linkState != nullptr)
+        {
+            using Stage = LiveAccount::LinkStage;
+            if (linkState->stage == Stage::starting || linkState->stage == Stage::idle) { status = text.linkStarting; statusColour = theme.textDim; }
+            if (linkState->stage == Stage::failed)   { status = text.linkFailed;  statusColour = theme.negative; }
+            if (linkState->stage == Stage::expired)  { status = text.linkExpired; statusColour = theme.negative; }
+        }
+
+        g.setColour (statusColour);
+        g.setFont (LnF::labelFont());
+        LnF::fitLines (g, status, box.removeFromTop (40), juce::Justification::topLeft, 2, 0.9f);
+
+        box.removeFromTop (Spacing::small);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitLines (g, text.noPasswords, box.removeFromTop (40), juce::Justification::topLeft, 2, 0.9f);
+        LnF::fitLines (g, text.noPasswords, box.removeFromTop (36), juce::Justification::topLeft, 2, 0.9f);
+        LnF::fitLines (g, text.serverInRussia, box.removeFromTop (36), juce::Justification::topLeft, 2, 0.9f);
         return;
     }
 
@@ -1089,5 +1292,86 @@ void LiveScreenComponent::paintBanner (juce::Graphics& g)
 // Out of line and after Checker: a unique_ptr to it needs the whole type.
 LiveScreenComponent::~LiveScreenComponent()
 {
+    if (account != nullptr)
+        account->removeChangeListener (this);
+
     checker.reset();
+}
+
+// ---- the account ----------------------------------------------------------------
+
+void LiveScreenComponent::setAccount (LiveAccount* newAccount)
+{
+    if (account != nullptr)
+        account->removeChangeListener (this);
+
+    account = newAccount;
+
+    if (account != nullptr)
+        account->addChangeListener (this);
+
+    refreshAccountButton();
+    repaint();
+}
+
+void LiveScreenComponent::changeListenerCallback (juce::ChangeBroadcaster*)
+{
+    accountChanged();
+}
+
+void LiveScreenComponent::refreshAccountButton()
+{
+    const auto signedIn = account != nullptr && account->isSignedIn();
+    accountButton.setButtonText (signedIn ? text.signOut : text.signIn);
+    battleSignInButton.setVisible (tab == Tab::battle && ! signedIn);
+}
+
+void LiveScreenComponent::accountChanged()
+{
+    if (account == nullptr)
+        return;
+
+    // Linked: the overlay has done its job.
+    if (overlay == Overlay::signIn && account->getLink().stage == LiveAccount::LinkStage::approved)
+    {
+        overlay = Overlay::none;
+        stopTimer();
+        account->cancelSignIn();   // back to idle; the account itself stays signed in
+        setNote (text.signedInDone.replace ("{{nick}}", account->getNick().isNotEmpty() ? account->getNick() : juce::String ("-")));
+    }
+
+    refreshVisibility();
+    refreshAccountButton();
+    layoutOverlay();
+    repaint();
+    overlayLayer.repaint();
+}
+
+void LiveScreenComponent::loadRating()
+{
+    if (account == nullptr || ! LiveLink::networkAllowed.load())
+        return;
+
+    static const char* families[] { "freq", "dyn", "space", "char" };
+    const auto family = families[juce::jlimit (0, 3, ratingFamily.getValue())];
+
+    // "Country" is the player's own if the account has one, otherwise Russia
+    // - where most players are for now.
+    const auto country = scopeChoice.getValue() == 1
+                           ? (account->getCountry().isNotEmpty() ? account->getCountry() : juce::String ("RU"))
+                           : juce::String();
+
+    ratingState = RatingState::loading;
+    repaint();
+
+    juce::Component::SafePointer<LiveScreenComponent> safe (this);
+    account->fetchRating (family, country, [safe] (bool ok, juce::Array<LiveAccount::RatingRow> rows)
+    {
+        if (safe == nullptr)
+            return;
+
+        safe->ratingRows = std::move (rows);
+        safe->ratingState = ok ? RatingState::loaded : RatingState::failed;
+        safe->repaint();
+    });
 }

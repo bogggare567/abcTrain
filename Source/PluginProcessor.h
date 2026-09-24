@@ -5,6 +5,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "GameManager.h"
 #include "ProgressManager.h"
+#include "LiveAccount.h"
 #include "shared/analysis/Vectorscope.h"
 #include "shared/analysis/SpectrumAnalyzer.h"
 #include "shared/analysis/WaveformDisplay.h"
@@ -53,6 +54,7 @@ public:
 
     GameManager& getGameManager() noexcept { return gameManager; }
     ProgressManager& getProgressManager() noexcept { return progressManager; }
+    LiveAccount& getLiveAccount() noexcept { return liveAccount; }
 
     // Scope feeds for the editor's hint panel. Raw atomics, null-checked
     // on the audio thread, because the editor can be closed while the
@@ -140,6 +142,10 @@ private:
     // itself as a listener on every game.
     GameManager gameManager;
     ProgressManager progressManager { gameManager };
+
+    // Signed in only if the player linked this computer (ADR 045). Needs
+    // progressManager, so declared after it.
+    LiveAccount liveAccount { progressManager };
 
     // Starts *off*, and only the training screen turns it on.
     //

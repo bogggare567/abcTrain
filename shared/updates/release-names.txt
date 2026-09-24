@@ -1,0 +1,13 @@
+# Release names: a city per release line, the way macOS names its versions
+# after places. The owner's choice (2026-09-24): cities.
+#
+# One line per major.minor, oldest first; a new line is appended when a new
+# line of releases starts, and never edited afterwards - a name is part of
+# what people call a version ("Saint Petersburg had the Live tab").
+#
+# Read by CMake (shared/VersionInfo.h -> CurrentVersion::codename, shown in
+# Settings - About) and by the release job in .github/workflows, which puts
+# the name in the GitHub release title. Patch releases share their line's name.
+#
+# major.minor  name
+2.0 Saint Petersburg

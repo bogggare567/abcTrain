@@ -23,6 +23,8 @@ void SessionManager::startRun()
     roundsThisRun = 0;
     livesRemaining = mode == Mode::survival ? rules.survivalLives : 0;
     secondsRemaining = mode == Mode::blitz ? rules.blitzSeconds : 0;
+    opponentScore = 0;
+    lastOpponentRight = false;
 }
 
 void SessionManager::endRun()
@@ -75,6 +77,9 @@ bool SessionManager::registerAnswer (bool wasCorrect, float precision)
             }
             break;
 
+        case Mode::duel:
+            break;   // registerDuelRound ends it
+
         case Mode::blitz:
             // Time penalty rather than a lost life: Blitz is about pace,
             // so a wrong answer should cost you the thing you're short of.
@@ -94,9 +99,27 @@ bool SessionManager::registerAnswer (bool wasCorrect, float precision)
     return true;
 }
 
+bool SessionManager::registerDuelRound (bool playerRight, bool botRight, float precision)
+{
+    if (! runActive || mode != Mode::duel)
+        return false;
+
+    lastOpponentRight = botRight;
+    opponentScore += botRight ? 1 : 0;
+    registerAnswer (playerRight, precision);
+
+    if (roundsThisRun >= duelRounds)
+    {
+        endRun();
+        return false;
+    }
+
+    return true;
+}
+
 bool SessionManager::spendHint()
 {
-    if (! runActive || ! rules.hintsAllowed)
+    if (! runActive || ! areHintsAllowed())
         return false;
 
     switch (mode)
@@ -120,6 +143,9 @@ bool SessionManager::spendHint()
 
             secondsRemaining -= blitzHintSeconds;
             return true;
+
+        case Mode::duel:
+            return false;
     }
 
     return false;

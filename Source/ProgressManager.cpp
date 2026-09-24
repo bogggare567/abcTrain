@@ -608,6 +608,8 @@ void ProgressManager::loadState()
 
 void ProgressManager::saveState()
 {
+    ++changeCounter;
+
     properties->setValue ("streakDays", streakDays);
     properties->setValue ("practiceSeconds", practiceSeconds);
     properties->setValue ("lastSessionDate", lastSessionDate);
@@ -666,4 +668,121 @@ void ProgressManager::saveState()
     properties->setValue ("achievements", earnedAchievements.joinIntoString (","));
 
     properties->saveIfNeeded();
+}
+
+// ---- sync ---------------------------------------------------------------------
+
+juce::var ProgressManager::makeSyncSummary() const
+{
+    auto* root = new juce::DynamicObject();
+    root->setProperty ("v", 1);
+
+    auto* games = new juce::DynamicObject();
+
+    for (size_t i = 0; i < progressPerGame.size(); ++i)
+    {
+        const auto& p = progressPerGame[i];
+        const auto& st = i < statsPerGame.size() ? statsPerGame[i] : GameStats {};
+
+        if (st.roundsPlayed == 0 && p.bestLevel <= 1)
+            continue;   // never played here: nothing to say, and nothing to overwrite elsewhere
+
+        auto* g = new juce::DynamicObject();
+        g->setProperty ("level", p.level);
+        g->setProperty ("best", p.bestLevel);
+        g->setProperty ("rounds", st.roundsPlayed);
+        g->setProperty ("correct", st.correctAnswers);
+        g->setProperty ("streak", st.bestStreak);
+        g->setProperty ("survival", st.bestSurvivalScore);
+        g->setProperty ("blitz", st.bestBlitzScore);
+        games->setProperty (juce::String ((int) i), juce::var (g));
+    }
+
+    root->setProperty ("games", juce::var (games));
+    root->setProperty ("streakDays", streakDays);
+    root->setProperty ("practiceSeconds", practiceSeconds);
+    root->setProperty ("achievements", earnedAchievements.joinIntoString (","));
+    return juce::var (root);
+}
+
+bool ProgressManager::mergeSyncSummary (const juce::var& summary)
+{
+    if (! summary.isObject() || (int) summary.getProperty ("v", 0) != 1)
+        return false;
+
+    auto changed = false;
+    const auto take = [&changed] (int& mine, int theirs)
+    {
+        if (theirs > mine)
+        {
+            mine = theirs;
+            changed = true;
+        }
+    };
+
+    if (auto* games = summary.getProperty ("games", {}).getDynamicObject())
+    {
+        for (const auto& entry : games->getProperties())
+        {
+            const auto index = entry.name.toString().getIntValue();
+
+            if (! juce::isPositiveAndBelow (index, (int) progressPerGame.size())
+                || entry.name.toString() != juce::String (index))
+                continue;
+
+            auto& p = progressPerGame[(size_t) index];
+            auto& st = statsPerGame[(size_t) index];
+            const auto& g = entry.value;
+
+            const auto neverPlayedHere = st.roundsPlayed == 0 && p.bestLevel <= 1 && p.level <= 1;
+
+            take (p.bestLevel, juce::jlimit (1, maxLevel, (int) g.getProperty ("best", 1)));
+
+            if (neverPlayedHere)
+            {
+                const auto theirs = juce::jlimit (1, maxLevel, (int) g.getProperty ("level", 1));
+                if (theirs != p.level)
+                {
+                    p.level = theirs;
+                    changed = true;
+                }
+            }
+
+            take (st.roundsPlayed, juce::jmax (0, (int) g.getProperty ("rounds", 0)));
+            take (st.correctAnswers, juce::jmax (0, (int) g.getProperty ("correct", 0)));
+            take (st.bestStreak, juce::jmax (0, (int) g.getProperty ("streak", 0)));
+            take (st.bestSurvivalScore, juce::jmax (0, (int) g.getProperty ("survival", 0)));
+            take (st.bestBlitzScore, juce::jmax (0, (int) g.getProperty ("blitz", 0)));
+
+            // A record above the current step is fine (form dips); a
+            // current step above the record is not.
+            p.bestLevel = juce::jmax (p.bestLevel, p.level);
+        }
+    }
+
+    take (streakDays, juce::jlimit (0, 100000, (int) summary.getProperty ("streakDays", 0)));
+    take (practiceSeconds, juce::jmax (0, (int) summary.getProperty ("practiceSeconds", 0)));
+
+    juce::StringArray theirs;
+    theirs.addTokens (summary.getProperty ("achievements", "").toString(), ",", "");
+    theirs.removeEmptyStrings();
+
+    for (const auto& id : theirs)
+        if (id.length() <= 64 && ! earnedAchievements.contains (id))
+        {
+            earnedAchievements.add (id);
+            changed = true;
+        }
+
+    if (changed)
+    {
+        saveState();
+
+        for (int i = 0; i < (int) progressPerGame.size(); ++i)
+            pushBucketWeights (i);
+
+        sendChangeMessage();
+    }
+
+    return changed;
 }

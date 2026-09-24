@@ -137,6 +137,7 @@ namespace
 
         std::vector<Finding> faults;   // never acceptable
         std::vector<Finding> dead;     // disabled: right or wrong depending on the state
+        std::vector<juce::Component*> live;   // reachable, for the overlap check below
         int reachable = 0;
         int covered = 0;
 
@@ -187,6 +188,7 @@ namespace
                 }
 
                 ++reachable;
+                live.push_back (c);
                 continue;
             }
 
@@ -209,6 +211,29 @@ namespace
                                 "on screen but a click at its centre goes elsewhere",
                                 blockerName });
         }
+
+        // Two live controls on top of each other. The centre hit test
+        // cannot see this when both centres stay clear - which is how the
+        // seminar's host controls sat on top of the open room (2026-09-24)
+        // with every click still landing somewhere.
+        for (size_t i = 0; i < live.size(); ++i)
+            for (size_t j = i + 1; j < live.size(); ++j)
+            {
+                auto* a = live[i];
+                auto* b = live[j];
+
+                if (isSelfOrAncestorOf (a, b) || isSelfOrAncestorOf (b, a))
+                    continue;
+
+                const auto ra = editor.getLocalArea (a, a->getLocalBounds());
+                const auto rb = editor.getLocalArea (b, b->getLocalBounds());
+                const auto overlap = ra.getIntersection (rb);
+
+                if (overlap.getWidth() > 3 && overlap.getHeight() > 3)
+                    faults.push_back ({ describe (*a), "overlaps another control by "
+                                            + juce::String (overlap.getWidth()) + "x" + juce::String (overlap.getHeight()),
+                                        describe (*b) });
+            }
 
         std::cout << "\n" << state << "\n"
                   << juce::String::repeatedString ("-", state.length()) << "\n"
@@ -333,6 +358,12 @@ int main (int argc, char* argv[])
             { "Studio - EQ", Expect::everythingLive, 0,               [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::eq); } },
             { "Studio - Comp", Expect::everythingLive, 0,             [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::comp); } },
             { "Studio - Verb", Expect::everythingLive, 0,             [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::verb); } },
+            { "Live - seminar", Expect::everythingLive, 0,            [] (auto& e) { e.openLiveForSnapshot (0); } },
+            { "Live - battle", Expect::everythingLive, 0,             [] (auto& e) { e.openLiveForSnapshot (1); } },
+            { "Live - rating", Expect::everythingLive, 0,             [] (auto& e) { e.openLiveForSnapshot (2); } },
+            { "Live - local room open", Expect::everythingLive, 0,    [] (auto& e) { e.openLiveForSnapshot (3); } },
+            { "Live - online room open", Expect::everythingLive, 0,   [] (auto& e) { e.openLiveForSnapshot (8); } },
+            { "Live - no internet", Expect::everythingLive, 0,        [] (auto& e) { e.openLiveForSnapshot (6); } },
         };
 
         for (const auto& c : cases)

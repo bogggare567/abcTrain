@@ -165,7 +165,7 @@ namespace
 
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
-                       answered, survivalRun, home, homeWithRecords, hint,
+                       answered, survivalRun, duelRun, duelResults, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
                        studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
                        liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, eqSlope,
@@ -237,6 +237,9 @@ namespace
 
                 if (extra == Extra::survivalRun)
                     editor.startRunForSnapshot (SessionManager::Mode::survival);
+
+                if (extra == Extra::duelRun || extra == Extra::duelResults)
+                    editor.duelForSnapshot (extra == Extra::duelResults);
 
                 if (extra == Extra::sounds)
                     editor.openSoundsForSnapshot();
@@ -562,6 +565,8 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintStereo", 3, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintEnvelope", 1, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-DuelRun", 3, Extra::duelRun);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-DuelResults", 3, Extra::duelResults);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundClips", -1, Extra::soundClips);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);

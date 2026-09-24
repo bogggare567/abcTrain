@@ -79,6 +79,12 @@ public:
     std::function<void (bool)> onLiveTabChanged;
     std::function<void()> onSignIn;
 
+    // The account (ADR 045): signed in or not, and sync. The editor pushes
+    // the state in; the rows call back.
+    void setAccountState (bool signedIn, const juce::String& nick, bool syncOn, const juce::String& syncStatus);
+    std::function<void()> onSignOut, onSyncNow;
+    std::function<void (bool)> onSyncChanged;
+
     void refresh();
 
     enum class Page { training, hearing, appearance, background, live, about };
@@ -192,6 +198,10 @@ private:
     // Live
     SegmentedChoice liveTabChoice;
     juce::TextButton accountButton;
+    SegmentedChoice syncChoice;
+    juce::TextButton syncNowButton;
+    bool accountSignedIn = false;
+    juce::String accountNick, syncStatusText;
 
     // Hearing: which output the sound goes to.
     juce::TextButton audioDeviceButton;

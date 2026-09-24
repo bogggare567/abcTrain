@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include "BotListener.h"
 
 // How a training run is framed: unlimited, life-limited, or time-limited.
 //
@@ -31,8 +32,16 @@ public:
     {
         practice,
         survival,
-        blitz
+        blitz,
+
+        // A battle with a virtual listener (BotListener, ADR 046): seven
+        // rounds, the same round for both, the bot answering from its
+        // hearing profile at the round's level. Not remembered per
+        // exercise - a battle is started from Live, not left switched on.
+        duel
     };
+
+    static constexpr int duelRounds = 7;
 
     static constexpr int survivalLives = 3;
     static constexpr int blitzSeconds = 90;
@@ -112,6 +121,22 @@ public:
     // afterwards, false if this answer ended it.
     bool registerAnswer (bool wasCorrect, float precision = -1.0f);
 
+    // ---- duel ----
+    void setOpponent (BotListener::Bot bot) noexcept { opponent = bot; }
+    BotListener::Bot getOpponent() const noexcept { return opponent; }
+    int getOpponentScore() const noexcept { return opponentScore; }
+    bool getLastOpponentAnswer() const noexcept { return lastOpponentRight; }
+
+    // One duel round: the player's answer and the bot's. Ends the run after
+    // duelRounds. Returns true if the run is still going.
+    bool registerDuelRound (bool playerRight, bool botRight, float precision = -1.0f);
+
+    enum class Outcome { won, lost, draw };
+    Outcome getDuelOutcome() const noexcept
+    {
+        return runScore > opponentScore ? Outcome::won : runScore < opponentScore ? Outcome::lost : Outcome::draw;
+    }
+
     // Call once a second while a run is active. Returns true if this tick
     // ended the run (Blitz clock hit zero).
     bool tickOneSecond();
@@ -131,7 +156,9 @@ public:
     static constexpr int blitzHintSeconds = 10;
 
     bool isHintFree() const noexcept { return mode == Mode::practice && rules.hintsAllowed; }
-    bool areHintsAllowed() const noexcept { return rules.hintsAllowed; }
+
+    // No hints in a battle: the bot gets none either.
+    bool areHintsAllowed() const noexcept { return rules.hintsAllowed && mode != Mode::duel; }
 
     // Pays for a hint out of the current run. Returns false if the run is
     // over or the cost can't be met, in which case nothing was spent and
@@ -154,4 +181,7 @@ private:
     int currentStreak = 0;
     int bestStreakThisRun = 0;
     int secondsRemaining = 0;
+    BotListener::Bot opponent = BotListener::Bot::hound;
+    int opponentScore = 0;
+    bool lastOpponentRight = false;
 };

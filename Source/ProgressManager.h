@@ -257,6 +257,25 @@ public:
     // onAchievementEarned.
     std::function<void (int gameIndex, const AnswerOutcome&)> onAnswerScored;
 
+    // ---- sync (Live account, ADR 045) ------------------------------------
+    //
+    // A summary small enough to live on the server for every player (about
+    // a kilobyte): per exercise the level, the record and the run bests;
+    // streak, practice time, achievements. Not the history, not the skill
+    // buckets - those stay on this computer.
+    juce::var makeSyncSummary() const;
+
+    // Folds a summary from the server (another computer) into this one.
+    // Records never drop: bests are the larger of the two, achievements the
+    // union. The current level is taken from the other side only for an
+    // exercise never played here - so a new computer starts where you are,
+    // and a computer you have been using keeps today's form. Returns true
+    // when anything here changed (saved and broadcast already).
+    bool mergeSyncSummary (const juce::var& summary);
+
+    // Bumped on every saved change, so a sync can tell "nothing new".
+    juce::uint64 getChangeCounter() const noexcept { return changeCounter; }
+
     void recordSurvivalScore (int gameIndex, int score);
     void recordBlitzScore (int gameIndex, int score);
 
@@ -327,6 +346,7 @@ private:
     std::vector<std::array<BucketStats, maxSkillBuckets>> bucketsPerGame;
 
     int practiceSeconds = 0;
+    juce::uint64 changeCounter = 0;
     int unsavedPracticeSeconds = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProgressManager)

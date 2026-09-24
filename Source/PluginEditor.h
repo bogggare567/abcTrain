@@ -181,6 +181,7 @@ public:
             case 1: liveScreen.showTab (LiveScreenComponent::Tab::battle); break;
             case 2: liveScreen.showTab (LiveScreenComponent::Tab::rating); break;
             case 3: liveScreen.openRoomForSnapshot (true); break;
+            case 8: liveScreen.openRoomForSnapshot (false); break;
             case 4: liveScreen.openInvitesForSnapshot(); break;
             case 5: liveScreen.openSignIn(); break;
             default: liveScreen.showTab (LiveScreenComponent::Tab::seminar); break;
@@ -349,6 +350,39 @@ public:
     // mode pills, so it is a different screen and needs its own shot.
     // Started directly rather than through beginRunWithCountdown(), since
     // the countdown needs a message loop the snapshot tool never pumps.
+    // A battle with the Cat: three rounds in (HUD with both scores), or all
+    // seven played (the results screen says who won).
+    void duelForSnapshot (bool finished)
+    {
+        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+            pill->setToggleState (false, juce::dontSendNotification);
+
+        session.setOpponent (BotListener::Bot::cat);
+        session.setMode (SessionManager::Mode::duel);
+        runStarted = true;
+        beginRunLog();
+        startNewRun();
+
+        const bool player[] { true, true, false, true, true, false, true };
+        const bool bot[]    { true, false, true, true, false, false, true };
+        runMarks.clear();
+
+        for (int i = 0; i < (finished ? SessionManager::duelRounds : 3); ++i)
+        {
+            RunResultsComponent::Summary::RoundMark mark;
+            mark.correct = player[i];
+            mark.quality = player[i] ? 0.6f + 0.05f * (float) i : 0.0f;
+            runMarks.push_back (mark);
+            session.registerDuelRound (player[i], bot[i], -1.0f);   // the seventh ends the run: results
+        }
+
+        if (finished)
+            runResults.completeAnimation();
+
+        refreshRunStatus();
+        resized();
+    }
+
     void startRunForSnapshot (SessionManager::Mode mode)
     {
         // Through the pills, not around them. Setting the session's mode
@@ -708,6 +742,16 @@ private:
             repaint();
         }
 
+        // A battle: the bot's score and name, and which round of how many.
+        void setDuel (int newOpponentScore, juce::String newOpponentName, int newRound, int newRounds)
+        {
+            opponentScore = newOpponentScore;
+            opponentName = std::move (newOpponentName);
+            round = newRound;
+            rounds = newRounds;
+            repaint();
+        }
+
         // The run's points as the player reads them, "14,3" - set after
         // set(), which keeps the count for the lives/clock logic.
         void setScoreText (juce::String text)
@@ -724,8 +768,10 @@ private:
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::titleFont());
             const auto scoreBox = area.removeFromLeft (52.0f);
+            // In a battle the two scores face each other across the colon.
             AbcTrainLookAndFeel::fitText (g, scoreText.isNotEmpty() ? scoreText : juce::String (score), scoreBox,
-                                          juce::Justification::centredLeft, false);
+                                          mode == SessionManager::Mode::duel ? juce::Justification::centredRight
+                                                                             : juce::Justification::centredLeft, false);
 
             if (mode == SessionManager::Mode::survival)
             {
@@ -760,6 +806,21 @@ private:
 
                     x += r * 2.0f + 7.0f;
                 }
+            }
+            else if (mode == SessionManager::Mode::duel)
+            {
+                // "3 : 2  Cat  4/7" - your score was drawn first, then the
+                // bot's beside it, then where in the seven rounds you are.
+                g.setColour (theme.textDim);
+                g.setFont (AbcTrainLookAndFeel::titleFont());
+                AbcTrainLookAndFeel::fitText (g, ":", area.removeFromLeft (14.0f), juce::Justification::centred, false);
+                g.setColour (theme.accentWarm);
+                AbcTrainLookAndFeel::fitText (g, juce::String (opponentScore), area.removeFromLeft (40.0f),
+                                              juce::Justification::centredLeft, false);
+                g.setColour (theme.text);
+                g.setFont (AbcTrainLookAndFeel::labelFont());
+                AbcTrainLookAndFeel::fitText (g, opponentName + "   " + juce::String (juce::jmin (round, rounds)) + "/" + juce::String (rounds),
+                                              area, juce::Justification::centredLeft, true);
             }
             else if (mode == SessionManager::Mode::blitz)
             {
@@ -803,6 +864,8 @@ private:
 
         SessionManager::Mode mode = SessionManager::Mode::practice;
         int lives = -1, seconds = 0, score = 0, maxLives = SessionManager::survivalLives;
+        int opponentScore = 0, round = 0, rounds = SessionManager::duelRounds;
+        juce::String opponentName;
         juce::String scoreText;
         float flash = 0.0f;
         juce::Animator flashAnimator = juce::ValueAnimatorBuilder{}.build();
@@ -1528,6 +1591,12 @@ private:
     // yet (LiveScreenComponent.h).
     LiveScreenComponent liveScreen;
     void refreshLiveStrings();
+    void refreshAccountState();
+
+    // A battle with a bot, started from Live (ADR 046).
+    void startBotBattle (BotListener::Bot, int family);
+    juce::String botName (BotListener::Bot) const;
+    juce::Random duelRandom;
 
     // Learner EQ / Comp / Verb inside the app (ADR 041). The processors
     // live in EarTrainerProcessor; this page owns only the editor on show.

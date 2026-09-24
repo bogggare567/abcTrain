@@ -193,10 +193,32 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
 
     accountButton.onClick = [this]
     {
-        if (onSignIn != nullptr)
+        if (accountSignedIn)
+        {
+            if (onSignOut != nullptr)
+                onSignOut();
+        }
+        else if (onSignIn != nullptr)
+        {
             onSignIn();
+        }
     };
     addAndMakeVisible (accountButton);
+
+    syncChoice.setValue (1);
+    syncChoice.onChange = [this] (int value)
+    {
+        if (onSyncChanged != nullptr)
+            onSyncChanged (value == 1);
+    };
+    addAndMakeVisible (syncChoice);
+
+    syncNowButton.onClick = [this]
+    {
+        if (onSyncNow != nullptr)
+            onSyncNow();
+    };
+    addAndMakeVisible (syncNowButton);
 
     // ---- updates and the audio device ----------------------------------
     autoUpdateChoice.setValue (properties.getBoolValue (autoUpdateKey, true) ? 1 : 0);
@@ -406,6 +428,8 @@ void SettingsScreenComponent::buildRows()
 
         { "set.liveTab.title",      "set.liveTab.hint",      &liveTabChoice,    0,   false, Page::live },
         { "set.account.title",      "set.account.hint",      &accountButton,    220, false, Page::live },
+        { "set.sync.title",         "set.sync.hint",         &syncChoice,       0,   false, Page::live },
+        { "set.syncNow.title",      "set.syncNow.hint",      &syncNowButton,    220, false, Page::live },
 
         { "set.autoUpdate.title",   "set.autoUpdate.hint",   &autoUpdateChoice, 0,   false, Page::about },
         { "set.checkNow.title",     "set.checkNow.hint",     &checkNowButton,   220, false, Page::about },
@@ -463,6 +487,9 @@ bool SettingsScreenComponent::rowIsOffered (const Row& row) const
 {
     // No audio device to choose where there is no standalone holder (the
     // snapshot tools): the row is left out rather than shown dead.
+    if (row.control == &syncChoice || row.control == &syncNowButton)
+        return accountSignedIn;   // sync is a question only a signed-in computer has
+
     return row.control != &audioDeviceButton || onAudioDevice != nullptr;
 }
 
@@ -475,6 +502,12 @@ juce::String SettingsScreenComponent::hintFor (const Row& row) const
 
     if (row.control == &checkNowButton && updateStatusText.isNotEmpty())
         return updateStatusText;
+
+    if (row.control == &accountButton && accountSignedIn)
+        return localisation.getText ("set.account.signedInHint").replace ("{{nick}}", accountNick.isNotEmpty() ? accountNick : juce::String ("-"));
+
+    if (row.control == &syncNowButton && syncStatusText.isNotEmpty())
+        return syncStatusText;
 
     if (row.control == &calibrationRow)
     {
@@ -532,7 +565,9 @@ void SettingsScreenComponent::refresh()
     autoUpdateChoice.setOptions ({ 0, 1 }, { t ("set.autoUpdate.manual"), t ("set.autoUpdate.auto") });
     checkNowButton.setButtonText (t ("set.checkNow.button"));
     liveTabChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
-    accountButton.setButtonText (t ("set.account.signIn"));
+    accountButton.setButtonText (t (accountSignedIn ? "set.account.signOut" : "set.account.signIn"));
+    syncChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
+    syncNowButton.setButtonText (t ("set.syncNow.button"));
     audioDeviceButton.setButtonText (t ("set.audioDevice.button"));
     closeButton.setButtonText (t ("ui.close"));
 
@@ -980,7 +1015,10 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     {
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        AbcTrainLookAndFeel::fitText (g, "abcTrain " + juce::String (CurrentVersion::string), page.removeFromTop (18),
+        const juce::String city (CurrentVersion::codename);
+        AbcTrainLookAndFeel::fitText (g, "abcTrain " + juce::String (CurrentVersion::string)
+                                           + (city.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + city : juce::String()),
+                                      page.removeFromTop (18),
                     juce::Justification::centredLeft, false);
     }
 
@@ -1036,4 +1074,22 @@ void SettingsScreenComponent::mouseUp (const juce::MouseEvent& event)
         selectPage ((Page) found);
         repaint();
     }
+}
+
+void SettingsScreenComponent::setAccountState (bool signedIn, const juce::String& nick, bool syncOn,
+                                               const juce::String& syncStatus)
+{
+    const auto shapeChanged = signedIn != accountSignedIn;
+
+    accountSignedIn = signedIn;
+    accountNick = nick;
+    syncStatusText = syncStatus;
+    syncChoice.setValue (syncOn ? 1 : 0);
+    accountButton.setButtonText (localisation.getText (signedIn ? "set.account.signOut" : "set.account.signIn"));
+
+    // Rows appear or go with signing in; the page has to be laid out again.
+    if (shapeChanged)
+        resized();
+
+    repaint();
 }

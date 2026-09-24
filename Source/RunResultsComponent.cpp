@@ -237,8 +237,10 @@ void RunResultsComponent::paint (juce::Graphics& g)
             paintStat (g, column, detail.points, counted >= 0.999f ? summary.pointsText
                                                                     : juce::String (juce::roundToInt ((float) summary.score * counted)),
                        summary.isNewBest ? theme.positive : theme.textBright);
-            note (column, fillIn (detail.pointsNote, { { "n", juce::String (summary.score) },
-                                                       { "best", juce::String (juce::jmax (summary.previousBest, summary.score)) } }));
+            note (column, summary.pointsNote.isNotEmpty()
+                            ? summary.pointsNote
+                            : fillIn (detail.pointsNote, { { "n", juce::String (summary.score) },
+                                                           { "best", juce::String (juce::jmax (summary.previousBest, summary.score)) } }));
         }
         else
         {

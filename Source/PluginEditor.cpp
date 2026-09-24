@@ -766,9 +766,9 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         // The record is read *before* it is updated, so the results screen
         // can say "personal best" rather than comparing a number against
         // itself.
-        const auto previousBest = session.getMode() == SessionManager::Mode::survival
-                                      ? progress.getStatsForGame (gameIndex).bestSurvivalScore
-                                      : progress.getStatsForGame (gameIndex).bestBlitzScore;
+        const auto previousBest = session.getMode() == SessionManager::Mode::survival ? progress.getStatsForGame (gameIndex).bestSurvivalScore
+                                : session.getMode() == SessionManager::Mode::blitz    ? progress.getStatsForGame (gameIndex).bestBlitzScore
+                                                                                      : session.getOpponentScore();
 
         if (session.getMode() == SessionManager::Mode::survival)
             progress.recordSurvivalScore (gameIndex, finalScore);
@@ -982,6 +982,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (settingsScreen);
     addChildComponent (studioScreen);
     addChildComponent (liveScreen);
+    liveScreen.setAccount (&processor.getLiveAccount());
+    liveScreen.onStartBotBattle = [this] (BotListener::Bot bot, int family) { startBotBattle (bot, family); };
 
     // Live can be switched off in Settings (ADR 042's offline rule: off,
     // the app does not even know the server's address).
@@ -998,6 +1000,12 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
         liveScreen.openSignIn();
     };
+
+    settingsScreen.onSignOut = [this] { processor.getLiveAccount().signOut(); };
+    settingsScreen.onSyncNow = [this] { processor.getLiveAccount().syncNow(); };
+    settingsScreen.onSyncChanged = [this] (bool on) { processor.getLiveAccount().setSyncEnabled (on); };
+    processor.getLiveAccount().onChanged = [this] { refreshAccountState(); };
+    refreshAccountState();
 
     // The hearing strip. "Break" goes home, which is also what silences
     // the signal; "later" moves the reminder on by fifteen minutes.
@@ -1374,6 +1382,8 @@ void EarTrainerEditor::adoptNativeWindow()
 
 EarTrainerEditor::~EarTrainerEditor()
 {
+    processor.getLiveAccount().onChanged = nullptr;
+
     // Silence, then deregister.
     //
     // This said `true`, which is the opposite of what closing a window
@@ -1511,6 +1521,28 @@ bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
 
 void EarTrainerEditor::resized()
 {
+    // The answer heading and the level bar are painted by the editor itself,
+    // not by child components. A layout pass called from code (a round
+    // starting, the hint appearing) moves children - which repaint their
+    // own old and new places - but nothing repainted the old place of
+    // these two, so the heading was left behind as a half-covered ghost
+    // under the answer cards (the author's screenshot, 2026-09-24). Any of
+    // them that moves repaints where it was and where it went.
+    struct RepaintMovedRects
+    {
+        EarTrainerEditor& editor;
+        const juce::Rectangle<int> heading = editor.answerHeadingRow, level = editor.levelProgressBarArea;
+
+        ~RepaintMovedRects()
+        {
+            if (heading != editor.answerHeadingRow)
+                editor.repaint (heading.getUnion (editor.answerHeadingRow));
+
+            if (level != editor.levelProgressBarArea)
+                editor.repaint (level.getUnion (editor.levelProgressBarArea));
+        }
+    } repaintMovedRects { *this };
+
     // The window was dragged: pick the scale for its new size once the
     // drag's own resize has finished, not in the middle of it.
     if (! adaptPending && ! WindowFit::fittingDisabled())
@@ -2038,15 +2070,22 @@ void EarTrainerEditor::showRunResults (int finalScore)
 
     RunResultsComponent::Summary summary;
     summary.exerciseName = translateGameName (englishName, localisation);
-    summary.modeName = localisation.getText (session.getMode() == SessionManager::Mode::survival
-                                                  ? "ui.modeSurvival" : "ui.modeBlitz");
+    const auto duel = session.getMode() == SessionManager::Mode::duel;
+    summary.modeName = duel ? localisation.getText ("bots.battleWith").replace ("{{bot}}", botName (session.getOpponent()))
+                            : localisation.getText (session.getMode() == SessionManager::Mode::survival
+                                                        ? "ui.modeSurvival" : "ui.modeBlitz");
 
     summary.score = finalScore;
     summary.pointsText = localDecimal (session.getRunPoints(), 1, localisation);
     summary.rounds = stats.roundsPlayed;
     summary.bestStreakThisRun = session.getBestStreakThisRun();
     summary.previousBest = pendingPreviousBest;
-    summary.isNewBest = finalScore > pendingPreviousBest;
+    summary.isNewBest = ! duel && finalScore > pendingPreviousBest;
+    if (duel)
+        summary.pointsNote = localisation.getText ("bots.score")
+                                 .replace ("{{you}}", juce::String (finalScore))
+                                 .replace ("{{them}}", juce::String (session.getOpponentScore()))
+                                 .replace ("{{bot}}", botName (session.getOpponent()));
 
     const auto roundsThisRun = juce::jmax (1, session.getRoundsThisRun());
     summary.runAccuracy = (float) finalScore / (float) roundsThisRun;
@@ -2138,21 +2177,33 @@ void EarTrainerEditor::showRunResults (int finalScore)
     // "Run over" is the right heading for a run that ran out, and the wrong
     // one for a run that beat everything before it. Same screen, two
     // different things to say.
-    runResults.setStrings (localisation.getText (summary.isNewBest ? "ui.runResultsBest"
-                                                                   : "ui.runResults"),
+    // A battle has a winner, and the "record" slot shows the bot's score.
+    juce::String heading = localisation.getText (summary.isNewBest ? "ui.runResultsBest" : "ui.runResults");
+    juce::String bestCaption = localisation.getText ("ui.personalBest");
+
+    if (duel)
+    {
+        const auto outcome = session.getDuelOutcome();
+        heading = localisation.getText (outcome == SessionManager::Outcome::won ? "bots.won"
+                                        : outcome == SessionManager::Outcome::lost ? "bots.lost" : "bots.draw")
+                      .replace ("{{bot}}", botName (session.getOpponent()));
+        bestCaption = botName (session.getOpponent());
+    }
+
+    runResults.setStrings (heading,
                             localisation.getText ("ui.playAgain"),
                             localisation.getText ("ui.back"),
                             localisation.getText ("ui.score.caption"),
                             localisation.getText ("ui.accuracy"),
                             localisation.getText ("ui.bestStreak"),
-                            localisation.getText ("ui.personalBest"),
+                            bestCaption,
                             localisation.getText ("ui.newBest"),
                             localisation.getText ("ui.whereYouStand"));
 
     // Offer the other two, but only for an exercise whose timed modes are
     // open at all - otherwise the results of a Practice run would offer
     // something the training screen still hides.
-    if (progress.areModesUnlockedForGame (gameIndex))
+    if (progress.areModesUnlockedForGame (gameIndex) && ! duel)
     {
         runResults.setModeOffer (localisation.getText ("ui.tryAnotherMode"),
                                   { practiceButton.getButtonText(),
@@ -2434,9 +2485,9 @@ void EarTrainerEditor::beginRunWithCountdown()
     refreshRunStatus();
     resized();
 
-    const auto caption = session.getMode() == SessionManager::Mode::survival
-                             ? survivalButton.getButtonText()
-                             : blitzButton.getButtonText();
+    const auto caption = session.getMode() == SessionManager::Mode::survival ? survivalButton.getButtonText()
+                       : session.getMode() == SessionManager::Mode::duel     ? localisation.getText ("bots.battleWith").replace ("{{bot}}", botName (session.getOpponent()))
+                                                                             : blitzButton.getButtonText();
 
     // Capturing `this` raw is safe here: runCountdown is a member, its
     // timer stops in its own destructor, and the editor outlives it.
@@ -2758,6 +2809,13 @@ void EarTrainerEditor::refreshRunStatus()
                         session.getSecondsRemaining(), session.getRunScore(),
                         session.getRules().survivalLives);
             runHud.setScoreText (localDecimal (session.getRunPoints(), 1, localisation));
+
+            if (session.getMode() == SessionManager::Mode::duel)
+            {
+                runHud.setScoreText (juce::String (session.getRunScore()));
+                runHud.setDuel (session.getOpponentScore(), botName (session.getOpponent()),
+                                session.getRoundsThisRun() + 1, SessionManager::duelRounds);
+            }
         }
 
         if (hudWasVisible != (onTraining && hudNow))
@@ -3501,7 +3559,20 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
     // answer earns up to 0.9 more for how close it landed.
     const auto& game = processor.getGameManager().getActiveGame();
     const auto precision = game.usesContinuousScale() ? game.getAnswerQuality() : -1.0f;
-    session.registerAnswer (wasCorrect, precision);
+    if (session.getMode() == SessionManager::Mode::duel)
+    {
+        // The bot hears the same round at the same level and answers from
+        // its profile (BotListener) - two answers, one round.
+        const auto index = processor.getGameManager().getActiveGameIndex();
+        const auto level = processor.getProgressManager().getLevelForGame (index);
+        const auto botRight = BotListener::answers (session.getOpponent(), index, level, duelRandom,
+                                                    game.usesContinuousScale() ? 5 : 2);
+        session.registerDuelRound (wasCorrect, botRight, precision);
+    }
+    else
+    {
+        session.registerAnswer (wasCorrect, precision);
+    }
 
     if (wasCorrect && session.getLastPointsTenths() > 0)
         pointsFlyup.show ("+" + localDecimal ((float) session.getLastPointsTenths() / 10.0f, 1, localisation),
@@ -3792,6 +3863,17 @@ void EarTrainerEditor::refreshLiveStrings()
     s.linkServerError = g ("live.linkServerError", s.linkServerError);
     s.linkAppTooOld = g ("live.linkAppTooOld", s.linkAppTooOld);
     s.checkAgain = g ("live.checkAgain", s.checkAgain);
+    s.signedInAs = g ("live.signedInAs", s.signedInAs);
+    s.signedInNoNick = g ("live.signedInNoNick", s.signedInNoNick);
+    s.linkStarting = g ("live.linkStarting", s.linkStarting);
+    s.linkFailed = g ("live.linkFailed", s.linkFailed);
+    s.linkExpired = g ("live.linkExpired", s.linkExpired);
+    s.newCode = g ("live.newCode", s.newCode);
+    s.signedInDone = g ("live.signedInDone", s.signedInDone);
+    s.serverInRussia = g ("live.serverInRussia", s.serverInRussia);
+    s.ratingLoading = g ("live.ratingLoading", s.ratingLoading);
+    s.ratingFailed = g ("live.ratingFailed", s.ratingFailed);
+    s.battlesNext = g ("live.battlesNext", s.battlesNext);
     s.hintNoNetwork = g ("live.hintNoNetwork", s.hintNoNetwork);
     s.hintNoInternet = g ("live.hintNoInternet", s.hintNoInternet);
     s.hintServerDown = g ("live.hintServerDown", s.hintServerDown);
@@ -3800,6 +3882,81 @@ void EarTrainerEditor::refreshLiveStrings()
     s.lanNoneHint = g ("live.lanNoneHint", s.lanNoneHint);
     s.lanLinkLocal = g ("live.lanLinkLocal", s.lanLinkLocal);
     s.lanTrouble = g ("live.lanTrouble", s.lanTrouble);
+    s.botTitle = g ("live.botTitle", s.botTitle);
+    s.botHint = g ("live.botHint", s.botHint);
+    s.botStart = g ("live.botStart", s.botStart);
+    s.botFamily = g ("live.botFamily", s.botFamily);
+    s.botSpeedFast = g ("live.botSpeedFast", s.botSpeedFast);
+    s.botSpeedSlow = g ("live.botSpeedSlow", s.botSpeedSlow);
+    s.botDisclaimer = g ("live.botDisclaimer", s.botDisclaimer);
+    s.humansTitle = g ("live.humansTitle", s.humansTitle);
+
+    for (int i = 0; i < BotListener::numBots; ++i)
+    {
+        const auto id = juce::String (BotListener::idOf ((BotListener::Bot) i));
+        s.botNames.set (i, botName ((BotListener::Bot) i));
+        s.botSpecialty.set (i, g (("bots." + id + ".specialty").toRawUTF8(), s.botSpecialty[i]));
+    }
 
     liveScreen.setStrings (std::move (s));
+}
+
+void EarTrainerEditor::refreshAccountState()
+{
+    auto& account = processor.getLiveAccount();
+    juce::String status;
+
+    using R = LiveAccount::SyncResult;
+    const auto last = account.getLastSyncTime();
+
+    switch (account.getLastSyncResult())
+    {
+        case R::offline: status = localisation.getText ("set.sync.offline"); break;
+        case R::error:   status = localisation.getText ("set.sync.error"); break;
+        case R::none: case R::ok: case R::signedOut:
+            status = last.toMilliseconds() > 0
+                       ? localisation.getText ("set.sync.ok").replace ("{{time}}", last.formatted ("%d.%m %H:%M"))
+                       : localisation.getText ("set.sync.never");
+            break;
+    }
+
+    settingsScreen.setAccountState (account.isSignedIn(), account.getNick(), account.isSyncEnabled(), status);
+}
+
+// ---- a battle with a bot (ADR 046) ------------------------------------------------
+
+juce::String EarTrainerEditor::botName (BotListener::Bot bot) const
+{
+    const auto key = juce::String ("bots.") + BotListener::idOf (bot) + ".name";
+    const auto name = localisation.getText (key);
+    return name == key ? juce::String (BotListener::idOf (bot)) : name;
+}
+
+void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
+{
+    // An exercise of the family, at random - a battle is about the family
+    // the player picked, not one exercise they may have drilled to death.
+    static const std::vector<int> gamesOf[] { { 0, 8 }, { 1, 7 }, { 2, 3, 4, 6 }, { 5 } };
+    const auto& candidates = gamesOf[juce::jlimit (0, 3, family)];
+    const auto index = candidates[(size_t) duelRandom.nextInt ((int) candidates.size())];
+
+    auto& gm = processor.getGameManager();
+
+    if (index != gm.getActiveGameIndex())
+    {
+        gm.getActiveGame().removeChangeListener (this);
+        gm.setActiveGameIndex (index);
+        gm.getActiveGame().addChangeListener (this);
+        rebuildChoiceSlider();
+    }
+
+    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        pill->setToggleState (false, juce::dontSendNotification);
+
+    session.setOpponent (bot);
+    session.setMode (SessionManager::Mode::duel);
+    session.startRun();   // a second battle in a row: setMode alone would not restart it
+
+    showScreen (Screen::training);
+    beginRunWithCountdown();
 }

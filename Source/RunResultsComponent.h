@@ -44,6 +44,7 @@ public:
         // Points weighted by precision, already written the player's way
         // ("14,3"); empty falls back to the count.
         juce::String pointsText;
+        juce::String pointsNote;    // replaces "n right, best m" when set (a battle: "5 : 4 against the Cat")
         int bestStreakThisRun = 0;
 
         // The record before this run, so "personal best" can be an event
