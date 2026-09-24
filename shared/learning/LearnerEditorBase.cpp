@@ -405,7 +405,7 @@ void LearnerEditorBase::paint (juce::Graphics& g)
 
         g.setColour (accent);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (t (familyKeys[f], familyFallbacks[f]), row, juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, t (familyKeys[f], familyFallbacks[f]), row, juce::Justification::centredLeft, true);
     }
 
     // No panel behind the analysis: the displays are their own wells, and

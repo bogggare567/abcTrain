@@ -126,7 +126,7 @@ public:
             {
                 g.setColour (theme.textDim);
                 g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (12.0f));
-                g.drawFittedText (k->note, k->column.withTop (k->column.getBottom() - noteHeight),
+                AbcTrainLookAndFeel::fitLines (g, k->note, k->column.withTop (k->column.getBottom() - noteHeight),
                                   juce::Justification::centred, 1, 0.85f);
             }
         }

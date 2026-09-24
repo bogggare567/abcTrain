@@ -157,12 +157,13 @@ public:
             PanGame game;
             checkSharedContract (game, "Pan");
 
-            beginTest ("Pan: centre reads as C, sides as L/R");
+            beginTest ("Pan: centre reads as 0, left as minus, right as plus");
             {
                 expectEquals (game.formatNormalisedValue (PanGame::panToNormalised (0.0f)),
-                              juce::String ("C"));
-                expect (game.formatNormalisedValue (PanGame::panToNormalised (-1.0f)).startsWith ("L"));
-                expect (game.formatNormalisedValue (PanGame::panToNormalised (1.0f)).startsWith ("R"));
+                              juce::String ("0"));
+                expect (game.formatNormalisedValue (PanGame::panToNormalised (-1.0f))
+                            .startsWith (juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"))));
+                expect (game.formatNormalisedValue (PanGame::panToNormalised (1.0f)).startsWith ("+"));
             }
         }
 

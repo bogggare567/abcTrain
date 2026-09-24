@@ -130,7 +130,7 @@ void RunResultsComponent::paintStat (juce::Graphics& g, juce::Rectangle<int> are
 
     g.setColour (valueColour);
     g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (28.0f));
-    g.drawText (value, area.removeFromTop (34), juce::Justification::centredLeft, false);
+    AbcTrainLookAndFeel::fitText (g, value, area.removeFromTop (34), juce::Justification::centredLeft, false);
 }
 
 namespace
@@ -181,17 +181,17 @@ void RunResultsComponent::paint (juce::Graphics& g)
             g.drawRect (pill, 1.0f);
             g.setColour (theme.positive);
             g.setFont (AbcTrainLookAndFeel::headingFont());
-            g.drawText (newBestText, pill.toNearestInt(), juce::Justification::centred, false);
+            AbcTrainLookAndFeel::fitText (g, newBestText, pill.toNearestInt(), juce::Justification::centred, false);
         }
 
         g.setColour (theme.textBright);
         g.setFont (AbcTrainLookAndFeel::headingFont().withHeight (22.0f));
-        g.drawText (summary.exerciseName + "  ·  " + summary.modeName, top,
+        AbcTrainLookAndFeel::fitText (g, summary.exerciseName + "  ·  " + summary.modeName, top,
                     juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText (titleText, inner.removeFromTop (18), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, titleText, inner.removeFromTop (18), juce::Justification::centredLeft, true);
     }
 
     inner.removeFromTop (AbcTrainTheme::Spacing::large);
@@ -226,7 +226,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawFittedText (text, column.withTrimmedTop (48), juce::Justification::topLeft, 1, 0.85f);
+            AbcTrainLookAndFeel::fitLines (g, text, column.withTrimmedTop (48), juce::Justification::topLeft, 1, 0.85f);
         };
 
         auto column = row.removeFromLeft (columnWidth);
@@ -291,7 +291,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::microFont());
-            g.drawText (juce::String (i + 1), cell.toNearestInt().withTrimmedTop (4).withHeight (12),
+            AbcTrainLookAndFeel::fitText (g, juce::String (i + 1), cell.toNearestInt().withTrimmedTop (4).withHeight (12),
                         juce::Justification::centred, false);
         }
     }
@@ -328,12 +328,12 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
             g.setColour (b == worst ? theme.textBright : theme.text);
             g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (bucket.label, line.removeFromLeft (96), juce::Justification::centredLeft, true);
+            AbcTrainLookAndFeel::fitText (g, bucket.label, line.removeFromLeft (96), juce::Justification::centredLeft, true);
 
             auto count = line.removeFromRight (56);
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
-            g.drawText (juce::String (bucket.attempts - bucket.misses) + " / " + juce::String (bucket.attempts),
+            AbcTrainLookAndFeel::fitText (g, juce::String (bucket.attempts - bucket.misses) + " / " + juce::String (bucket.attempts),
                         count, juce::Justification::centredRight, false);
 
             // Hits then misses as one bar, the share of each - the same
@@ -369,7 +369,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
         g.setColour (theme.text);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawFittedText (text, block.withTrimmedTop (16), juce::Justification::topLeft, 5, 1.0f);
+        AbcTrainLookAndFeel::fitLines (g, text, block.withTrimmedTop (16), juce::Justification::topLeft, 5, 1.0f);
     }
 }
 

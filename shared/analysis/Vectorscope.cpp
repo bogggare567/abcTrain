@@ -55,8 +55,11 @@ void Vectorscope::paint (juce::Graphics& g)
     const auto& theme = AbcTrainTheme::current();
     const auto bounds = getLocalBounds().toFloat();
 
-    g.fillAll (theme.displayBackground);
-    AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
+    if (backdrop)
+    {
+        g.fillAll (theme.displayBackground);
+        AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
+    }
 
     const auto centre = bounds.getCentre();
     const auto radius = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.42f;
@@ -82,7 +85,7 @@ void Vectorscope::paint (juce::Graphics& g)
     const auto label = [&] (const juce::String& text, juce::Point<float> at, juce::Colour colour)
     {
         g.setColour (colour);
-        g.drawText (text, juce::Rectangle<float> (at.x - 16.0f, at.y - 8.0f, 32.0f, 16.0f),
+        AbcTrainLookAndFeel::fitText (g, text, juce::Rectangle<float> (at.x - 16.0f, at.y - 8.0f, 32.0f, 16.0f),
                      juce::Justification::centred, false);
     };
 
@@ -121,7 +124,7 @@ void Vectorscope::paint (juce::Graphics& g)
 
         g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
         g.setColour (theme.textDim.withAlpha (0.75f));
-        g.drawText (juce::String (correlation, 2),
+        AbcTrainLookAndFeel::fitText (g, juce::String (correlation, 2),
                      bounds.withTop (bounds.getBottom() - 14.0f).reduced (4.0f, 0.0f),
                      juce::Justification::centredLeft, false);
     }

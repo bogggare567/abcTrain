@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "Un piano qui reste clair dans le groupe",
   "eq.lesson.piano.1": "Passe-haut à 40-60 Hz pour laisser le bas à la basse.",
   "eq.lesson.piano.2": "Coupez un peu de boue à 250-500 Hz.",
-  "eq.lesson.piano.3": "Relevez la clarté à 2-5 kHz pour que les accords se lisent."
+  "eq.lesson.piano.3": "Relevez la clarté à 2-5 kHz pour que les accords se lisent.",
+  "lp.room.first": "première réflexion +{{ms}} ms",
+  "lp.note.beyond": "plus que cette pièce ne peut donner",
+  "lp.note.distance": "source à {{m}} m de vous",
+  "lp.note.preDelayOther": "silence avant la queue",
+  "guide.verb.roomDrag": "Plus près de vous et loin des murs, la première réflexion arrive plus tard : cet écart, c'est le pré-délai."
 }

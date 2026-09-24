@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "A piano that stays clear in a band",
   "eq.lesson.piano.1": "High-pass at 40-60 Hz to leave the bottom to the bass.",
   "eq.lesson.piano.2": "Cut some mud at 250-500 Hz.",
-  "eq.lesson.piano.3": "Lift the clarity at 2-5 kHz so the chords read."
+  "eq.lesson.piano.3": "Lift the clarity at 2-5 kHz so the chords read.",
+  "lp.room.first": "first reflection +{{ms}} ms",
+  "lp.note.beyond": "more than this room can give",
+  "lp.note.distance": "source {{m}} m from you",
+  "lp.note.preDelayOther": "silence before the tail",
+  "guide.verb.roomDrag": "Closer to you and further from the walls, the first reflection comes later: that gap is pre-delay."
 }

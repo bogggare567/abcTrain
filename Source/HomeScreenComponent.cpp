@@ -226,7 +226,7 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
         g.setFont (card.levelIsNumber
                        ? AbcTrainLookAndFeel::monoFont().withHeight (18.0f * AbcTrainLookAndFeel::getTextScale())
                        : AbcTrainLookAndFeel::titleFont());
-        g.drawFittedText (card.levelText, numberArea.toNearestInt(),
+        AbcTrainLookAndFeel::fitLines (g, card.levelText, numberArea.toNearestInt(),
                            bothLines ? juce::Justification::bottomRight : juce::Justification::centredRight,
                            1, 0.75f);
 
@@ -234,7 +234,7 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::labelFont());
-            g.drawFittedText (card.rankText,
+            AbcTrainLookAndFeel::fitLines (g, card.rankText,
                                right.withTop (numberArea.getBottom() + 2.0f).toNearestInt(),
                                juce::Justification::topRight, 1, 0.85f);
         }
@@ -250,7 +250,7 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
 
         g.setColour (card.isCurrent || eased > 0.5f ? theme.textBright : theme.text);
         g.setFont (AbcTrainLookAndFeel::titleFont());
-        g.drawFittedText (card.name, top.toNearestInt(),
+        AbcTrainLookAndFeel::fitLines (g, card.name, top.toNearestInt(),
                            twoLines ? juce::Justification::bottomLeft : juce::Justification::centredLeft,
                            1, 0.8f);
 
@@ -262,7 +262,7 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
 
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::labelFont());
-            g.drawFittedText (second, nameColumn.withTop (top.getBottom() + 2.0f).toNearestInt(),
+            AbcTrainLookAndFeel::fitLines (g, second, nameColumn.withTop (top.getBottom() + 2.0f).toNearestInt(),
                                juce::Justification::topLeft, 1, 0.85f);
         }
     }

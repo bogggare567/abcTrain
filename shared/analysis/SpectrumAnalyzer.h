@@ -54,6 +54,11 @@ public:
     // each in its own family colour. Transparent means the palette's.
     void setAccentColour (juce::Colour newAccent) { accentOverride = newAccent; repaint(); }
 
+
+    // Drawn straight onto the page, without its own well: for the trainer's
+    // hint, which sits on the page background (possibly the player's own
+    // picture) instead of in a box of its own.
+    void setBackdropVisible (bool shouldShow) { backdrop = shouldShow; setOpaque (shouldShow && opaqueWithBackdrop); repaint(); }
     void paint (juce::Graphics&) override;
 
     // Tilt applied to the display, in dB per octave about 1 kHz.
@@ -116,6 +121,9 @@ private:
     double sampleRate = 44100.0;
     double lastTick = 0.0;
     bool idle = true;
+
+    bool backdrop = true;
+    bool opaqueWithBackdrop = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectrumAnalyzerComponent)
 };

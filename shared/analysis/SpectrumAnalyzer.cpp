@@ -241,7 +241,7 @@ void SpectrumAnalyzerComponent::paintGrid (juce::Graphics& g, juce::Rectangle<fl
                                : juce::String ((int) frequency);
 
         g.setColour (theme.textDim.withAlpha (0.4f));
-        g.drawText (label, juce::Rectangle<float> (x + 3.0f, bounds.getBottom() - 14.0f, 30.0f, 12.0f),
+        AbcTrainLookAndFeel::fitText (g, label, juce::Rectangle<float> (x + 3.0f, bounds.getBottom() - 14.0f, 30.0f, 12.0f),
                     juce::Justification::centredLeft, false);
     }
 
@@ -267,19 +267,22 @@ void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
 
     // Rounded, and clipped to that rounding - a hard-edged rectangle was
     // the thing that read as raw and unfinished next to everything else.
-    g.fillAll (theme.windowBackground);
-
-    // A well, not a flat rectangle: dark at its top lip, light at its
-    // bottom, so the analysis reads as recessed into the panel around it.
-    AbcTrainLookAndFeel::paintRecessedWell (g, bounds, AbcTrainTheme::Radius::well);
-
-    juce::Path well;
-    well.addRoundedRectangle (bounds, AbcTrainTheme::Radius::well);
-
     juce::Graphics::ScopedSaveState clipped (g);
-    g.reduceClipRegion (well);
 
-    AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
+    if (backdrop)
+    {
+        g.fillAll (theme.windowBackground);
+
+        // A well, not a flat rectangle: dark at its top lip, light at its
+        // bottom, so the analysis reads as recessed into the panel around it.
+        AbcTrainLookAndFeel::paintRecessedWell (g, bounds, AbcTrainTheme::Radius::well);
+
+        juce::Path well;
+        well.addRoundedRectangle (bounds, AbcTrainTheme::Radius::well);
+        g.reduceClipRegion (well);
+
+        AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
+    }
 
     paintGrid (g, bounds);
 

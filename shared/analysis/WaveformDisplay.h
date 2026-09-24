@@ -96,6 +96,11 @@ public:
     // For tests: drain whatever the audio side has produced.
     int drainForTest() { return drain(); }
 
+
+    // Drawn straight onto the page, without its own well: for the trainer's
+    // hint, which sits on the page background (possibly the player's own
+    // picture) instead of in a box of its own.
+    void setBackdropVisible (bool shouldShow) { backdrop = shouldShow; setOpaque (shouldShow && opaqueWithBackdrop); repaint(); }
     void paint (juce::Graphics&) override;
 
     // Draw the per-column highlight as a gain-reduction line hanging from
@@ -143,6 +148,9 @@ private:
     juce::String grCaption, legend;
     double lastTick = 0.0;
     bool quiet = true;
+
+    bool backdrop = true;
+    bool opaqueWithBackdrop = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveformDisplay)
 };

@@ -555,7 +555,7 @@ void AbcTrainLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
     g.setColour (button.findColour (juce::ToggleButton::textColourId)
                        .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
     g.setFont (juce::Font (juce::FontOptions (bodyFontHeight)));
-    g.drawText (button.getButtonText(), textArea, juce::Justification::centredLeft, true);
+    AbcTrainLookAndFeel::fitText (g, button.getButtonText(), textArea, juce::Justification::centredLeft, true);
 }
 
 // -------------------------------------------------------------- sliders
@@ -1232,13 +1232,211 @@ void AbcTrainLookAndFeel::drawSegmentedBar (juce::Graphics& g, juce::Rectangle<f
     }
 }
 
+namespace
+{
+    struct TextAudit
+    {
+        bool enabled = false;
+        bool everything = false;   // TEXT_AUDIT=all: every line that was fitted at all
+        juce::String context;
+        juce::StringArray lines;
+    };
+
+    TextAudit& textAudit()
+    {
+        static TextAudit audit;
+        return audit;
+    }
+
+    // How far a line may be pulled in before it counts as not fitting.
+    constexpr float minFontScale = 0.75f;
+    constexpr float minWidthScale = 0.70f;
+    constexpr float reportBelow = 0.80f;   // combined scale worth a look
+}
+
+void AbcTrainLookAndFeel::setTextAuditContext (const juce::String& screen) { textAudit().context = screen; }
+void AbcTrainLookAndFeel::enableTextAudit (bool on)
+{
+    textAudit().enabled = on;
+    const auto* mode = std::getenv ("TEXT_AUDIT");
+    textAudit().everything = on && mode != nullptr && juce::String (mode) == "all";
+}
+
+juce::StringArray AbcTrainLookAndFeel::takeTextAudit()
+{
+    auto lines = textAudit().lines;
+    textAudit().lines.clear();
+    return lines;
+}
+
+void AbcTrainLookAndFeel::noteTextOverflow (const juce::String& text, float needed, float available)
+{
+    auto& audit = textAudit();
+
+    if (! audit.enabled)
+        return;
+
+    const auto line = audit.context + "\t" + text.replace ("\n", " ") + "\t"
+                    + juce::String (juce::roundToInt (needed)) + " > " + juce::String (juce::roundToInt (available));
+
+    if (! audit.lines.contains (line))
+        audit.lines.add (line);
+}
+
+void AbcTrainLookAndFeel::fitText (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area,
+                                   juce::Justification justification, bool useEllipsesIfTooLong)
+{
+    if (text.isEmpty() || area.isEmpty())
+        return;
+
+    const auto font = g.getCurrentFont();
+    const auto width = juce::GlyphArrangement::getStringWidth (font, text);
+    const auto room = area.getWidth();
+
+    if (width <= room + 0.5f || text.containsChar ('\n'))
+    {
+        g.drawText (text, area, justification, useEllipsesIfTooLong);
+        return;
+    }
+
+    juce::Graphics::ScopedSaveState state (g);
+    const auto fontScale = juce::jmax (minFontScale, room / width);
+    auto fitted = font.withHeight (font.getHeight() * fontScale);
+    const auto widthScale = juce::jlimit (minWidthScale, 1.0f, room / (width * fontScale));
+    fitted = fitted.withHorizontalScale (font.getHorizontalScale() * widthScale);
+
+    if (textAudit().everything || fontScale * widthScale < reportBelow || width * fontScale * widthScale > room + 0.5f)
+        noteTextOverflow (text, width, room);
+
+    g.setFont (fitted);
+    g.drawText (text, area, justification, useEllipsesIfTooLong);
+}
+
+void AbcTrainLookAndFeel::drawLabel (juce::Graphics& g, juce::Label& label)
+{
+    // As JUCE's, except the text goes through fitLines: labels are where
+    // most of the translated sentences live.
+    g.fillAll (label.findColour (juce::Label::backgroundColourId));
+
+    if (! label.isBeingEdited())
+    {
+        const auto alpha = label.isEnabled() ? 1.0f : 0.5f;
+        const auto font = getLabelFont (label);
+
+        g.setColour (label.findColour (juce::Label::textColourId).withMultipliedAlpha (alpha));
+        g.setFont (font);
+
+        const auto textArea = getLabelBorderSize (label).subtractedFrom (label.getLocalBounds());
+        fitLines (g, label.getText(), textArea, label.getJustificationType(),
+                  juce::jmax (1, (int) ((float) textArea.getHeight() / font.getHeight())),
+                  label.getMinimumHorizontalScale());
+
+        g.setColour (label.findColour (juce::Label::outlineColourId).withMultipliedAlpha (alpha));
+    }
+    else if (label.isEnabled())
+    {
+        g.setColour (label.findColour (juce::Label::outlineColourId));
+    }
+
+    g.drawRect (label.getLocalBounds());
+}
+
+float AbcTrainLookAndFeel::fitLinesScale (const juce::String& text, const juce::Font& font,
+                                          juce::Rectangle<int> area, int maxLines)
+{
+    for (const auto scale : { 1.0f, 0.92f, 0.85f, 0.8f })
+    {
+        const auto f = font.withHeight (font.getHeight() * scale);
+        juce::GlyphArrangement layout;
+        layout.addJustifiedText (f, text, 0.0f, 0.0f, (float) area.getWidth(), juce::Justification::left);
+        const auto lines = juce::jmax (1, juce::roundToInt (layout.getBoundingBox (0, -1, true).getHeight() / f.getHeight()));
+
+        if (lines <= juce::jmax (1, maxLines) && (float) lines * f.getHeight() <= (float) area.getHeight() + 2.0f)
+            return scale;
+    }
+
+    return 0.8f;
+}
+
+void AbcTrainLookAndFeel::fitLines (juce::Graphics& g, const juce::String& text, juce::Rectangle<int> area,
+                                    juce::Justification justification, int maxLines, float minimumHorizontalScale)
+{
+    if (text.isEmpty() || area.isEmpty())
+        return;
+
+    const auto font = g.getCurrentFont();
+    const auto width = (float) area.getWidth();
+
+    // How many lines this text wraps to at this font, and whether that
+    // many lines fit the box.
+    const auto fits = [&] (const juce::Font& f)
+    {
+        juce::GlyphArrangement layout;
+        layout.addJustifiedText (f, text, 0.0f, 0.0f, width, juce::Justification::left);
+        const auto height = layout.getBoundingBox (0, -1, true).getHeight();
+        const auto lines = juce::jmax (1, juce::roundToInt (height / f.getHeight()));
+        return lines <= juce::jmax (1, maxLines) && (float) lines * f.getHeight() <= (float) area.getHeight() + 2.0f;
+    };
+
+    auto chosen = font;
+    auto fitted = fits (font);
+
+    for (const auto scale : { 0.92f, 0.85f, 0.8f })
+    {
+        if (fitted)
+            break;
+
+        chosen = font.withHeight (font.getHeight() * scale);
+        fitted = fits (chosen);
+    }
+
+    if (! fitted)
+        noteTextOverflow (text, juce::GlyphArrangement::getStringWidth (font, text), width * (float) juce::jmax (1, maxLines));
+    else if (textAudit().everything && ! juce::approximatelyEqual (chosen.getHeight(), font.getHeight()))
+        noteTextOverflow (text, juce::GlyphArrangement::getStringWidth (font, text), width * (float) juce::jmax (1, maxLines));
+
+    juce::Graphics::ScopedSaveState state (g);
+    g.setFont (chosen);
+    g.drawFittedText (text, area, justification, maxLines, minimumHorizontalScale);
+}
+
 void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String& text,
-                                            juce::Rectangle<float> area, const juce::Font& font,
-                                            juce::Colour colour, float trackingPx,
+                                            juce::Rectangle<float> area, const juce::Font& fontIn,
+                                            juce::Colour colour, float trackingIn,
                                             juce::Justification justification)
 {
     if (text.isEmpty())
         return;
+
+    // Fit first (see fitText): letter-spacing is the first thing to give,
+    // then size, then width. A translation that is longer than the
+    // English the box was drawn for gets smaller type, not a cut word.
+    auto font = fontIn;
+    auto trackingPx = trackingIn;
+    const auto natural = trackedTextWidth (text, font, trackingPx);
+
+    if (natural > area.getWidth() + 0.5f && area.getWidth() > 0.0f)
+    {
+        trackingPx = 0.0f;
+        const auto plain = trackedTextWidth (text, font, 0.0f);
+
+        if (plain > area.getWidth())
+        {
+            const auto fontScale = juce::jmax (minFontScale, area.getWidth() / plain);
+            font = font.withHeight (font.getHeight() * fontScale);
+            const auto widthScale = juce::jlimit (minWidthScale, 1.0f, area.getWidth() / (plain * fontScale));
+            font = font.withHorizontalScale (font.getHorizontalScale() * widthScale);
+
+            if (textAudit().everything || fontScale * widthScale < reportBelow || plain * fontScale * widthScale > area.getWidth() + 0.5f)
+                noteTextOverflow (text, natural, area.getWidth());
+        }
+        else
+        {
+            // Some of the tracking fits: keep as much as there is room for.
+            const auto gaps = (float) juce::jmax (1, text.length() - 1);
+            trackingPx = juce::jmax (0.0f, (area.getWidth() - plain) / gaps);
+        }
+    }
 
     // JUCE has no tracking/letter-spacing control on Font or drawText, so
     // the only way to set type wider is to lay the glyphs out and shift

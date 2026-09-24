@@ -46,8 +46,29 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
                        t ("lp.room.source", "source"), t ("lp.room.you", "you"),
                        t ("lp.room.plate", "Not a room: a metal plate"),
                        t ("lp.room.spring", "Not a room: a spring in a box"),
-                       t ("unit.m", "m") });
+                       t ("unit.m", "m"),
+                       t ("lp.room.first", "first reflection +{{ms}} ms") });
     addAndMakeVisible (room);
+
+    // The drawing turns the knobs: drag the source and Pre-delay follows
+    // the geometry, drag the back wall's corner and Size does.
+    const auto setParam = [this] (const char* id, float value)
+    {
+        if (auto* param = verbProcessor.apvts.getParameter (id))
+            param->setValueNotifyingHost (param->convertTo0to1 (value));
+    };
+    room.onPreDelayDragged = [this, setParam] (float ms)
+    {
+        setParam ("preDelay", ms);
+        presets.setChosen (-1);
+        showGuide (t ("guide.verb.roomDrag", "Closer to you and further from the walls, the first reflection comes later: that gap is pre-delay."));
+    };
+    room.onSizeDragged = [this, setParam] (float size01)
+    {
+        setParam ("size", size01 * 100.0f);
+        presets.setChosen (-1);
+    };
+    room.onDragEnded = [this] { showGuide ({}); };
 
     echogram.setStrings ({ t ("lp.echo.dry", "dry"),
                            t ("lp.echo.first", "first reflections after {{ms}} ms"),
@@ -187,9 +208,15 @@ void LearnerVerbEditor::updateNotes()
     const auto rt = echogram.getMeasuredRt60();
     knobs.setNote ("decay", rt > 0.0 ? t ("lp.note.rt60", "RT60 measured {{s}} s").replace ("{{s}}", formatNumber (rt, 1)) : juce::String());
 
-    // Sound travels about 0.343 m per millisecond.
-    knobs.setNote ("preDelay", t ("lp.note.preDelay", "{{m}} m more path to the first wall")
-                                   .replace ("{{m}}", approx + formatNumber (value ("preDelay") * 0.343, 1)));
+    // Where the source stands, from the room's own geometry - or that the
+    // knob asks for a longer gap than walls this close can give.
+    if (isRoom)
+        knobs.setNote ("preDelay", room.isPreDelayBeyondRoom()
+                                       ? t ("lp.note.beyond", "more than this room can give")
+                                       : t ("lp.note.distance", "source {{m}} m from you")
+                                             .replace ("{{m}}", approx + formatNumber (room.getSourceDistanceMetres(), 1)));
+    else
+        knobs.setNote ("preDelay", t ("lp.note.preDelayOther", "silence before the tail"));
 
     knobs.setNote ("size", isRoom ? t ("lp.note.size", "room {{dims}}")
                                         .replace ("{{dims}}", approx + juce::String (juce::roundToInt (RoomView::lengthFor (type, size)))

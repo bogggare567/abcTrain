@@ -63,12 +63,13 @@ juce::String PanGame::formatNormalisedValue (float normalised) const
     const auto pan = normalisedToPan (normalised);
     const auto percent = juce::roundToInt (std::abs (pan) * 100.0f);
 
-    // Centre is "C"; everything else reads as a side and a distance, the
-    // way a console's pan pot is actually labelled.
+    // Minus to the left, plus to the right, zero in the middle - the
+    // author's call: "L50/R50" read as letters to decode, a signed number
+    // reads as a position on a ruler, which is what this is.
     if (percent < 3)
-        return "C";
+        return "0";
 
-    return (pan < 0.0f ? juce::String ("L") : juce::String ("R")) + juce::String (percent);
+    return (pan < 0.0f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String ("+")) + juce::String (percent);
 }
 
 std::vector<Game::GridMark> PanGame::getGridMarks() const
@@ -167,7 +168,9 @@ juce::String PanGame::getFeedbackText() const
 
 float PanGame::toleranceForLevel (int level) noexcept
 {
-    return rampTolerance (level, 0.35f, 0.07f);
+    // Level 1 was +-35% of the field: with the hint at a couple of bands
+    // either side, the shaded "somewhere here" covered the whole ruler.
+    return rampTolerance (level, 0.25f, 0.07f);
 }
 
 Game::LevelMeaning PanGame::describeLevel (int level) const

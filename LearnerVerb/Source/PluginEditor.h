@@ -23,6 +23,7 @@ public:
         presets.setChosen (index);
         syncType();
         updateEchogram (true);
+        updateNotes();
     }
 
 private:

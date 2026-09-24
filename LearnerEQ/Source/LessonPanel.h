@@ -103,7 +103,7 @@ public:
             {
                 g.setColour (step.state == State::current ? accent : theme.textDim);
                 g.setFont (bodyFont);
-                g.drawText (step.state == State::current ? juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x92"))
+                AbcTrainLookAndFeel::fitText (g, step.state == State::current ? juce::String (juce::CharPointer_UTF8 ("\xe2\x86\x92"))
                                                          : juce::String (juce::CharPointer_UTF8 ("\xc2\xb7")),
                             mark.toNearestInt(), juce::Justification::centredLeft, false);
             }
@@ -116,14 +116,14 @@ public:
         {
             g.setColour (theme.text);
             g.setFont (bodyFont);
-            g.drawFittedText (body, area, juce::Justification::topLeft, 6, 1.0f);
+            AbcTrainLookAndFeel::fitLines (g, body, area, juce::Justification::topLeft, 6, 1.0f);
         }
 
         if (footnote.isNotEmpty())
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (12.0f));
-            g.drawFittedText (footnote, footArea, juce::Justification::bottomLeft, 3, 0.9f);
+            AbcTrainLookAndFeel::fitLines (g, footnote, footArea, juce::Justification::bottomLeft, 3, 0.9f);
         }
     }
 

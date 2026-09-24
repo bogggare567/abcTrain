@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "Fortepian, który zostaje czytelny w zespole",
   "eq.lesson.piano.1": "Górnoprzepustowy na 40-60 Hz, by dół zostawić basowi.",
   "eq.lesson.piano.2": "Wytnij trochę mułu na 250-500 Hz.",
-  "eq.lesson.piano.3": "Podnieś klarowność na 2-5 kHz, by akordy były czytelne."
+  "eq.lesson.piano.3": "Podnieś klarowność na 2-5 kHz, by akordy były czytelne.",
+  "lp.room.first": "pierwsze odbicie +{{ms}} ms",
+  "lp.note.beyond": "więcej, niż da to pomieszczenie",
+  "lp.note.distance": "źródło {{m}} m od ciebie",
+  "lp.note.preDelayOther": "cisza przed ogonem",
+  "guide.verb.roomDrag": "Bliżej ciebie i dalej od ścian pierwsze odbicie przychodzi później: ta przerwa to pre-delay."
 }

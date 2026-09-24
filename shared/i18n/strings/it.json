@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "Un pianoforte che resta chiaro nella band",
   "eq.lesson.piano.1": "Passa-alto a 40-60 Hz per lasciare il basso al basso.",
   "eq.lesson.piano.2": "Taglia un po' di fango a 250-500 Hz.",
-  "eq.lesson.piano.3": "Alza la chiarezza a 2-5 kHz perché gli accordi si leggano."
+  "eq.lesson.piano.3": "Alza la chiarezza a 2-5 kHz perché gli accordi si leggano.",
+  "lp.room.first": "prima riflessione +{{ms}} ms",
+  "lp.note.beyond": "più di quanto questa stanza possa dare",
+  "lp.note.distance": "sorgente a {{m}} m da te",
+  "lp.note.preDelayOther": "silenzio prima della coda",
+  "guide.verb.roomDrag": "Più vicino a te e lontano dalle pareti, la prima riflessione arriva più tardi: quel vuoto è il pre-delay."
 }

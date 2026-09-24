@@ -28,31 +28,40 @@ float EQGame::frequencyToNormalised (float hz) noexcept
 
 std::vector<Game::GridMark> EQGame::getGridMarks() const
 {
+    // The grid every analyser and EQ is ruled in: 20, 50, 100, 200, 500,
+    // 1k ... 20k labelled, and an unlabelled line at every whole step in
+    // between (30, 40 ... 90, 300 ... 900). The lines crowd together at
+    // the top of each decade, which is what makes a log scale *look* like
+    // one.
+    //
+    // The ruler used to be labelled at the octave centres, 31.5 to 16 k,
+    // with half-octave boundaries between them. Octaves are equally spaced
+    // on a log axis, so the grid looked linear - "не логарифмическая" was
+    // the author's word for it - and the last label, 16 kHz, made the scale
+    // seem to stop there although it runs to 20.
     std::vector<GridMark> marks;
 
-    for (int i = 0; i < numBands; ++i)
+    const auto label = [] (float hz)
     {
-        const auto centre = bandFrequenciesHz[(size_t) i];
+        return hz >= 1000.0f ? juce::String (juce::roundToInt (hz / 1000.0f)) + "kHz"
+                             : juce::String (juce::roundToInt (hz)) + "Hz";
+    };
 
-        // Boundary below this centre - half an octave down. Skipped when
-        // it would fall off the axis, which is what stops a label being
-        // drawn half outside the panel at either end.
-        const auto boundary = centre * 0.70710678f;
-        if (boundary > axisLowHz)
-            marks.push_back ({ frequencyToNormalised (boundary),
-                               formatFrequency (boundary) + "Hz", false });
+    for (const auto decade : { 10.0f, 100.0f, 1000.0f, 10000.0f })
+    {
+        for (int step = 1; step <= 9; ++step)
+        {
+            const auto hz = decade * (float) step;
 
-        marks.push_back ({ frequencyToNormalised (centre),
-                           formatFrequency (centre) + "Hz", true });
+            if (hz < axisLowHz - 0.5f || hz > axisHighHz + 0.5f)
+                continue;
+
+            const auto labelled = step == 1 || step == 2 || step == 5;
+            marks.push_back ({ frequencyToNormalised (hz), labelled ? label (hz) : juce::String(), labelled });
+        }
     }
 
-    // The boundary past the topmost centre closes the ruler off, when
-    // there is room for it.
-    const auto topBoundary = bandFrequenciesHz.back() * 1.41421356f;
-    if (topBoundary < axisHighHz)
-        marks.push_back ({ frequencyToNormalised (topBoundary),
-                           formatFrequency (topBoundary) + "Hz", false });
-
+    marks.push_back ({ 1.0f, label (axisHighHz), true });
     return marks;
 }
 

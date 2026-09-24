@@ -255,11 +255,11 @@ void TourOverlay::paint (juce::Graphics& g)
         auto counter = text.removeFromTop (14);
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::microFont());
-        g.drawText (juce::String (currentStep + 1) + " / " + juce::String ((int) steps.size()),
+        AbcTrainLookAndFeel::fitText (g, juce::String (currentStep + 1) + " / " + juce::String ((int) steps.size()),
                      counter, juce::Justification::topRight, false);
     }
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::labelFont());
-    g.drawFittedText (steps[(size_t) currentStep].text, text, juce::Justification::topLeft, 3);
+    AbcTrainLookAndFeel::fitLines (g, steps[(size_t) currentStep].text, text, juce::Justification::topLeft, 3);
 }

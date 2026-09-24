@@ -418,9 +418,15 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
             const auto height = juce::jlimit (22.0f, 52.0f, face.getWidth() * 0.095f) * scale;
             auto nameArea = block.removeFromTop (height * 1.25f);
 
+            // One size for both cards: the smaller of what each name needs.
+            auto nameScale = 1.0f;
+            for (int k = 0; k < n; ++k)
+                nameScale = juce::jmin (nameScale, AbcTrainLookAndFeel::fitLinesScale (
+                    choiceLabels[k], AbcTrainLookAndFeel::displayFont().withHeight (height), nameArea.toNearestInt(), 2));
+
             g.setColour (answered || isHighlighted ? theme.textBright : theme.text);
-            g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (height));
-            g.drawFittedText (choiceLabels[i], nameArea.toNearestInt(),
+            g.setFont (AbcTrainLookAndFeel::displayFont().withHeight (height * nameScale));
+            AbcTrainLookAndFeel::fitLines (g, choiceLabels[i], nameArea.toNearestInt(),
                                juce::Justification::centredLeft, 2, 0.85f);
         }
 
@@ -428,12 +434,16 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
         {
             block.removeFromTop (14.0f * scale);
 
+            const auto noteArea = block.withWidth (juce::jmin (block.getWidth(), 420.0f * scale)).toNearestInt();
+            const auto noteLines = juce::jlimit (1, 3, (int) (noteArea.getHeight() / AbcTrainLookAndFeel::bodyFont().getHeight()));
+            auto noteScale = 1.0f;
+            for (int k = 0; k < juce::jmin (n, optionNotes.size()); ++k)
+                noteScale = juce::jmin (noteScale, AbcTrainLookAndFeel::fitLinesScale (
+                    optionNotes[k], AbcTrainLookAndFeel::bodyFont(), noteArea, noteLines));
+
             g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (optionNotes[i],
-                               block.withWidth (juce::jmin (block.getWidth(), 340.0f * scale))
-                                    .toNearestInt(),
-                               juce::Justification::topLeft, 3, 0.95f);
+            g.setFont (AbcTrainLookAndFeel::bodyFont().withHeight (AbcTrainLookAndFeel::bodyFont().getHeight() * noteScale));
+            AbcTrainLookAndFeel::fitLines (g, optionNotes[i], noteArea, juce::Justification::topLeft, noteLines, 0.95f);
         }
     }
 
@@ -672,7 +682,7 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         // in the window scaled.
         g.setFont (markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f)));
         g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.62f : 0.34f));
-        g.drawText (mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
+        AbcTrainLookAndFeel::fitText (g, mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
                      juce::Justification::centred, false);
     }
 

@@ -390,7 +390,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
             {
                 g.setColour (theme.textDim.withAlpha (0.5f * eased));
                 g.setFont (font);
-                g.drawText (middleDot(), juce::Rectangle<float> (x, (float) lay.words.getY(), separatorWidth,
+                AbcTrainLookAndFeel::fitText (g, middleDot(), juce::Rectangle<float> (x, (float) lay.words.getY(), separatorWidth,
                                                                   (float) lay.words.getHeight()),
                             juce::Justification::centred, false);
                 x += separatorWidth;
@@ -400,7 +400,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::bodyFont().withHeight (18.0f));
-    g.drawFittedText (localisation.getText ("welcome.tagline"), lay.tagline,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("welcome.tagline"), lay.tagline,
                       juce::Justification::topLeft, 2, 1.0f);
 
     AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (localisation.getText ("welcome.step1")),
@@ -412,7 +412,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
     // so than to let somebody conclude their ears are the problem.
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawFittedText (localisation.getText ("ui.headphoneNote"), lay.note,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("ui.headphoneNote"), lay.note,
                       juce::Justification::bottomLeft, 2, 1.0f);
 
     const char* const titles[] = { "ui.trainings", "ui.studio", "welcome.live" };
@@ -443,7 +443,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
         const auto titleFont = AbcTrainLookAndFeel::titleFont();
         g.setColour (soon ? theme.textDim : theme.textBright);
         g.setFont (titleFont);
-        g.drawText (title, titleRow, juce::Justification::centredLeft, false);
+        AbcTrainLookAndFeel::fitText (g, title, titleRow, juce::Justification::centredLeft, false);
 
         if (soon)
         {
@@ -455,7 +455,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
         inner.removeFromTop (6.0f);
         g.setColour (soon ? theme.textDim : theme.text);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawFittedText (localisation.getText (bodies[i]), inner.toNearestInt(),
+        AbcTrainLookAndFeel::fitLines (g, localisation.getText (bodies[i]), inner.toNearestInt(),
                           juce::Justification::topLeft, 3, 1.0f);
 
         g.endTransparencyLayer();
@@ -473,17 +473,17 @@ void SupportScreenComponent::paintAccount (juce::Graphics& g)
 
     g.setColour (theme.textBright);
     g.setFont (headingFont());
-    g.drawFittedText (localisation.getText ("welcome.account.title"), lay.heading,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("welcome.account.title"), lay.heading,
                       juce::Justification::topLeft, 3, 0.8f);
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    g.drawFittedText (localisation.getText ("welcome.account.body"), lay.body,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("welcome.account.body"), lay.body,
                       juce::Justification::topLeft, 3, 1.0f);
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawFittedText (localisation.getText ("welcome.account.offline"), lay.offline,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("welcome.account.offline"), lay.offline,
                       juce::Justification::topLeft, 2, 1.0f);
 
     // The panel: what signing in will look like, greyed out.
@@ -507,8 +507,8 @@ void SupportScreenComponent::paintAccount (juce::Graphics& g)
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawFittedText (localisation.getText ("welcome.emailNote"), lay.emailNote,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("welcome.emailNote"), lay.emailNote,
                       juce::Justification::centredLeft, 1, 0.9f);
-    g.drawFittedText (localisation.getText ("welcome.privacy"), lay.privacy,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("welcome.privacy"), lay.privacy,
                       juce::Justification::topLeft, 2, 1.0f);
 }

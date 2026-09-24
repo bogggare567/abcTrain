@@ -87,7 +87,7 @@ namespace
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, home, homeWithRecords, hint,
                        settingsPro, settingsHearing, settingsAbout, hearingNotice, moduleResult,
-                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick };
+                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -177,6 +177,13 @@ namespace
                 if (extra == Extra::studioEQ)
                     editor.openStudioForSnapshot (StudioScreenComponent::Effect::eq);
 
+                if (extra == Extra::studioRevisit)
+                {
+                    editor.openStudioForSnapshot (StudioScreenComponent::Effect::eq);
+                    editor.switchStudioForSnapshot (StudioScreenComponent::Effect::comp);
+                    editor.switchStudioForSnapshot (StudioScreenComponent::Effect::eq);
+                }
+
                 if (extra == Extra::studioComp)
                     editor.openStudioForSnapshot (StudioScreenComponent::Effect::comp);
 
@@ -255,7 +262,18 @@ namespace
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
             const auto file = outputDir.getChildFile (name + suffix + ".png");
 
-            if (writeSnapshot (editor, file))
+            // TEXT_AUDIT=1: list every line that had to be squeezed hard or
+            // cut while this screen painted (AbcTrainLookAndFeel::fitText).
+            const auto auditing = std::getenv ("TEXT_AUDIT") != nullptr;
+            AbcTrainLookAndFeel::enableTextAudit (auditing);
+            AbcTrainLookAndFeel::setTextAuditContext (snapshotLanguage() + "\t" + name);
+
+            const auto written = writeSnapshot (editor, file);
+
+            for (const auto& line : AbcTrainLookAndFeel::takeTextAudit())
+                std::cout << "OVERFLOW\t" << line << "\n";
+
+            if (written)
             {
                 std::cout << "  " << file.getFileName() << "  ("
                           << editor.getWidth() << "x" << editor.getHeight() << ")\n";
@@ -378,6 +396,10 @@ int main (int argc, char* argv[])
             // three are different pictures: 0 is the frequency exercise
             // (spectrum), 3 is pan (stereo), 1 is compression (envelope).
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintSpectrum", 0, Extra::hint);
+
+            // Every exercise with its hint bought - SNAP_ONLY=HintAll.
+            for (int game = 0; game < 9; ++game)
+                failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintAll" + juce::String (game), game, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintStereo", 3, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HintEnvelope", 1, Extra::hint);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
@@ -386,6 +408,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQ", -1, Extra::studioEQ);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioComp", -1, Extra::studioComp);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioRevisit", -1, Extra::studioRevisit);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioVerb", -1, Extra::studioVerb);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);

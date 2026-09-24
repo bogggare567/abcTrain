@@ -788,7 +788,7 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawFittedText (localisation.getText (pro ? "set.mode.hintPro" : "set.mode.hintBeginner"),
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText (pro ? "set.mode.hintPro" : "set.mode.hintBeginner"),
                       modeBox.translated (0, controlHeight + 4).withHeight (36), juce::Justification::topLeft, 2, 1.0f);
 
     const juce::String labels[] { localisation.getText ("set.page.training"),
@@ -820,7 +820,7 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
 
         g.setColour (selected ? theme.textBright : theme.text);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (labels[i], bounds.withTrimmedLeft (14), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, labels[i], bounds.withTrimmedLeft (14), juce::Justification::centredLeft, true);
     }
 }
 
@@ -844,7 +844,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
     g.setColour (theme.textBright);
     g.setFont (AbcTrainLookAndFeel::titleFont());
-    g.drawText (heading, page.removeFromTop (30), juce::Justification::centredLeft, false);
+    AbcTrainLookAndFeel::fitText (g, heading, page.removeFromTop (30), juce::Justification::centredLeft, false);
     page.removeFromTop (AbcTrainTheme::Spacing::small);
 
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
@@ -853,20 +853,20 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     {
         g.setColour (pro ? theme.textDim : theme.accentWarm);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (localisation.getText (pro ? "set.training.notePro" : "set.training.noteBeginner"),
+        AbcTrainLookAndFeel::fitText (g, localisation.getText (pro ? "set.training.notePro" : "set.training.noteBeginner"),
                     page.removeFromTop (26), juce::Justification::centredLeft, true);
     }
     else if (currentPage == Page::hearing)
     {
         g.setColour (theme.text);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (hearingStatusText, page.removeFromTop (26), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, hearingStatusText, page.removeFromTop (26), juce::Justification::centredLeft, true);
     }
     else if (currentPage == Page::about)
     {
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText ("abcTrain " + juce::String (CurrentVersion::string), page.removeFromTop (18),
+        AbcTrainLookAndFeel::fitText (g, "abcTrain " + juce::String (CurrentVersion::string), page.removeFromTop (18),
                     juce::Justification::centredLeft, false);
     }
 
@@ -882,12 +882,12 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
         g.setColour (enabled ? theme.textBright : theme.textDim);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (localisation.getText (row.titleKey), text.removeFromTop (24).withTrimmedTop (4),
+        AbcTrainLookAndFeel::fitText (g, localisation.getText (row.titleKey), text.removeFromTop (24).withTrimmedTop (4),
                     juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawFittedText (hintFor (row), text.withTrimmedBottom (4), juce::Justification::topLeft, 2, 0.9f);
+        AbcTrainLookAndFeel::fitLines (g, hintFor (row), text.withTrimmedBottom (4), juce::Justification::topLeft, 2, 0.9f);
 
         g.setColour (theme.divider);
         g.fillRect (row.bounds.getX(), row.bounds.getBottom() - 1, row.bounds.getWidth(), 1);

@@ -100,7 +100,7 @@ public:
 
         g.setColour (theme.textBright.withAlpha (eased));
         g.setFont (AbcTrainLookAndFeel::headingFont());
-        g.drawText (title, content.toNearestInt(), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, title, content.toNearestInt(), juce::Justification::centredLeft, true);
     }
 
 private:

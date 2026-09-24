@@ -798,11 +798,11 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
 
     g.setColour (theme.textBright);
     g.setFont (AbcTrainLookAndFeel::titleFont());
-    g.drawText (text.shelfTitle, area.removeFromTop (28), juce::Justification::centredLeft, true);
+    AbcTrainLookAndFeel::fitText (g, text.shelfTitle, area.removeFromTop (28), juce::Justification::centredLeft, true);
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    g.drawText (text.shelfSubtitle, area.removeFromTop (22), juce::Justification::centredLeft, true);
+    AbcTrainLookAndFeel::fitText (g, text.shelfSubtitle, area.removeFromTop (22), juce::Justification::centredLeft, true);
 
     const auto list = shelfListBounds();
 
@@ -829,7 +829,7 @@ void ModuleScreenComponent::paintShelf (juce::Graphics& g, juce::Rectangle<int> 
                 caption.removeFromLeft (12);
                 g.setColour (theme.textDim);
                 g.setFont (AbcTrainLookAndFeel::captionFont());
-                g.drawText (text.walkthroughWhy, caption, juce::Justification::centredLeft, true);
+                AbcTrainLookAndFeel::fitText (g, text.walkthroughWhy, caption, juce::Justification::centredLeft, true);
                 g.setColour (theme.divider);
                 g.fillRect (list.getX(), card.getY() - 6, list.getWidth(), 1);
             }
@@ -897,7 +897,7 @@ void ModuleScreenComponent::paintModuleCard (juce::Graphics& g, int index, juce:
 
     g.setColour (theme.textBright);
     g.setFont (AbcTrainLookAndFeel::headingFont());
-    g.drawFittedText (textFor (m, "name", m.name), r.removeFromTop (22), juce::Justification::centredLeft, 1, 0.85f);
+    AbcTrainLookAndFeel::fitLines (g, textFor (m, "name", m.name), r.removeFromTop (22), juce::Justification::centredLeft, 1, 0.85f);
 
     // Bottom: whether you have worked through it. The ten-step ruler that
     // stood here measured the hearing check, which the plugins no longer
@@ -912,7 +912,7 @@ void ModuleScreenComponent::paintModuleCard (juce::Graphics& g, int index, juce:
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawFittedText (textFor (m, "why", m.why), r.withTrimmedTop (2), juce::Justification::topLeft, 3, 0.9f);
+    AbcTrainLookAndFeel::fitLines (g, textFor (m, "why", m.why), r.withTrimmedTop (2), juce::Justification::topLeft, 3, 0.9f);
 }
 
 void ModuleScreenComponent::paintWalkthroughCard (juce::Graphics& g, int index, juce::Rectangle<int> card)
@@ -936,19 +936,19 @@ void ModuleScreenComponent::paintWalkthroughCard (juce::Graphics& g, int index, 
     const auto number = juce::String (index - numModules() + 1).paddedLeft ('0', 2);
     g.setColour (accent);
     g.setFont (AbcTrainLookAndFeel::titleFont());
-    g.drawText (number, r.removeFromLeft (36), juce::Justification::centredLeft, false);
+    AbcTrainLookAndFeel::fitText (g, number, r.removeFromLeft (36), juce::Justification::centredLeft, false);
     r.removeFromLeft (6);
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawText (text.stepsCount.replace ("{{n}}", juce::String ((int) m.demoSteps.size())), r.removeFromBottom (16),
+    AbcTrainLookAndFeel::fitText (g, text.stepsCount.replace ("{{n}}", juce::String ((int) m.demoSteps.size())), r.removeFromBottom (16),
                 juce::Justification::centredLeft, true);
 
     // Two lines if it needs them: "Pre-delay: staying in f..." said less
     // than the title the lesson actually has.
     g.setColour (theme.textBright);
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    g.drawFittedText (textFor (m, "name", m.name), r, juce::Justification::centredLeft, 2, 0.9f);
+    AbcTrainLookAndFeel::fitLines (g, textFor (m, "name", m.name), r, juce::Justification::centredLeft, 2, 0.9f);
 }
 
 void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int> area)
@@ -970,14 +970,14 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
             const auto level = phase == Phase::result ? levelBefore : progress.get (definition->id).level;
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::labelFont());
-            g.drawText (fill (text.levelLine, { { "n", juce::String (level) },
+            AbcTrainLookAndFeel::fitText (g, fill (text.levelLine, { { "n", juce::String (level) },
                                                 { "tol", formatTolerance (definition->check, level) } }),
                         top.removeFromRight (top.getWidth() / 2), juce::Justification::centredRight, true);
         }
 
         g.setColour (theme.textBright);
         g.setFont (AbcTrainLookAndFeel::titleFont());
-        g.drawText (textFor (*definition, "name", definition->name), top, juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, textFor (*definition, "name", definition->name), top, juce::Justification::centredLeft, true);
     }
 
     // Where you are in the module, as marks rather than "step 2 of 4".
@@ -1021,12 +1021,12 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         {
             g.setColour (theme.text);
             g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (stepText (*definition, demoStep), area.removeFromTop (area.getHeight() - 20),
+            AbcTrainLookAndFeel::fitLines (g, stepText (*definition, demoStep), area.removeFromTop (area.getHeight() - 20),
                               juce::Justification::topLeft, 6, 1.0f);
 
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont());
-            g.drawText (fill (text.stepOf, { { "n", juce::String (demoStep + 1) },
+            AbcTrainLookAndFeel::fitText (g, fill (text.stepOf, { { "n", juce::String (demoStep + 1) },
                                              { "m", juce::String ((int) definition->demoSteps.size()) } }),
                         area, juce::Justification::centredLeft, true);
             break;
@@ -1035,7 +1035,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
         case Phase::tryIt:
             g.setColour (theme.text);
             g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (textFor (*definition, "try", definition->tryPrompt), area,
+            AbcTrainLookAndFeel::fitLines (g, textFor (*definition, "try", definition->tryPrompt), area,
                               juce::Justification::topLeft, 6, 1.0f);
             break;
 
@@ -1054,20 +1054,20 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
             auto verdict = area.removeFromTop (40);
             g.setColour (passed ? theme.positive : theme.textBright);
             g.setFont (AbcTrainLookAndFeel::titleFont().withHeight (AbcTrainLookAndFeel::titleFont().getHeight() * 1.3f));
-            g.drawText (passed ? text.passed : text.notYet, verdict, juce::Justification::centred, false);
+            AbcTrainLookAndFeel::fitText (g, passed ? text.passed : text.notYet, verdict, juce::Justification::centred, false);
 
             area.removeFromTop (6);
 
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (20.0f));
-            g.drawText (text.itWas + " " + formatValue (hiddenTarget) + "   " + text.youSaid + " " + formatValue (playerValue),
+            AbcTrainLookAndFeel::fitText (g, text.itWas + " " + formatValue (hiddenTarget) + "   " + text.youSaid + " " + formatValue (playerValue),
                         area.removeFromTop (30), juce::Justification::centred, false);
 
             if (check.unit != TrainingModule::Unit::choice)
             {
                 g.setColour (theme.text);
                 g.setFont (AbcTrainLookAndFeel::bodyFont());
-                g.drawText (fill (text.errorLine, { { "err", formatError (check, hiddenTarget, playerValue, levelBefore) },
+                AbcTrainLookAndFeel::fitText (g, fill (text.errorLine, { { "err", formatError (check, hiddenTarget, playerValue, levelBefore) },
                                                     { "tol", formatTolerance (check, levelBefore) } }),
                             area.removeFromTop (26), juce::Justification::centred, false);
             }
@@ -1114,7 +1114,7 @@ void ModuleScreenComponent::paintRunner (juce::Graphics& g, juce::Rectangle<int>
 
             g.setColour (lastOutcome.newBest ? accent : theme.textDim);
             g.setFont (AbcTrainLookAndFeel::labelFont());
-            g.drawText (stair, stairRow, juce::Justification::centred, false);
+            AbcTrainLookAndFeel::fitText (g, stair, stairRow, juce::Justification::centred, false);
             break;
         }
 
@@ -1167,7 +1167,7 @@ void ModuleScreenComponent::paintCheckScale (juce::Graphics& g, juce::Rectangle<
             const auto knob = textFor (*definition, "name", definition->name);
             g.setColour (theme.text);
             g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (fill (text.checkHint, { { "knob", knob }, { "submit", text.submit } }),
+            AbcTrainLookAndFeel::fitLines (g, fill (text.checkHint, { { "knob", knob }, { "submit", text.submit } }),
                               area.removeFromTop (lines * 23), juce::Justification::topLeft, lines, 0.85f);
         }
     }
@@ -1227,7 +1227,7 @@ void ModuleScreenComponent::paintCheckScale (juce::Graphics& g, juce::Rectangle<
 
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::headingFont());
-            g.drawText (check.choiceLabels[(size_t) i], cell, juce::Justification::centred, false);
+            AbcTrainLookAndFeel::fitText (g, check.choiceLabels[(size_t) i], cell, juce::Justification::centred, false);
         }
 
         return;
@@ -1248,7 +1248,7 @@ void ModuleScreenComponent::paintCheckScale (juce::Graphics& g, juce::Rectangle<
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::microFont());
-        g.drawText (formatValue (fromNormalised (t)),
+        AbcTrainLookAndFeel::fitText (g, formatValue (fromNormalised (t)),
                     juce::Rectangle<float> (boxX, well.getBottom() - labelRow - 1.0f, boxWidth, labelRow),
                     juce::Justification::centred, false);
     }

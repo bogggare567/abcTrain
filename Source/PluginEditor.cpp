@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "Games/ReverbGame.h"
 #include "shared/ui/WindowFit.h"
 #include <algorithm>
 #include "shared/updates/UpdatePrompt.h"
@@ -731,6 +732,14 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (vectorscope);
     addChildComponent (hintSpectrum);
     addChildComponent (hintWaveform);
+    addChildComponent (hintEcho);
+
+    // On the page, not in wells: the hint shares the answer section and
+    // the page may be the player's own picture (see resized()).
+    vectorscope.setBackdropVisible (false);
+    hintSpectrum.setBackdropVisible (false);
+    hintWaveform.setBackdropVisible (false);
+    hintEcho.setBackdropVisible (false);
 
     // Three pills, always all visible. setClickingTogglesState makes JUCE
     // draw the active one with buttonOnColourId, which the shared theme
@@ -1559,8 +1568,9 @@ void EarTrainerEditor::resized()
         const auto view = activeHintView();
 
         vectorscope.setVisible (showing && view == Game::HintView::stereo);
-        hintSpectrum.setVisible (showing && view != Game::HintView::envelope);
+        hintSpectrum.setVisible (showing && view == Game::HintView::spectrum);
         hintWaveform.setVisible (showing && view == Game::HintView::envelope);
+        hintEcho.setVisible (showing && view == Game::HintView::reflections);
     }
 
     // --- answer section: feedback, the slider itself, score/new round ---
@@ -1738,38 +1748,45 @@ void EarTrainerEditor::resized()
         // heading and the thing the heading names - which reads as
         // something missing between them. Below, the same slack is the
         // margin over the control bar.
-        // A bought hint's picture goes in the free band under the answers,
-        // right-aligned and not full width. If that band is too short on a
-        // small window, the answers give up the difference - never the
-        // heading above them.
+        // A bought hint's picture shares the answer section with the
+        // answers, full width, drawn straight onto the page with no box of
+        // its own. It used to be a boxed strip in the bottom-right corner of
+        // whatever was left under the cards - a separate row, most of it
+        // empty, that looked like a leftover rather than part of the round.
+        // Now the two cards give up height (their lower half was air
+        // anyway) and the picture takes the rest, across the whole width.
         const auto hintShowing = hintRevealed && ! hintNarrowsTheScale();
-        constexpr int hintMinHeight = 64;
         auto sliderHeight = juce::jmin (inner.getHeight(), naturalHeight);
 
-        if (hintShowing && inner.getHeight() - sliderHeight < hintMinHeight + Spacing::small)
-            sliderHeight = juce::jmax (180, inner.getHeight() - hintMinHeight - Spacing::small);
+        if (hintShowing)
+        {
+            constexpr int cardsFloor = 166;
+            const auto pictureHeight = juce::jlimit (90, 240, (inner.getHeight() - Spacing::medium) * 40 / 100);
+            sliderHeight = juce::jmax (cardsFloor, juce::jmin (sliderHeight, inner.getHeight() - pictureHeight - Spacing::medium));
+        }
 
         choiceSlider.setBounds (inner.removeFromTop (sliderHeight));
 
         if (hintShowing)
         {
-            inner.removeFromTop (Spacing::small);
-            const auto width = juce::jmin (560, (int) (answerSection.getWidth() * 0.55f));
-            const auto height = juce::jlimit (hintMinHeight, hintRowHeight + Spacing::large, inner.getHeight());
-            hintSection = juce::Rectangle<int> (answerSection.getRight() - width, inner.getY(), width, height);
-
-            auto hintRow = hintSection.reduced (Spacing::small);
+            inner.removeFromTop (Spacing::medium);
+            hintSection = inner.withHeight (juce::jmin (inner.getHeight(), 240));
+            auto hintRow = hintSection;
 
             switch (activeHintView())
             {
                 case Game::HintView::stereo:
-                    vectorscope.setBounds (hintRow.removeFromLeft (hintRow.getHeight()));
-                    hintRow.removeFromLeft (Spacing::small);
-                    hintSpectrum.setBounds (hintRow);
+                    // Only the vectorscope: width *is* the shape of the
+                    // cloud, and a spectrum beside it said nothing about it.
+                    vectorscope.setBounds (hintRow.withSizeKeepingCentre (hintRow.getHeight(), hintRow.getHeight()));
                     break;
 
                 case Game::HintView::envelope:
                     hintWaveform.setBounds (hintRow);
+                    break;
+
+                case Game::HintView::reflections:
+                    hintEcho.setBounds (hintRow);
                     break;
 
                 case Game::HintView::spectrum:
@@ -2406,6 +2423,7 @@ void EarTrainerEditor::clearHint()
     vectorscope.setVisible (false);
     hintSpectrum.setVisible (false);
     hintWaveform.setVisible (false);
+    hintEcho.setVisible (false);
     vectorscope.reset();
     refreshHintButton();
 
@@ -2834,6 +2852,12 @@ void EarTrainerEditor::hideContentUnderNavPage()
     // that had every right to expect them. A control you cannot see but
     // can still press is worse than one that is simply broken, because
     // nothing on screen explains what just happened.
+    //
+    // The same goes for sound. The exercise under the page used to keep
+    // playing: open Training Sounds from a round and the round's clip ran
+    // on under a page whose whole job is choosing what you hear.
+    processor.setSignalEnabled (false);
+
     homeScreen.setVisible (false);
     focusBand.setVisible (false);
     continueButton.setVisible (false);
@@ -3303,6 +3327,15 @@ void EarTrainerEditor::requestHint()
         vectorscope.reset();
         hintWaveform.reset();
         hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
+
+        if (auto* reverb = dynamic_cast<ReverbGame*> (&game))
+        {
+            hintEcho.setStrings ({ localisation.getText ("lp.echo.dry"), localisation.getText ("lp.echo.first"),
+                                   localisation.getText ("lp.echo.tail"), localisation.getText ("unit.s") });
+            hintEcho.setAccentColour (AbcTrainTheme::accentFor (AbcTrainTheme::Family::space));
+            hintEcho.setDecimalSeparator (localDecimal (0.5f, 1, localisation).containsChar (',') ? "," : ".");
+            hintEcho.update (reverb->getRoundSetting(), true);
+        }
     }
 
     refreshRunStatus();

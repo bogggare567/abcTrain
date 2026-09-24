@@ -29,6 +29,9 @@ public:
     void setAccentColour (juce::Colour c)   { accent = c; repaint(); }
     void setDecimalSeparator (juce::String s) { decimal = std::move (s); repaint(); }
 
+    // Without its well, straight on the page - the trainer's hint.
+    void setBackdropVisible (bool shouldShow) { backdrop = shouldShow; repaint(); }
+
     // Cheap to call every frame: only a changed setting recomputes, and
     // never more often than every 80 ms while a knob is being dragged.
     void update (const ReverbMeasure::Setting& setting, bool immediately = false)
@@ -53,8 +56,11 @@ public:
         const auto& theme = AbcTrainTheme::current();
         const auto bounds = getLocalBounds().toFloat();
 
-        AbcTrainLookAndFeel::paintDisplayWell (g, bounds);
-        AbcTrainLookAndFeel::drawRegistrationMarks (g, bounds, theme.outline);
+        if (backdrop)
+        {
+            AbcTrainLookAndFeel::paintDisplayWell (g, bounds);
+            AbcTrainLookAndFeel::drawRegistrationMarks (g, bounds, theme.outline);
+        }
 
         if (bins.empty())
             return;
@@ -69,10 +75,15 @@ public:
         for (double tick = step; tick < span; tick += step)
         {
             const auto x = xFor (tick);
+
+            // The tail readout owns the bottom-right corner.
+            if (measuredRt60 > 0.0 && x > bounds.getRight() - 230.0f)
+                continue;
+
             g.setColour (theme.divider.withAlpha (0.6f));
             g.fillRect (x, bounds.getY() + 1.0f, 1.0f, bounds.getHeight() - 2.0f);
             g.setColour (theme.textDim.withAlpha (0.8f));
-            g.drawText (number (tick, 1) + " " + text.seconds, juce::Rectangle<float> (x + 3.0f, bounds.getBottom() - 18.0f, 48.0f, 14.0f),
+            AbcTrainLookAndFeel::fitText (g, number (tick, 1) + " " + text.seconds, juce::Rectangle<float> (x + 3.0f, bounds.getBottom() - 18.0f, 48.0f, 14.0f),
                         juce::Justification::centredLeft, false);
         }
 
@@ -119,18 +130,18 @@ public:
         // Captions.
         g.setFont (AbcTrainLookAndFeel::captionFont());
         g.setColour (theme.text);
-        g.drawText (text.dry, juce::Rectangle<float> (x0 + 5.0f, bounds.getY() + 6.0f, 80.0f, 16.0f),
+        AbcTrainLookAndFeel::fitText (g, text.dry, juce::Rectangle<float> (x0 + 5.0f, bounds.getY() + 6.0f, 80.0f, 16.0f),
                     juce::Justification::centredLeft, false);
 
         const auto onsetText = text.firstReflections.replace ("{{ms}}", juce::String (juce::roundToInt (onset * 1000.0)));
         const auto onsetX = juce::jmax (x0 + 60.0f, xOnset + 5.0f);
-        g.drawText (onsetText, juce::Rectangle<float> (onsetX, bounds.getY() + 6.0f, bounds.getRight() - onsetX - 8.0f, 16.0f),
+        AbcTrainLookAndFeel::fitText (g, onsetText, juce::Rectangle<float> (onsetX, bounds.getY() + 6.0f, bounds.getRight() - onsetX - 8.0f, 16.0f),
                     juce::Justification::centredLeft, true);
 
         if (measuredRt60 > 0.0)
         {
             g.setColour (theme.textBright);
-            g.drawText (text.tail.replace ("{{s}}", number (measuredRt60, 2)),
+            AbcTrainLookAndFeel::fitText (g, text.tail.replace ("{{s}}", number (measuredRt60, 2)),
                         juce::Rectangle<float> (bounds.getRight() - 220.0f, bounds.getBottom() - 20.0f, 208.0f, 16.0f),
                         juce::Justification::centredRight, false);
         }
@@ -183,6 +194,7 @@ private:
     }
 
     Strings text;
+    bool backdrop = true;
     juce::Colour accent { juce::Colours::seagreen };
     juce::String decimal { "." };
 

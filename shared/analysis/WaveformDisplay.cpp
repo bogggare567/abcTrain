@@ -134,9 +134,12 @@ void WaveformDisplay::paint (juce::Graphics& g)
     const auto& theme = AbcTrainTheme::current();
     const auto bounds = getLocalBounds().toFloat();
 
-    g.fillAll (theme.windowBackground);
-    AbcTrainLookAndFeel::paintRecessedWell (g, bounds.reduced (0.5f), AbcTrainTheme::Radius::well);
-    AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
+    if (backdrop)
+    {
+        g.fillAll (theme.windowBackground);
+        AbcTrainLookAndFeel::paintRecessedWell (g, bounds.reduced (0.5f), AbcTrainTheme::Radius::well);
+        AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
+    }
 
     const auto plot = bounds.reduced (1.0f, 4.0f);
     const auto midY = plot.getCentreY();
@@ -189,10 +192,13 @@ void WaveformDisplay::paint (juce::Graphics& g)
     g.strokePath (peakShape, juce::PathStrokeType (1.0f, juce::PathStrokeType::curved));
 
     // The newest edge fades in rather than ending on a hard line.
-    const auto edge = plot.withLeft (plot.getRight() - 18.0f);
-    g.setGradientFill (juce::ColourGradient (theme.windowBackground.withAlpha (0.0f), edge.getX(), 0.0f,
-                                             theme.windowBackground.withAlpha (0.35f), edge.getRight(), 0.0f, false));
-    g.fillRect (edge);
+    if (backdrop)
+    {
+        const auto edge = plot.withLeft (plot.getRight() - 18.0f);
+        g.setGradientFill (juce::ColourGradient (theme.windowBackground.withAlpha (0.0f), edge.getX(), 0.0f,
+                                                 theme.windowBackground.withAlpha (0.35f), edge.getRight(), 0.0f, false));
+        g.fillRect (edge);
+    }
 
     if (grCaption.isNotEmpty())
     {

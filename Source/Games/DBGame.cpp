@@ -58,9 +58,10 @@ std::vector<Game::GridMark> DBGame::getGridMarks() const
     {
         const auto normalised = dbToNormalised ((float) db);
         const auto emphasised = (db % 3 == 0);
-        marks.push_back ({ normalised,
-                           emphasised ? formatNormalisedValue (normalised) : juce::String(),
-                           emphasised });
+        // Whole numbers on the ruler: "-9.0 dB" was wider than its slot,
+        // and in Russian the unit was cut down to "д".
+        const auto label = (db > 0 ? juce::String ("+") : juce::String()) + juce::String (db) + " dB";
+        marks.push_back ({ normalised, emphasised ? label : juce::String(), emphasised });
     }
 
     return marks;

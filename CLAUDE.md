@@ -44,7 +44,13 @@ SNAP_DARK=1 SNAP_SIZE=940x620 xvfb-run -a ./build/EditorSnapshots_artefacts/Rele
 - `EditorSnapshots` renders every screen to PNG — the only way to see a
   layout from the container. **Look at the picture before saying a visual
   change works** (skill `juce-editor-render-check`).
-- `ClickMap` checks that every control a screen shows can be clicked.
+- `ClickMap` checks that every control a screen shows can be clicked, that
+  every Studio plugin opens again after switching, and that a page from the
+  top bar silences the exercise.
+- **Text:** never `g.drawText` / `g.drawFittedText` directly — use
+  `AbcTrainLookAndFeel::fitText` / `fitLines` (they shrink before they cut).
+  `TEXT_AUDIT=1` on EditorSnapshots lists every line that still does not fit;
+  run it on all 12 languages before calling a screen done.
 - `tests/RealtimeSafetyTest` enforces the audio-thread rule below.
 
 ## Structure (ADR 039, 040)

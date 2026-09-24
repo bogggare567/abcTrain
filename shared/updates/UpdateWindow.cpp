@@ -256,13 +256,13 @@ void UpdateWindow::paint (juce::Graphics& g)
 
     g.setColour (theme.textBright);
     g.setFont (AbcTrainLookAndFeel::titleFont());
-    g.drawText (text.title, inner.removeFromTop (30.0f), juce::Justification::centredLeft, false);
+    AbcTrainLookAndFeel::fitText (g, text.title, inner.removeFromTop (30.0f), juce::Justification::centredLeft, false);
 
     inner.removeFromTop ((float) AbcTrainTheme::Spacing::small);
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    g.drawFittedText (text.body.replace ("{{latest}}", release.tagName)
+    AbcTrainLookAndFeel::fitLines (g, text.body.replace ("{{latest}}", release.tagName)
                                .replace ("{{current}}", CurrentVersion::string),
                       inner.removeFromTop (40.0f).toNearestInt(),
                       juce::Justification::topLeft, 2);
@@ -276,7 +276,7 @@ void UpdateWindow::paint (juce::Graphics& g)
         // and until now nothing answered it.
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawText (AbcTrainLookAndFeel::toCaps (text.installedHere),
+        AbcTrainLookAndFeel::fitText (g, AbcTrainLookAndFeel::toCaps (text.installedHere),
                     inner.removeFromTop (16.0f), juce::Justification::topLeft, false);
 
         auto list = inner;
@@ -285,7 +285,7 @@ void UpdateWindow::paint (juce::Graphics& g)
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (text.nothingFound, list.toNearestInt(),
+            AbcTrainLookAndFeel::fitLines (g, text.nothingFound, list.toNearestInt(),
                               juce::Justification::topLeft, 2);
         }
         else
@@ -300,12 +300,12 @@ void UpdateWindow::paint (juce::Graphics& g)
                 auto line = list.removeFromTop (15.0f);
 
                 g.setColour (theme.text);
-                g.drawText (entry.product + "  ·  " + entry.format,
+                AbcTrainLookAndFeel::fitText (g, entry.product + "  ·  " + entry.format,
                             line.removeFromLeft (line.getWidth() * 0.62f),
                             juce::Justification::centredLeft, true);
 
                 g.setColour (theme.textDim);
-                g.drawText (entry.version.isNotEmpty() ? entry.version : text.versionUnknown,
+                AbcTrainLookAndFeel::fitText (g, entry.version.isNotEmpty() ? entry.version : text.versionUnknown,
                             line, juce::Justification::centredRight, true);
             }
         }
@@ -314,7 +314,7 @@ void UpdateWindow::paint (juce::Graphics& g)
         {
             g.setColour (theme.accentWarm);
             g.setFont (AbcTrainLookAndFeel::bodyFont());
-            g.drawFittedText (text.noAsset, inner.removeFromBottom (34.0f).toNearestInt(),
+            AbcTrainLookAndFeel::fitLines (g, text.noAsset, inner.removeFromBottom (34.0f).toNearestInt(),
                               juce::Justification::bottomLeft, 2);
         }
 
@@ -328,7 +328,7 @@ void UpdateWindow::paint (juce::Graphics& g)
 
         g.setColour (theme.text);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (text.downloading.replace ("{{done}}", megabytes (done))
+        AbcTrainLookAndFeel::fitText (g, text.downloading.replace ("{{done}}", megabytes (done))
                                      .replace ("{{total}}", megabytes (bytesTotal)),
                     inner.removeFromTop (22.0f), juce::Justification::centredLeft, false);
 
@@ -350,7 +350,7 @@ void UpdateWindow::paint (juce::Graphics& g)
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::microFont());
-        g.drawText (release.assetName, inner.removeFromTop (16.0f),
+        AbcTrainLookAndFeel::fitText (g, release.assetName, inner.removeFromTop (16.0f),
                     juce::Justification::centredLeft, true);
 
         return;
@@ -358,7 +358,7 @@ void UpdateWindow::paint (juce::Graphics& g)
 
     g.setColour (phase == Phase::failed ? theme.negative : theme.text);
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    g.drawFittedText (status, inner.toNearestInt(), juce::Justification::topLeft, 4);
+    AbcTrainLookAndFeel::fitLines (g, status, inner.toNearestInt(), juce::Justification::topLeft, 4);
 }
 
 void UpdateWindow::resized()

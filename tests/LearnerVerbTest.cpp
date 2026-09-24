@@ -1,6 +1,7 @@
 #include <juce_core/juce_core.h>
 #include "../LearnerVerb/Source/PluginProcessor.h"
 #include "TestUtils.h"
+#include "../LearnerVerb/Source/RoomView.h"
 
 // Reverb has no clean closed-form target the way LearnerComp's compression
 // math does, so these are behavioral/smoke tests: does a tail persist
@@ -151,6 +152,29 @@ public:
             processor.applyPreset (-1);
 
             expectEquals (processor.apvts.getRawParameterValue (LearnerVerbProcessor::decayParamId)->load(), decayBefore);
+        }
+
+        beginTest ("the room's geometry gives the pre-delay the knob asks for");
+        {
+            // RoomView places the source so that the first reflection off
+            // the walls or ceiling arrives Pre-delay after the direct
+            // sound. Where the room can make that gap, it must.
+            RoomView room;
+
+            for (const auto type : { 0, 1 })
+                for (const auto size : { 0.2f, 0.5f, 0.9f })
+                    for (const auto ms : { 2.0f, 8.0f, 15.0f })
+                    {
+                        room.setRoom (type, size, ms, 0.4f);
+
+                        if (! room.isPreDelayBeyondRoom())
+                            expectWithinAbsoluteError (room.getGeometricPreDelayMs(), ms, 1.5f,
+                                                       "type " + juce::String (type) + " size " + juce::String (size));
+                    }
+
+            // And a knob beyond what the walls can give is said, not faked.
+            room.setRoom (0, 0.0f, 240.0f, 0.4f);
+            expect (room.isPreDelayBeyondRoom());
         }
     }
 };

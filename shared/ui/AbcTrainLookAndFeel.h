@@ -99,6 +99,7 @@ public:
     static juce::Font captionFont();
 
     juce::Font getLabelFont (juce::Label&) override;
+    void drawLabel (juce::Graphics&, juce::Label&) override;
     juce::Font getTextButtonFont (juce::TextButton&, int buttonHeight) override;
     juce::Font getComboBoxFont (juce::ComboBox&) override;
     juce::Font getPopupMenuFont() override;
@@ -226,6 +227,60 @@ public:
                                  juce::Justification = juce::Justification::centredLeft);
 
     static float trackedTextWidth (const juce::String&, const juce::Font&, float trackingPx);
+
+    // One line of text that always fits its box - the drop-in for
+    // Graphics::drawText everywhere in the product.
+    //
+    // Every layout here was sized against English, and German, Russian or
+    // Polish run 20-40% longer. Graphics::drawText answers that by cutting
+    // the word - which is how "дБ" under a scale became "д". This draws at
+    // the current font when it fits; otherwise it gives up the letter-
+    // spacing first, then the size (down to three quarters), then width
+    // (down to 70%), and only after all that cuts. drawTrackedText does
+    // the same, so buttons fit too.
+    static void fitText (juce::Graphics&, const juce::String&, juce::Rectangle<float>,
+                         juce::Justification, bool useEllipsesIfTooLong = true);
+    static void fitText (juce::Graphics& g, const juce::String& text, juce::Rectangle<int> area,
+                         juce::Justification j, bool useEllipsesIfTooLong = true)
+    {
+        fitText (g, text, area.toFloat(), j, useEllipsesIfTooLong);
+    }
+    static void fitText (juce::Graphics& g, const juce::String& text, int x, int y, int w, int h,
+                         juce::Justification j, bool useEllipsesIfTooLong = true)
+    {
+        fitText (g, text, juce::Rectangle<float> ((float) x, (float) y, (float) w, (float) h), j, useEllipsesIfTooLong);
+    }
+
+    // Several lines, wrapped, that fit - the drop-in for
+    // Graphics::drawFittedText. That one squeezes glyphs sideways and then
+    // cuts; this first tries the same text a little smaller, which reads
+    // better than squashed letters, and records it when even that fails.
+    static void fitLines (juce::Graphics&, const juce::String&, juce::Rectangle<int>, juce::Justification,
+                          int maxLines, float minimumHorizontalScale = 0.0f);
+    static void fitLines (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area, juce::Justification j,
+                          int maxLines, float minimumHorizontalScale = 0.0f)
+    {
+        fitLines (g, text, area.toNearestInt(), j, maxLines, minimumHorizontalScale);
+    }
+    static void fitLines (juce::Graphics& g, const juce::String& text, int x, int y, int w, int h, juce::Justification j,
+                          int maxLines, float minimumHorizontalScale = 0.0f)
+    {
+        fitLines (g, text, juce::Rectangle<int> (x, y, w, h), j, maxLines, minimumHorizontalScale);
+    }
+
+    // The font scale fitLines would pick for this text (1, 0.92, 0.85 or
+    // 0.8). For a group of siblings - two answer cards, a row of notes -
+    // take the smallest over the group and draw them all at it, so one
+    // longer translation does not leave neighbours in different sizes.
+    static float fitLinesScale (const juce::String&, const juce::Font&, juce::Rectangle<int>, int maxLines);
+
+    // The text audit (tools/EditorSnapshots, TEXT_AUDIT=1): every line that
+    // had to be squeezed hard or cut is recorded with the screen it was on,
+    // so a language that does not fit is a list, not something to spot.
+    static void setTextAuditContext (const juce::String& screen);
+    static void enableTextAudit (bool);
+    static juce::StringArray takeTextAudit();
+    static void noteTextOverflow (const juce::String& text, float needed, float available);
 
     // Uppercase, for the tracked capitals this design uses as labels.
     //

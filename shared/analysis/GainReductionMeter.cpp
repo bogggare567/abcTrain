@@ -67,7 +67,7 @@ void GainReductionMeter::paint (juce::Graphics& g)
 
         g.setColour (displayedDb > 0.5f ? theme.textBright : theme.textDim);
         g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (13.0f));
-        g.drawText ((displayedDb > 0.05f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String())
+        AbcTrainLookAndFeel::fitText (g, (displayedDb > 0.05f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String())
                         + juce::String (displayedDb, 1).replace (".", decimal),
                     readout, juce::Justification::centred, false);
         return;
@@ -85,7 +85,7 @@ void GainReductionMeter::paint (juce::Graphics& g)
     auto readout = area.removeFromRight (86.0f);
     g.setColour (displayedDb > 0.5f ? theme.textBright : theme.textDim);
     g.setFont (AbcTrainLookAndFeel::monoFont());
-    g.drawText ((displayedDb > 0.05f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String())
+    AbcTrainLookAndFeel::fitText (g, (displayedDb > 0.05f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) : juce::String())
                     + juce::String (displayedDb, 1).replace (".", decimal) + " " + unit,
                 readout, juce::Justification::centredRight, false);
 
@@ -126,7 +126,7 @@ void GainReductionMeter::paint (juce::Graphics& g)
     for (int db : { 0, 6, 12, 18, 24 })
     {
         const auto x = bar.getRight() - bar.getWidth() * (float) db / rangeDb;
-        g.drawText (db == 0 ? juce::String ("0") : juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (db),
+        AbcTrainLookAndFeel::fitText (g, db == 0 ? juce::String ("0") : juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92")) + juce::String (db),
                     juce::Rectangle<float> (x - 20.0f, scale.getY(), 40.0f, scale.getHeight()),
                     juce::Justification::centred, false);
     }

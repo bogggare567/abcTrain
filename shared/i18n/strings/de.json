@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "Ein Klavier, das in der Band klar bleibt",
   "eq.lesson.piano.1": "Hochpass bei 40-60 Hz, damit der Bass das Fundament hat.",
   "eq.lesson.piano.2": "Etwas Matsch bei 250-500 Hz absenken.",
-  "eq.lesson.piano.3": "Heb die Klarheit bei 2-5 kHz an, damit die Akkorde lesbar sind."
+  "eq.lesson.piano.3": "Heb die Klarheit bei 2-5 kHz an, damit die Akkorde lesbar sind.",
+  "lp.room.first": "erste Reflexion +{{ms}} ms",
+  "lp.note.beyond": "mehr, als dieser Raum hergibt",
+  "lp.note.distance": "Quelle {{m}} m von dir",
+  "lp.note.preDelayOther": "Stille vor der Fahne",
+  "guide.verb.roomDrag": "Näher bei dir und weiter von den Wänden kommt die erste Reflexion später: diese Lücke ist das Pre-Delay."
 }

@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "在乐队中保持清晰的钢琴",
   "eq.lesson.piano.1": "40–60 Hz 高通，把低频留给贝斯。",
   "eq.lesson.piano.2": "在 250–500 Hz 衰减一些浑浊。",
-  "eq.lesson.piano.3": "在 2–5 kHz 提升清晰度，让和弦听得清。"
+  "eq.lesson.piano.3": "在 2–5 kHz 提升清晰度，让和弦听得清。",
+  "lp.room.first": "首次反射 +{{ms}} 毫秒",
+  "lp.note.beyond": "超出这个房间能给的",
+  "lp.note.distance": "声源距你 {{m}} 米",
+  "lp.note.preDelayOther": "尾音前的静默",
+  "guide.verb.roomDrag": "离你越近、离墙越远，首次反射来得越晚：这段间隔就是预延迟。"
 }

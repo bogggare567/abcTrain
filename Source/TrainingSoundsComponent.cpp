@@ -506,11 +506,11 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
 
         g.setColour (selected ? theme.textBright : theme.text);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        g.drawText (name, label.removeFromLeft (label.getWidth() - 30), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, name, label.removeFromLeft (label.getWidth() - 30), juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
-        g.drawText (detail, label, juce::Justification::centredRight, false);
+        AbcTrainLookAndFeel::fitText (g, detail, label, juce::Justification::centredRight, false);
     };
 
     const auto nothingSelected = ! library.getSelectedFile().existsAsFile();
@@ -530,13 +530,13 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
         paintImportProgress (g, status.removeFromTop (6));
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawText (importProgressFile, status, juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, importProgressFile, status, juce::Justification::centredLeft, true);
     }
     else if (text.importHint.isNotEmpty() && text.importHint != previousHint)
     {
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawFittedText (text.importHint, status, juce::Justification::bottomLeft, 2, 0.9f);
+        AbcTrainLookAndFeel::fitLines (g, text.importHint, status, juce::Justification::bottomLeft, 2, 0.9f);
     }
 }
 
@@ -621,12 +621,12 @@ void TrainingSoundsComponent::paintPreview (juce::Graphics& g, juce::Rectangle<i
     const auto name = file.getFileNameWithoutExtension();
     const auto nameWidth = juce::jmin (header.getWidth() / 2,
                                        (int) juce::GlyphArrangement::getStringWidth (AbcTrainLookAndFeel::headingFont(), name) + 4);
-    g.drawText (name, header.removeFromLeft (nameWidth), juce::Justification::centredLeft, true);
+    AbcTrainLookAndFeel::fitText (g, name, header.removeFromLeft (nameWidth), juce::Justification::centredLeft, true);
     header.removeFromLeft (10);
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
-    g.drawText (formatTime (progress * overview.seconds, true) + " / " + formatTime (overview.seconds, true),
+    AbcTrainLookAndFeel::fitText (g, formatTime (progress * overview.seconds, true) + " / " + formatTime (overview.seconds, true),
                 header, juce::Justification::centredLeft, false);
 
     const auto wave = previewWaveBounds().toFloat();
@@ -667,12 +667,12 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
         g.setColour (theme.textBright);
         g.setFont (font);
-        g.drawText (title, row.removeFromLeft (juce::jmin (width, row.getWidth() / 2)),
+        AbcTrainLookAndFeel::fitText (g, title, row.removeFromLeft (juce::jmin (width, row.getWidth() / 2)),
                     juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawText (caption, row, juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, caption, row, juce::Justification::centredLeft, true);
     }
 
     if (files == nullptr)
@@ -681,12 +681,12 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
         auto body = pane.withTrimmedTop (titleHeight);
         g.setColour (theme.text);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawFittedText (statusLabel.getText(), body.removeFromTop (48), juce::Justification::topLeft, 3);
+        AbcTrainLookAndFeel::fitLines (g, statusLabel.getText(), body.removeFromTop (48), juce::Justification::topLeft, 3);
 
         body.removeFromTop (AbcTrainTheme::Spacing::medium);
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::captionFont());
-        g.drawFittedText (library.getCategories().isEmpty() ? text.empty : text.pickCategory,
+        AbcTrainLookAndFeel::fitLines (g, library.getCategories().isEmpty() ? text.empty : text.pickCategory,
                           body.removeFromTop (40), juce::Justification::topLeft, 3);
         return;
     }
@@ -743,7 +743,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
             auto nameBox = inner.removeFromLeft (juce::jmin (150, inner.getWidth() / 4));
             g.setColour (focused || pinned ? theme.textBright : theme.text);
             g.setFont (AbcTrainLookAndFeel::labelFont());
-            g.drawText ((*files)[i].getFileNameWithoutExtension(), nameBox, juce::Justification::centredLeft, true);
+            AbcTrainLookAndFeel::fitText (g, (*files)[i].getFileNameWithoutExtension(), nameBox, juce::Justification::centredLeft, true);
 
             auto creditBox = inner.removeFromRight (juce::jmin (120, inner.getWidth() / 5));
             auto timeBox = inner.removeFromRight (52);
@@ -755,7 +755,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
-            g.drawText (formatTime (overview.seconds, false), timeBox, juce::Justification::centred, false);
+            AbcTrainLookAndFeel::fitText (g, formatTime (overview.seconds, false), timeBox, juce::Justification::centred, false);
 
             if (const auto* category = selectedCategoryInfo(); category != nullptr && i < category->clips.size())
             {
@@ -764,7 +764,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
                 if (credit.author.isNotEmpty() || credit.license.isNotEmpty())
                 {
                     g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (11.5f));
-                    g.drawFittedText (credit.license + (credit.author.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 (" \xc2\xb7\n")) + credit.author : juce::String()),
+                    AbcTrainLookAndFeel::fitLines (g, credit.license + (credit.author.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 (" \xc2\xb7\n")) + credit.author : juce::String()),
                                       creditBox, juce::Justification::centredLeft, 2, 0.9f);
                 }
             }
@@ -781,7 +781,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
     // page exists to change.
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    g.drawText (statusLabel.getText(), pane.withTop (pane.getBottom() - footerHeight + 8),
+    AbcTrainLookAndFeel::fitText (g, statusLabel.getText(), pane.withTop (pane.getBottom() - footerHeight + 8),
                 juce::Justification::centredLeft, true);
 }
 

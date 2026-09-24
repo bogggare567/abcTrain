@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "Um piano que continua claro na banda",
   "eq.lesson.piano.1": "Passa-altas em 40-60 Hz para deixar o grave para o baixo.",
   "eq.lesson.piano.2": "Corte um pouco de lama em 250-500 Hz.",
-  "eq.lesson.piano.3": "Levante a clareza em 2-5 kHz para os acordes ficarem legíveis."
+  "eq.lesson.piano.3": "Levante a clareza em 2-5 kHz para os acordes ficarem legíveis.",
+  "lp.room.first": "primeira reflexão +{{ms}} ms",
+  "lp.note.beyond": "mais do que esta sala consegue dar",
+  "lp.note.distance": "fonte a {{m}} m de você",
+  "lp.note.preDelayOther": "silêncio antes da cauda",
+  "guide.verb.roomDrag": "Mais perto de você e longe das paredes, a primeira reflexão chega mais tarde: essa lacuna é o pre-delay."
 }

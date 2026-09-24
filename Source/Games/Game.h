@@ -188,7 +188,7 @@ public:
     //   spectrum - where the energy sits (frequency, range, distortion)
     //   stereo   - the field (pan, width)
     //   envelope - level against time (compression, gain, reverb, delay)
-    enum class HintView { spectrum, stereo, envelope };
+    enum class HintView { spectrum, stereo, envelope, reflections };
 
     virtual HintView getHintView() const { return HintView::spectrum; }
 

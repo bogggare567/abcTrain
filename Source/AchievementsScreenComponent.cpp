@@ -431,12 +431,12 @@ void AchievementsScreenComponent::paintMedal (juce::Graphics& g, const Entry& en
 
     g.setColour (entry.earned ? theme.textBright : theme.text);
     g.setFont (AbcTrainLookAndFeel::headingFont());
-    g.drawFittedText (entry.name, text.removeFromTop (24.0f).toNearestInt(),
+    AbcTrainLookAndFeel::fitLines (g, entry.name, text.removeFromTop (24.0f).toNearestInt(),
                        juce::Justification::centred, 1, 0.8f);
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::labelFont());
-    g.drawFittedText (entry.description, text.removeFromTop (40.0f).toNearestInt(),
+    AbcTrainLookAndFeel::fitLines (g, entry.description, text.removeFromTop (40.0f).toNearestInt(),
                        juce::Justification::centredTop, 2, 0.85f);
 }
 
@@ -474,7 +474,7 @@ void AchievementsScreenComponent::paintStamp (juce::Graphics& g, const Entry& en
 
     g.setColour (entry.earned ? theme.textBright : theme.textDim);
     g.setFont (AbcTrainLookAndFeel::microFont());
-    g.drawFittedText (entry.name, inner.toNearestInt(), juce::Justification::centred, 2, 0.75f);
+    AbcTrainLookAndFeel::fitLines (g, entry.name, inner.toNearestInt(), juce::Justification::centred, 2, 0.75f);
 }
 
 void AchievementsScreenComponent::paint (juce::Graphics& g)
@@ -491,11 +491,11 @@ void AchievementsScreenComponent::paint (juce::Graphics& g)
         auto header = area.withHeight (headerHeight);
         g.setColour (theme.textBright);
         g.setFont (AbcTrainLookAndFeel::titleFont());
-        g.drawText (titleText, header.removeFromTop (30.0f).toNearestInt(), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, titleText, header.removeFromTop (30.0f).toNearestInt(), juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawText (subtitleText, header.removeFromTop (22.0f).toNearestInt(), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, subtitleText, header.removeFromTop (22.0f).toNearestInt(), juce::Justification::centredLeft, true);
     }
 
     paintSectionCaption (g, milestonesText, milestoneCaption.withTrimmedBottom (8.0f));
@@ -533,7 +533,7 @@ void AchievementsScreenComponent::paint (juce::Graphics& g)
         g.drawRect (tip, 1.0f);
         g.setColour (theme.textBright);
         g.setFont (font);
-        g.drawText (text, tip.toNearestInt(), juce::Justification::centred, false);
+        AbcTrainLookAndFeel::fitText (g, text, tip.toNearestInt(), juce::Justification::centred, false);
     }
 
     // The fade is the scrollbar: it appears only where there is more.

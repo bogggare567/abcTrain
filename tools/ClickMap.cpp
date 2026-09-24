@@ -354,6 +354,43 @@ int main (int argc, char* argv[])
         }
     }
 
+    // Behaviour the screens cannot show in one still frame.
+    {
+        std::cout << "\nStudio - every switch, twice\n------------------------------\n";
+        EarTrainerProcessor processor;
+        processor.prepareToPlay (44100.0, 512);
+        EarTrainerEditor editor (processor);
+        editor.setVisible (true);
+        editor.openStudioForSnapshot (StudioScreenComponent::Effect::eq);
+
+        const StudioScreenComponent::Effect order[] { StudioScreenComponent::Effect::comp, StudioScreenComponent::Effect::eq,
+                                                      StudioScreenComponent::Effect::verb, StudioScreenComponent::Effect::comp,
+                                                      StudioScreenComponent::Effect::verb, StudioScreenComponent::Effect::eq };
+        auto blank = 0;
+
+        for (auto e : order)
+        {
+            editor.switchStudioForSnapshot (e);
+            blank += editor.isStudioShowingEditorForSnapshot() ? 0 : 1;
+        }
+
+        std::cout << "  " << (blank == 0 ? "every plugin opens again" : juce::String (blank) + " switch(es) left an empty page") << "\n";
+        problems += blank;
+    }
+
+    {
+        std::cout << "\nTraining -> Training sounds\n---------------------------\n";
+        EarTrainerProcessor processor;
+        processor.prepareToPlay (44100.0, 512);
+        EarTrainerEditor editor (processor);
+        editor.setVisible (true);
+        editor.openTrainingForSnapshot (0);
+        editor.openSoundsFromTrainingForSnapshot();
+        const auto silent = ! editor.isSignalEnabledForSnapshot();
+        std::cout << "  " << (silent ? "the exercise goes quiet" : "the exercise keeps playing under the page") << "\n";
+        problems += silent ? 0 : 1;
+    }
+
     if (hadSettings)
         backup.moveFileTo (settings);
     else

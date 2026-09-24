@@ -138,7 +138,7 @@ void GuideTooltip::paint (juce::Graphics& g)
     // strings that ignored the user's text-size setting (and the chosen
     // typeface) while everything around it obeyed both.
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    g.drawFittedText (text,
+    AbcTrainLookAndFeel::fitLines (g, text,
                       bounds.reduced (18.0f, 8.0f).toNearestInt(),
                       juce::Justification::centredLeft, 3);
 }

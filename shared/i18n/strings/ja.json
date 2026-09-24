@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "バンドの中でも明瞭なピアノ",
   "eq.lesson.piano.1": "40–60 Hz にハイパスして低域はベースに任せる。",
   "eq.lesson.piano.2": "250–500 Hz の濁りを少しカット。",
-  "eq.lesson.piano.3": "2–5 kHz の明瞭さを上げてコードを聞き取りやすく。"
+  "eq.lesson.piano.3": "2–5 kHz の明瞭さを上げてコードを聞き取りやすく。",
+  "lp.room.first": "最初の反射 +{{ms}} ms",
+  "lp.note.beyond": "この部屋では作れない長さ",
+  "lp.note.distance": "音源まで {{m}} m",
+  "lp.note.preDelayOther": "テールの前の無音",
+  "guide.verb.roomDrag": "あなたに近く壁から遠いほど最初の反射は遅れて届く。その隙間がプリディレイ。"
 }

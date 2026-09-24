@@ -919,5 +919,10 @@
   "eq.lesson.piano.title": "밴드 속에서도 선명한 피아노",
   "eq.lesson.piano.1": "40–60 Hz 하이패스로 저역은 베이스에게.",
   "eq.lesson.piano.2": "250–500 Hz의 탁함을 약간 컷.",
-  "eq.lesson.piano.3": "2–5 kHz 명료함을 올려 코드가 들리게."
+  "eq.lesson.piano.3": "2–5 kHz 명료함을 올려 코드가 들리게.",
+  "lp.room.first": "첫 반사 +{{ms}} ms",
+  "lp.note.beyond": "이 방이 만들 수 있는 것보다 김",
+  "lp.note.distance": "음원까지 {{m}} m",
+  "lp.note.preDelayOther": "테일 앞의 무음",
+  "guide.verb.roomDrag": "당신에게 가깝고 벽에서 멀수록 첫 반사가 늦게 온다. 그 간격이 프리딜레이다."
 }

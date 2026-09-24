@@ -57,6 +57,7 @@ public:
 
 private:
     void showEditorFor (Effect);
+    void dropEditor();
     void refreshSwitch();
 
     Host host;

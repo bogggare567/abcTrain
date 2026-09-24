@@ -75,7 +75,7 @@ public:
 
         g.setColour (theme.textBright);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        g.drawFittedText (text, area, juce::Justification::centredLeft, 2, 0.9f);
+        AbcTrainLookAndFeel::fitLines (g, text, area, juce::Justification::centredLeft, 2, 0.9f);
     }
 
     void resized() override

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LearnerVerb/Source/EchogramView.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "shared/updates/UpdateWindow.h"
 #include <juce_animation/juce_animation.h>
@@ -154,6 +156,18 @@ public:
     // page that sits *under* that bar with the bar not there showed a
     // layout the player never sees, which is the one thing a contact
     // sheet must not do.
+    // Snapshot and ClickMap seam: the switch pressed the way a player
+    // presses it, after the page is already open.
+    bool isStudioShowingEditorForSnapshot() const { return studioScreen.isOpen(); }
+    bool isSignalEnabledForSnapshot() const { return processor.isSignalEnabled(); }
+    void openSoundsFromTrainingForSnapshot() { topNav.onItemChosen (TopNavComponent::Item::sounds); }
+
+    void switchStudioForSnapshot (StudioScreenComponent::Effect effect)
+    {
+        studioScreen.select (effect);
+        resized();
+    }
+
     void openStudioForSnapshot (StudioScreenComponent::Effect effect)
     {
         showScreen (Screen::home);
@@ -518,7 +532,7 @@ private:
 
             g.setColour (colour.withAlpha (alpha));
             g.setFont (AbcTrainLookAndFeel::titleFont());
-            g.drawText (text,
+            AbcTrainLookAndFeel::fitText (g, text,
                         juce::Rectangle<float> (0.0f, y, (float) getWidth(), 26.0f),
                         juce::Justification::centred, false);
         }
@@ -583,7 +597,7 @@ private:
 
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::headingFont());
-            g.drawText (caption,
+            AbcTrainLookAndFeel::fitText (g, caption,
                         getLocalBounds().toFloat().withTrimmedTop ((float) getHeight() * 0.22f)
                                                    .withHeight (20.0f),
                         juce::Justification::centred, false);
@@ -592,7 +606,7 @@ private:
             digitFont = digitFont.withHeight (digitFont.getHeight() * 2.2f * scale);
             g.setColour (theme.textBright.withAlpha (0.35f + 0.65f * eased));
             g.setFont (digitFont);
-            g.drawText (juce::String (digit), getLocalBounds().toFloat(),
+            AbcTrainLookAndFeel::fitText (g, juce::String (digit), getLocalBounds().toFloat(),
                         juce::Justification::centred, false);
         }
 
@@ -657,7 +671,7 @@ private:
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::titleFont());
             const auto scoreBox = area.removeFromLeft (52.0f);
-            g.drawText (juce::String (score), scoreBox, juce::Justification::centredLeft, false);
+            AbcTrainLookAndFeel::fitText (g, juce::String (score), scoreBox, juce::Justification::centredLeft, false);
 
             if (mode == SessionManager::Mode::survival)
             {
@@ -699,7 +713,7 @@ private:
                 g.setColour (urgent ? theme.negative : theme.text);
                 g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (
                     AbcTrainLookAndFeel::monoFontHeight * AbcTrainLookAndFeel::getTextScale() * 1.35f));
-                g.drawText (juce::String::formatted ("%d:%02d", seconds / 60, seconds % 60),
+                AbcTrainLookAndFeel::fitText (g, juce::String::formatted ("%d:%02d", seconds / 60, seconds % 60),
                             area, juce::Justification::centredLeft, false);
             }
         }
@@ -835,22 +849,12 @@ private:
                                       .withHeight (AbcTrainLookAndFeel::displayFontHeight
                                                      * AbcTrainLookAndFeel::getTextScale() * 0.8f);
 
-                if (state.rewardLine.isNotEmpty())
-                {
-                    const auto rewardFont = AbcTrainLookAndFeel::headingFont();
-                    const auto width = juce::jmin (line.getWidth() * 0.4f,
-                                                    juce::GlyphArrangement::getStringWidth (rewardFont, state.rewardLine) + 24.0f);
-                    auto reward = line.removeFromRight (width);
-
-                    g.setColour (state.challengeComplete ? theme.positive : theme.accentWarm);
-                    g.setFont (rewardFont);
-                    g.drawText (state.rewardLine, reward.toNearestInt(),
-                                 juce::Justification::centredRight, false);
-                }
-
+                // What it pays moved down to the progress row: beside the
+                // headline, a longer translation ran the two into one
+                // line ("...Bereich“Aufgabe für...").
                 g.setColour (state.challengeComplete ? theme.positive : theme.textBright);
                 g.setFont (font);
-                g.drawText (state.challengeLine, line.toNearestInt(),
+                AbcTrainLookAndFeel::fitText (g, state.challengeLine, line.toNearestInt(),
                              juce::Justification::centredLeft, true);
             }
 
@@ -880,9 +884,18 @@ private:
                 {
                     g.setColour (theme.textDim);
                     g.setFont (AbcTrainLookAndFeel::labelFont());
-                    g.drawText (state.progressCaption,
-                                 row.withTrimmedLeft (14.0f).toNearestInt(),
+                    AbcTrainLookAndFeel::fitText (g, state.progressCaption,
+                                 row.withTrimmedLeft (14.0f).withWidth (captionWidth).toNearestInt(),
                                  juce::Justification::centredLeft, false);
+                    row.removeFromLeft (captionWidth + 14.0f);
+                }
+
+                if (state.rewardLine.isNotEmpty())
+                {
+                    g.setColour (state.challengeComplete ? theme.positive : theme.accentWarm);
+                    g.setFont (AbcTrainLookAndFeel::labelFont());
+                    AbcTrainLookAndFeel::fitText (g, state.rewardLine, row.withTrimmedLeft (8.0f).toNearestInt(),
+                                 juce::Justification::centredRight, false);
                 }
             }
 
@@ -903,7 +916,7 @@ private:
                 g.setFont (AbcTrainLookAndFeel::displayFont()
                                .withHeight (AbcTrainLookAndFeel::displayFontHeight
                                               * AbcTrainLookAndFeel::getTextScale() * 0.72f));
-                g.drawFittedText (state.levelText, stack.toNearestInt(),
+                AbcTrainLookAndFeel::fitLines (g, state.levelText, stack.toNearestInt(),
                                    juce::Justification::centredLeft, 1, 0.6f);
             }
         }
@@ -1137,6 +1150,7 @@ private:
     Vectorscope vectorscope;
     SpectrumAnalyzerComponent hintSpectrum;
     WaveformDisplay hintWaveform;
+    EchogramView hintEcho;
     bool hintRevealed = false;
 
     // Which of the three the active exercise wants. One place, because

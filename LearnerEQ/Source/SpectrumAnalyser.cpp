@@ -183,7 +183,7 @@ void SpectrumAnalyserComponent::paintZones (juce::Graphics& g, juce::Rectangle<f
             g.setFont (AbcTrainLookAndFeel::microFont());
             const auto name = (int) i < zoneNames.size() && zoneNames[(int) i].isNotEmpty() ? zoneNames[(int) i]
                                                                                           : juce::String (zone.name);
-            g.drawText (name, labelBox, juce::Justification::centred, false);
+            AbcTrainLookAndFeel::fitText (g, name, labelBox, juce::Justification::centred, false);
         }
     }
 }
@@ -213,7 +213,7 @@ void SpectrumAnalyserComponent::paintCustomZones (juce::Graphics& g, juce::Recta
 
         g.setColour (zone.colour);
         g.setFont (AbcTrainLookAndFeel::microFont());
-        g.drawText (AbcTrainLookAndFeel::toCaps (zone.name),
+        AbcTrainLookAndFeel::fitText (g, AbcTrainLookAndFeel::toCaps (zone.name),
                     juce::Rectangle<float> (left, labelStrip.getY(), right - left, labelStrip.getHeight()),
                     juce::Justification::centred, false);
     }
@@ -260,7 +260,7 @@ void SpectrumAnalyserComponent::paintNodes (juce::Graphics& g, juce::Rectangle<f
         // The band's number, so the dot and its chip below name each other.
         g.setColour (theme.displayBackground);
         g.setFont (AbcTrainLookAndFeel::microFont().withHeight (radius * 1.3f));
-        g.drawText (juce::String (band.index + 1), juce::Rectangle<float> (x - radius, y - radius, radius * 2.0f, radius * 2.0f),
+        AbcTrainLookAndFeel::fitText (g, juce::String (band.index + 1), juce::Rectangle<float> (x - radius, y - radius, radius * 2.0f, radius * 2.0f),
                     juce::Justification::centred, false);
     }
 }

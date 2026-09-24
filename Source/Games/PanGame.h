@@ -99,6 +99,13 @@ public:
     // See Game::getHintView.
     HintView getHintView() const override { return HintView::stereo; }
 
+    // A little over two bands either side rather than three: the field is
+    // short, and three bands at the easy levels shaded all of it.
+    float getHintHalfWidthNormalised() const override
+    {
+        return juce::jmin (0.5f, getToleranceNormalised() * 2.2f);
+    }
+
     int getScore() const override { return correctCount; }
     int getRoundsPlayed() const override { return totalCount; }
 

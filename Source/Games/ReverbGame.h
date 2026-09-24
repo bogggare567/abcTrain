@@ -4,6 +4,7 @@
 #include "shared/audio/GainMatch.h"
 #include "shared/audio/TestSignalGenerator.h"
 #include "shared/dsp/ReverbEngine.h"
+#include "shared/dsp/ReverbMeasure.h"
 #include <array>
 #include <atomic>
 #include <vector>
@@ -102,7 +103,22 @@ public:
     juce::String getFeedbackText() const override;
 
     // See Game::getHintView.
-    HintView getHintView() const override { return HintView::envelope; }
+    // The reflections of this round's space over time - direct hit, first
+    // reflections, tail - the picture Learner Verb draws for its knobs.
+    HintView getHintView() const override { return HintView::reflections; }
+
+    // This round's space, for that picture. Message thread; it is plain
+    // data copied at newRound().
+    ReverbMeasure::Setting getRoundSetting() const
+    {
+        ReverbMeasure::Setting s;
+        s.type = roundVariant.engine;
+        s.decaySeconds = roundVariant.decaySeconds;
+        s.preDelayMs = roundVariant.preDelayMs;
+        s.size = roundVariant.size;
+        s.damping = roundVariant.damping;
+        return s;
+    }
 
     // How far apart two type *names* are on the character axis, for
     // tests/ReverbGameTest - which needs to check that harder levels

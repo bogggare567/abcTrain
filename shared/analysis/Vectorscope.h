@@ -34,6 +34,11 @@ public:
     // round's image can't linger into the next one.
     void reset() noexcept;
 
+
+    // Drawn straight onto the page, without its own well: for the trainer's
+    // hint, which sits on the page background (possibly the player's own
+    // picture) instead of in a box of its own.
+    void setBackdropVisible (bool shouldShow) { backdrop = shouldShow; setOpaque (shouldShow && opaqueWithBackdrop); repaint(); }
     void paint (juce::Graphics&) override;
 
 private:
@@ -44,6 +49,9 @@ private:
     std::array<std::atomic<float>, numPoints> pointsX {};
     std::array<std::atomic<float>, numPoints> pointsY {};
     std::atomic<int> writeIndex { 0 };
+
+    bool backdrop = true;
+    bool opaqueWithBackdrop = true;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Vectorscope)
 };

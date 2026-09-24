@@ -53,7 +53,7 @@ void StudioScreenComponent::close()
     if (host.setActiveEffect != nullptr)
         host.setActiveEffect (-1);
 
-    editor.reset();
+    dropEditor();
 }
 
 void StudioScreenComponent::select (Effect effect)
@@ -73,13 +73,13 @@ void StudioScreenComponent::showEditorFor (Effect effect)
     // The old editor goes before the new one exists: two editors of the
     // same kind alive at once would both register their displays with
     // processors, and the one being destroyed would unregister the other's.
-    editor.reset();
+    dropEditor();
 
     if (host.processorFor == nullptr)
         return;
 
     auto& processor = host.processorFor ((int) effect);
-    editor.reset (processor.createEditorIfNeeded());
+    editor.reset (processor.getActiveEditor() == nullptr ? processor.createEditorAndMakeActive() : nullptr);
 
     if (editor != nullptr)
     {
@@ -98,6 +98,18 @@ void StudioScreenComponent::showEditorFor (Effect effect)
 
     resized();
     repaint();
+}
+
+void StudioScreenComponent::dropEditor()
+{
+    // Whoever deletes an editor has to tell its processor first - that is
+    // the host's job, and here this screen is the host. Without it the
+    // processor kept pointing at the dead editor, refused to make a new
+    // one, and the second visit to a plugin was an empty page.
+    if (editor != nullptr)
+        editor->getAudioProcessor()->editorBeingDeleted (editor.get());
+
+    editor.reset();
 }
 
 void StudioScreenComponent::refreshSwitch()

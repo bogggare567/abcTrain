@@ -73,8 +73,8 @@ public:
         }
 
         g.setColour (theme.textDim);
-        g.drawText (text.out, plot.withHeight (14.0f).translated (4.0f, 2.0f), juce::Justification::centredLeft, false);
-        g.drawText (text.in, plot.withTrimmedTop (plot.getHeight() - 16.0f).translated (0.0f, -2.0f),
+        AbcTrainLookAndFeel::fitText (g, text.out, plot.withHeight (14.0f).translated (4.0f, 2.0f), juce::Justification::centredLeft, false);
+        AbcTrainLookAndFeel::fitText (g, text.in, plot.withTrimmedTop (plot.getHeight() - 16.0f).translated (0.0f, -2.0f),
                     juce::Justification::centredRight, false);
 
         // The unity line, dashed: what "no compression" would be.
