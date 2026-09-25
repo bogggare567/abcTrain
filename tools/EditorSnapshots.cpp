@@ -54,7 +54,8 @@ namespace
             const auto base = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("abcTrainSnapshotLibrary");
             base.deleteRecursively();
             const auto library = base.getChildFile ("Training Sounds");
-            constexpr double rate = 44100.0;
+            // static: MSVC will not let a lambda use a local constexpr without capturing it.
+            static constexpr double rate = 44100.0;
 
             const auto write = [] (const juce::File& file, double seconds, double bpm, float pitch, float noise, float wide)
             {

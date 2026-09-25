@@ -172,8 +172,15 @@ public:
                                              name.toRawUTF8(), maxDev, -rmsErrorDb, peakErrorDb, worstBand));
 
         // 24-bit reference 18 dB down: quantisation alone is 5e-7. The margin is for a
-        // different compiler or CPU (fused multiply-add) - not for a change.
-        expect (maxDev < 2.0e-4, name + ": max sample deviation " + juce::String (maxDev));
+        // different compiler or CPU - not for a change. It is set by the worst case
+        // actually measured: the EQ's 24 dB/oct high-pass at 80 Hz, 96 kHz, on
+        // Apple Silicon (fused multiply-add, another libm) - 3.9e-4, error 74 dB
+        // below the signal, 0.03 dB in the worst band. Poles that close to the unit
+        // circle turn a last-bit difference in a coefficient into a slow drift of
+        // the low end, so the sample-by-sample number is the loose one; a real
+        // change to the sound still fails the RMS and third-octave checks below,
+        // which stay as tight as they were.
+        expect (maxDev < 1.0e-3, name + ": max sample deviation " + juce::String (maxDev));
         expect (rmsErrorDb < -60.0, name + ": error only " + juce::String (-rmsErrorDb, 1) + " dB below the signal");
         expect (std::abs (peakErrorDb) < 0.05, name + ": peak moved " + juce::String (peakErrorDb, 3) + " dB");
         expect (worstBand < 0.1f, name + ": a third-octave band moved " + juce::String (worstBand, 3) + " dB");

@@ -118,7 +118,45 @@ jobs:
           cmake -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release --parallel 2
 
+      # Analyse without uploading, drop what is not ours, then upload.
+      #
+      # A built C++ analysis cannot be told to skip build/_deps (see
+      # codeql-config.yml), and every C++ finding so far - ~45 of them,
+      # e.g. #46 "multiplication result converted to larger type" in
+      # juce_AudioSampleBuffer.h - was inside JUCE or the libraries it
+      # vendors. Dismissing them by hand did not scale: each JUCE update or
+      # cache miss brought them back as new alerts. Removing results whose
+      # file is under build/ from the SARIF before upload is the filter
+      # GitHub documents for this case, done in ten lines of Python instead
+      # of a third-party action with write access to the Security tab.
       - name: Analyse
         uses: github/codeql-action/analyze@v4
         with:
+          category: /language:${{ matrix.language }}
+          upload: never
+          output: sarif-results
+
+      - name: Drop third-party findings (build/_deps)
+        shell: python
+        run: |
+          import glob, json
+          for path in glob.glob("sarif-results/*.sarif"):
+              with open(path, encoding="utf-8") as f:
+                  sarif = json.load(f)
+              for run in sarif.get("runs", []):
+                  kept = []
+                  for r in run.get("results", []):
+                      locs = r.get("locations") or [{}]
+                      uri = locs[0].get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "")
+                      if not uri.startswith(("build/", "_deps/")) and "/_deps/" not in uri:
+                          kept.append(r)
+                  print(f"{path}: kept {len(kept)} of {len(run.get('results', []))}")
+                  run["results"] = kept
+              with open(path, "w", encoding="utf-8") as f:
+                  json.dump(sarif, f)
+
+      - name: Upload results
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: sarif-results
           category: /language:${{ matrix.language }}

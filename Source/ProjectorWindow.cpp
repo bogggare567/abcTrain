@@ -492,11 +492,11 @@ void ProjectorWindow::placeOnBestDisplay()
 
     for (const auto& d : displays.displays)
     {
-        if (main != nullptr && d.totalArea == main->totalArea)
+        if (main != nullptr && d.logicalBounds == main->logicalBounds)
             continue;
 
         // A second screen: that is the projector. Fill it.
-        setBounds (d.userArea.reduced (40));
+        setBounds (d.userBounds.toNearestInt().reduced (40));
         setFullScreen (true);
         return;
     }

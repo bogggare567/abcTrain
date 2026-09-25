@@ -687,13 +687,13 @@ void LiveScreenComponent::timerCallback()
 
 void LiveScreenComponent::refreshVisibility()
 {
-    const auto seminar = tab == Tab::seminar;
+    const auto onSeminar = tab == Tab::seminar;
     const auto battle = tab == Tab::battle;
     const auto rating = tab == Tab::rating;
-    const auto hosting = seminar && ! roomOpen;
+    const auto hosting = onSeminar && ! roomOpen;
 
-    codeEditor.setVisible (seminar);
-    joinButton.setVisible (seminar);
+    codeEditor.setVisible (onSeminar);
+    joinButton.setVisible (onSeminar);
 
     for (auto* c : { (juce::Component*) &whereChoice, (juce::Component*) &whoChoice,
                      (juce::Component*) &roundsChoice, (juce::Component*) &openRoomButton })
@@ -705,10 +705,10 @@ void LiveScreenComponent::refreshVisibility()
     invitesButton.setVisible (hosting && whoChoice.getValue() == 1);
 
     for (auto* b : { &projectorButton, &startButton, &closeRoomButton })
-        b->setVisible (seminar && roomOpen);
+        b->setVisible (onSeminar && roomOpen);
 
     for (auto* b : { &playAButton, &playBButton, &stopButton })
-        b->setVisible (seminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
+        b->setVisible (onSeminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
 
     for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &searchButton,
                      (juce::Component*) &challengeButton, (juce::Component*) &battleSignInButton,
