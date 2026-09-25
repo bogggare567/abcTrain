@@ -53,13 +53,31 @@ LiveScreenComponent::LiveScreenComponent()
     addAndMakeVisible (accountButton);
 
     // ---- seminar: join ----
-    codeEditor.setInputRestrictions (7, "0123456789 ");
+    codeEditor.setInputRestrictions (28, "0123456789 .:/httpHTTP");
     codeEditor.setJustification (juce::Justification::centred);
     codeEditor.setFont (LnF::monoFont().withHeight (24.0f));
-    codeEditor.setTextToShowWhenEmpty ("482 913", AbcTrainTheme::current().textDim);
+    codeEditor.setTextToShowWhenEmpty ("192.168.0.14:8930", AbcTrainTheme::current().textDim);
     addChildComponent (codeEditor);
 
-    joinButton.onClick = [this] { if (requireServer()) setNote (text.notYet); };
+    joinButton.onClick = [this]
+    {
+        // An address from a presenter's screen ("192.168.0.14:8930"): a local
+        // room, opened in the browser - the same page the phones get.
+        const auto typed = codeEditor.getText().removeCharacters (" ");
+
+        if (typed.containsChar ('.') || typed.containsChar (':'))
+        {
+            auto address = typed.startsWith ("http") ? typed : "http://" + typed;
+            if (! address.fromFirstOccurrenceOf ("//", false, false).containsChar (':'))
+                address << ":8930";
+
+            juce::URL (address).launchInDefaultBrowser();
+            return;
+        }
+
+        if (requireServer())
+            setNote (text.onlineNotYet);
+    };
     addChildComponent (joinButton);
 
     // ---- seminar: host ----
@@ -120,34 +138,61 @@ LiveScreenComponent::LiveScreenComponent()
                 resized();
                 return;
             }
-        }
-        else if (! requireServer())
-        {
+
+            openLocalRoom();
             return;
         }
 
-        juce::Random r;
-        roomCode = randomRoomCode (r);
-        roomOpen = true;
-        refreshVisibility();   // the host controls give way to the room - without this they stayed on top of it
-        resized();
-        repaint();
+        if (! requireServer())
+            return;
+
+        setNote (text.onlineNotYet);
     };
     LnF::makePrimary (openRoomButton, true);
     addChildComponent (openRoomButton);
 
-    projectorButton.onClick = [this] { setNote (text.notYet); };
-    startButton.onClick = [this] { if (whereChoice.getValue() == 1 || requireServer()) setNote (text.notYet); };
-    LnF::makePrimary (startButton, true);
-    closeRoomButton.onClick = [this]
+    projectorButton.onClick = [this]
     {
-        roomOpen = false;
+        if (projector != nullptr)
+        {
+            projector.reset();
+            refreshHostButtons();
+            return;
+        }
+
+        openProjector();
+    };
+
+    // One button, the next step of the round: Start -> Show the answer ->
+    // Next -> ... -> Once more.
+    startButton.onClick = [this]
+    {
+        if (seminar == nullptr)
+            return;
+
+        switch (seminar->getStage())
+        {
+            case SeminarHost::Stage::lobby:     seminar->start(); break;
+            case SeminarHost::Stage::listening: seminar->reveal(); break;
+            case SeminarHost::Stage::revealed:  seminar->next(); break;
+            case SeminarHost::Stage::finished:  seminar->again(); break;
+            case SeminarHost::Stage::closed:    break;
+        }
+
+        refreshHostButtons();
         refreshVisibility();
         resized();
         repaint();
     };
+    LnF::makePrimary (startButton, true);
 
-    for (auto* b : { &projectorButton, &startButton, &closeRoomButton })
+    playAButton.onClick = [this] { if (seminar != nullptr) seminar->setSound (true, false); refreshHostButtons(); };
+    playBButton.onClick = [this] { if (seminar != nullptr) seminar->setSound (true, true); refreshHostButtons(); };
+    stopButton.onClick = [this] { if (seminar != nullptr) seminar->setSound (false, seminar->isProcessed()); refreshHostButtons(); };
+
+    closeRoomButton.onClick = [this] { closeLocalRoom(); };
+
+    for (auto* b : { &projectorButton, &startButton, &closeRoomButton, &playAButton, &playBButton, &stopButton })
         addChildComponent (b);
 
     // ---- battle ----
@@ -234,18 +279,37 @@ LiveScreenComponent::LiveScreenComponent()
             return;
         }
 
-        setNote (text.notYet);   // print / mail the codes
+        // Print the cards (local), or - online - mail them, which needs
+        // the server that is not running yet.
+        if (whereChoice.getValue() != 1)
+        {
+            setNote (text.onlineNotYet);
+            return;
+        }
+
+        const auto people = inviteList.getInvitees();
+
+        if (people.empty())
+        {
+            setNote (text.needPeople);
+            return;
+        }
+
+        lan = LiveLink::scanLan();
+        CodeSheet::open (text.roomTitle, roomAddress(), people, text.sheet);
     };
 
-    overlayTertiary.onClick = [this] { makeCodes(); };
+    // Paste: whatever is on the clipboard, as rows.
+    overlayTertiary.onClick = [this]
+    {
+        inviteList.appendFromText (juce::SystemClipboard::getTextFromClipboard());
+    };
     LnF::makePrimary (overlayPrimary, true);
 
-    inviteEditor.setMultiLine (true, false);
-    inviteEditor.setReturnKeyStartsNewLine (true);
-    inviteEditor.setFont (LnF::bodyFont());
+    inviteList.onChanged = [this] { overlayLayer.repaint(); };
 
     for (auto* c : { (juce::Component*) &overlayPrimary, (juce::Component*) &overlaySecondary,
-                     (juce::Component*) &overlayTertiary, (juce::Component*) &inviteEditor })
+                     (juce::Component*) &overlayTertiary, (juce::Component*) &inviteList })
         overlayLayer.addChildComponent (c);
 
     addChildComponent (overlayLayer);
@@ -305,12 +369,22 @@ void LiveScreenComponent::setStrings (Strings newStrings)
         botChoice.setOptions (ids, text.botNames);
     }
     openSiteButton.setButtonText (text.openOnSite);
-    inviteEditor.setTextToShowWhenEmpty (juce::String::fromUTF8 ("\xd0\x98\xd0\xb2\xd0\xb0\xd0\xbd \xd0\x9f\xd0\xb5\xd1\x82\xd1\x80\xd0\xbe\xd0\xb2, ivan@school.ru"),
-                                         AbcTrainTheme::current().textDim);
+    inviteList.setStrings ({ text.nameCol, text.mailCol, text.codeCol, text.namePlaceholder, text.mailPlaceholder, text.cancel });
+    playAButton.setButtonText (text.playA);
+    playBButton.setButtonText (text.playB);
+    stopButton.setButtonText (text.stopSound);
+
+    if (seminar != nullptr)
+        seminar->getRoom().setPageStrings (text.phone);
+
+    if (projector != nullptr)
+        projector->getView().setStrings (text.projectorText);
+
+    refreshHostButtons();
 
     const auto& theme = AbcTrainTheme::current();
 
-    for (auto* editor : { &codeEditor, &inviteEditor })
+    for (auto* editor : { &codeEditor })
     {
         editor->setColour (juce::TextEditor::backgroundColourId, theme.displayBackground);
         editor->setColour (juce::TextEditor::textColourId, theme.textBright);
@@ -368,14 +442,13 @@ void LiveScreenComponent::openRoomForSnapshot (bool local)
 {
     showTab (Tab::seminar);
     whereChoice.setValue (local ? 1 : 0);
-    whoChoice.setValue (1);
+    whoChoice.setValue (0);
 
     // Through the real button, not around it: a shortcut here once hid
     // the host controls staying on top of the open room.
     if (openRoomButton.onClick != nullptr)
         openRoomButton.onClick();
 
-    roomCode = "482 913";
     repaint();
 }
 
@@ -384,44 +457,215 @@ void LiveScreenComponent::openInvitesForSnapshot()
     showTab (Tab::seminar);
     whereChoice.setValue (1);
     whoChoice.setValue (1);
-    inviteEditor.setText (juce::String::fromUTF8 (
-        "\xd0\x98\xd0\xb2\xd0\xb0\xd0\xbd \xd0\x9f\xd0\xb5\xd1\x82\xd1\x80\xd0\xbe\xd0\xb2, ivan.p@school.ru\n"
-        "\xd0\x9c\xd0\xb0\xd1\x80\xd0\xb8\xd1\x8f \xd0\xa1\xd0\xbe\xd0\xba\xd0\xbe\xd0\xbb\xd0\xbe\xd0\xb2\xd0\xb0, m.sokolova@school.ru\n"
-        "\xd0\x90\xd1\x80\xd1\x82\xd1\x91\xd0\xbc \xd0\x9a\xd0\xb8\xd0\xbc, a.kim@school.ru"));
+    inviteList.setInvitees ({});
+    inviteList.appendFromText (juce::String::fromUTF8 (
+        "\xd0\x98\xd0\xb2\xd0\xb0\xd0\xbd \xd0\x9f\xd0\xb5\xd1\x82\xd1\x80\xd0\xbe\xd0\xb2\tivan.p@school.ru\n"
+        "\xd0\x9c\xd0\xb0\xd1\x80\xd0\xb8\xd1\x8f \xd0\xa1\xd0\xbe\xd0\xba\xd0\xbe\xd0\xbb\xd0\xbe\xd0\xb2\xd0\xb0\tm.sokolova@school\n"
+        "\xd0\x90\xd1\x80\xd1\x82\xd1\x91\xd0\xbc \xd0\x9a\xd0\xb8\xd0\xbc; a.kim@school.ru"));
     overlay = Overlay::invites;
-    makeCodes();
     layoutOverlay();
     refreshVisibility();
 }
 
-void LiveScreenComponent::makeCodes()
+void LiveScreenComponent::runRoundForSnapshot (bool revealed)
 {
-    invitees.clear();
-    juce::Random r (0x5eed);   // stable within a session is enough for a skeleton
+    openRoomForSnapshot (true);
 
-    for (auto line : juce::StringArray::fromLines (inviteEditor.getText()))
+    if (seminar == nullptr || ! roomOpen)
+        return;
+
+    // Three phones' worth of people, answering through the real protocol.
+    auto& room = seminar->getRoom();
+    const auto code = room.getRoomCode();
+    juce::StringArray tokens;
+
+    for (const auto* who : { "Ivan", "Maria", "Artyom" })
     {
-        line = line.trim();
-
-        if (line.isEmpty())
-            continue;
-
-        Invitee person;
-        person.name = line.upToFirstOccurrenceOf (",", false, false).trim();
-        person.mail = line.fromFirstOccurrenceOf (",", false, false).trim();
-        person.code = juce::String (r.nextInt ({ 1000, 9999 }));
-        invitees.push_back (person);
+        LocalRoom::Request r;
+        r.method = "POST";
+        r.path = "/api/join";
+        r.body = "{\"name\":\"" + juce::String (who) + "\",\"room\":\"" + code + "\"}";
+        const auto response = room.handleRequest (r);
+        tokens.add (juce::JSON::parse (response.body.toString()).getProperty ("token", {}).toString());
     }
 
+    seminar->start();
+
+    for (int i = 0; i < tokens.size(); ++i)
+    {
+        LocalRoom::Request r;
+        r.method = "POST";
+        r.path = "/api/vote";
+        r.body = "{\"token\":\"" + tokens[i] + "\",\"choice\":" + juce::String (i) + ",\"value\":" + juce::String (0.3 + 0.1 * i) + "}";
+        room.handleRequest (r);
+    }
+
+    if (revealed)
+        seminar->reveal();
+
+    refreshHostButtons();
+    refreshVisibility();
+    resized();
     repaint();
 }
 
 juce::String LiveScreenComponent::roomAddress() const
 {
     if (whereChoice.getValue() == 1)
-        return lan.any() ? lan.address.toString() + ":8930" : juce::String ("-");
+    {
+        const auto port = seminar != nullptr && seminar->getRoom().isOpen() ? seminar->getRoom().getPort() : 8930;
+        return lan.any() ? lan.address.toString() + ":" + juce::String (port) : juce::String ("-");
+    }
 
     return "soundkorb.ru/live/" + roomCode.removeCharacters (" ");
+}
+
+juce::String LiveScreenComponent::roomJoinUrl() const
+{
+    if (whereChoice.getValue() != 1 || ! lan.any())
+        return {};
+
+    const auto listOnly = whoChoice.getValue() == 1;
+    return "http://" + roomAddress() + "/" + (listOnly || seminar == nullptr ? juce::String()
+                                                                              : "?r=" + seminar->getRoom().getRoomCode());
+}
+
+bool LiveScreenComponent::running() const
+{
+    return seminar != nullptr && roomOpen
+        && seminar->getStage() != SeminarHost::Stage::lobby && seminar->getStage() != SeminarHost::Stage::closed;
+}
+
+void LiveScreenComponent::setSeminarHost (SeminarHost* host)
+{
+    seminar = host;
+
+    if (seminar != nullptr)
+    {
+        seminar->getRoom().setPageStrings (text.phone);
+        seminar->getRoom().onChanged = [safe = juce::Component::SafePointer<LiveScreenComponent> (this)]
+        {
+            if (safe != nullptr)
+                safe->repaint();
+        };
+    }
+}
+
+void LiveScreenComponent::openLocalRoom()
+{
+    if (seminar == nullptr)
+        return;
+
+    const auto listOnly = whoChoice.getValue() == 1;
+    const auto people = inviteList.getInvitees();
+
+    if (listOnly && people.empty())
+    {
+        setNote (text.needPeople);
+        return;
+    }
+
+    int families = 0;
+    for (int i = 0; i < familyToggles.size(); ++i)
+        if (familyToggles[i]->getToggleState())
+            families |= 1 << i;
+
+    seminar->configure (text.roomTitle, families, roundsChoice.getValue(), listOnly, people);
+    seminar->getRoom().setPageStrings (text.phone);
+
+    juce::String why;
+
+    if (! seminar->openRoom (why))
+    {
+        setNote (text.roomFailed.replace ("{{why}}", why));
+        return;
+    }
+
+    roomCode = seminar->getRoom().getRoomCode();
+    roomOpen = true;
+    note.clear();
+    refreshHostButtons();
+    refreshVisibility();   // the host controls give way to the room - without this they stayed on top of it
+    resized();
+    repaint();
+}
+
+void LiveScreenComponent::closeLocalRoom()
+{
+    projector.reset();
+
+    if (seminar != nullptr)
+        seminar->closeRoom();
+
+    roomOpen = false;
+    refreshHostButtons();
+    refreshVisibility();
+    resized();
+    repaint();
+}
+
+void LiveScreenComponent::openProjector()
+{
+    if (seminar == nullptr || ! roomOpen)
+        return;
+
+    auto address = [safe = juce::Component::SafePointer<LiveScreenComponent> (this)]
+    {
+        return safe != nullptr ? safe->roomAddress() : juce::String();
+    };
+
+    projector = std::make_unique<ProjectorWindow> (*seminar, address, text.projectorText);
+
+    // Closed from its own title bar: let go of it after the click is over.
+    projector->onClosed = [safe = juce::Component::SafePointer<LiveScreenComponent> (this)]
+    {
+        juce::MessageManager::callAsync ([safe]
+        {
+            if (safe != nullptr)
+            {
+                safe->projector.reset();
+                safe->refreshHostButtons();
+            }
+        });
+    };
+
+    projector->getView().onChanged = [safe = juce::Component::SafePointer<LiveScreenComponent> (this)]
+    {
+        if (safe != nullptr)
+        {
+            safe->refreshHostButtons();
+            safe->refreshVisibility();
+            safe->resized();
+            safe->repaint();
+        }
+    };
+
+    projector->placeOnBestDisplay();
+    refreshHostButtons();
+}
+
+void LiveScreenComponent::refreshHostButtons()
+{
+    projectorButton.setButtonText (projector != nullptr ? text.closeProjector : text.projector);
+
+    if (seminar == nullptr)
+    {
+        startButton.setButtonText (text.start);
+        return;
+    }
+
+    switch (seminar->getStage())
+    {
+        case SeminarHost::Stage::closed:
+        case SeminarHost::Stage::lobby:     startButton.setButtonText (text.start); break;
+        case SeminarHost::Stage::listening: startButton.setButtonText (text.showAnswer); break;
+        case SeminarHost::Stage::revealed:  startButton.setButtonText (seminar->getRound() >= seminar->getTotalRounds() ? text.results : text.nextRound); break;
+        case SeminarHost::Stage::finished:  startButton.setButtonText (text.again); break;
+    }
+
+    LnF::makePrimary (playAButton, seminar->isPlaying() && ! seminar->isProcessed());
+    LnF::makePrimary (playBButton, seminar->isPlaying() && seminar->isProcessed());
+    repaint();
 }
 
 void LiveScreenComponent::setNote (const juce::String& newNote)
@@ -458,10 +702,13 @@ void LiveScreenComponent::refreshVisibility()
     for (auto* toggle : familyToggles)
         toggle->setVisible (hosting);
 
-    invitesButton.setVisible (seminar && whoChoice.getValue() == 1);
+    invitesButton.setVisible (hosting && whoChoice.getValue() == 1);
 
     for (auto* b : { &projectorButton, &startButton, &closeRoomButton })
         b->setVisible (seminar && roomOpen);
+
+    for (auto* b : { &playAButton, &playBButton, &stopButton })
+        b->setVisible (seminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
 
     for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &searchButton,
                      (juce::Component*) &challengeButton, (juce::Component*) &battleSignInButton,
@@ -476,7 +723,7 @@ void LiveScreenComponent::refreshVisibility()
     overlayPrimary.setVisible (overlayOpen);
     overlaySecondary.setVisible (overlayOpen);
     overlayTertiary.setVisible (overlay == Overlay::invites);
-    inviteEditor.setVisible (overlay == Overlay::invites);
+    inviteList.setVisible (overlay == Overlay::invites);
 
     // The layer covers the page and takes its clicks while it is open.
     overlayLayer.setVisible (overlayOpen);
@@ -493,7 +740,7 @@ void LiveScreenComponent::refreshVisibility()
     {
         overlayPrimary.setButtonText (text.done);
         overlaySecondary.setButtonText (whereChoice.getValue() == 1 ? text.printCodes : text.mailCodes);
-        overlayTertiary.setButtonText (text.makeCodes);
+        overlayTertiary.setButtonText (text.pasteList);
     }
 
 
@@ -555,12 +802,21 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
     if (roomOpen)
     {
         auto buttons = b.removeFromBottom (controlHeight + 4);
-        startButton.setBounds (buttons.removeFromRight (140));
+        startButton.setBounds (buttons.removeFromRight (juce::jmin (200, buttons.getWidth() / 3)));
         buttons.removeFromRight (Spacing::small);
-        projectorButton.setBounds (buttons.removeFromRight (juce::jmin (220, buttons.getWidth() / 2)));
-        closeRoomButton.setBounds (buttons.removeFromLeft (juce::jmin (200, buttons.getWidth())));
-        invitesButton.setBounds (b.removeFromBottom (controlHeight + 4 + Spacing::medium).withTrimmedBottom (Spacing::medium)
-                                   .withWidth (200));
+        projectorButton.setBounds (buttons.removeFromRight (juce::jmin (230, buttons.getWidth() / 2)));
+        closeRoomButton.setBounds (buttons.removeFromLeft (juce::jmin (180, buttons.getWidth())));
+
+        // While a round runs: which version the hall hears.
+        auto sound = b.removeFromBottom (controlHeight + 4 + Spacing::medium).withTrimmedBottom (Spacing::medium);
+        const auto w = juce::jmin (170, (sound.getWidth() - 2 * Spacing::small) / 3);
+        playAButton.setBounds (sound.removeFromLeft (w));
+        sound.removeFromLeft (Spacing::small);
+        playBButton.setBounds (sound.removeFromLeft (w));
+        sound.removeFromLeft (Spacing::small);
+        stopButton.setBounds (sound.removeFromLeft (juce::jmin (120, w)));
+
+        invitesButton.setBounds ({});
         return;
     }
 
@@ -638,8 +894,9 @@ void LiveScreenComponent::layoutOverlay()
 {
     using namespace AbcTrainTheme;
     overlayLayer.setBounds (getLocalBounds());
-    const auto height = overlay == Overlay::invites ? 520 : 400;
-    overlayBox = getLocalBounds().withSizeKeepingCentre (juce::jmin (getWidth() - 40, 700), juce::jmin (getHeight() - 20, height));
+    const auto height = overlay == Overlay::invites ? juce::jmin (620, getHeight() - 40) : 440;
+    overlayBox = getLocalBounds().withSizeKeepingCentre (juce::jmin (getWidth() - 40, overlay == Overlay::invites ? 820 : 760),
+                                                         juce::jmin (getHeight() - 20, height));
 
     auto box = overlayBox.reduced (Spacing::large + 8);
     auto buttons = box.removeFromBottom (controlHeight + 4);
@@ -649,7 +906,10 @@ void LiveScreenComponent::layoutOverlay()
     overlayTertiary.setBounds (buttons.removeFromLeft (juce::jmin (180, buttons.getWidth())));
 
     if (overlay == Overlay::invites)
-        inviteEditor.setBounds (box.withTrimmedTop (cardTitleHeight + 26).removeFromTop (96));
+    {
+        box.removeFromBottom (Spacing::medium + 22);    // the offline hint
+        inviteList.setBounds (box.withTrimmedTop (36 + 26 + Spacing::small));
+    }
 }
 
 // ---- painting ---------------------------------------------------------
@@ -717,7 +977,7 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
         auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
         g.setColour (theme.textDim);
         g.setFont (LnF::bodyFont());
-        LnF::fitLines (g, text.joinHint, a.removeFromTop (66), juce::Justification::topLeft, 3, 0.9f);
+        LnF::fitLines (g, text.joinLocal, a.removeFromTop (66), juce::Justification::topLeft, 3, 0.9f);
         a.removeFromTop (4);
         g.setFont (LnF::labelFont());
         LnF::fitText (g, text.joinCode, a.removeFromTop (20), juce::Justification::centredLeft, true);
@@ -729,61 +989,74 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
         paintCard (g, cardB, local ? text.roomOpenLocal : text.roomOpenOnline);
 
         auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
-        auto qrBox = b.removeFromLeft (170).removeFromTop (170).toFloat();
+        b.removeFromBottom (2 * (controlHeight + 4) + Spacing::medium * 2);   // the buttons
 
-        // Where the QR will be drawn once there is a URL to put in it.
-        g.setColour (theme.displayBackground);
-        g.fillRect (qrBox);
-        g.setColour (theme.outline);
-        g.drawRect (qrBox, 1.0f);
-        LnF::drawTrackedText (g, "QR", qrBox, LnF::headingFont(), theme.textDim, 2.0f, juce::Justification::centred);
+        if (running())
+        {
+            paintRunning (g, b);
+            return;
+        }
+
+        const auto side = juce::jmin (200, b.getHeight() - 60, b.getWidth() / 3);
+        auto qrBox = b.removeFromLeft (side).removeFromTop (side);
+        paintQrInto (g, roomQr, roomQrUrl, roomJoinUrl(), qrBox);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitText (g, text.scanToJoin, juce::Rectangle<int> (qrBox.getX(), qrBox.getBottom() + 4, qrBox.getWidth(), 18),
+                      juce::Justification::centred, true);
 
         b.removeFromLeft (Spacing::large);
-        auto info = b.removeFromTop (170);
+        auto info = b;
         g.setColour (theme.textDim);
         g.setFont (LnF::bodyFont());
         LnF::fitText (g, text.typeAddress, info.removeFromTop (24), juce::Justification::centredLeft, true);
         g.setColour (theme.textBright);
         g.setFont (LnF::monoFont().withHeight (24.0f));
-        LnF::fitText (g, roomAddress(), info.removeFromTop (40), juce::Justification::centredLeft, true);
+        LnF::fitText (g, roomAddress(), info.removeFromTop (38), juce::Justification::centredLeft, true);
 
-        if (! local)
+        if (! local || whoChoice.getValue() == 0)
         {
-            g.setFont (LnF::monoFont().withHeight (18.0f));
-            g.setColour (theme.text);
-            LnF::fitText (g, roomCode, info.removeFromTop (28), juce::Justification::centredLeft, true);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, text.roomCodeLabel, info.removeFromTop (20), juce::Justification::centredLeft, true);
+            g.setFont (LnF::monoFont().withHeight (28.0f));
+            g.setColour (theme.accent);
+            LnF::fitText (g, roomCode, info.removeFromTop (36), juce::Justification::centredLeft, true);
         }
 
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitLines (g, local ? text.sameWifi : text.onlineHint, info.removeFromTop (44), juce::Justification::topLeft, 2, 0.9f);
+        LnF::fitLines (g, local ? text.sameWifi : text.onlineHint, info.removeFromTop (36), juce::Justification::topLeft, 2, 0.9f);
 
-        auto rest = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 186);
-        const auto total = whoChoice.getValue() == 1 && ! invitees.empty() ? (int) invitees.size() : 0;
+        const auto snap = seminar != nullptr ? seminar->getRoom().snapshot() : LocalRoom::Snapshot();
+        const auto joined = (int) snap.players.size();
+        const auto total = snap.listOnly ? snap.invited : 0;
+        info.removeFromTop (Spacing::small);
         g.setColour (theme.text);
         g.setFont (LnF::bodyFont());
-        LnF::fitText (g, text.joined + "  0" + (total > 0 ? " / " + juce::String (total) : juce::String()),
-                      rest.removeFromTop (24), juce::Justification::centredLeft, true);
-        auto bar = rest.removeFromTop (10).toFloat();
-        g.setColour (theme.displayBackground);
-        g.fillRect (bar);
-        g.setColour (theme.outline);
-        g.drawRect (bar, 1.0f);
+        LnF::fitText (g, text.joined + "  " + juce::String (joined) + (total > 0 ? " / " + juce::String (total) : juce::String()),
+                      info.removeFromTop (24), juce::Justification::centredLeft, true);
+
+        // The names as they come in, one line.
+        juce::StringArray names;
+        for (const auto& p : snap.players)
+            names.add (p.name);
+
+        g.setColour (names.isEmpty() ? theme.textDim : theme.textBright);
+        g.setFont (LnF::labelFont());
+        LnF::fitLines (g, names.isEmpty() ? text.nobodyYet : names.joinIntoString (", "), info.removeFromTop (38),
+                       juce::Justification::topLeft, 2, 0.9f);
 
         if (local)
         {
-            rest.removeFromTop (Spacing::medium);
-            g.setColour (theme.textDim);
-            g.setFont (LnF::captionFont());
-            LnF::fitLines (g, text.resultsLocal, rest.removeFromTop (36), juce::Justification::topLeft, 2, 0.9f);
-
             // What to do when a phone cannot open the address - the one
             // question every local seminar gets, answered where it is asked.
-            rest.removeFromTop (Spacing::small);
+            info.removeFromTop (Spacing::small);
             g.setColour (lan.linkLocal ? theme.accentWarm : theme.textDim);
+            g.setFont (LnF::captionFont());
             LnF::fitLines (g, lan.linkLocal ? text.lanLinkLocal + "\n" + text.lanTrouble : text.lanTrouble,
-                           rest.removeFromTop (juce::jmin (rest.getHeight() - controlHeight - 40, 90)),
-                           juce::Justification::topLeft, 5, 0.9f);
+                           info.removeFromTop (juce::jmax (0, juce::jmin (info.getHeight(), 72))),
+                           juce::Justification::topLeft, 4, 0.9f);
         }
 
         return;
@@ -1017,6 +1290,23 @@ void LiveScreenComponent::paintOverlay (juce::Graphics& g)
         LnF::fitText (g, text.signInTitle, box.removeFromTop (36), juce::Justification::centredLeft, true);
         box.removeFromTop (Spacing::medium);
 
+        // The same page as a QR code: confirm on the phone you are
+        // already signed in on, instead of typing a mail on this computer.
+        {
+            const auto* ls = account != nullptr ? &account->getLink() : nullptr;
+            const auto code = ls != nullptr ? ls->code : signInCode;
+            const auto url = ls != nullptr && ls->url.startsWith ("https://soundkorb.ru/") ? ls->url
+                           : code.isNotEmpty() ? "https://soundkorb.ru/link?code=" + juce::URL::addEscapeChars (code, true)
+                                               : juce::String();
+            auto side = box.removeFromRight (150);
+            box.removeFromRight (Spacing::large);
+            auto qrBox = side.removeFromTop (150);
+            paintQrInto (g, signInQr, signInQrUrl, url, qrBox);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitLines (g, text.scanToSignIn, side.removeFromTop (50), juce::Justification::centredTop, 3, 0.85f);
+        }
+
         auto codeRow = box.removeFromTop (76);
         auto codeBox = codeRow.removeFromLeft (260);
         g.setColour (theme.displayBackground);
@@ -1067,27 +1357,14 @@ void LiveScreenComponent::paintOverlay (juce::Graphics& g)
     // Invites.
     g.setColour (theme.textBright);
     g.setFont (LnF::headingFont().withHeight (24.0f));
-    LnF::fitText (g, text.invitesTitle, box.removeFromTop (36), juce::Justification::centredLeft, true);
+    auto titleRow = box.removeFromTop (36);
+    LnF::fitText (g, text.invitesTitle, titleRow.removeFromLeft (titleRow.getWidth() / 2), juce::Justification::centredLeft, true);
     g.setColour (theme.textDim);
+    g.setFont (LnF::bodyFont());
+    LnF::fitText (g, text.listCount.replace ("{{n}}", juce::String (inviteList.getNumPeople())), titleRow,
+                  juce::Justification::centredRight, true);
     g.setFont (LnF::captionFont());
-    LnF::fitText (g, text.invitesHint, box.removeFromTop (26), juce::Justification::centredLeft, true);
-    box.removeFromTop (8 + 96 + Spacing::medium);   // the editor
-
-    for (const auto& person : invitees)
-    {
-        if (box.getHeight() < 26 + 24)
-            break;
-
-        auto row = box.removeFromTop (26);
-        g.setColour (theme.textBright);
-        g.setFont (LnF::bodyFont());
-        LnF::fitText (g, person.name, row.removeFromLeft (row.getWidth() * 4 / 10), juce::Justification::centredLeft, true);
-        g.setColour (theme.textDim);
-        LnF::fitText (g, person.mail, row.removeFromLeft (row.getWidth() * 7 / 10), juce::Justification::centredLeft, true);
-        g.setColour (theme.textBright);
-        g.setFont (LnF::monoFont().withHeight (18.0f));
-        LnF::fitText (g, person.code, row, juce::Justification::centredRight, true);
-    }
+    LnF::fitText (g, text.listPasteHint, box.removeFromTop (26), juce::Justification::centredLeft, true);
 
     if (whereChoice.getValue() == 1)
     {
@@ -1095,6 +1372,117 @@ void LiveScreenComponent::paintOverlay (juce::Graphics& g)
         g.setColour (theme.accentWarm);
         g.setFont (LnF::captionFont());
         LnF::fitText (g, text.localNoMail, hint, juce::Justification::centredLeft, true);
+    }
+}
+
+void LiveScreenComponent::paintQrInto (juce::Graphics& g, std::unique_ptr<QrCode>& qr, juce::String& cachedUrl,
+                                       const juce::String& url, juce::Rectangle<int> area) const
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    if (url.isEmpty())
+    {
+        g.setColour (theme.displayBackground);
+        g.fillRect (area);
+        g.setColour (theme.outline);
+        g.drawRect (area, 1);
+        return;
+    }
+
+    if (qr == nullptr || cachedUrl != url)
+    {
+        qr = std::make_unique<QrCode> (url);
+        cachedUrl = url;
+    }
+
+    // Always dark on white, whatever the theme: an inverted code is the
+    // one phones still refuse.
+    qr->paint (g, area.toFloat());
+}
+
+void LiveScreenComponent::paintRunning (juce::Graphics& g, juce::Rectangle<int> b)
+{
+    using namespace AbcTrainTheme;
+    const auto& theme = current();
+    const auto snap = seminar->getRoom().snapshot();
+    const auto& q = snap.question;
+
+    // A small code for latecomers, top right.
+    {
+        auto corner = b.removeFromRight (120).removeFromTop (120);
+        paintQrInto (g, roomQr, roomQrUrl, roomJoinUrl(), corner);
+        b.removeFromRight (Spacing::large);
+    }
+
+    const auto fill = [] (juce::String t, int n, int m)
+    {
+        return t.replace ("{{n}}", juce::String (n)).replace ("{{m}}", juce::String (m));
+    };
+
+    if (seminar->getStage() == SeminarHost::Stage::finished)
+    {
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (24.0f));
+        LnF::fitText (g, text.results, b.removeFromTop (34), juce::Justification::centredLeft, true);
+
+        int place = 0, previous = -1;
+        for (size_t i = 0; i < snap.players.size() && b.getHeight() >= 24; ++i)
+        {
+            const auto& p = snap.players[i];
+            if (p.score != previous)
+                place = (int) i + 1;
+            previous = p.score;
+
+            auto row = b.removeFromTop (24);
+            g.setColour (place == 1 ? theme.accent : theme.textDim);
+            g.setFont (LnF::monoFont());
+            LnF::fitText (g, juce::String (place), row.removeFromLeft (30), juce::Justification::centredLeft, true);
+            g.setColour (theme.text);
+            g.setFont (LnF::bodyFont());
+            LnF::fitText (g, p.name, row.removeFromLeft (row.getWidth() - 50), juce::Justification::centredLeft, true);
+            g.setFont (LnF::monoFont());
+            LnF::fitText (g, juce::String (p.score), row, juce::Justification::centredRight, true);
+        }
+
+        return;
+    }
+
+    g.setColour (theme.textDim);
+    g.setFont (LnF::labelFont());
+    LnF::fitText (g, fill (text.hostRound, q.round, q.totalRounds) + juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  ")) + q.exercise,
+                  b.removeFromTop (22), juce::Justification::centredLeft, true);
+
+    g.setColour (theme.textBright);
+    g.setFont (LnF::headingFont().withHeight (20.0f));
+    LnF::fitLines (g, q.prompt, b.removeFromTop (52), juce::Justification::topLeft, 2, 0.85f);
+    b.removeFromTop (Spacing::small);
+
+    const auto answered = fill (text.answeredOf, snap.answered, (int) snap.players.size());
+    g.setColour (theme.text);
+    g.setFont (LnF::bodyFont());
+    LnF::fitText (g, answered, b.removeFromTop (24), juce::Justification::centredLeft, true);
+
+    auto bar = b.removeFromTop (8).withWidth (juce::jmin (b.getWidth(), 360)).toFloat();
+    g.setColour (theme.displayBackground);
+    g.fillRect (bar);
+    g.setColour (theme.accent);
+    g.fillRect (bar.withWidth (bar.getWidth() * (float) snap.answered / (float) juce::jmax (1, (int) snap.players.size())));
+    b.removeFromTop (Spacing::medium);
+
+    if (seminar->getStage() == SeminarHost::Stage::revealed)
+    {
+        g.setColour (theme.positive);
+        g.setFont (LnF::headingFont().withHeight (22.0f));
+        LnF::fitText (g, text.theAnswer.replace ("{{answer}}", snap.answer.label), b.removeFromTop (30), juce::Justification::centredLeft, true);
+        g.setColour (theme.text);
+        g.setFont (LnF::bodyFont());
+        LnF::fitText (g, fill (text.rightOf, snap.right, snap.answered), b.removeFromTop (24), juce::Justification::centredLeft, true);
+    }
+    else
+    {
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.hostHint, b.removeFromTop (36), juce::Justification::topLeft, 2, 0.9f);
     }
 }
 

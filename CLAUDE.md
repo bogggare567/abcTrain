@@ -19,7 +19,7 @@ understanding.
 |---|---|
 | [docs/orientation.md](docs/orientation.md) | the map, the load-bearing ideas, **the rules from the literature** — read first |
 | [docs/code-map.md](docs/code-map.md) | per-file breakdown (was the body of this file) — read the part you change |
-| [docs/decisions/](docs/decisions/) | ADRs, 001–046: why each shape was chosen |
+| [docs/decisions/](docs/decisions/) | ADRs, 001–047: why each shape was chosen |
 | [docs/process.md](docs/process.md) | how a task goes from idea to release; the scenario checklist |
 | [docs/research/](docs/research/) | the literature review every current proposal rests on |
 | [docs/design/](docs/design/) | sound library, education/live, the redesign spec |
@@ -99,13 +99,19 @@ Learner*/Source (no PluginEntry) abc_learner_eq/comp/verb, abc_learners — plug
   (`tests/HintTest` holds it).
 - **Level is never the tell:** every exercise matches loudness on the
   material actually playing.
+- **Numbers agree with their words:** write `{{n}} [[раунд|раунда|раундов]]`
+  (forms in CLDR order: one|few|many for ru/uk/pl, one|other for the rest,
+  one form for ja/ko/zh). `fitText`/`fitLines` and `getText(key, map)` pick
+  the form from the number just before (`tests/PluralTest`).
 - **Every string in all 12 languages** (`shared/i18n/strings/*.json`); the
   tests check that each table has every English key.
 - **Offline-first:** no account, no server, no telemetry in anything
   installed. The one request the app makes on its own is the release
   list for the update check, and it has a switch in Settings (ADR 042).
   Live (seminars, battles) is a separate deployable; the app connects to
-  it only when the player opens Live himself. Signing in is optional
+  it only when the player opens Live himself. A local seminar (ADR 047)
+  opens a listening socket on the local network only while the presenter
+  has a room open. Signing in is optional
   (ADR 045): a signed-in app syncs a ~1 KB progress summary, and that
   sync has its own switch. Battles against bots (ADR 046) need no network.
 - **Learner modules have no hearing check** (ADR 041): watch → try → Done.

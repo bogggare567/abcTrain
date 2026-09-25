@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Trainer from './trainer/Trainer.jsx';
 import {
-  RELEASE, DOWNLOADS, FAMILIES, TRAINER_NOTES, PLUGINS, PLUGINS_COMMON, LIMITS, FACTS,
+  RELEASE, DOWNLOADS, FAMILIES, TRAINER_NOTES, PLUGINS, PLUGINS_COMMON, LIVE, LIMITS, FACTS,
 } from './content.js';
 
 function Masthead({ theme, onToggleTheme }) {
@@ -14,6 +14,7 @@ function Masthead({ theme, onToggleTheme }) {
         <nav className="masthead__nav">
           <a className="masthead__link" href="#train">What it trains</a>
           <a className="masthead__link" href="#plugins">Plugins</a>
+          <a className="masthead__link" href="#live">Live</a>
           <a className="masthead__link" href="#limits">Limits</a>
           <a className="masthead__link" href="#get">Download</a>
           <button
@@ -167,6 +168,22 @@ function Plugins() {
   );
 }
 
+function Live() {
+  return (
+    <section className="wrap rack rack--tight" id="live">
+      <p className="label">Live — a room of people listening together</p>
+      <div className="plugins">
+        {LIVE.map((l) => (
+          <article key={l.key} className="plugin">
+            <div className="plugin__name">{l.head}</div>
+            <p className="plugin__body">{l.body}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Limits() {
   return (
     <section className="wrap rack" id="limits">
@@ -265,6 +282,7 @@ export default function App() {
         <Families />
         <Desktop />
         <Plugins />
+        <Live />
         <Limits />
         <Get />
       </main>

@@ -104,6 +104,50 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
     addChildComponent (allClipsButton);
     addChildComponent (thisClipButton);
+
+    selectAllButton.onClick = [this]
+    {
+        if (const auto* files = filesForSelection())
+            for (int i = 0; i < files->size(); ++i)
+                if (processor.getGameManager().getReferenceAudioLibrary().canDelete ((*files)[i]))
+                    checked.insert ((*files)[i].getFullPathName());
+
+        confirmBulk = false;
+        refreshBulkButtons();
+        repaint();
+    };
+
+    clearCheckedButton.onClick = [this]
+    {
+        // While asking, the same button is "No".
+        if (confirmBulk)
+            confirmBulk = false;
+        else
+            clearChecked();
+
+        refreshBulkButtons();
+        repaint();
+    };
+
+    deleteCheckedButton.onClick = [this]
+    {
+        if (! confirmBulk)
+        {
+            stopPreview();
+            pendingDelete = -1;
+            confirmBulk = true;
+            refreshBulkButtons();
+            repaint();
+            return;
+        }
+
+        deleteChecked();
+    };
+
+    for (auto* b : { &selectAllButton, &clearCheckedButton, &deleteCheckedButton })
+        addChildComponent (b);
+
+    setWantsKeyboardFocus (true);
 }
 
 void TrainingSoundsComponent::setStrings (Strings strings)
@@ -131,6 +175,7 @@ void TrainingSoundsComponent::setStrings (Strings strings)
     allClipsButton.setButtonText (text.allClips);
     thisClipButton.setButtonText (text.thisClip);
     closeButton.setButtonText (text.close);
+    refreshBulkButtons();
 
     updateStatusLabel();
     resized();
@@ -141,6 +186,7 @@ juce::String TrainingSoundsComponent::displayNameForCategory (const juce::String
 {
     if (rawName == "Built-in Percussive") return text.builtInPercussive;
     if (rawName == "Built-in Sustained")  return text.builtInSustained;
+    if (rawName == "Built-in Loops")      return text.builtInLoops;
 
     const auto instrumentName = [this] (InstrumentLabel::Instrument instrument)
     {
@@ -257,6 +303,7 @@ void TrainingSoundsComponent::selectExerciseSound()
     sourceTrack = juce::File();
     selectionStart = selectionEnd = -1.0f;
     pendingDelete = -1;
+    clearChecked();
     processor.getGameManager().getReferenceAudioLibrary().clearSelection();
     processor.getGameManager().setPreferExerciseSound (true);
     selectedCategory = -1;
@@ -272,6 +319,7 @@ void TrainingSoundsComponent::selectPinkNoise()
     sourceTrack = juce::File();
     selectionStart = selectionEnd = -1.0f;
     pendingDelete = -1;
+    clearChecked();
     processor.getGameManager().getReferenceAudioLibrary().clearSelection();
     processor.getGameManager().setPreferExerciseSound (false);
     selectedCategory = -1;
@@ -308,6 +356,9 @@ void TrainingSoundsComponent::selectCategory (int categoryIndex)
     const auto leavingTrack = sourceTrack != juce::File();
     sourceTrack = juce::File();
     pendingDelete = -1;
+
+    if (categoryIndex != selectedCategory)
+        clearChecked();
 
     // Selecting the category is selecting *rotation* - the library swaps in
     // a different clip each round. Clicking a file in the right-hand pane
@@ -367,6 +418,7 @@ namespace
     constexpr int fileRowHeight = 46;
     constexpr int fileRowGap = 6;
     constexpr int footerHeight = 30;
+    constexpr int checkColumnWidth = 30;
     constexpr int overviewBuckets = 480;
     constexpr int railHeadingHeight = 26;
 
@@ -514,7 +566,33 @@ juce::Rectangle<int> TrainingSoundsComponent::fileRowBounds (int index) const
 
 juce::Rectangle<int> TrainingSoundsComponent::rowPlayBounds (int index) const
 {
-    return fileRowBounds (index).reduced (10, 0).removeFromLeft (30).withSizeKeepingCentre (30, 30);
+    auto row = fileRowBounds (index).reduced (10, 0);
+
+    if (hasCheckColumn())
+        row.removeFromLeft (checkColumnWidth);
+
+    return row.removeFromLeft (30).withSizeKeepingCentre (30, 30);
+}
+
+bool TrainingSoundsComponent::hasCheckColumn() const
+{
+    const auto* files = const_cast<TrainingSoundsComponent*> (this)->filesForSelection();
+
+    if (files == nullptr || sourceTrack != juce::File())
+        return false;
+
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+
+    for (const auto& f : *files)
+        if (library.canDelete (f))
+            return true;
+
+    return false;
+}
+
+juce::Rectangle<int> TrainingSoundsComponent::rowCheckBounds (int index) const
+{
+    return fileRowBounds (index).reduced (10, 0).removeFromLeft (checkColumnWidth - 8).withSizeKeepingCentre (20, 20);
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::rowDeleteBounds (int index) const
@@ -1036,6 +1114,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
         auto& preview = processor.getClipPreview();
         const auto pinnedFile = library.isPinned() ? library.getSelectedFile() : juce::File();
+        const auto checkColumn = hasCheckColumn();
 
         for (int i = 0; i < files->size(); ++i)
         {
@@ -1047,14 +1126,42 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
             const auto focused = (i == focusedFile);
             const auto pinned = pinnedFile == (*files)[i];
 
-            g.setColour (focused ? theme.accent.withAlpha (0.12f)
-                                 : theme.panelBackground.withAlpha (i == hoveredFileRow ? 0.9f : 0.6f));
+            const auto isTicked = checked.count ((*files)[i].getFullPathName()) > 0;
+            g.setColour (isTicked ? theme.accentWarm.withAlpha (0.10f)
+                         : focused ? theme.accent.withAlpha (0.12f)
+                                   : theme.panelBackground.withAlpha (i == hoveredFileRow ? 0.9f : 0.6f));
             g.fillRect (row);
             g.setColour (focused ? theme.accent.withAlpha (0.8f) : theme.outline.withAlpha (0.7f));
             g.drawRect (row, 1);
 
             auto inner = row.reduced (10, 0);
             const auto playBox = rowPlayBounds (i).toFloat();
+
+            if (checkColumn)
+            {
+                inner.removeFromLeft (checkColumnWidth);
+
+                if (library.canDelete ((*files)[i]))
+                {
+                    const auto box = rowCheckBounds (i).toFloat();
+                    const auto ticked = checked.count ((*files)[i].getFullPathName()) > 0;
+                    g.setColour (ticked ? theme.accentWarm : theme.displayBackground);
+                    g.fillRect (box);
+                    g.setColour (ticked ? theme.accentWarm : theme.outline);
+                    g.drawRect (box, 1.0f);
+
+                    if (ticked)
+                    {
+                        juce::Path tick;
+                        tick.startNewSubPath (box.getX() + 4.5f, box.getCentreY());
+                        tick.lineTo (box.getX() + 8.5f, box.getBottom() - 5.0f);
+                        tick.lineTo (box.getRight() - 4.0f, box.getY() + 5.0f);
+                        g.setColour (theme.windowBackground);
+                        g.strokePath (tick, juce::PathStrokeType (2.2f));
+                    }
+                }
+            }
+
             inner.removeFromLeft (30 + 12);
 
             const auto playing = playingFile == i && preview.isPlaying();
@@ -1163,8 +1270,24 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
     // page exists to change.
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    AbcTrainLookAndFeel::fitText (g, statusLabel.getText(), pane.withTop (pane.getBottom() - footerHeight + 8),
-                juce::Justification::centredLeft, true);
+    auto footerLine = pane.withTop (pane.getBottom() - footerHeight + 8);
+
+    if (! checked.empty())
+    {
+        // The buttons sit on the right of this line; the count on the left.
+        footerLine.setRight (selectAllButton.getX() - 8);
+        const auto n = juce::String ((int) checked.size());
+        g.setColour (confirmBulk ? theme.negative : theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::labelFont());
+        AbcTrainLookAndFeel::fitText (g, (confirmBulk ? text.bulkConfirm : text.checkedCount).replace ("{{n}}", n),
+                                      footerLine, juce::Justification::centredLeft, true);
+    }
+    else
+    {
+        AbcTrainLookAndFeel::fitText (g, hasCheckColumn() ? statusLabel.getText() + juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  ")) + text.checkHint
+                                                                                        : statusLabel.getText(),
+                                      footerLine, juce::Justification::centredLeft, true);
+    }
 }
 
 void TrainingSoundsComponent::paint (juce::Graphics& g)
@@ -1302,6 +1425,25 @@ void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
         return;
     }
 
+    if (listBounds().contains (position) && hasCheckColumn())
+    {
+        auto& library = processor.getGameManager().getReferenceAudioLibrary();
+        const auto mods = event.mods;
+
+        for (int i = 0; i < files->size(); ++i)
+        {
+            if (! fileRowBounds (i).contains (position) || ! library.canDelete ((*files)[i]))
+                continue;
+
+            if (rowCheckBounds (i).expanded (6).contains (position)
+                || mods.isCommandDown() || mods.isCtrlDown() || mods.isShiftDown())
+            {
+                toggleChecked (i, mods.isShiftDown());
+                return;
+            }
+        }
+    }
+
     if (listBounds().contains (position))
         for (int i = 0; i < files->size(); ++i)
             if ((i == hoveredFileRow || i == focusedFile) && rowDeleteBounds (i).contains (position)
@@ -1405,6 +1547,16 @@ void TrainingSoundsComponent::resized()
 
     auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (footerHeight);
     closeButton.setBounds (footer.removeFromRight (110));
+
+    {
+        auto bulk = filePaneBounds().removeFromBottom (footerHeight).withTrimmedTop (2);
+        deleteCheckedButton.setBounds (bulk.removeFromRight (200));
+        bulk.removeFromRight (6);
+        clearCheckedButton.setBounds (bulk.removeFromRight (120));
+        bulk.removeFromRight (6);
+        selectAllButton.setBounds (bulk.removeFromRight (130));
+    }
+    refreshBulkButtons();
 }
 
 // Runs the slicing off the message thread. Owns nothing the UI owns.
@@ -1725,4 +1877,153 @@ void TrainingSoundsComponent::deleteFile (int index)
     updateModeButtons();
     updateStatusLabel();
     repaint();
+}
+
+// ---- several at once ------------------------------------------------------
+
+void TrainingSoundsComponent::toggleChecked (int index, bool extendFromAnchor)
+{
+    const auto* files = filesForSelection();
+
+    if (files == nullptr || ! juce::isPositiveAndBelow (index, files->size()))
+        return;
+
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    confirmBulk = false;
+    pendingDelete = -1;
+
+    if (extendFromAnchor && juce::isPositiveAndBelow (checkAnchor, files->size()))
+    {
+        // Shift: the whole run from the last row ticked, ticked.
+        for (int i = juce::jmin (checkAnchor, index); i <= juce::jmax (checkAnchor, index); ++i)
+            if (library.canDelete ((*files)[i]))
+                checked.insert ((*files)[i].getFullPathName());
+    }
+    else
+    {
+        const auto path = (*files)[index].getFullPathName();
+
+        if (checked.count (path) > 0)
+            checked.erase (path);
+        else
+            checked.insert (path);
+    }
+
+    checkAnchor = index;
+    refreshBulkButtons();
+    repaint();
+}
+
+void TrainingSoundsComponent::clearChecked()
+{
+    checked.clear();
+    checkAnchor = -1;
+    confirmBulk = false;
+    refreshBulkButtons();
+}
+
+void TrainingSoundsComponent::refreshBulkButtons()
+{
+    const auto any = ! checked.empty();
+
+    selectAllButton.setButtonText (text.selectAll);
+    clearCheckedButton.setButtonText (confirmBulk ? text.deleteNo : text.clearChecked);
+    deleteCheckedButton.setButtonText (confirmBulk ? text.deleteYes : text.deleteChecked);
+    AbcTrainLookAndFeel::makePrimary (deleteCheckedButton, confirmBulk);
+    deleteCheckedButton.setColour (juce::TextButton::textColourOffId,
+                                   confirmBulk ? AbcTrainTheme::current().windowBackground : AbcTrainTheme::current().negative);
+
+    selectAllButton.setVisible (any && ! confirmBulk);
+    clearCheckedButton.setVisible (any);
+    deleteCheckedButton.setVisible (any);
+}
+
+void TrainingSoundsComponent::deleteChecked()
+{
+    stopPreview();
+
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    const auto keepCategory = selectedCategory >= 0 && selectedCategoryInfo() != nullptr ? selectedCategoryInfo()->name : juce::String();
+    int removed = 0;
+
+    for (const auto& path : checked)
+    {
+        const juce::File file (path);
+
+        if (library.deleteClip (file))
+        {
+            overviews.erase (path);
+            ++removed;
+        }
+    }
+
+    clearChecked();
+    text.importHint = text.bulkDeleted.replace ("{{n}}", juce::String (removed));
+
+    library.rescan();
+    rebuildRail();
+
+    selectedCategory = -1;
+    focusedFile = -1;
+    selectionStart = selectionEnd = -1.0f;
+
+    const auto& categories = library.getCategories();
+    for (int i = 0; i < categories.size(); ++i)
+        if (categories.getReference (i).name == keepCategory)
+        {
+            selectedCategory = i;
+            focusedFile = categories.getReference (i).files.isEmpty() ? -1 : 0;
+        }
+
+    updateModeButtons();
+    updateStatusLabel();
+    repaint();
+}
+
+bool TrainingSoundsComponent::keyPressed (const juce::KeyPress& key)
+{
+    const auto cmd = key.getModifiers().isCommandDown() || key.getModifiers().isCtrlDown();
+
+    // Cmd/Ctrl+A ticks every clip that may go; Delete / Backspace asks
+    // about the ticked ones (or, with none ticked, the focused one);
+    // Escape takes the ticks back.
+    if (cmd && juce::CharacterFunctions::toLowerCase (key.getTextCharacter()) == 'a' && hasCheckColumn())
+    {
+        selectAllButton.onClick();
+        return true;
+    }
+
+    if (key == juce::KeyPress::deleteKey || key == juce::KeyPress::backspaceKey)
+    {
+        if (! checked.empty())
+        {
+            deleteCheckedButton.onClick();
+            return true;
+        }
+
+        if (const auto* files = filesForSelection(); files != nullptr && juce::isPositiveAndBelow (focusedFile, files->size())
+            && processor.getGameManager().getReferenceAudioLibrary().canDelete ((*files)[focusedFile]) && sourceTrack == juce::File())
+        {
+            stopPreview();
+            pendingDelete = focusedFile;
+            repaint();
+            return true;
+        }
+    }
+
+    if (key == juce::KeyPress::returnKey && confirmBulk)
+    {
+        deleteChecked();
+        return true;
+    }
+
+    if (key == juce::KeyPress::escapeKey && (! checked.empty() || pendingDelete >= 0))
+    {
+        pendingDelete = -1;
+        clearChecked();
+        repaint();
+        return true;
+    }
+
+    return false;
 }

@@ -169,7 +169,8 @@ namespace
                        settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
                        studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
                        liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, eqSlope,
-                       liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack };
+                       liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack,
+                       liveRoundOpen, liveRoundAnswer, soundsChecked };
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -261,16 +262,19 @@ namespace
                 if (extra == Extra::liveSignIn)  editor.openLiveForSnapshot (5);
                 if (extra == Extra::liveNoInternet) editor.openLiveForSnapshot (6);
                 if (extra == Extra::liveNoLan)   editor.openLiveForSnapshot (7);
+                if (extra == Extra::liveRoundOpen)   editor.openLiveForSnapshot (9);
+                if (extra == Extra::liveRoundAnswer) editor.openLiveForSnapshot (10);
 
                 if (extra == Extra::soundsLibrary || extra == Extra::soundsSelect
-                    || extra == Extra::soundsDelete || extra == Extra::soundsTrack)
+                    || extra == Extra::soundsDelete || extra == Extra::soundsTrack || extra == Extra::soundsChecked)
                 {
                     const auto root = snapshotLibrary();
                     editor.openSoundsLibraryForSnapshot (root, root.getSiblingFile ("Rehearsal take 3.wav"),
-                                                         extra == Extra::soundsDelete ? "Kick" : "bogdan-own/kick",
+                                                         extra == Extra::soundsDelete || extra == Extra::soundsChecked ? "Kick" : "bogdan-own/kick",
                                                          extra == Extra::soundsSelect ? 1
                                                          : extra == Extra::soundsDelete ? 2
-                                                         : extra == Extra::soundsTrack ? 3 : 0);
+                                                         : extra == Extra::soundsTrack ? 3
+                                                         : extra == Extra::soundsChecked ? 4 : 0);
                 }
                 if (extra == Extra::settingsLive)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::live, false);
@@ -352,6 +356,10 @@ namespace
             // The companion window's content, rendered on its own next to
             // the plugin it was taken out of.
             juce::Component* companionShot = nullptr;
+
+            if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
+                if (extra == Extra::liveRoom || extra == Extra::liveRoundOpen || extra == Extra::liveRoundAnswer)
+                    companionShot = editor.projectorForSnapshot();
 
             if constexpr (std::is_base_of_v<LearnerEditorBase, EditorType>)
             {
@@ -592,6 +600,9 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundsTrack", -1, Extra::soundsTrack);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRoom", -1, Extra::liveRoom);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveInvites", -1, Extra::liveInvites);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRoundOpen", -1, Extra::liveRoundOpen);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRoundAnswer", -1, Extra::liveRoundAnswer);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundsChecked", -1, Extra::soundsChecked);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveBattle", -1, Extra::liveBattle);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveRating", -1, Extra::liveRating);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSignIn", -1, Extra::liveSignIn);

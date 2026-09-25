@@ -57,6 +57,23 @@ public:
     // {{"level", "5"}}) -> "Level 5").
     juce::String getText (const juce::String& key, const std::map<juce::String, juce::String>& placeholders) const;
 
+    // Word forms that agree with a number: "[[раунд|раунда|раундов]]" in
+    // a string becomes the form the number *just before it* asks for, in
+    // the current language ("1 раунд", "3 раунда", "5 раундов"; "1 round",
+    // "2 rounds"). Forms are listed in the order of the language's plural
+    // categories (CLDR): one|few|many for ru/uk, one|few|many for pl,
+    // one|other for the languages with two, a single form for ja/ko/zh.
+    // Fewer forms than categories: the last one is used for the rest.
+    //
+    // Called by getText(key, placeholders) and by fitText/fitLines, so a
+    // string filled with String::replace still comes out right on screen.
+    // Text without "[[" passes through untouched.
+    static juce::String resolvePlurals (const juce::String& text);
+    static juce::String resolvePlurals (const juce::String& text, const juce::String& languageCode);
+
+    // Which form a number takes: the index into the [[...]] list.
+    static int pluralForm (juce::int64 number, const juce::String& languageCode);
+
 private:
     static juce::var loadLanguageTable (const juce::String& languageCode);
 

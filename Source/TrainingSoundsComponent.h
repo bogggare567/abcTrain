@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include <atomic>
 #include <memory>
 
@@ -67,7 +69,7 @@ public:
         juce::String pinkNoise, close, empty, pickCategory, clipsHeading;
         juce::String importAndSort, importing, importedClips, importedNothing, importHint;
         juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
-        juce::String builtInPercussive, builtInSustained;
+        juce::String builtInPercussive, builtInSustained, builtInLoops { "Built-in loops" };
         juce::String exerciseSound, trainingOnExerciseSound, credits;
         juce::String clipsCaption, allClips, thisClip;   // "{{n}} clips · click to hear..."
 
@@ -84,6 +86,13 @@ public:
         juce::String fragmentSaved;            // "Saved: {{what}} -> {{folder}}"
         juce::String fragmentTooShort;
         juce::String deleteClip, deleteConfirm, deleteYes, deleteNo, deleted;
+
+        // 2026-09-25: several at once.
+        juce::String selectAll { "Select all" }, clearChecked { "Clear" }, deleteChecked { "Delete selected" };
+        juce::String checkedCount { "Selected: {{n}}" };
+        juce::String bulkConfirm { "Move {{n}} [[clip|clips]] to the trash?" };
+        juce::String bulkDeleted { "{{n}} [[clip|clips]] moved to the trash" };
+        juce::String checkHint { "Tick the boxes, or Cmd/Ctrl-click and Shift-click rows, to delete several" };
 
         juce::String languageCode;   // picks a pack's title: "ru" or anything else
     };
@@ -157,6 +166,26 @@ private:
     juce::Rectangle<int> confirmYesBounds (int index) const;
     juce::Rectangle<int> confirmNoBounds (int index) const;
     void deleteFile (int index);
+
+    // Several at once (2026-09-25): a box on every row that may be deleted,
+    // Cmd/Ctrl-click toggles a row, Shift-click takes the run from the last
+    // one ticked; the footer then offers select all / clear / delete, and
+    // asks once for the lot. Kept by path, so a rescan keeps the ticks.
+    std::set<juce::String> checked;
+    int checkAnchor = -1;
+    bool confirmBulk = false;
+    juce::TextButton selectAllButton, clearCheckedButton, deleteCheckedButton;
+    bool hasCheckColumn() const;
+    juce::Rectangle<int> rowCheckBounds (int index) const;
+    void toggleChecked (int index, bool extendFromAnchor);
+    void clearChecked();
+    void deleteChecked();
+    void refreshBulkButtons();
+public:
+    bool keyPressed (const juce::KeyPress&) override;
+    // For tools/EditorSnapshots.
+    void checkForSnapshot (std::initializer_list<int> rows) { for (auto r : rows) toggleChecked (r, false); }
+private:
 
     // ---- the rail as a list with headings, scrolled when it is long ----
     struct RailEntry { int category; juce::String heading; };   // category == noRow for a heading

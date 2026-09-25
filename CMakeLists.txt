@@ -251,6 +251,8 @@ target_sources(abc_ui INTERFACE
     ${abcShared}/ui/GuideTooltip.cpp
     ${abcShared}/ui/TourOverlay.cpp
     ${abcShared}/ui/IdleScreensaver.cpp
+    ${abcShared}/ui/QrCode.cpp
+    ${abcShared}/ui/third_party/qrcodegen.cpp
 )
 target_link_libraries(abc_ui INTERFACE abc_i18n)
 
@@ -395,6 +397,10 @@ target_sources(EarTrainer
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
+        Source/LocalRoom.cpp
+        Source/SeminarHost.cpp
+        Source/ProjectorWindow.cpp
+        Source/InviteListComponent.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -605,6 +611,11 @@ target_sources(EarTrainerTests
         tests/CompressorCheckTest.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
+        Source/LocalRoom.cpp
+        Source/SeminarHost.cpp
+        Source/InviteListComponent.cpp
+        tests/LocalRoomTest.cpp
+        tests/PluralTest.cpp
         tests/TestSignalGeneratorTest.cpp
         tests/SharedEnginesTest.cpp
         tests/HintTest.cpp
@@ -671,6 +682,10 @@ set(abcTrainEditorToolSources
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
+        Source/LocalRoom.cpp
+        Source/SeminarHost.cpp
+        Source/ProjectorWindow.cpp
+        Source/InviteListComponent.cpp
 )
 
 juce_add_console_app(EditorSnapshots
@@ -814,3 +829,10 @@ target_compile_definitions(LiveSmoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_MODAL_LOOPS
 target_include_directories(LiveSmoke PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(LiveSmoke PRIVATE abc_trainer_engine abc_shared juce::juce_audio_utils juce::juce_dsp
     I18nData FontData SampleData BrandData juce::juce_recommended_config_flags)
+
+# RoomDemo - a scripted local seminar room, for checking the phone page in a
+# browser (tools/room_demo_check.mjs). Not in CI.
+juce_add_console_app(RoomDemo PRODUCT_NAME "RoomDemo")
+target_sources(RoomDemo PRIVATE tools/RoomDemo.cpp Source/LocalRoom.cpp)
+target_compile_definitions(RoomDemo PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(RoomDemo PRIVATE juce::juce_gui_basics juce::juce_recommended_config_flags)

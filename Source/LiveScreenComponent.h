@@ -5,6 +5,10 @@
 #include "LiveLink.h"
 #include "LiveAccount.h"
 #include "BotListener.h"
+#include "SeminarHost.h"
+#include "ProjectorWindow.h"
+#include "InviteListComponent.h"
+#include "CodeSheet.h"
 #include <functional>
 #include <vector>
 
@@ -22,8 +26,11 @@
 // What says plainly that it is not there yet: anything that would need the
 // Live server - joining a room, finding an opponent, the rating itself.
 //
-// Nothing here opens a socket. The offline rule holds: the app connects
-// only when the player uses Live, and today Live does not connect at all.
+// The local seminar works (2026-09-25): the room is served by this
+// computer (LocalRoom, SeminarHost), phones join by a real QR code, the
+// projector window shows the round. Online rooms still wait for the round
+// server and say so. The offline rule holds: a socket opens only when the
+// presenter opens a local room, and only on the local network.
 class LiveScreenComponent : public juce::Component,
                             private juce::Timer,
                             private juce::ChangeListener
@@ -118,12 +125,42 @@ public:
         juce::String botDisclaimer { "Characters inspired by differences in animal hearing - game profiles, not biology." };
         juce::String humansTitle { "Against people" };
         juce::String lanTrouble { "Phones cannot open the address? Guest Wi-Fi often keeps devices apart - use a normal network or a hotspot. Allow abcTrain incoming connections in the firewall. Turn off mobile data on the phone." };
+
+        // The local seminar, working (2026-09-25).
+        juce::String roomTitle { "abcTrain seminar" };
+        juce::String scanToJoin { "Scan with the phone's camera" };
+        juce::String roomCodeLabel { "Room code" };
+        juce::String playA { "A - clean" }, playB { "B - processed" }, stopSound { "Stop" };
+        juce::String showAnswer { "Show the answer" }, nextRound { "Next" }, again { "Once more" }, results { "Results" };
+        juce::String hostRound { "Round {{n}} of {{m}}" };
+        juce::String answeredOf { "Answered: {{n}} of {{m}}" };
+        juce::String rightOf { "Right: {{n}} of {{m}}" };
+        juce::String theAnswer { "The answer: {{answer}}" };
+        juce::String hostHint { "The sound plays here, into the hall. Phones only answer. Keys in the projector window: Space, A, B, S." };
+        juce::String roomFailed { "Could not open the room on this computer: {{why}}" };
+        juce::String needPeople { "Add at least one person to the list, or let anyone in." };
+        juce::String pasteList { "Paste a list" };
+        juce::String listCount { "{{n}} [[person|people]] on the list" };
+        juce::String listPasteHint { "Rows from a spreadsheet or a mail paste straight in: one person per line." };
+        juce::String nameCol { "Name" }, mailCol { "E-mail" }, codeCol { "Code" };
+        juce::String namePlaceholder { "Ivan Petrov" }, mailPlaceholder { "ivan@school.ru" };
+        juce::String scanToSignIn { "Or scan it with your phone - the same page opens there." };
+        juce::String joinLocal { "At a local seminar: type the address from the presenter's screen here, or scan the QR code with a phone." };
+        juce::String openAddress { "Open" };
+        juce::String onlineNotYet { "Online rooms open with the round server. A local room works today, without the internet." };
+        juce::String closeProjector { "Close the projector screen" };
+        juce::String nobodyYet { "Nobody in the room yet" };
+
+        ProjectorView::Strings projectorText;
+        CodeSheet::Strings sheet;
+        juce::var phone;    // the phone page's texts, by key
     };
 
     LiveScreenComponent();
     ~LiveScreenComponent() override;
 
     void setStrings (Strings);
+    const Strings& getStrings() const noexcept { return text; }
 
     enum class Tab { seminar, battle, rating };
     void showTab (Tab);
@@ -134,6 +171,9 @@ public:
     // The account this page signs in and out (the processor owns it).
     void setAccount (LiveAccount*);
 
+    // The local seminar this page opens and runs (the editor owns it).
+    void setSeminarHost (SeminarHost*);
+
     // "Start the battle" against a bot: which bot, and which family
     // (0 frequency, 1 dynamics, 2 space, 3 character). The editor picks
     // the exercise and runs it in the duel mode.
@@ -142,6 +182,7 @@ public:
     // For tools/EditorSnapshots.
     void openRoomForSnapshot (bool local);
     void openInvitesForSnapshot();
+    void runRoundForSnapshot (bool revealed);
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -171,8 +212,13 @@ private:
     void layoutOverlay();
     void refreshVisibility();
     void setNote (const juce::String&);
-    void makeCodes();
-    juce::String roomAddress() const;
+    juce::String roomAddress() const;      // "192.168.0.14:8930"
+    juce::String roomJoinUrl() const;      // what the QR code opens
+    void openLocalRoom();
+    void closeLocalRoom();
+    void openProjector();
+    void refreshHostButtons();
+    bool running() const;
 
     void paintCard (juce::Graphics&, juce::Rectangle<int>, const juce::String& title) const;
     void paintSeminar (juce::Graphics&);
@@ -199,6 +245,14 @@ private:
     bool roomOpen = false;
     juce::String roomCode;
     juce::TextButton projectorButton, startButton, closeRoomButton;
+    juce::TextButton playAButton, playBButton, stopButton;
+    SeminarHost* seminar = nullptr;
+    std::unique_ptr<ProjectorWindow> projector;
+    mutable std::unique_ptr<QrCode> roomQr, signInQr;
+    mutable juce::String roomQrUrl, signInQrUrl;
+    void paintQrInto (juce::Graphics&, std::unique_ptr<QrCode>&, juce::String& cachedUrl,
+                      const juce::String& url, juce::Rectangle<int>) const;
+    void paintRunning (juce::Graphics&, juce::Rectangle<int>);
 
     // Battle
     SegmentedChoice battleFamily, botChoice;
@@ -223,9 +277,7 @@ private:
     juce::String signInCode;
     double signInStartedMs = 0.0;
     juce::TextButton overlayPrimary, overlaySecondary, overlayTertiary;
-    juce::TextEditor inviteEditor;
-    struct Invitee { juce::String name, mail, code; };
-    std::vector<Invitee> invitees;
+    InviteListComponent inviteList;
 
     juce::String note;
     juce::Rectangle<int> cardA, cardB, overlayBox, tableArea, bannerBox;

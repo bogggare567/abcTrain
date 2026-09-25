@@ -33,19 +33,19 @@ export const DOWNLOADS = [
     os: 'macOS',
     file: `abcTrain-macOS-${RELEASE.version}.dmg`,
     href: dl(`abcTrain-macOS-${RELEASE.version}.dmg`),
-    formats: 'VST3 · AU · Standalone',
+    formats: 'App · VST3 · AU',
   },
   {
     os: 'Windows',
     file: `abcTrain-Windows-${RELEASE.version}-setup.exe`,
     href: dl(`abcTrain-Windows-${RELEASE.version}-setup.exe`),
-    formats: 'VST3 · Standalone',
+    formats: 'App · VST3',
   },
   {
     os: 'Linux',
     file: `abcTrain-Linux-${RELEASE.version}.tar.gz`,
     href: dl(`abcTrain-Linux-${RELEASE.version}.tar.gz`),
-    formats: 'VST3 · Standalone',
+    formats: 'App · VST3',
   },
 ];
 
@@ -129,6 +129,25 @@ export const PLUGINS = [
 export const PLUGINS_COMMON =
   'In all three, each knob is a training module: you match a hidden setting with the plugin’s own knob, inside an accept band in that knob’s units, on the same ten-step staircase as the trainer. A/B slots for comparing two settings, and the whole interface in 12 languages.';
 
+// Live (ADR 045-047): what works today, without a server of anybody's.
+export const LIVE = [
+  {
+    key: 'seminar',
+    head: 'A seminar in a room, no internet',
+    body: 'The presenter’s laptop plays the exercise into the hall and serves a page to the phones on the same Wi-Fi. Everybody scans one QR code, answers on the phone, and the projector window shows the question, how the room voted and the answer. A list of invitees prints as cards, each with its own code and QR.',
+  },
+  {
+    key: 'bots',
+    head: 'Battles against six bot listeners',
+    body: 'Seven rounds on the same material for both, against a listener with its own hearing profile. Offline.',
+  },
+  {
+    key: 'account',
+    head: 'An account, only if you want one',
+    body: 'Sign in on soundkorb.ru with an e-mail code, no password; the app is linked by a short code and gets a key you can revoke. Sync sends a summary of about 1 KB. Training never needs it.',
+  },
+];
+
 // Straight from docs/website-brief.md's "what you must not claim". Putting
 // these on the page rather than hiding them is the whole point: an
 // instrument that tells you what it cannot do yet is one you can trust
@@ -151,6 +170,10 @@ export const LIMITS = [
     body: 'Software sees dBFS, not what reaches your ears. The weekly figure holds only while the monitor level stays where you calibrated it, and it is not a certified H.870 measurement.',
   },
   {
+    head: 'Seminars over the internet are not open yet',
+    body: 'A seminar runs on the local network today. Online rooms and battles between people wait for the round server, which scores rounds on the server so a rating cannot be inflated.',
+  },
+  {
     head: 'Updating is not fully automatic',
     body: 'The button fetches and launches the right installer for your system. No program can replace a plugin the host already has loaded, so it always ends with “restart your DAW”.',
   },
@@ -158,7 +181,7 @@ export const LIMITS = [
 
 export const FACTS = [
   ['Exercises', '9'],
-  ['Plugins', '4'],
+  ['App + plugins', '1 + 3'],
   ['Formats', 'VST3 · AU · Standalone'],
   ['Languages', '12'],
   ['Licence', 'Source available'],

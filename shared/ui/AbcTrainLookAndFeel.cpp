@@ -1,6 +1,7 @@
 #include "shared/ui/AbcTrainLookAndFeel.h"
 
 #include "shared/ui/AbcTrainFonts.h"
+#include "shared/i18n/LocalisationManager.h"
 #include <cmath>
 
 namespace
@@ -1289,11 +1290,14 @@ void AbcTrainLookAndFeel::noteTextOverflow (const juce::String& text, float need
         audit.lines.add (line);
 }
 
-void AbcTrainLookAndFeel::fitText (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area,
+void AbcTrainLookAndFeel::fitText (juce::Graphics& g, const juce::String& textIn, juce::Rectangle<float> area,
                                    juce::Justification justification, bool useEllipsesIfTooLong)
 {
-    if (text.isEmpty() || area.isEmpty())
+    if (textIn.isEmpty() || area.isEmpty())
         return;
+
+    // "5 [[раунд|раунда|раундов]]" -> "5 раундов", whoever filled the number in.
+    const auto text = LocalisationManager::resolvePlurals (textIn);
 
     const auto font = g.getCurrentFont();
     const auto width = juce::GlyphArrangement::getStringWidth (font, text);
@@ -1364,11 +1368,13 @@ float AbcTrainLookAndFeel::fitLinesScale (const juce::String& text, const juce::
     return 0.8f;
 }
 
-void AbcTrainLookAndFeel::fitLines (juce::Graphics& g, const juce::String& text, juce::Rectangle<int> area,
+void AbcTrainLookAndFeel::fitLines (juce::Graphics& g, const juce::String& textIn, juce::Rectangle<int> area,
                                     juce::Justification justification, int maxLines, float minimumHorizontalScale)
 {
-    if (text.isEmpty() || area.isEmpty())
+    if (textIn.isEmpty() || area.isEmpty())
         return;
+
+    const auto text = LocalisationManager::resolvePlurals (textIn);
 
     const auto font = g.getCurrentFont();
     const auto width = (float) area.getWidth();
@@ -1406,13 +1412,15 @@ void AbcTrainLookAndFeel::fitLines (juce::Graphics& g, const juce::String& text,
     g.drawFittedText (text, area, justification, maxLines, minimumHorizontalScale);
 }
 
-void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String& text,
+void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String& textIn,
                                             juce::Rectangle<float> area, const juce::Font& fontIn,
                                             juce::Colour colour, float trackingIn,
                                             juce::Justification justification)
 {
-    if (text.isEmpty())
+    if (textIn.isEmpty())
         return;
+
+    const auto text = LocalisationManager::resolvePlurals (textIn);
 
     // Fit first (see fitText): letter-spacing is the first thing to give,
     // then size, then width. A translation that is longer than the

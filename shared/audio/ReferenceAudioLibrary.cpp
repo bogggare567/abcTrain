@@ -2,6 +2,7 @@
 #include "shared/audio/AudioSliceAnalyzer.h"
 #include "shared/audio/InstrumentLabel.h"
 #include "SampleBinaryData.h"
+#include "shared/audio/BuiltInSynth.h"
 #include <array>
 #include <map>
 
@@ -302,6 +303,61 @@ void ReferenceAudioLibrary::addBuiltInCategories()
         info.credit = { juce::String (b.fileName).upToLastOccurrenceOf (".", false, false),
                         "abcTrain (synthesized)", "https://github.com/bogggare567/abcTrain", "CC0-1.0" };
         target->clips.add (info);
+    }
+
+    // The synthesized set (BuiltInSynth): rendered once into the same cache
+    // and then just files. A version in the name rewrites them when a recipe
+    // changes; an unchanged one costs a directory lookup per launch.
+    {
+        juce::WavAudioFormat wav;
+
+        // An older recipe's renders, now unused.
+        const auto current = juce::String ("synth-v") + juce::String (BuiltInSynth::version) + "-";
+        for (const auto& old : cacheDir.findChildFiles (juce::File::findFiles, false, "synth-v*.wav"))
+            if (! old.getFileName().startsWith (current))
+                old.deleteFile();
+
+        for (const auto& sound : BuiltInSynth::all())
+        {
+            const auto fileName = juce::String ("synth-v") + juce::String (BuiltInSynth::version) + "-"
+                                + juce::String (sound.name).replaceCharacter (' ', '-') + ".wav";
+            auto file = cacheDir.getChildFile (fileName);
+
+            if (! file.existsAsFile() || file.getSize() < 1000)
+            {
+                const auto rendered = sound.render (44100.0);
+                file.deleteFile();
+
+                if (auto stream = std::unique_ptr<juce::OutputStream> (file.createOutputStream()))
+                {
+                    const auto options = juce::AudioFormatWriterOptions{}.withSampleRate (44100.0)
+                                             .withNumChannels (1).withBitsPerSample (24);
+
+                    if (auto writer = wav.createWriterFor (stream, options))
+                        writer->writeFromAudioSampleBuffer (rendered, 0, rendered.getNumSamples());
+                }
+            }
+
+            if (! file.existsAsFile())
+                continue;
+
+            const juce::String categoryName (sound.category);
+            Category* target = nullptr;
+            for (auto& c : builtInCategories)
+                if (c.name == categoryName)
+                    target = &c;
+
+            if (target == nullptr)
+            {
+                builtInCategories.add ({ categoryName, {} });
+                target = &builtInCategories.getReference (builtInCategories.size() - 1);
+            }
+
+            target->files.add (file);
+            ClipInfo info;
+            info.credit = { sound.name, "abcTrain (synthesized)", "https://github.com/bogggare567/abcTrain", "CC0-1.0" };
+            target->clips.add (info);
+        }
     }
 
     // Inserted ahead of anything scanned from rootFolder, so built-in

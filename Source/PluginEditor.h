@@ -184,6 +184,8 @@ public:
             case 8: liveScreen.openRoomForSnapshot (false); break;
             case 4: liveScreen.openInvitesForSnapshot(); break;
             case 5: liveScreen.openSignIn(); break;
+            case 9: liveScreen.runRoundForSnapshot (false); break;
+            case 10: liveScreen.runRoundForSnapshot (true); break;
             default: liveScreen.showTab (LiveScreenComponent::Tab::seminar); break;
         }
     }
@@ -279,7 +281,22 @@ public:
 
         if (view == 1) trainingSounds.selectForSnapshot (0.22f, 0.61f);
         if (view == 2) trainingSounds.askDeleteForSnapshot (1);
+        if (view == 4) trainingSounds.checkForSnapshot ({ 0, 2 });
     }
+
+    // The projector window's content, off-screen at the projector's usual
+    // 1280x720: after openLiveForSnapshot (3, 9 or 10), which opened the room.
+    juce::Component* projectorForSnapshot()
+    {
+        if (seminarHost == nullptr)
+            return nullptr;
+
+        snapshotProjector = std::make_unique<ProjectorView> (*seminarHost, [] { return juce::String ("192.168.1.24:8930"); });
+        snapshotProjector->setStrings (liveScreen.getStrings().projectorText);
+        snapshotProjector->setSize (1280, 720);
+        return snapshotProjector.get();
+    }
+    std::unique_ptr<ProjectorView> snapshotProjector;
 
     void openSoundClipsForSnapshot()
     {
@@ -1589,9 +1606,17 @@ private:
 
     // Seminars, battles, the rating - the screens and buttons, no network
     // yet (LiveScreenComponent.h).
+    // The local seminar (LocalRoom + SeminarHost): created before the page
+    // that runs it, so it outlives the page's projector window.
+    std::unique_ptr<SeminarHost> seminarHost;
     LiveScreenComponent liveScreen;
     void refreshLiveStrings();
+    void createSeminarHost();
     void refreshAccountState();
+public:
+    // For tools/EditorSnapshots.
+    LiveScreenComponent& getLiveScreenForSnapshot() noexcept { return liveScreen; }
+private:
 
     // A battle with a bot, started from Live (ADR 046).
     void startBotBattle (BotListener::Bot, int family);

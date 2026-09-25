@@ -983,6 +983,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (studioScreen);
     addChildComponent (liveScreen);
     liveScreen.setAccount (&processor.getLiveAccount());
+    createSeminarHost();
     liveScreen.onStartBotBattle = [this] (BotListener::Bot bot, int family) { startBotBattle (bot, family); };
 
     // Live can be switched off in Settings (ADR 042's offline rule: off,
@@ -1383,6 +1384,12 @@ void EarTrainerEditor::adoptNativeWindow()
 EarTrainerEditor::~EarTrainerEditor()
 {
     processor.getLiveAccount().onChanged = nullptr;
+
+    // A seminar still open: close the room (phones get "connection lost",
+    // not a server that half-answers) before the page that shows it goes.
+    liveScreen.setSeminarHost (nullptr);
+    if (seminarHost != nullptr)
+        seminarHost->getRoom().close();
 
     // Silence, then deregister.
     //
@@ -3197,6 +3204,7 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.shuffling          = localisation.getText ("ui.soundsShuffling");
         sounds.builtInPercussive  = localisation.getText ("ui.soundsBuiltInPercussive");
         sounds.builtInSustained   = localisation.getText ("ui.soundsBuiltInSustained");
+        sounds.builtInLoops       = localisation.getText ("ui.soundsBuiltInLoops");
         sounds.exerciseSound      = localisation.getText ("ui.soundsExercise");
         sounds.trainingOnExerciseSound = localisation.getText ("ui.soundsOnExercise");
         sounds.credits            = localisation.getText ("ui.credits");
@@ -3223,6 +3231,13 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.deleteYes          = localisation.getText ("ui.sounds.deleteYes");
         sounds.deleteNo           = localisation.getText ("ui.sounds.deleteNo");
         sounds.deleted            = localisation.getText ("ui.sounds.deleted");
+        sounds.selectAll          = localisation.getText ("ui.sounds.selectAll");
+        sounds.clearChecked       = localisation.getText ("ui.sounds.clearChecked");
+        sounds.deleteChecked      = localisation.getText ("ui.sounds.deleteChecked");
+        sounds.checkedCount       = localisation.getText ("ui.sounds.checkedCount");
+        sounds.bulkConfirm        = localisation.getText ("ui.sounds.bulkConfirm");
+        sounds.bulkDeleted        = localisation.getText ("ui.sounds.bulkDeleted");
+        sounds.checkHint          = localisation.getText ("ui.sounds.checkHint");
         sounds.languageCode       = localisation.getCurrentLanguage();
 
         trainingSounds.setStrings (std::move (sounds));
@@ -3891,6 +3906,73 @@ void EarTrainerEditor::refreshLiveStrings()
     s.botSpeedSlow = g ("live.botSpeedSlow", s.botSpeedSlow);
     s.botDisclaimer = g ("live.botDisclaimer", s.botDisclaimer);
     s.humansTitle = g ("live.humansTitle", s.humansTitle);
+    s.roomTitle = g ("live.roomTitle", s.roomTitle);
+    s.scanToJoin = g ("live.scanToJoin", s.scanToJoin);
+    s.roomCodeLabel = g ("live.roomCodeLabel", s.roomCodeLabel);
+    s.playA = g ("live.playA", s.playA);
+    s.playB = g ("live.playB", s.playB);
+    s.stopSound = g ("live.stopSound", s.stopSound);
+    s.showAnswer = g ("live.showAnswer", s.showAnswer);
+    s.nextRound = g ("live.nextRound", s.nextRound);
+    s.again = g ("live.again", s.again);
+    s.results = g ("live.results", s.results);
+    s.hostRound = g ("live.hostRound", s.hostRound);
+    s.answeredOf = g ("live.answeredOf", s.answeredOf);
+    s.rightOf = g ("live.rightOf", s.rightOf);
+    s.theAnswer = g ("live.theAnswer", s.theAnswer);
+    s.hostHint = g ("live.hostHint", s.hostHint);
+    s.roomFailed = g ("live.roomFailed", s.roomFailed);
+    s.needPeople = g ("live.needPeople", s.needPeople);
+    s.pasteList = g ("live.pasteList", s.pasteList);
+    s.listCount = g ("live.listCount", s.listCount);
+    s.listPasteHint = g ("live.listPasteHint", s.listPasteHint);
+    s.nameCol = g ("live.nameCol", s.nameCol);
+    s.mailCol = g ("live.mailCol", s.mailCol);
+    s.codeCol = g ("live.codeCol", s.codeCol);
+    s.namePlaceholder = g ("live.namePlaceholder", s.namePlaceholder);
+    s.mailPlaceholder = g ("live.mailPlaceholder", s.mailPlaceholder);
+    s.scanToSignIn = g ("live.scanToSignIn", s.scanToSignIn);
+    s.joinLocal = g ("live.joinLocal", s.joinLocal);
+    s.openAddress = g ("live.openAddress", s.openAddress);
+    s.onlineNotYet = g ("live.onlineNotYet", s.onlineNotYet);
+    s.closeProjector = g ("live.closeProjector", s.closeProjector);
+    s.nobodyYet = g ("live.nobodyYet", s.nobodyYet);
+
+    // The projector window, the printed cards and the phone page.
+    s.projectorText.scan = g ("proj.scan", s.projectorText.scan);
+    s.projectorText.roomCode = g ("proj.roomCode", s.projectorText.roomCode);
+    s.projectorText.personalCodes = g ("proj.personalCodes", s.projectorText.personalCodes);
+    s.projectorText.joined = g ("proj.joined", s.projectorText.joined);
+    s.projectorText.waitingForStart = g ("proj.waitingForStart", s.projectorText.waitingForStart);
+    s.projectorText.round = g ("proj.round", s.projectorText.round);
+    s.projectorText.answered = g ("proj.answered", s.projectorText.answered);
+    s.projectorText.playingClean = g ("proj.playingClean", s.projectorText.playingClean);
+    s.projectorText.playingProcessed = g ("proj.playingProcessed", s.projectorText.playingProcessed);
+    s.projectorText.silent = g ("proj.silent", s.projectorText.silent);
+    s.projectorText.theAnswer = g ("proj.theAnswer", s.projectorText.theAnswer);
+    s.projectorText.rightCount = g ("proj.rightCount", s.projectorText.rightCount);
+    s.projectorText.noVotes = g ("proj.noVotes", s.projectorText.noVotes);
+    s.projectorText.finished = g ("proj.finished", s.projectorText.finished);
+    s.projectorText.points = g ("proj.points", s.projectorText.points);
+    s.projectorText.lateJoin = g ("proj.lateJoin", s.projectorText.lateJoin);
+    s.projectorText.keys = g ("proj.keys", s.projectorText.keys);
+    s.projectorText.showAnswer = g ("proj.showAnswer", s.projectorText.showAnswer);
+    s.projectorText.next = g ("proj.next", s.projectorText.next);
+    s.projectorText.again = g ("proj.again", s.projectorText.again);
+    s.projectorText.start = g ("proj.start", s.projectorText.start);
+    s.projectorText.fullScreen = g ("proj.fullScreen", s.projectorText.fullScreen);
+    s.sheet.title = g ("sheet.title", s.sheet.title);
+    s.sheet.howTo = g ("sheet.howTo", s.sheet.howTo);
+    s.sheet.code = g ("sheet.code", s.sheet.code);
+    s.sheet.print = g ("sheet.print", s.sheet.print);
+
+    {
+        auto* phoneTexts = new juce::DynamicObject();
+        for (const auto* key : { "joinTitle", "yourName", "roomCode", "personalCode", "listHint", "join", "hello", "waiting", "headphones", "round", "tapHint", "dragHint", "sent", "answeredOf", "right", "wrong", "noVote", "answerWas", "yourVote", "points", "finished", "place", "offline", "footer", "err.badCode", "err.badRoom", "err.nameNeeded", "err.full", "err.x" })
+            phoneTexts->setProperty (key, localisation.getText (juce::String ("phone.") + key));
+        s.phone = juce::var (phoneTexts);
+    }
+
 
     for (int i = 0; i < BotListener::numBots; ++i)
     {
@@ -3960,4 +4042,65 @@ void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
 
     showScreen (Screen::training);
     beginRunWithCountdown();
+}
+
+void EarTrainerEditor::createSeminarHost()
+{
+    SeminarHost::Hooks hooks;
+    auto& gm = processor.getGameManager();
+
+    hooks.activeGameIndex = [&gm] { return gm.getActiveGameIndex(); };
+    hooks.game = [&gm] (int index) -> Game& { return gm.getGame (index); };
+
+    hooks.selectGame = [this] (int index)
+    {
+        auto& manager = processor.getGameManager();
+        manager.getActiveGame().removeChangeListener (this);
+        manager.setActiveGameIndex (index);
+        manager.getActiveGame().addChangeListener (this);
+        rebuildChoiceSlider();
+    };
+
+    // A seminar round is the trainer's round without the player: the same
+    // newRound(), a fresh clip, clean first. Nobody answers it here, so
+    // the presenter's progress is untouched (ProgressManager scores answers).
+    hooks.startRound = [this]
+    {
+        ++pendingAdvanceId;
+        clearHint();
+        auto& game = processor.getGameManager().getActiveGame();
+        game.setPlayProcessed (false);
+        refreshBeforeAfter();
+        game.newRound();
+        processor.getGameManager().getReferenceAudioLibrary().advanceToRandomClip (processor.getSampleRate());
+    };
+
+    hooks.setSound = [this] (bool play, bool processed)
+    {
+        processor.getGameManager().getActiveGame().setPlayProcessed (processed);
+        processor.setSignalEnabled (play);
+        refreshBeforeAfter();
+    };
+
+    hooks.localisedName = [this] (const Game& game) { return translateGameName (game.getName(), localisation); };
+    hooks.localisedPrompt = [this] (const Game& game)
+    {
+        // The first sentence only - "listen, then ..." - the rest is advice
+        // for someone alone at a desk, and a hall reads a line, not a paragraph.
+        const auto full = translateGameInstructions (game.getName(), game.getInstructions(), localisation);
+
+        for (const auto* stop : { ". ", "\xe3\x80\x82", "! ", "? " })
+        {
+            const auto mark = juce::String (juce::CharPointer_UTF8 (stop));
+            const auto at = full.indexOf (mark);
+
+            if (at > 20)
+                return full.substring (0, at + (mark.trim().length()));
+        }
+
+        return full;
+    };
+
+    seminarHost = std::make_unique<SeminarHost> (std::move (hooks));
+    liveScreen.setSeminarHost (seminarHost.get());
 }
