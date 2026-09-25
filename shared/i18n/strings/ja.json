@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "{{n}} 個のクリップをゴミ箱に移しますか？",
   "ui.sounds.bulkDeleted": "{{n}} 個のクリップをゴミ箱に移しました",
   "ui.sounds.checkHint": "チェックを入れる（または Cmd/Ctrl-クリック、Shift-クリック）と複数削除できます",
-  "ui.soundsBuiltInLoops": "内蔵・ループ"
+  "ui.soundsBuiltInLoops": "内蔵・ループ",
+  "live.battleOnline": "7ラウンド、両者とも同じ内容。サーバーが各ラウンドを出題し、採点も行います。エクササイズは右で選んだもの。",
+  "live.searching": "対戦相手を探しています… {{time}}",
+  "live.cancelSearch": "検索をやめる",
+  "live.nickRequired": "バトルにはニックネームが必要です。soundkorb.ru のアカウントで設定してください。",
+  "live.battleOffline": "バトルサーバーに接続できません。もう一度お試しください。",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "相手が降参しました。残りのラウンドはあなたのものです。",
+  "live.battleAbandoned": "接続が切れたためバトルは中断されました。記録されません。",
+  "live.roundVoided": "このラウンドは無効：2つのアプリが異なるラウンドを作りました。"
 }

@@ -51,6 +51,8 @@ public:
     juce::String getAfterLabel() const override { return "Comp On"; }
 
     void newRound() override;
+
+    void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
     void submitAnswer (int choiceIndex) override;
 
     // Always two - see ReverbGame for the reasoning. Here the pair is

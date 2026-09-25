@@ -46,6 +46,7 @@ LiveAccount::~LiveAccount()
     alive->store (false);
     stopTimer();
     pool.removeAllJobs (true, 10000);
+    battlePool.removeAllJobs (true, 10000);
 }
 
 juce::PropertiesFile::Options LiveAccount::makeDefaultOptions()
@@ -185,6 +186,27 @@ LiveAccount::Response LiveAccount::request (const juce::String& method, const ju
     text.writeFromInputStream (*stream, 256 * 1024);
     response.json = juce::JSON::parse (text.toString());
     return response;
+}
+
+// ---- battles ---------------------------------------------------------------------
+
+void LiveAccount::battleCall (const juce::String& method, const juce::String& path, const juce::var& body, BattleDone done)
+{
+    const auto token = properties->getValue (tokenKey);
+
+    battlePool.addJob ([flag = alive, method, path, body, token, done = std::move (done)]
+    {
+        if (! flag->load())
+            return;
+
+        const auto response = request (method, path, body, token);
+
+        juce::MessageManager::callAsync ([flag, done, response]
+        {
+            if (flag->load() && done != nullptr)
+                done (response.status, response.json);
+        });
+    });
 }
 
 // ---- signing in ----------------------------------------------------------------

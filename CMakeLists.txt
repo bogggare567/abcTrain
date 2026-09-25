@@ -397,6 +397,7 @@ target_sources(EarTrainer
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
+        Source/OnlineBattle.cpp
         Source/LocalRoom.cpp
         Source/SeminarHost.cpp
         Source/ProjectorWindow.cpp
@@ -575,6 +576,8 @@ target_sources(EarTrainerTests
     PRIVATE
         tests/TestRunner.cpp
         tests/EQGameTest.cpp
+        tests/SeededRoundTest.cpp
+        tests/OnlineBattleTest.cpp
         tests/CompressionGameTest.cpp
         tests/ReverbGameTest.cpp
         tests/PanGameTest.cpp
@@ -611,6 +614,7 @@ target_sources(EarTrainerTests
         tests/CompressorCheckTest.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
+        Source/OnlineBattle.cpp
         Source/LocalRoom.cpp
         Source/SeminarHost.cpp
         Source/InviteListComponent.cpp
@@ -682,6 +686,7 @@ set(abcTrainEditorToolSources
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
+        Source/OnlineBattle.cpp
         Source/LocalRoom.cpp
         Source/SeminarHost.cpp
         Source/ProjectorWindow.cpp
@@ -830,6 +835,14 @@ target_include_directories(LiveSmoke PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_link_libraries(LiveSmoke PRIVATE abc_trainer_engine abc_shared juce::juce_audio_utils juce::juce_dsp
     I18nData FontData SampleData BrandData juce::juce_recommended_config_flags)
 
+# BattleSmoke - two apps play a battle against the site's server (ADR 048).
+# Not in CI; see tools/BattleSmoke.cpp.
+juce_add_console_app(BattleSmoke PRODUCT_NAME "BattleSmoke")
+target_sources(BattleSmoke PRIVATE tools/BattleSmoke.cpp Source/LiveLink.cpp Source/LiveAccount.cpp Source/OnlineBattle.cpp)
+target_compile_definitions(BattleSmoke PRIVATE JUCE_WEB_BROWSER=0 JUCE_MODAL_LOOPS_PERMITTED=1)
+target_include_directories(BattleSmoke PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_link_libraries(BattleSmoke PRIVATE abc_trainer_engine abc_shared juce::juce_audio_utils juce::juce_dsp
+    I18nData FontData SampleData BrandData juce::juce_recommended_config_flags)
 # RoomDemo - a scripted local seminar room, for checking the phone page in a
 # browser (tools/room_demo_check.mjs). Not in CI.
 juce_add_console_app(RoomDemo PRODUCT_NAME "RoomDemo")

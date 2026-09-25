@@ -45,6 +45,8 @@ public:
     juce::String getAfterLabel() const override { return "Panned"; }
 
     void newRound() override;
+
+    void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
     void submitAnswer (int choiceIndex) override;
 
     // Continuous: the target sits anywhere across the stereo field, and

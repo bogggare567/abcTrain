@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "클립 {{n}}개를 휴지통으로 옮길까요?",
   "ui.sounds.bulkDeleted": "클립 {{n}}개를 휴지통으로 옮겼습니다",
   "ui.sounds.checkHint": "상자에 체크하면(또는 Cmd/Ctrl-클릭, Shift-클릭) 여러 개를 삭제할 수 있습니다",
-  "ui.soundsBuiltInLoops": "내장 루프"
+  "ui.soundsBuiltInLoops": "내장 루프",
+  "live.battleOnline": "7라운드, 두 사람 모두 같은 문제. 서버가 라운드를 내고 채점도 직접 합니다. 연습은 오른쪽에서 고른 것.",
+  "live.searching": "상대를 찾는 중… {{time}}",
+  "live.cancelSearch": "검색 취소",
+  "live.nickRequired": "배틀에는 닉네임이 필요합니다. soundkorb.ru 계정에서 설정하세요.",
+  "live.battleOffline": "배틀 서버에 연결할 수 없습니다. 다시 시도하세요.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "상대가 포기했습니다. 남은 라운드는 당신의 것입니다.",
+  "live.battleAbandoned": "연결이 끊겨 배틀이 중단되었습니다. 기록되지 않습니다.",
+  "live.roundVoided": "라운드 무효: 두 앱이 서로 다른 라운드를 만들었습니다."
 }

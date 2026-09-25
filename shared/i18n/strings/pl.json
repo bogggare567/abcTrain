@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "Przenieść do kosza {{n}} [[fragment|fragmenty|fragmentów]]?",
   "ui.sounds.bulkDeleted": "W koszu: {{n}} [[fragment|fragmenty|fragmentów]]",
   "ui.sounds.checkHint": "zaznacz pola (albo Cmd/Ctrl-klik, Shift-klik), aby usunąć kilka",
-  "ui.soundsBuiltInLoops": "Wbudowane pętle"
+  "ui.soundsBuiltInLoops": "Wbudowane pętle",
+  "live.battleOnline": "Siedem rund, takich samych dla obu. Serwer ustala każdą rundę i sam ocenia odpowiedzi. Ćwiczenia – jak wybrano po prawej.",
+  "live.searching": "Szukam przeciwnika… {{time}}",
+  "live.cancelSearch": "Anuluj wyszukiwanie",
+  "live.nickRequired": "Do bitwy potrzebny jest nick: ustaw go na koncie na soundkorb.ru.",
+  "live.battleOffline": "Brak połączenia z serwerem bitew. Spróbuj ponownie.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "Przeciwnik się poddał – pozostałe rundy są twoje.",
+  "live.battleAbandoned": "Bitwa przerwana: utracono połączenie. Nie liczy się.",
+  "live.roundVoided": "Runda nie liczy się: aplikacje zbudowały różne rundy."
 }

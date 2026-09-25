@@ -111,6 +111,13 @@ public:
 
     // Anything visible changed - signed in or out, a link stage, a sync -
     // is a change message (several screens listen), plus this hook.
+    // ---- battles (ADR 048) ------------------------------------------------
+    // One call to /api/abctrain/battle/*, with this device's token; `done`
+    // runs on the message thread (status 0 = no answer at all). A pool of
+    // its own, so a slow sync never holds up a battle round.
+    using BattleDone = std::function<void (int status, const juce::var& json)>;
+    void battleCall (const juce::String& method, const juce::String& path, const juce::var& body, BattleDone done);
+
     std::function<void()> onChanged;
 
     // ---- the pure parts, for tests -----------------------------------------
@@ -142,6 +149,7 @@ private:
     ProgressManager& progress;
     std::unique_ptr<juce::PropertiesFile> properties;
     juce::ThreadPool pool { 1 };
+    juce::ThreadPool battlePool { 1 };
     std::shared_ptr<std::atomic<bool>> alive = std::make_shared<std::atomic<bool>> (true);
     std::atomic<int> busy { 0 };
 

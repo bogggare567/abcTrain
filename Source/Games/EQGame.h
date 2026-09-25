@@ -56,6 +56,8 @@ public:
     juce::String getAfterLabel() const override { return "EQ On"; }
 
     void newRound() override;
+
+    void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
     void submitAnswer (int choiceIndex) override;
 
     bool usesContinuousScale() const override { return true; }

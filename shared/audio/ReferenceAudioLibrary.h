@@ -203,6 +203,12 @@ public:
     // over" is a real request, and until now the only way to answer it was
     // to put a single file in a folder of its own.
     void pinFile (const juce::File&, double sampleRate);
+
+    // An online battle: a built-in clip chosen by the round's seed. Built-in
+    // sounds are made from code, so the same seed is the same file on every
+    // computer - the player's own library is not (ADR 048). Leaves the
+    // active category alone; the caller restores its selection afterwards.
+    bool selectSeededBuiltIn (juce::int64 seed, double sampleRate);
     void unpinFile();
     bool isPinned() const noexcept { return pinned; }
 

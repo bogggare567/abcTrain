@@ -1,4 +1,5 @@
 #include "LiveScreenComponent.h"
+#include <array>
 #include "shared/updates/Version.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
@@ -199,7 +200,24 @@ LiveScreenComponent::LiveScreenComponent()
     battleFamily.setValue (0);
     battleFamily.setUppercase (false);
     addChildComponent (battleFamily);
-    searchButton.onClick = [this] { if (requireServer()) setNote (text.battlesNext); };
+    searchButton.onClick = [this]
+    {
+        if (searchingOnline)
+        {
+            if (onCancelSearch != nullptr) onCancelSearch();
+            return;
+        }
+
+        if (account == nullptr || ! account->isSignedIn())
+        {
+            openSignIn();
+            return;
+        }
+
+        if (requireServer() && onFindOpponent != nullptr)
+            onFindOpponent (juce::jlimit (0, 3, battleFamily.getValue()));
+    };
+    // Challenges by code need a second queue on the server; not yet (ADR 048).
     challengeButton.onClick = [this] { if (requireServer()) setNote (text.battlesNext); };
     battleSignInButton.onClick = [this] { openSignIn(); };
 
@@ -358,7 +376,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
     projectorButton.setButtonText (text.projector);
     startButton.setButtonText (text.start);
     closeRoomButton.setButtonText (text.closeRoom);
-    searchButton.setButtonText (text.search);
+    searchButton.setButtonText (searchingOnline ? text.cancelSearch : text.search);
     challengeButton.setButtonText (text.challenge);
     battleSignInButton.setButtonText (text.signIn);
     botStartButton.setButtonText (text.botStart);
@@ -409,6 +427,8 @@ void LiveScreenComponent::showTab (Tab newTab)
 
     if (tab == Tab::rating && isShowing())
         loadRating();
+    if (tab == Tab::battle && isShowing() && onBattleTabShown != nullptr)
+        onBattleTabShown();
     refreshVisibility();
     resized();
     repaint();
@@ -711,9 +731,11 @@ void LiveScreenComponent::refreshVisibility()
         b->setVisible (onSeminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
 
     for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &searchButton,
-                     (juce::Component*) &challengeButton, (juce::Component*) &battleSignInButton,
+                     (juce::Component*) &battleSignInButton,
                      (juce::Component*) &botChoice, (juce::Component*) &botStartButton })
         c->setVisible (battle);
+
+    challengeButton.setVisible (false);
 
     for (auto* c : { (juce::Component*) &ratingFamily, (juce::Component*) &scopeChoice,
                      (juce::Component*) &periodChoice, (juce::Component*) &openSiteButton })
@@ -801,20 +823,34 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
 
     if (roomOpen)
     {
-        auto buttons = b.removeFromBottom (controlHeight + 4);
-        startButton.setBounds (buttons.removeFromRight (juce::jmin (200, buttons.getWidth() / 3)));
-        buttons.removeFromRight (Spacing::small);
-        projectorButton.setBounds (buttons.removeFromRight (juce::jmin (230, buttons.getWidth() / 2)));
-        closeRoomButton.setBounds (buttons.removeFromLeft (juce::jmin (180, buttons.getWidth())));
+        // Two rows on one grid of three equal columns, so the sound row and
+        // the room row line up edge to edge whatever the language: the
+        // clamped widths before left each row ragged in its own way.
+        const auto gap = Spacing::medium;
+        const auto rowH = controlHeight + 4;
+        const auto cells = [gap] (juce::Rectangle<int> row)
+        {
+            const auto w = (row.getWidth() - 2 * gap) / 3;
+            std::array<juce::Rectangle<int>, 3> c;
+            c[0] = row.removeFromLeft (w);
+            row.removeFromLeft (gap);
+            c[1] = row.removeFromLeft (w);
+            row.removeFromLeft (gap);
+            c[2] = row;   // takes the rounding remainder: both rows end on the card edge
+            return c;
+        };
 
-        // While a round runs: which version the hall hears.
-        auto sound = b.removeFromBottom (controlHeight + 4 + Spacing::medium).withTrimmedBottom (Spacing::medium);
-        const auto w = juce::jmin (170, (sound.getWidth() - 2 * Spacing::small) / 3);
-        playAButton.setBounds (sound.removeFromLeft (w));
-        sound.removeFromLeft (Spacing::small);
-        playBButton.setBounds (sound.removeFromLeft (w));
-        sound.removeFromLeft (Spacing::small);
-        stopButton.setBounds (sound.removeFromLeft (juce::jmin (120, w)));
+        auto grid = b.removeFromBottom (2 * rowH + gap);
+        const auto sound = cells (grid.removeFromTop (rowH));
+        grid.removeFromTop (gap);
+        const auto room = cells (grid);
+
+        playAButton.setBounds (sound[0]);
+        playBButton.setBounds (sound[1]);
+        stopButton.setBounds (sound[2]);
+        closeRoomButton.setBounds (room[0]);
+        projectorButton.setBounds (room[1]);
+        startButton.setBounds (room[2]);
 
         invitesButton.setBounds ({});
         return;
@@ -868,8 +904,7 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
     // Left: people - Decibelo, and the buttons that wait for the round server.
     auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 4 * 40 + Spacing::medium + 44 + Spacing::large + 30);
     searchButton.setBounds (a.removeFromTop (controlHeight + 4));
-    a.removeFromTop (Spacing::small);
-    challengeButton.setBounds (a.removeFromTop (controlHeight + 4));
+    challengeButton.setBounds ({});
     battleSignInButton.setBounds (cardA.reduced (Spacing::large).removeFromBottom (controlHeight + 4).removeFromLeft (160));
 }
 
@@ -1108,7 +1143,8 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
             LnF::fitText (g, fams[i], row.removeFromLeft (row.getWidth() - 80), juce::Justification::centredLeft, true);
             g.setColour (theme.textDim);
             g.setFont (LnF::monoFont().withHeight (18.0f));
-            LnF::fitText (g, juce::String::fromUTF8 ("\xe2\x80\x94"), row, juce::Justification::centredRight, true);
+            LnF::fitText (g, myRatings[(size_t) i] > 0 ? juce::String (myRatings[(size_t) i]) : juce::String::fromUTF8 ("\xe2\x80\x94"),
+                          row, juce::Justification::centredRight, true);
             g.setColour (theme.divider);
             g.fillRect (a.getX(), row.getBottom(), a.getWidth(), 1);
         }
@@ -1123,12 +1159,21 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
         g.setFont (LnF::headingFont().withHeight (18.0f));
         LnF::fitText (g, text.humansTitle, a.removeFromTop (30), juce::Justification::centredLeft, true);
 
-        // Under the two buttons: why they only explain themselves for now.
-        a.removeFromTop (2 * (controlHeight + 4) + Spacing::small + Spacing::medium);
+        // Under the button: the search as it goes, or what a battle is.
+        a.removeFromTop ((controlHeight + 4) + Spacing::medium);
+        const auto signedIn = account != nullptr && account->isSignedIn();
+
+        if (onlineLine.isNotEmpty())
+        {
+            g.setColour (searchingOnline ? theme.accent : theme.text);
+            g.setFont (LnF::bodyFont());
+            LnF::fitLines (g, onlineLine, a.removeFromTop (48), juce::Justification::topLeft, 2, 0.9f);
+            a.removeFromTop (Spacing::small);
+        }
+
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        const auto signedIn = account != nullptr && account->isSignedIn();
-        LnF::fitLines (g, signedIn ? text.battlesNext : text.battlesNext + "\n" + text.battleNeedsAccount,
+        LnF::fitLines (g, signedIn ? text.battleOnline : text.battleOnline + "\n" + text.battleNeedsAccount,
                        a.withTrimmedBottom (controlHeight + 4 + Spacing::medium), juce::Justification::topLeft, 6, 0.85f);
     }
 
@@ -1706,6 +1751,20 @@ void LiveScreenComponent::setAccount (LiveAccount* newAccount)
 void LiveScreenComponent::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     accountChanged();
+}
+
+void LiveScreenComponent::setOnlineStatus (bool searching, const juce::String& line)
+{
+    searchingOnline = searching;
+    onlineLine = line;
+    searchButton.setButtonText (searching ? text.cancelSearch : text.search);
+    repaint();
+}
+
+void LiveScreenComponent::setMyRatings (const std::array<int, 4>& ratings)
+{
+    myRatings = ratings;
+    repaint();
 }
 
 void LiveScreenComponent::refreshAccountButton()

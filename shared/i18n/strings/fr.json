@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "Mettre {{n}} [[extrait|extraits]] à la corbeille ?",
   "ui.sounds.bulkDeleted": "{{n}} [[extrait mis|extraits mis]] à la corbeille",
   "ui.sounds.checkHint": "cochez les cases (ou Cmd/Ctrl-clic, Maj-clic) pour en supprimer plusieurs",
-  "ui.soundsBuiltInLoops": "Fournis : boucles"
+  "ui.soundsBuiltInLoops": "Fournis : boucles",
+  "live.battleOnline": "Sept manches, les mêmes pour les deux. Le serveur fixe chaque manche et note lui-même les réponses. Exercices : ceux choisis à droite.",
+  "live.searching": "Recherche d’un adversaire… {{time}}",
+  "live.cancelSearch": "Annuler la recherche",
+  "live.nickRequired": "Un duel demande un pseudo : définissez-le dans votre compte sur soundkorb.ru.",
+  "live.battleOffline": "Pas de connexion au serveur de duels. Réessayez.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "L’adversaire a abandonné : les manches restantes sont à vous.",
+  "live.battleAbandoned": "Le duel s’est interrompu : connexion perdue. Il ne compte pas.",
+  "live.roundVoided": "Manche non comptée : les deux applis ont construit des manches différentes."
 }

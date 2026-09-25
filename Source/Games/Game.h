@@ -232,12 +232,24 @@ public:
     // until there is something to go on. Message thread only, like
     // newRound().
     void setBucketWeights (std::vector<float> weights) { bucketWeights = std::move (weights); }
+
+    // ---- the same round on two computers (online battle) ------------------
+    //
+    // The battle server hands both players a seed per round; each app
+    // builds the round from it. Two things make that the same round on both
+    // sides: the draw restarts from the seed, and the draw stops leaning
+    // toward where *this* player misses (the weights above are personal -
+    // with them on, one seed gives two players two different rounds).
+    // tests/SeededRoundTest holds it for all nine exercises.
+    virtual void seedNextRound (juce::int64 seed) { juce::ignoreUnused (seed); }
+    void setSeededRounds (bool on) noexcept { seededRounds = on; }
+    bool areRoundsSeeded() const noexcept { return seededRounds; }
     const std::vector<float>& getBucketWeights() const noexcept { return bucketWeights; }
 
     // The weight of one bucket, 1 when nothing is known.
     float bucketWeight (int bucket) const noexcept
     {
-        if (bucket < 0 || bucket >= (int) bucketWeights.size())
+        if (seededRounds || bucket < 0 || bucket >= (int) bucketWeights.size())
             return 1.0f;
 
         const auto w = bucketWeights[(size_t) bucket];
@@ -461,4 +473,5 @@ public:
 
 private:
     std::vector<float> bucketWeights;
+    bool seededRounds = false;
 };

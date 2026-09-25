@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "Spostare {{n}} [[clip|clip]] nel cestino?",
   "ui.sounds.bulkDeleted": "{{n}} [[clip spostato|clip spostati]] nel cestino",
   "ui.sounds.checkHint": "spunta le caselle (o Cmd/Ctrl-clic, Maiusc-clic) per eliminarne diversi",
-  "ui.soundsBuiltInLoops": "Inclusi: loop"
+  "ui.soundsBuiltInLoops": "Inclusi: loop",
+  "live.battleOnline": "Sette round, uguali per entrambi. Il server stabilisce ogni round e valuta da sé le risposte. Esercizi: quelli scelti a destra.",
+  "live.searching": "Cerco un avversario… {{time}}",
+  "live.cancelSearch": "Annulla la ricerca",
+  "live.nickRequired": "Per una sfida serve un nick: impostalo nel tuo account su soundkorb.ru.",
+  "live.battleOffline": "Nessuna connessione al server delle sfide. Riprova.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "L’avversario si è arreso: i round rimasti sono tuoi.",
+  "live.battleAbandoned": "La sfida si è interrotta: connessione persa. Non conta.",
+  "live.roundVoided": "Round non contato: le due app hanno costruito round diversi."
 }

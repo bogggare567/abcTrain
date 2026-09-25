@@ -72,6 +72,8 @@ public:
     void setNoiseColour (NoiseColour colour) override { noise.setNoiseColour (colour); }
 
     void newRound() override;
+
+    void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
     void submitAnswer (int choiceIndex) override;
 
     // **Always two** - see ReverbGame for why. More buttons is more

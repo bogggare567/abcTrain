@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "{{n}} [[Clip|Clips]] in den Papierkorb legen?",
   "ui.sounds.bulkDeleted": "{{n}} [[Clip|Clips]] im Papierkorb",
   "ui.sounds.checkHint": "Kästchen ankreuzen (oder Cmd/Strg-Klick, Umschalt-Klick), um mehrere zu löschen",
-  "ui.soundsBuiltInLoops": "Mitgeliefert: Loops"
+  "ui.soundsBuiltInLoops": "Mitgeliefert: Loops",
+  "live.battleOnline": "Sieben Runden, für beide gleich. Der Server stellt jede Runde und wertet die Antworten selbst. Übungen – wie rechts gewählt.",
+  "live.searching": "Suche einen Gegner… {{time}}",
+  "live.cancelSearch": "Suche abbrechen",
+  "live.nickRequired": "Für ein Battle brauchst du einen Nick: lege ihn in deinem Konto auf soundkorb.ru fest.",
+  "live.battleOffline": "Keine Verbindung zum Battle-Server. Versuch es noch einmal.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "Der Gegner hat aufgegeben – die übrigen Runden gehören dir.",
+  "live.battleAbandoned": "Das Battle wurde abgebrochen: Verbindung verloren. Es zählt nicht.",
+  "live.roundVoided": "Runde nicht gewertet: die beiden Apps haben verschiedene Runden gebaut."
 }

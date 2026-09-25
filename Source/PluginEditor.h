@@ -13,6 +13,7 @@
 #include "SettingsScreenComponent.h"
 #include "StudioScreenComponent.h"
 #include "LiveScreenComponent.h"
+#include "OnlineBattle.h"
 #include "RunResultsComponent.h"
 #include "TopNavComponent.h"
 #include "AchievementsScreenComponent.h"
@@ -1622,6 +1623,28 @@ private:
     void startBotBattle (BotListener::Bot, int family);
     juce::String botName (BotListener::Bot) const;
     juce::Random duelRandom;
+
+    // A battle with a person over soundkorb.ru (ADR 048). The same duel run
+    // as with a bot; the opponent's answers and the rounds come from the
+    // server instead of BotListener and duelRandom.
+    OnlineBattle onlineBattle { [this] (const juce::String& method, const juce::String& path,
+                                        const juce::var& body, OnlineBattle::Done done)
+                                { processor.getLiveAccount().battleCall (method, path, body, std::move (done)); } };
+    bool onlineRun = false;              // the trainer is running a server battle
+    int onlineRegistered = 0;            // server results already counted as duel rounds
+    int onlineStartedRound = -1;         // the server round on screen
+    int onlineScheduledRound = -1;       // a round waiting for its start time
+    juce::String onlineOpponent;         // for the HUD and the result, after the state is gone
+    juce::String onlineResultNote;       // "Decibelo +16 -> 1516"
+    struct SavedClip { juce::File file; juce::String category; bool pinned = false; } onlineSavedClip;
+
+    void handleOnlineBattle();
+    void startOnlineBattle();
+    void startOnlineRoundIfDue();
+    void registerOnlineResults();
+    void endOnlineBattle();
+    void refreshMyRatings();
+    juce::String opponentName() const;
 
     // Learner EQ / Comp / Verb inside the app (ADR 041). The processors
     // live in EarTrainerProcessor; this page owns only the editor on show.

@@ -986,6 +986,16 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     createSeminarHost();
     liveScreen.onStartBotBattle = [this] (BotListener::Bot bot, int family) { startBotBattle (bot, family); };
 
+    // A battle with a person (ADR 048).
+    liveScreen.onFindOpponent = [this] (int family)
+    {
+        static const char* families[] { "freq", "dyn", "space", "char" };
+        onlineBattle.search (families[juce::jlimit (0, 3, family)]);
+    };
+    liveScreen.onCancelSearch = [this] { onlineBattle.cancel(); };
+    liveScreen.onBattleTabShown = [this] { refreshMyRatings(); };
+    onlineBattle.onChanged = [this] { handleOnlineBattle(); };
+
     // Live can be switched off in Settings (ADR 042's offline rule: off,
     // the app does not even know the server's address).
     topNav.setItemHidden (TopNavComponent::Item::live,
@@ -2078,7 +2088,7 @@ void EarTrainerEditor::showRunResults (int finalScore)
     RunResultsComponent::Summary summary;
     summary.exerciseName = translateGameName (englishName, localisation);
     const auto duel = session.getMode() == SessionManager::Mode::duel;
-    summary.modeName = duel ? localisation.getText ("bots.battleWith").replace ("{{bot}}", botName (session.getOpponent()))
+    summary.modeName = duel ? localisation.getText ("bots.battleWith").replace ("{{bot}}", opponentName())
                             : localisation.getText (session.getMode() == SessionManager::Mode::survival
                                                         ? "ui.modeSurvival" : "ui.modeBlitz");
 
@@ -2092,7 +2102,9 @@ void EarTrainerEditor::showRunResults (int finalScore)
         summary.pointsNote = localisation.getText ("bots.score")
                                  .replace ("{{you}}", juce::String (finalScore))
                                  .replace ("{{them}}", juce::String (session.getOpponentScore()))
-                                 .replace ("{{bot}}", botName (session.getOpponent()));
+                                 .replace ("{{bot}}", opponentName());
+    if (duel && onlineResultNote.isNotEmpty())
+        summary.pointsNote << "\n" << onlineResultNote;
 
     const auto roundsThisRun = juce::jmax (1, session.getRoundsThisRun());
     summary.runAccuracy = (float) finalScore / (float) roundsThisRun;
@@ -2193,8 +2205,8 @@ void EarTrainerEditor::showRunResults (int finalScore)
         const auto outcome = session.getDuelOutcome();
         heading = localisation.getText (outcome == SessionManager::Outcome::won ? "bots.won"
                                         : outcome == SessionManager::Outcome::lost ? "bots.lost" : "bots.draw")
-                      .replace ("{{bot}}", botName (session.getOpponent()));
-        bestCaption = botName (session.getOpponent());
+                      .replace ("{{bot}}", opponentName());
+        bestCaption = opponentName();
     }
 
     runResults.setStrings (heading,
@@ -2493,7 +2505,7 @@ void EarTrainerEditor::beginRunWithCountdown()
     resized();
 
     const auto caption = session.getMode() == SessionManager::Mode::survival ? survivalButton.getButtonText()
-                       : session.getMode() == SessionManager::Mode::duel     ? localisation.getText ("bots.battleWith").replace ("{{bot}}", botName (session.getOpponent()))
+                       : session.getMode() == SessionManager::Mode::duel     ? localisation.getText ("bots.battleWith").replace ("{{bot}}", opponentName())
                                                                              : blitzButton.getButtonText();
 
     // Capturing `this` raw is safe here: runCountdown is a member, its
@@ -2516,6 +2528,15 @@ void EarTrainerEditor::startNewRun()
 
     if (! session.isRunActive())
         session.startRun();
+
+    // A battle with a person: the round comes from the server, when it says.
+    if (onlineRun)
+    {
+        clearHint();
+        refreshRunStatus();
+        startOnlineRoundIfDue();
+        return;
+    }
 
     clearHint();
 
@@ -2820,7 +2841,7 @@ void EarTrainerEditor::refreshRunStatus()
             if (session.getMode() == SessionManager::Mode::duel)
             {
                 runHud.setScoreText (juce::String (session.getRunScore()));
-                runHud.setDuel (session.getOpponentScore(), botName (session.getOpponent()),
+                runHud.setDuel (session.getOpponentScore(), opponentName(),
                                 session.getRoundsThisRun() + 1, SessionManager::duelRounds);
             }
         }
@@ -3574,6 +3595,26 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
     // answer earns up to 0.9 more for how close it landed.
     const auto& game = processor.getGameManager().getActiveGame();
     const auto precision = game.usesContinuousScale() ? game.getAnswerQuality() : -1.0f;
+    if (onlineRun)
+    {
+        // The server scores it (ADR 048): send what was chosen and what this
+        // round says is right; the duel round is counted when the server
+        // closes the round (registerOnlineResults), with the opponent's.
+        auto* fields = new juce::DynamicObject();
+        fields->setProperty ("continuous", game.usesContinuousScale());
+        fields->setProperty ("chosen", game.getChosenChoiceIndex());
+        fields->setProperty ("correct", game.getCorrectChoiceIndex());
+        if (game.usesContinuousScale())
+        {
+            fields->setProperty ("chosenNorm", (double) game.getChosenNormalised());
+            fields->setProperty ("correctNorm", (double) game.getCorrectNormalised());
+            fields->setProperty ("tolerance", (double) game.getToleranceNormalised());
+        }
+        onlineBattle.answer (juce::var (fields));
+        refreshRunStatus();
+        return;
+    }
+
     if (session.getMode() == SessionManager::Mode::duel)
     {
         // The bot hears the same round at the same level and answers from
@@ -3890,6 +3931,11 @@ void EarTrainerEditor::refreshLiveStrings()
     s.ratingLoading = g ("live.ratingLoading", s.ratingLoading);
     s.ratingFailed = g ("live.ratingFailed", s.ratingFailed);
     s.battlesNext = g ("live.battlesNext", s.battlesNext);
+    s.battleOnline = g ("live.battleOnline", s.battleOnline);
+    s.searching = g ("live.searching", s.searching);
+    s.cancelSearch = g ("live.cancelSearch", s.cancelSearch);
+    s.nickRequired = g ("live.nickRequired", s.nickRequired);
+    s.battleOffline = g ("live.battleOffline", s.battleOffline);
     s.hintNoNetwork = g ("live.hintNoNetwork", s.hintNoNetwork);
     s.hintNoInternet = g ("live.hintNoInternet", s.hintNoInternet);
     s.hintServerDown = g ("live.hintServerDown", s.hintServerDown);
@@ -4036,12 +4082,238 @@ void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
     for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
         pill->setToggleState (false, juce::dontSendNotification);
 
+    onlineOpponent.clear();
+    onlineResultNote.clear();
     session.setOpponent (bot);
     session.setMode (SessionManager::Mode::duel);
     session.startRun();   // a second battle in a row: setMode alone would not restart it
 
     showScreen (Screen::training);
     beginRunWithCountdown();
+}
+
+// ---- a battle with a person (ADR 048) ---------------------------------------------
+
+juce::String EarTrainerEditor::opponentName() const
+{
+    return onlineOpponent.isNotEmpty() ? onlineOpponent : botName (session.getOpponent());
+}
+
+void EarTrainerEditor::refreshMyRatings()
+{
+    if (! processor.getLiveAccount().isSignedIn())
+        return;
+
+    juce::Component::SafePointer<EarTrainerEditor> safe (this);
+    processor.getLiveAccount().battleCall ("GET", "/api/abctrain/battle/state", {}, [safe] (int status, const juce::var& json)
+    {
+        if (safe == nullptr || status != 200)
+            return;
+
+        static const char* families[] { "freq", "dyn", "space", "char" };
+        std::array<int, 4> ratings {};
+        for (int i = 0; i < 4; ++i)
+        {
+            const auto& r = json["ratings"][families[i]];
+            ratings[(size_t) i] = (int) r["games"] > 0 ? (int) r["rating"] : 0;
+        }
+        safe->liveScreen.setMyRatings (ratings);
+    });
+}
+
+void EarTrainerEditor::handleOnlineBattle()
+{
+    const auto& st = onlineBattle.getState();
+    using Stage = OnlineBattle::Stage;
+
+    // The Live page: the search as it goes.
+    {
+        juce::String line;
+        if (st.stage == Stage::searching)
+        {
+            const auto seconds = st.waitingMs / 1000;
+            line = liveScreen.getStrings().searching.replace ("{{time}}", juce::String (seconds / 60) + ":" + juce::String (seconds % 60).paddedLeft ('0', 2));
+        }
+        else if (st.stage == Stage::failed && ! onlineRun)
+        {
+            line = st.errorCode == "nick_required" ? liveScreen.getStrings().nickRequired
+                 : st.errorText.isNotEmpty()       ? st.errorText
+                                                   : liveScreen.getStrings().battleOffline;
+        }
+        liveScreen.setOnlineStatus (st.stage == Stage::searching, line);
+    }
+
+    if (st.stage == Stage::playing && ! onlineRun)
+    {
+        startOnlineBattle();
+        return;
+    }
+
+    if (! onlineRun)
+        return;
+
+    if (st.stage == Stage::finished)
+    {
+        const auto delta = juce::roundToInt (st.delta * 10.0) / 10.0;
+        onlineResultNote = st.recorded ? localisation.getText ("live.decibeloResult")
+                                             .replace ("{{delta}}", (delta >= 0 ? "+" : juce::String::fromUTF8 ("\xe2\x88\x92")) + juce::String (std::abs (delta), delta == std::floor (delta) ? 0 : 1))
+                                             .replace ("{{rating}}", juce::String (st.rating))
+                                       : juce::String();
+        if (st.forfeit == "them")
+            onlineResultNote = localisation.getText ("live.opponentLeft") + (onlineResultNote.isEmpty() ? "" : "\n" + onlineResultNote);
+    }
+
+    registerOnlineResults();
+
+    if (st.stage == Stage::playing)
+    {
+        startOnlineRoundIfDue();
+        refreshRunStatus();
+        return;
+    }
+
+    // Finished, given up by someone, or the connection is gone.
+    if (session.isRunActive())
+    {
+        // The opponent gave up: the rounds left are won, as the server counts them.
+        if (st.stage == Stage::finished && st.forfeit == "them")
+            while (session.isRunActive() && session.registerDuelRound (true, false)) {}
+
+        if (session.isRunActive())
+        {
+            if (st.stage == Stage::failed)
+                onlineResultNote = localisation.getText ("live.battleAbandoned");
+            session.endRun();
+        }
+    }
+
+    endOnlineBattle();
+    refreshRunStatus();
+    refreshMyRatings();
+}
+
+void EarTrainerEditor::registerOnlineResults()
+{
+    const auto& st = onlineBattle.getState();
+
+    while (onlineRegistered < (int) st.history.size() && session.isRunActive())
+    {
+        const auto& h = st.history[(size_t) onlineRegistered++];
+
+        if (h.voided)
+            pointsFlyup.show (localisation.getText ("live.roundVoided"), AbcTrainTheme::current().negative);
+
+        session.registerDuelRound (h.you, h.them);
+    }
+}
+
+void EarTrainerEditor::startOnlineBattle()
+{
+    const auto& st = onlineBattle.getState();
+    auto& gm = processor.getGameManager();
+    const auto index = juce::jlimit (0, gm.getNumGames() - 1, st.game);
+
+    // Keep the player's own sound choice to put back afterwards: a battle
+    // plays built-in sounds only (both computers have them).
+    auto& library = gm.getReferenceAudioLibrary();
+    onlineSavedClip = { library.getSelectedFile(), library.getActiveCategory(), library.isPinned() };
+
+    if (index != gm.getActiveGameIndex())
+    {
+        gm.getActiveGame().removeChangeListener (this);
+        gm.setActiveGameIndex (index);
+        gm.getActiveGame().addChangeListener (this);
+        rebuildChoiceSlider();
+    }
+
+    gm.getActiveGame().setSeededRounds (true);
+
+    onlineRun = true;
+    onlineRegistered = 0;
+    onlineStartedRound = -1;
+    onlineScheduledRound = -1;
+    onlineOpponent = st.opponentNick + " (" + juce::String (st.opponentRating) + ")";
+    onlineResultNote.clear();
+
+    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        pill->setToggleState (false, juce::dontSendNotification);
+
+    session.setMode (SessionManager::Mode::duel);
+    session.startRun();
+
+    showScreen (Screen::training);
+    beginRunWithCountdown();
+}
+
+void EarTrainerEditor::startOnlineRoundIfDue()
+{
+    const auto& st = onlineBattle.getState();
+
+    if (! onlineRun || ! runStarted || st.stage != OnlineBattle::Stage::playing)
+        return;
+
+    const auto n = st.round.n;
+    if (n <= onlineStartedRound || n != onlineRegistered)
+        return;   // on screen already, or the last result is not in yet
+
+    if (st.round.startsInMs > 0)
+    {
+        if (onlineScheduledRound == n)
+            return;
+
+        onlineScheduledRound = n;
+        juce::Component::SafePointer<EarTrainerEditor> safe (this);
+        juce::Timer::callAfterDelay (st.round.startsInMs, [safe, n]
+        {
+            if (safe != nullptr && safe->onlineRun && safe->onlineStartedRound < n)
+            {
+                safe->onlineScheduledRound = -1;
+                safe->startOnlineRoundIfDue();
+            }
+        });
+        return;
+    }
+
+    onlineStartedRound = n;
+    ++pendingAdvanceId;
+    clearHint();
+
+    auto& game = processor.getGameManager().getActiveGame();
+    game.setPlayProcessed (false);
+    refreshBeforeAfter();
+    game.setSeededRounds (true);
+    game.setDifficulty (st.round.level);
+    game.seedNextRound (st.round.seed);
+    game.newRound();
+
+    // Another number from the same seed for the clip, so the sound and the
+    // setting are not tied to each other round after round.
+    processor.getGameManager().getReferenceAudioLibrary()
+        .selectSeededBuiltIn (st.round.seed * 2654435761LL + 17, processor.getSampleRate());
+    refreshRunStatus();
+}
+
+void EarTrainerEditor::endOnlineBattle()
+{
+    if (! onlineRun)
+        return;
+
+    onlineRun = false;
+    auto& gm = processor.getGameManager();
+    auto& game = gm.getActiveGame();
+    game.setSeededRounds (false);
+    game.setDifficulty (processor.getProgressManager().getLevelForGame (gm.getActiveGameIndex()));
+
+    auto& library = gm.getReferenceAudioLibrary();
+    if (onlineSavedClip.pinned && onlineSavedClip.file.existsAsFile())
+        library.pinFile (onlineSavedClip.file, processor.getSampleRate());
+    else if (onlineSavedClip.category.isNotEmpty())
+        library.setActiveCategory (onlineSavedClip.category, processor.getSampleRate());
+    else
+        library.clearSelection();
+
+    onlineBattle.reset();
+    liveScreen.setOnlineStatus (false, {});
 }
 
 void EarTrainerEditor::createSeminarHost()

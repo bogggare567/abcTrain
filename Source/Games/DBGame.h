@@ -50,6 +50,8 @@ public:
     juce::String getAfterLabel() const override { return "After Gain"; }
 
     void newRound() override;
+
+    void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
     void submitAnswer (int choiceIndex) override;
 
     // Continuous: the level change is any value in the range, and the

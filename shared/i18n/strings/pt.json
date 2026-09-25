@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "Mover {{n}} [[clipe|clipes]] para a lixeira?",
   "ui.sounds.bulkDeleted": "{{n}} [[clipe movido|clipes movidos]] para a lixeira",
   "ui.sounds.checkHint": "marque as caixas (ou Cmd/Ctrl-clique, Shift-clique) para apagar vários",
-  "ui.soundsBuiltInLoops": "Incluídos: loops"
+  "ui.soundsBuiltInLoops": "Incluídos: loops",
+  "live.battleOnline": "Sete rodadas, iguais para os dois. O servidor define cada rodada e pontua as respostas sozinho. Exercícios: os escolhidos à direita.",
+  "live.searching": "Procurando adversário… {{time}}",
+  "live.cancelSearch": "Cancelar a busca",
+  "live.nickRequired": "Uma batalha precisa de um nick: defina-o na sua conta em soundkorb.ru.",
+  "live.battleOffline": "Sem conexão com o servidor de batalhas. Tente de novo.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "O adversário desistiu: as rodadas restantes são suas.",
+  "live.battleAbandoned": "A batalha parou: a conexão caiu. Não conta.",
+  "live.roundVoided": "Rodada não contada: os dois apps montaram rodadas diferentes."
 }

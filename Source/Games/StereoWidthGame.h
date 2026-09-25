@@ -62,6 +62,8 @@ public:
     juce::String getAfterLabel() const override { return "Stereo"; }
 
     void newRound() override;
+
+    void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
     void submitAnswer (int choiceIndex) override;
 
     // **Always two** - see ReverbGame for why. More buttons is more

@@ -851,6 +851,24 @@ void ReferenceAudioLibrary::advanceToRandomClip (double sampleRate)
     }
 }
 
+bool ReferenceAudioLibrary::selectSeededBuiltIn (juce::int64 seed, double sampleRate)
+{
+    // Sorted by category and file name, so the order does not depend on
+    // how a disk happened to list the cache folder.
+    juce::StringArray paths;
+    for (const auto& category : categories)
+        if (category.name.startsWith ("Built-in"))
+            for (const auto& file : category.files)
+                paths.add (category.name + "\n" + file.getFileName() + "\n" + file.getFullPathName());
+
+    if (paths.isEmpty())
+        return false;
+
+    paths.sort (false);
+    const auto pick = (int) ((juce::uint64) seed % (juce::uint64) paths.size());
+    return selectFile (juce::File (juce::StringArray::fromLines (paths[pick])[2]), sampleRate);
+}
+
 // ---- packs, fragments, deleting ---------------------------------------------
 
 bool ReferenceAudioLibrary::looksLikePack (const juce::File& file)

@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "Убрать в корзину {{n}} [[фрагмент|фрагмента|фрагментов]]?",
   "ui.sounds.bulkDeleted": "В корзине: {{n}} [[фрагмент|фрагмента|фрагментов]]",
   "ui.sounds.checkHint": "отметьте галочками (или ⌘/Ctrl-клик, Shift-клик), чтобы удалить несколько",
-  "ui.soundsBuiltInLoops": "Встроенные петли"
+  "ui.soundsBuiltInLoops": "Встроенные петли",
+  "live.battleOnline": "Семь раундов, одинаковых для обоих. Сервер задаёт раунд и сам засчитывает ответы. Упражнения — как выбрано справа.",
+  "live.searching": "Ищем соперника… {{time}}",
+  "live.cancelSearch": "Отменить поиск",
+  "live.nickRequired": "Для батла нужен ник: задайте его в аккаунте на soundkorb.ru.",
+  "live.battleOffline": "Нет связи с сервером батлов. Попробуйте ещё раз.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "Соперник сдался — оставшиеся раунды ваши.",
+  "live.battleAbandoned": "Батл прервался: пропала связь. Он не засчитан.",
+  "live.roundVoided": "Раунд не засчитан: приложения построили разные раунды."
 }

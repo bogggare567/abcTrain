@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "将 {{n}} 个片段移到废纸篓？",
   "ui.sounds.bulkDeleted": "已将 {{n}} 个片段移到废纸篓",
   "ui.sounds.checkHint": "勾选复选框（或 Cmd/Ctrl 点击、Shift 点击）可一次删除多个",
-  "ui.soundsBuiltInLoops": "内置循环"
+  "ui.soundsBuiltInLoops": "内置循环",
+  "live.battleOnline": "七个回合，双方题目相同。服务器出题并亲自评分。练习项目——以右侧所选为准。",
+  "live.searching": "正在寻找对手… {{time}}",
+  "live.cancelSearch": "取消寻找",
+  "live.nickRequired": "对战需要昵称：请在 soundkorb.ru 的账户中设置。",
+  "live.battleOffline": "无法连接对战服务器，请重试。",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "对手认输了——剩余回合归你。",
+  "live.battleAbandoned": "连接中断，对战已停止，不计入成绩。",
+  "live.roundVoided": "本回合不计分：两个应用生成的回合不同。"
 }

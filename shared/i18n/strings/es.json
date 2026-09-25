@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "¿Mover {{n}} [[clip|clips]] a la papelera?",
   "ui.sounds.bulkDeleted": "{{n}} [[clip movido|clips movidos]] a la papelera",
   "ui.sounds.checkHint": "marca las casillas (o Cmd/Ctrl-clic, Mayús-clic) para borrar varios",
-  "ui.soundsBuiltInLoops": "Incluidos: loops"
+  "ui.soundsBuiltInLoops": "Incluidos: loops",
+  "live.battleOnline": "Siete rondas, iguales para los dos. El servidor plantea cada ronda y puntúa las respuestas él mismo. Ejercicios: los elegidos a la derecha.",
+  "live.searching": "Buscando rival… {{time}}",
+  "live.cancelSearch": "Cancelar la búsqueda",
+  "live.nickRequired": "Para un duelo necesitas un nick: ponlo en tu cuenta en soundkorb.ru.",
+  "live.battleOffline": "Sin conexión con el servidor de duelos. Inténtalo de nuevo.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "El rival se rindió: las rondas restantes son tuyas.",
+  "live.battleAbandoned": "El duelo se cortó: se perdió la conexión. No cuenta.",
+  "live.roundVoided": "Ronda anulada: las dos apps construyeron rondas distintas."
 }

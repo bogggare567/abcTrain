@@ -1224,5 +1224,14 @@
   "ui.sounds.bulkConfirm": "Move {{n}} [[clip|clips]] to the trash?",
   "ui.sounds.bulkDeleted": "{{n}} [[clip|clips]] moved to the trash",
   "ui.sounds.checkHint": "tick the boxes (or Cmd/Ctrl-click, Shift-click) to delete several",
-  "ui.soundsBuiltInLoops": "Built-in loops"
+  "ui.soundsBuiltInLoops": "Built-in loops",
+  "live.battleOnline": "Seven rounds, the same for both. The server sets each round and scores the answers itself. Exercises - as chosen on the right.",
+  "live.searching": "Looking for an opponent... {{time}}",
+  "live.cancelSearch": "Cancel the search",
+  "live.nickRequired": "A battle needs a nick: set one in your account on soundkorb.ru.",
+  "live.battleOffline": "No connection to the battle server. Try again.",
+  "live.decibeloResult": "Decibelo {{delta}} → {{rating}}",
+  "live.opponentLeft": "The opponent gave up - the rounds left are yours.",
+  "live.battleAbandoned": "The battle stopped: the connection was lost. It does not count.",
+  "live.roundVoided": "Round not counted: the two apps built different rounds."
 }

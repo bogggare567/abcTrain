@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "shared/ui/SegmentedChoice.h"
 #include "LiveLink.h"
@@ -114,6 +116,12 @@ public:
         juce::String ratingLoading { "Loading the rating..." };
         juce::String ratingFailed { "Could not load the rating. Check the connection." };
         juce::String battlesNext { "Battles open in the next update: the round server is not running yet. The rating already works." };
+        // Battles with people (ADR 048).
+        juce::String battleOnline { "Seven rounds, the same for both. The server sets each round and scores the answers itself. Exercises - as chosen on the right." };
+        juce::String searching { "Looking for an opponent... {{time}}" };
+        juce::String cancelSearch { "Cancel the search" };
+        juce::String nickRequired { "A battle needs a nick: set one in your account on soundkorb.ru." };
+        juce::String battleOffline { "No connection to the battle server. Try again." };
         // Battles with a virtual listener (ADR 046).
         juce::String botTitle { "Against a bot" };
         juce::String botHint { "Works offline. Seven rounds, the same round for both; the bot answers from its hearing profile at your level." };
@@ -178,6 +186,16 @@ public:
     // (0 frequency, 1 dynamics, 2 space, 3 character). The editor picks
     // the exercise and runs it in the duel mode.
     std::function<void (BotListener::Bot, int family)> onStartBotBattle;
+
+    // "Find an opponent": the editor stands in the server's queue
+    // (OnlineBattle) and reports back through setOnlineStatus. The page
+    // asks for the player's Decibelo when the battle tab opens.
+    std::function<void (int family)> onFindOpponent;
+    std::function<void()> onCancelSearch;
+    std::function<void()> onBattleTabShown;
+    void setOnlineStatus (bool searching, const juce::String& line);
+    // Decibelo per family (0 = no battles there yet).
+    void setMyRatings (const std::array<int, 4>& ratings);
 
     // For tools/EditorSnapshots.
     void openRoomForSnapshot (bool local);
@@ -257,6 +275,9 @@ private:
     // Battle
     SegmentedChoice battleFamily, botChoice;
     juce::TextButton searchButton, challengeButton, battleSignInButton, botStartButton;
+    bool searchingOnline = false;
+    juce::String onlineLine;
+    std::array<int, 4> myRatings {};
 
     // Rating
     SegmentedChoice ratingFamily, scopeChoice, periodChoice;
