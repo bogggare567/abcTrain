@@ -1021,7 +1021,7 @@
   "live.colCountry": "국가",
   "live.colRating": "Decibelo",
   "live.colRecord": "승-패",
-  "live.ratingEmpty": "배틀 서버가 동작하면 랭킹이 나타납니다.",
+  "live.ratingEmpty": "아직 비어 있습니다: 이 계열의 배틀이 아직 없습니다. 첫 배틀을 하면 표가 저절로 채워집니다.",
   "live.openOnSite": "soundkorb.ru에서 열기",
   "live.signInTitle": "soundkorb.ru에서 로그인",
   "live.signInSteps": "1. 사이트를 엽니다 - 코드는 자동으로 입력됩니다.\n2. 이메일로 로그인: 6자리 코드가 옵니다.\n3. '연결'을 누르고 여기로 돌아옵니다.",

@@ -34,7 +34,7 @@ Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 | 🎧 | **ABC Ear Trainer** — frequency, dynamics, space, character. A psychoacoustic staircase finds your real threshold and shows it in the exercise's own units: *±0.35 oct*, *±1.2 dB*, *Room vs Chamber*. |
 | 🎛️ | **ABC Learner EQ · Comp · Verb** — real processors in your DAW and in the app's Studio tab. Each hides a setting, plays it, and asks you to match it by ear with its own knob. |
 | 📚 | **Grounded in research** — how ear training is taught and how the processing is done follow published work. [Why each choice →](docs/research/2026-09-literature-audit.md) |
-| 🎤 | **Live** — a seminar in a room with no internet: the laptop plays into the hall, the audience answers on their phones through one QR code, a projector window shows the votes and the answer. Battles against six bot listeners. An account only if you want one. |
+| 🎤 | **Live** — a seminar in a room with no internet: the laptop plays into the hall, the audience answers on their phones through one QR code, a projector window shows the votes and the answer. Battles for the Decibelo rating against a person over soundkorb.ru, or offline against six bot listeners. An account only if you want one. |
 | 🔒 | **Offline by default** — training, the plugins and bot battles never touch a network; no telemetry. Live connects only when you open it. |
 
 <div align="center">
@@ -42,6 +42,17 @@ Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 **[How to use it →](https://github.com/bogggare567/abcTrain/wiki)** &nbsp;·&nbsp; [Install & the unsigned warning](https://github.com/bogggare567/abcTrain/wiki/Installation) &nbsp;·&nbsp; [The exercises](https://github.com/bogggare567/abcTrain/wiki/The-nine-exercises) &nbsp;·&nbsp; [The plugins](https://github.com/bogggare567/abcTrain/wiki/The-teaching-plugins)
 
 </div>
+
+## What it looks like in 2.0
+
+<table>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-Home.webp" alt="Nine exercises in four families, each with your threshold in its own units"><br><sub>Nine exercises in four families, each with your threshold in its own units</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-HintSpectrum.webp" alt="Guess the Band: move along the scale, the hint shows the spectrum"><br><sub>Guess the Band: move along the scale, the hint shows the spectrum</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveRoom.webp" alt="A seminar: the room opens on the laptop, phones join by QR"><br><sub>A seminar: the room opens on the laptop, phones join by QR</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveRoundOpen-Window.webp" alt="The projector window: the task, the votes, the answer"><br><sub>The projector window: the task, the votes, the answer</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveBattleSignedIn.webp" alt="Battles: against a person for Decibelo, or against a bot offline"><br><sub>Battles: against a person for Decibelo, or against a bot offline</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-SoundsChecked.webp" alt="Your own sounds by instrument; tick several and delete at once"><br><sub>Your own sounds by instrument; tick several and delete at once</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-StudioEQ.webp" alt="Studio: the Learner plugins inside the app"><br><sub>Studio: the Learner plugins inside the app</sub></td><td width="50%"><img src="docs/screenshots/en/LearnerComp.webp" alt="ABC Learner Comp in a DAW"><br><sub>ABC Learner Comp in a DAW</sub></td></tr>
+</table>
+
+<sub>Rendered by the app itself (tools/EditorSnapshots), so they cannot drift from the code.</sub>
 
 ## Built in the open
 

@@ -1021,7 +1021,7 @@
   "live.colCountry": "Pays",
   "live.colRating": "Decibelo",
   "live.colRecord": "Victoires-défaites",
-  "live.ratingEmpty": "Le classement apparaîtra quand le serveur des battles tournera.",
+  "live.ratingEmpty": "Vide pour l’instant : aucun duel dans cette famille. Jouez le premier, le tableau se remplit tout seul.",
   "live.openOnSite": "Ouvrir sur soundkorb.ru",
   "live.signInTitle": "Connexion sur soundkorb.ru",
   "live.signInSteps": "1. Ouvre le site - le code se remplit tout seul.\n2. Connecte-toi par e-mail : un code à 6 chiffres arrive.\n3. Appuie sur Connecter, puis reviens ici.",

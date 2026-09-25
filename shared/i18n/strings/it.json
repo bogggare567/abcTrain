@@ -1021,7 +1021,7 @@
   "live.colCountry": "Paese",
   "live.colRating": "Decibelo",
   "live.colRecord": "Vinte-perse",
-  "live.ratingEmpty": "La classifica apparirà quando il server delle battle sarà attivo.",
+  "live.ratingEmpty": "Vuoto per ora: nessuna sfida in questa famiglia. Gioca la prima, la tabella si riempie da sola.",
   "live.openOnSite": "Apri su soundkorb.ru",
   "live.signInTitle": "Accedi su soundkorb.ru",
   "live.signInSteps": "1. Apri il sito - il codice si compila da solo.\n2. Accedi con l'e-mail: arriva un codice di 6 cifre.\n3. Premi Collega e torna qui.",

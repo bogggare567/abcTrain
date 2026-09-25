@@ -77,7 +77,7 @@ public:
 
         juce::String world { "World" }, country { "Country" }, season { "Season" }, allTime { "All time" };
         juce::String colRank { "#" }, colNick { "Nick" }, colCountry { "Country" }, colRating { "Decibelo" }, colRecord { "Won-lost" };
-        juce::String ratingEmpty { "The rating appears when the battle server is running." };
+        juce::String ratingEmpty { "Empty for now: no battles in this family yet. Play one - the table fills itself." };
         juce::String openOnSite { "Open on soundkorb.ru" };
 
         juce::String signInTitle { "Sign in on soundkorb.ru" };

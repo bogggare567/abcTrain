@@ -1021,7 +1021,7 @@
   "live.colCountry": "Kraj",
   "live.colRating": "Decibelo",
   "live.colRecord": "Wygrane-przegrane",
-  "live.ratingEmpty": "Ranking pojawi się, gdy ruszy serwer pojedynków.",
+  "live.ratingEmpty": "Na razie pusto: w tej rodzinie nie było jeszcze bitew. Zagraj pierwszą – tabela wypełni się sama.",
   "live.openOnSite": "Otwórz na soundkorb.ru",
   "live.signInTitle": "Logowanie przez soundkorb.ru",
   "live.signInSteps": "1. Otwórz stronę - kod wpisze się sam.\n2. Zaloguj się e-mailem: przyjdzie 6-cyfrowy kod.\n3. Naciśnij Połącz i wróć tutaj.",

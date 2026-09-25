@@ -1021,7 +1021,7 @@
   "live.colCountry": "País",
   "live.colRating": "Decibelo",
   "live.colRecord": "Vitórias-derrotas",
-  "live.ratingEmpty": "O ranking aparece quando o servidor de batalhas estiver no ar.",
+  "live.ratingEmpty": "Vazio por enquanto: ainda não houve batalhas nesta família. Jogue a primeira e a tabela se preenche sozinha.",
   "live.openOnSite": "Abrir no soundkorb.ru",
   "live.signInTitle": "Entrar pelo soundkorb.ru",
   "live.signInSteps": "1. Abre o site - o código preenche-se sozinho.\n2. Entra com o e-mail: chega um código de 6 dígitos.\n3. Carrega em Ligar e volta aqui.",

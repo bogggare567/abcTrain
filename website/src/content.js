@@ -129,12 +129,17 @@ export const PLUGINS = [
 export const PLUGINS_COMMON =
   'In all three, each knob is a training module: you match a hidden setting with the plugin’s own knob, inside an accept band in that knob’s units, on the same ten-step staircase as the trainer. A/B slots for comparing two settings, and the whole interface in 12 languages.';
 
-// Live (ADR 045-047): what works today, without a server of anybody's.
+// Live (ADR 045-048): seminars need no server; battles with people go through soundkorb.ru.
 export const LIVE = [
   {
     key: 'seminar',
     head: 'A seminar in a room, no internet',
     body: 'The presenter’s laptop plays the exercise into the hall and serves a page to the phones on the same Wi-Fi. Everybody scans one QR code, answers on the phone, and the projector window shows the question, how the room voted and the answer. A list of invitees prints as cards, each with its own code and QR.',
+  },
+  {
+    key: 'people',
+    head: 'Battles against people, for the Decibelo rating',
+    body: 'Find an opponent in the same family of exercises: seven rounds, the same for both. The server sets each round and scores the answers; the table on soundkorb.ru updates the moment a battle ends.',
   },
   {
     key: 'bots',

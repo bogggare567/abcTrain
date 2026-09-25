@@ -30,6 +30,10 @@ FRAMES = [
     "EarTrainer-Distortion-dark.png",
     "EarTrainer-Achievements-dark.png",
     "EarTrainer-Results-dark.png",
+    "EarTrainer-LiveRoom-dark.png",
+    "EarTrainer-LiveRoundOpen-dark.png",
+    "EarTrainer-LiveBattleSignedIn-dark.png",
+    "EarTrainer-SoundsChecked-dark.png",
     "EarTrainer-StudioEQ-dark.png",
     "EarTrainer-StudioComp-dark.png",
     "LearnerComp-Modules-dark.png",
@@ -83,9 +87,9 @@ def main():
         # GIF для README: меньше и реже, с одной палитрой на весь ролик.
         palette = Path(tmp) / "palette.png"
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(master),
-                        "-vf", "fps=10,scale=880:-1:flags=lanczos,palettegen=max_colors=128", str(palette)], check=True)
+                        "-vf", "fps=6,scale=800:-1:flags=lanczos,palettegen=max_colors=96:stats_mode=diff", str(palette)], check=True)
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(master), "-i", str(palette),
-                        "-lavfi", "fps=10,scale=880:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5",
+                        "-lavfi", "fps=6,scale=800:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
                         str(ROOT / "docs/screenshots/abctrain-tour.gif")], check=True)
 
     for f in (public / "abctrain-demo.mp4", public / "abctrain-demo-poster.jpg", ROOT / "docs/screenshots/abctrain-tour.gif"):

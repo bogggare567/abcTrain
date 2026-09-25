@@ -34,7 +34,7 @@
 | 🎧 | **ABC Ear Trainer** — частота, динамика, пространство, характер. Психоакустическая лестница находит ваш настоящий порог и показывает его в единицах упражнения: *±0,35 окт*, *±1,2 дБ*, *Room против Chamber*. |
 | 🎛️ | **ABC Learner EQ · Comp · Verb** — настоящие обработки в вашей DAW и во вкладке «Студия» приложения. Каждая прячет настройку, играет её и просит повторить на слух своей же ручкой. |
 | 📚 | **Опирается на исследования** — и то, как учат слух, и то, как устроена обработка, взято из опубликованных работ. [Почему так →](docs/research/2026-09-literature-audit.md) |
-| 🎤 | **Live** — семинар в зале без интернета: ноутбук играет в зал, слушатели отвечают с телефонов по одному QR-коду, окно проектора показывает, как проголосовал зал, и правильный ответ. Батлы с шестью ботами-слушателями. Аккаунт — только если нужен. |
+| 🎤 | **Live** — семинар в зале без интернета: ноутбук играет в зал, слушатели отвечают с телефонов по одному QR-коду, окно проектора показывает, как проголосовал зал, и правильный ответ. Батлы на рейтинг Decibelo с человеком через soundkorb.ru или без сети — с шестью ботами-слушателями. Аккаунт — только если нужен. |
 | 🔒 | **По умолчанию без сети** — тренировки, плагины и батлы с ботами никуда не подключаются, телеметрии нет. Live подключается, только когда вы его открываете. |
 
 <div align="center">
@@ -42,6 +42,17 @@
 **[Как пользоваться →](https://github.com/bogggare567/abcTrain/wiki/ru-Home)** &nbsp;·&nbsp; [Установка и предупреждение системы](https://github.com/bogggare567/abcTrain/wiki/ru-Installation) &nbsp;·&nbsp; [Упражнения](https://github.com/bogggare567/abcTrain/wiki/ru-The-nine-exercises) &nbsp;·&nbsp; [Плагины](https://github.com/bogggare567/abcTrain/wiki/ru-The-teaching-plugins)
 
 </div>
+
+## Как это выглядит в 2.0
+
+<table>
+<tr><td width="50%"><img src="docs/screenshots/ru/EarTrainer-Home.webp" alt="Девять упражнений в четырёх семействах, у каждого — ваш порог в его единицах"><br><sub>Девять упражнений в четырёх семействах, у каждого — ваш порог в его единицах</sub></td><td width="50%"><img src="docs/screenshots/ru/EarTrainer-HintSpectrum.webp" alt="«Угадай полосу»: ведёте по шкале, подсказка показывает спектр"><br><sub>«Угадай полосу»: ведёте по шкале, подсказка показывает спектр</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/ru/EarTrainer-LiveRoom.webp" alt="Семинар: комната открывается на ноутбуке, телефоны входят по QR"><br><sub>Семинар: комната открывается на ноутбуке, телефоны входят по QR</sub></td><td width="50%"><img src="docs/screenshots/ru/EarTrainer-LiveRoundOpen-Window.webp" alt="Окно для проектора: задание, голоса, ответ"><br><sub>Окно для проектора: задание, голоса, ответ</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/ru/EarTrainer-LiveBattleSignedIn.webp" alt="Батлы: с человеком на Decibelo или с ботом без сети"><br><sub>Батлы: с человеком на Decibelo или с ботом без сети</sub></td><td width="50%"><img src="docs/screenshots/ru/EarTrainer-SoundsChecked.webp" alt="Свои звуки по инструментам; отметить несколько и удалить разом"><br><sub>Свои звуки по инструментам; отметить несколько и удалить разом</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/ru/EarTrainer-StudioEQ.webp" alt="Студия: обучающие плагины внутри приложения"><br><sub>Студия: обучающие плагины внутри приложения</sub></td><td width="50%"><img src="docs/screenshots/ru/LearnerComp.webp" alt="ABC Learner Comp в DAW"><br><sub>ABC Learner Comp в DAW</sub></td></tr>
+</table>
+
+<sub>Снимки рисует само приложение (tools/EditorSnapshots), поэтому они не расходятся с кодом.</sub>
 
 ## Делается открыто
 

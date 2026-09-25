@@ -1021,7 +1021,7 @@
   "live.colCountry": "国",
   "live.colRating": "Decibelo",
   "live.colRecord": "勝-敗",
-  "live.ratingEmpty": "バトルサーバーが動き始めるとランキングが表示されます。",
+  "live.ratingEmpty": "まだ空です：このファミリーのバトルはまだありません。最初の1戦をどうぞ。表は自動で埋まります。",
   "live.openOnSite": "soundkorb.ru で開く",
   "live.signInTitle": "soundkorb.ru でログイン",
   "live.signInSteps": "1. サイトを開く - コードは自動で入ります。\n2. メールでログイン:6桁のコードが届きます。\n3. 「接続」を押して、ここに戻ります。",

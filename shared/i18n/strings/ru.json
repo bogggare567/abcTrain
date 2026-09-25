@@ -1021,7 +1021,7 @@
   "live.colCountry": "Страна",
   "live.colRating": "Decibelo",
   "live.colRecord": "Победы–поражения",
-  "live.ratingEmpty": "Рейтинг появится, когда заработает сервер батлов.",
+  "live.ratingEmpty": "Пока пусто: батлов в этом семействе ещё не было. Сыграйте первый — таблица заполнится сама.",
   "live.openOnSite": "Открыть на soundkorb.ru",
   "live.signInTitle": "Вход через soundkorb.ru",
   "live.signInSteps": "1. Открой сайт — код подставится сам.\n2. Войди по почте: придёт код из 6 цифр.\n3. Нажми «Подключить» и вернись сюда.",

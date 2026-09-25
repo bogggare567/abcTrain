@@ -1021,7 +1021,7 @@
   "live.colCountry": "国家",
   "live.colRating": "Decibelo",
   "live.colRecord": "胜-负",
-  "live.ratingEmpty": "对战服务器运行后将显示排名。",
+  "live.ratingEmpty": "暂时为空：该类别还没有对战。来打第一场吧，表格会自动填充。",
   "live.openOnSite": "在 soundkorb.ru 打开",
   "live.signInTitle": "通过 soundkorb.ru 登录",
   "live.signInSteps": "1. 打开网站 - 代码会自动填入。\n2. 用邮箱登录:会收到 6 位验证码。\n3. 点“连接”,然后回到这里。",
