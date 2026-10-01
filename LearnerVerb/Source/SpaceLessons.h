@@ -95,12 +95,60 @@ inline MicroLesson buildSizeAndDampingLesson()
           "sounding like a plugin.",
           { { P::dampingParamId, 75.0f } } },
 
-        { "The last one is not on this plugin, and is worth saying anyway: "
-          "reverb belongs on a send, not on every insert. One room that "
+        { "One more, from routing rather than a knob: Routing is now SEND. "
+          "Reverb belongs on a send, not on every insert - one room that "
           "several tracks share sounds like a place; a different room per "
-          "track sounds like several recordings edited together - and costs "
-          "several times the CPU to get there.",
+          "track sounds like several recordings edited together. Here Mix "
+          "has become the return fader; the dry track is untouched.",
           { { P::sizeParamId, 60.0f }, { P::decayParamId, 1.8f },
-            { P::dryWetParamId, 28.0f } } }
+            { P::dryWetParamId, 28.0f }, { P::routingParamId, (float) P::send } } }
+    });
+}
+
+// RT60 (2026-10, at the owner's request): what the number under Decay
+// means. Sabine's definition and formula (W. C. Sabine, 1900; F. Alton
+// Everest, Master Handbook of Acoustics, ch. on reverberation), typical
+// values of real spaces, why the measured figure differs from the knob,
+// and the working rule of fitting the tail to the tempo.
+inline MicroLesson buildRt60Lesson()
+{
+    using P = LearnerVerbProcessor;
+
+    return MicroLesson ("What RT60 means", {
+        { "RT60 is the time it takes a sound to fall by 60 dB after the source "
+          "stops - from loud to as good as gone. Here: a hall, Decay 2 s. "
+          "Listen to the tail after each hit and watch the echogram on the right.",
+          { { P::bypassParamId, 0.0f }, { P::routingParamId, (float) P::insert }, { P::typeParamId, 1.0f },
+            { P::decayParamId, 2.0f }, { P::sizeParamId, 70.0f }, { P::dampingParamId, 40.0f },
+            { P::preDelayParamId, 20.0f }, { P::dryWetParamId, 35.0f }, { P::widthParamId, 100.0f } } },
+
+        { "Why 60 dB: a loud source is about 100 dB, a quiet room about 40 dB - "
+          "60 dB down is where the tail drowns in the room's own noise. "
+          "Sabine's formula: RT60 = 0.161 * V / A. More volume (V), longer tail; "
+          "more absorption (A: curtains, people, sofas), shorter.",
+          {} },
+
+        { "Real spaces, for reference: a vocal booth 0.2-0.3 s, a living room "
+          "0.4-0.6 s, a control room about 0.3 s, a concert hall 1.8-2.2 s, a "
+          "cathedral 4-8 s. Now 0.5 s, a room - the space you mostly feel "
+          "rather than hear.",
+          { { P::typeParamId, 0.0f }, { P::decayParamId, 0.5f }, { P::sizeParamId, 35.0f } } },
+
+        { "Look under Decay: \"RT60 measured\" is not always the knob. The "
+          "plugin measures its own tail the way acousticians do - the slope "
+          "of the decay - and Damping makes the top die sooner, so the "
+          "measured figure comes out shorter. The knob is a wish; RT60 is what "
+          "the room actually does.",
+          { { P::typeParamId, 1.0f }, { P::decayParamId, 2.5f }, { P::dampingParamId, 85.0f } } },
+
+        { "The working rule: fit the tail to the tempo. At 120 BPM a beat is "
+          "0.5 s and a bar is 2 s - a tail that ends before the next hit keeps "
+          "the drums apart, a tail of a bar or more turns them into a wash. "
+          "On a voice, let it end before the next phrase.",
+          { { P::dampingParamId, 40.0f }, { P::decayParamId, 0.5f } } },
+
+        { "Compare: step back through the hall and the room, or finish to "
+          "keep this setting.",
+          {} }
     });
 }
