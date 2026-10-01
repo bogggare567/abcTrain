@@ -39,8 +39,23 @@ only ever be two people, so a class of six had to queue in threes and pairs.
 that behave like the app (poll once a second while searching, twice in a
 battle). On the container's two cores: 800 players — 1090 req/s, p95 20 ms;
 1500 players — 1754 req/s, p95 34 ms, 60 % of one core. The limit is the
-Node process, not the rooms; a room costs a few hundred bytes. Run it
-against a copy on the VPS (`--url`, never the live site) before an event.
+Node process, not the rooms; a room costs a few hundred bytes.
+
+On the VPS (2026-10-01, `scripts/abctrain-load-vps.sh` in the site repo:
+a separate copy with its own database; the virtual players run on the same
+machine and share its CPU, so these are on the pessimistic side):
+
+| players | req/s | p95 | p99 | errors | server CPU |
+|---|---|---|---|---|---|
+| 100 | 199 | 8 ms | 18 ms | 0 % | 25 % |
+| 400 | 654 | 98 ms | 150 ms | 0 % | 60 % |
+| 800 | 964 | 224 ms | 334 ms | 0 % | 75 % |
+
+The working limit is about 800 people at once — 130–400 rooms depending
+on their size — before p95 passes 300 ms and the countdown starts to jerk.
+`ABCTRAIN_BATTLE_MAX_MATCHES` (default 2000) is the fuse: set to about 200
+on the VPS, a full server makes newcomers wait in the queue instead of
+slowing everyone down. Re-run the script before any large event.
 
 ## Not done
 
