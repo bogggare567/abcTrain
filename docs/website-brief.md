@@ -234,8 +234,6 @@
 | `LearnerComp-dark.png` | Learner Comp с включённым пресетом | блок про плагины |
 | `LearnerVerb-dark.png` | Learner Verb | блок про плагины |
 | `LearnerComp-Modules-dark.png` | Список модулей обучения | блок про модули |
-| `LearnerComp-Check-dark.png` | Проверка на слух в разгаре | блок про модули |
-| `LearnerComp-Result-dark.png` | Итог проверки: промах в единицах и что сделала лестница | блок про модули |
 | `EarTrainer-SettingsHearing-dark.png` | Настройки защиты слуха | блок про тренажёр |
 | `abctrain-tour.gif` | Тур по приложению из настоящих рендеров | первый экран / README |
 
