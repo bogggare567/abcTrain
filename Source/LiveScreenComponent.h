@@ -70,7 +70,7 @@ public:
         juce::String decibelo { "Your Decibelo" };
         juce::String decibeloHint { "Separately per family: you can hear frequencies better than compression." };
         juce::String findTitle { "Find an opponent" };
-        juce::String battleRules { "7 rounds, the same for both - an opponent within 100 of your rating." };
+        juce::String battleRules { "10 rounds, 100 HP each; rooms of 2 to 6 in one family of exercises." };
         juce::String search { "Find an opponent" }, challenge { "Challenge by code" };
         juce::String battleNeedsAccount { "Battles need an account: the rating has to be yours and impossible to inflate. Seminars and training do not." };
         juce::String fairPlay { "The server runs each round: you get the sound, the answer stays with it." };
@@ -117,14 +117,15 @@ public:
         juce::String ratingFailed { "Could not load the rating. Check the connection." };
         juce::String battlesNext { "Battles open in the next update: the round server is not running yet. The rating already works." };
         // Battles with people (ADR 048).
-        juce::String battleOnline { "Seven rounds, the same for both. The server sets each round and scores the answers itself. Exercises - as chosen on the right." };
+        juce::String battleOnline { "Rooms of 2 to 6, ten rounds, the same for all. The server sets each round and scores the answers; the last one with HP wins." };
         juce::String searching { "Looking for an opponent... {{time}}" };
         juce::String cancelSearch { "Cancel the search" };
         juce::String nickRequired { "A battle needs a nick: set one in your account on soundkorb.ru." };
         juce::String battleOffline { "No connection to the battle server. Try again." };
+        juce::String accept { "Accept" }, decline { "Decline" };
         // Battles with a virtual listener (ADR 046).
         juce::String botTitle { "Against a bot" };
-        juce::String botHint { "Works offline. Seven rounds, the same round for both; the bot answers from its hearing profile at your level." };
+        juce::String botHint { "Works offline. Ten rounds, the same for both, 100 HP each; the bot answers from its hearing profile at your level." };
         juce::StringArray botNames { "Hound", "Cat", "Viper", "Owl", "Bat", "Elephant" };
         juce::StringArray botSpecialty { "", "", "", "", "", "" };
         juce::String botStart { "Start the battle" };
@@ -193,6 +194,10 @@ public:
     std::function<void (int family)> onFindOpponent;
     std::function<void()> onCancelSearch;
     std::function<void()> onBattleTabShown;
+    // A room found: Accept (true) or Decline (false), ADR 050.
+    std::function<void (bool)> onAcceptMatch;
+    void setReadyCheck (bool waitingForYou);
+    void showBattleTab() { showTab (Tab::battle); }
     void setOnlineStatus (bool searching, const juce::String& line);
     // Decibelo per family (0 = no battles there yet).
     void setMyRatings (const std::array<int, 4>& ratings);
@@ -276,6 +281,7 @@ private:
     SegmentedChoice battleFamily, botChoice;
     juce::TextButton searchButton, challengeButton, battleSignInButton, botStartButton;
     bool searchingOnline = false;
+    bool readyForYou = false;
     juce::String onlineLine;
     std::array<int, 4> myRatings {};
 

@@ -139,12 +139,12 @@ export const LIVE = [
   {
     key: 'people',
     head: 'Battles against people, for the Decibelo rating',
-    body: 'Find an opponent in the same family of exercises: seven rounds, the same for both. The server sets each round and scores the answers; the table on soundkorb.ru updates the moment a battle ends.',
+    body: 'Rooms of 2 to 6 in one family of exercises: ten rounds, the same for all, 100 HP each, and the last one with HP wins. The server sets each round and scores the answers; the table on soundkorb.ru updates the moment a battle ends.',
   },
   {
     key: 'bots',
     head: 'Battles against six bot listeners',
-    body: 'Seven rounds on the same material for both, against a listener with its own hearing profile. Offline.',
+    body: 'Ten rounds on the same material for both, 100 HP each, against a listener with its own hearing profile. Offline.',
   },
   {
     key: 'account',

@@ -19,7 +19,7 @@ understanding.
 |---|---|
 | [docs/orientation.md](docs/orientation.md) | the map, the load-bearing ideas, **the rules from the literature** — read first |
 | [docs/code-map.md](docs/code-map.md) | per-file breakdown (was the body of this file) — read the part you change |
-| [docs/decisions/](docs/decisions/) | ADRs, 001–049: why each shape was chosen |
+| [docs/decisions/](docs/decisions/) | ADRs, 001–050: why each shape was chosen |
 | [docs/process.md](docs/process.md) | how a task goes from idea to release; the scenario checklist |
 | [docs/research/](docs/research/) | the literature review every current proposal rests on |
 | [docs/design/](docs/design/) | sound library, education/live, the redesign spec |
@@ -114,7 +114,7 @@ Learner*/Source (no PluginEntry) abc_learner_eq/comp/verb, abc_learners — plug
   has a room open. Signing in is optional
   (ADR 045): a signed-in app syncs a ~1 KB progress summary, and that
   sync has its own switch. Battles against bots (ADR 046) need no network; battles against people
-  (ADR 048) go through soundkorb.ru only after the player presses "Find an
+  (ADR 048, rooms of 2–6 in ADR 050) go through soundkorb.ru only after the player presses "Find an
   opponent".
 - **Learner modules have no hearing check** (ADR 041): watch → try → Done.
   Naming a setting by ear is the trainer's job.

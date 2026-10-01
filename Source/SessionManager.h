@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <functional>
+#include <vector>
 #include "BotListener.h"
 
 // How a training run is framed: unlimited, life-limited, or time-limited.
@@ -149,6 +150,12 @@ public:
     // the run is still going.
     bool registerBattleRound (float playerError, float opponentError, float precision = -1.0f);
 
+    // A round the battle server already scored (online, ADR 049/050): HP
+    // as the server has them - in a room "them" is the strongest opponent,
+    // who can change from round to round, so HP are taken, not computed.
+    // Ends the run when either side is out or after duelRounds.
+    bool registerExternalRound (float playerError, float playerHpNow, float opponentHpNow, bool opponentRight);
+
     // The same with right/wrong only (a server that judged right/wrong, the
     // snapshots): right is an error of 0, wrong Game::wrongError.
     bool registerDuelRound (bool playerRight, bool botRight, float precision = -1.0f);
@@ -157,6 +164,9 @@ public:
     float getOpponentHp() const noexcept { return opponentHp; }
     float getLastPlayerDamage() const noexcept { return lastPlayerDamage; }
     float getLastOpponentDamage() const noexcept { return lastOpponentDamage; }
+    // HP after each round so far, for the results graph.
+    const std::vector<float>& getPlayerHpHistory() const noexcept { return playerHpHistory; }
+    const std::vector<float>& getOpponentHpHistory() const noexcept { return opponentHpHistory; }
 
     // By HP left - not by rounds won: a battle is lost by missing badly,
     // not by missing narrowly more often.
@@ -216,4 +226,5 @@ private:
     bool lastOpponentRight = false;
     float playerHp = startHp, opponentHp = startHp;
     float lastPlayerDamage = 0.0f, lastOpponentDamage = 0.0f;
+    std::vector<float> playerHpHistory, opponentHpHistory;
 };

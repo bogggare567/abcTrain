@@ -994,6 +994,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         onlineBattle.search (families[juce::jlimit (0, 3, family)]);
     };
     liveScreen.onCancelSearch = [this] { onlineBattle.cancel(); };
+    liveScreen.onAcceptMatch = [this] (bool yes) { onlineBattle.accept (yes); };
     liveScreen.onBattleTabShown = [this] { refreshMyRatings(); };
     onlineBattle.onChanged = [this] { handleOnlineBattle(); };
 
@@ -2106,6 +2107,11 @@ void EarTrainerEditor::showRunResults (int finalScore)
                                  .replace ("{{you}}", juce::String (finalScore))
                                  .replace ("{{them}}", juce::String (session.getOpponentScore()))
                                  .replace ("{{bot}}", opponentName());
+    if (duel)
+    {
+        summary.hpYou = session.getPlayerHpHistory();
+        summary.hpThem = session.getOpponentHpHistory();
+    }
     if (duel)
         summary.pointsNote << "   HP " << juce::roundToInt (session.getPlayerHp()) << " : " << juce::roundToInt (session.getOpponentHp());
     if (duel && onlineResultNote.isNotEmpty())
@@ -3942,6 +3948,8 @@ void EarTrainerEditor::refreshLiveStrings()
     s.cancelSearch = g ("live.cancelSearch", s.cancelSearch);
     s.nickRequired = g ("live.nickRequired", s.nickRequired);
     s.battleOffline = g ("live.battleOffline", s.battleOffline);
+    s.accept = g ("live.accept", s.accept);
+    s.decline = g ("live.decline", s.decline);
     s.hintNoNetwork = g ("live.hintNoNetwork", s.hintNoNetwork);
     s.hintNoInternet = g ("live.hintNoInternet", s.hintNoInternet);
     s.hintServerDown = g ("live.hintServerDown", s.hintServerDown);
@@ -4146,8 +4154,35 @@ void EarTrainerEditor::handleOnlineBattle()
                  : st.errorText.isNotEmpty()       ? st.errorText
                                                    : liveScreen.getStrings().battleOffline;
         }
+        if (st.stage == Stage::ready)
+        {
+            const auto seconds = (st.deadlineInMs + 999) / 1000;
+            line = (st.youAccepted == 1 ? localisation.getText ("live.acceptedWaiting") + "  "
+                                        : juce::String())
+                 + localisation.getText ("live.matchFound")
+                       .replace ("{{n}}", juce::String (st.members))
+                       .replace ("{{max}}", juce::String (st.maxPlayers))
+                       .replace ("{{accepted}}", juce::String (st.accepted))
+                       .replace ("{{time}}", "0:" + juce::String (seconds).paddedLeft ('0', 2));
+        }
+
         liveScreen.setOnlineStatus (st.stage == Stage::searching, line);
+        liveScreen.setReadyCheck (st.stage == Stage::ready && st.youAccepted < 0);
     }
+
+    // A room was found (like CS): bring the window up and the Live page with
+    // its Accept button, wherever the player was while waiting.
+    if (st.stage == Stage::ready && st.youAccepted < 0 && ! readyCheckShown)
+    {
+        readyCheckShown = true;
+        if (auto* top = getTopLevelComponent())
+            top->toFront (true);
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::live);
+        liveScreen.showBattleTab();
+    }
+    if (st.stage != Stage::ready)
+        readyCheckShown = false;
 
     if (st.stage == Stage::playing && ! onlineRun)
     {
@@ -4158,6 +4193,15 @@ void EarTrainerEditor::handleOnlineBattle()
     if (! onlineRun)
         return;
 
+    // A room: who to beat right now, and how many are still in.
+    if (st.players.size() > 2)
+        onlineOpponent = st.opponentNick + " · " + juce::String (st.aliveCount) + "/" + juce::String ((int) st.players.size());
+
+    // Out of a room before it ends: the run ends here, with the place known
+    // so far (everyone still in is ahead).
+    if (st.stage == Stage::playing && ! st.history.empty() && st.history.back().hpYou <= 0.0f && onlineResultNote.isEmpty())
+        onlineResultNote = localisation.getText ("live.eliminated").replace ("{{place}}", juce::String (st.aliveCount + 1));
+
     if (st.stage == Stage::finished)
     {
         const auto delta = juce::roundToInt (st.delta * 10.0) / 10.0;
@@ -4167,6 +4211,11 @@ void EarTrainerEditor::handleOnlineBattle()
                                        : juce::String();
         if (st.forfeit == "them")
             onlineResultNote = localisation.getText ("live.opponentLeft") + (onlineResultNote.isEmpty() ? "" : "\n" + onlineResultNote);
+        if (st.players.size() > 2 && st.place > 0)
+            onlineResultNote = localisation.getText ("live.place")
+                                   .replace ("{{place}}", juce::String (st.place))
+                                   .replace ("{{n}}", juce::String ((int) st.players.size()))
+                             + (onlineResultNote.isEmpty() ? "" : "\n" + onlineResultNote);
     }
 
     registerOnlineResults();
@@ -4209,7 +4258,7 @@ void EarTrainerEditor::registerOnlineResults()
         if (h.voided)
             pointsFlyup.show (localisation.getText ("live.roundVoided"), AbcTrainTheme::current().negative);
 
-        session.registerBattleRound (h.youError, h.themError);
+        session.registerExternalRound (h.youError, h.hpYou, h.hpThem, h.them);
     }
 }
 
@@ -4255,7 +4304,7 @@ void EarTrainerEditor::startOnlineRoundIfDue()
 {
     const auto& st = onlineBattle.getState();
 
-    if (! onlineRun || ! runStarted || st.stage != OnlineBattle::Stage::playing)
+    if (! onlineRun || ! runStarted || st.stage != OnlineBattle::Stage::playing || ! session.isRunActive())
         return;
 
     const auto n = st.round.n;

@@ -22,6 +22,7 @@ OnlineBattle::State OnlineBattle::parse (const juce::var& json, const State& pre
     }
 
     s.stage = status == "waiting"  ? Stage::searching
+            : status == "ready"    ? Stage::ready
             : status == "playing"  ? Stage::playing
             : status == "finished" ? Stage::finished
             : status == "abandoned" ? Stage::failed
@@ -31,37 +32,93 @@ OnlineBattle::State OnlineBattle::parse (const juce::var& json, const State& pre
     s.waitingMs = (int) json["waitingMs"];
     s.inQueue = (int) json["inQueue"];
 
+    s.checkId = json["checkId"].toString();
+    s.deadlineInMs = (int) json["deadlineInMs"];
+    s.members = (int) json["members"];
+    s.accepted = (int) json["accepted"];
+    s.maxPlayers = json.hasProperty ("max") ? (int) json["max"] : 6;
+    s.youAccepted = json["youAccepted"].isBool() ? ((bool) json["youAccepted"] ? 1 : 0) : -1;
+
     s.matchId = json["matchId"].toString();
     s.game = json.hasProperty ("game") ? (int) json["game"] : -1;
     s.rounds = json.hasProperty ("rounds") ? (int) json["rounds"] : 10;
-    s.opponentNick = json["opponent"]["nick"].toString();
-    s.opponentCountry = json["opponent"]["country"].toString();
-    s.opponentRating = (int) json["opponent"]["rating"];
-    s.yourRating = (int) json["you"]["rating"];
+    s.you = (int) json["you"];
 
-    if (const auto* score = json["score"].getArray(); score != nullptr && score->size() == 2)
+    if (const auto* players = json["players"].getArray())
+        for (const auto& p : *players)
+            s.players.push_back ({ p["nick"].toString(), p["country"].toString(), (int) p["rating"], (int) p["score"],
+                                   (float) (double) p["hp"], (bool) p["alive"] });
+
+    s.you = juce::jlimit (0, juce::jmax (0, (int) s.players.size() - 1), s.you);
+
+    // The strongest opponent - the one to beat - for a HUD with one name.
+    int leader = -1;
+    for (int i = 0; i < (int) s.players.size(); ++i)
     {
-        s.scoreYou = (int) score->getReference (0);
-        s.scoreThem = (int) score->getReference (1);
+        if (i == s.you)
+            continue;
+        s.aliveCount += s.players[(size_t) i].alive ? 1 : 0;
+        if (leader < 0 || s.players[(size_t) i].hp > s.players[(size_t) leader].hp)
+            leader = i;
+    }
+    if (! s.players.empty() && s.players[(size_t) s.you].alive)
+        ++s.aliveCount;
+
+    if (leader >= 0)
+    {
+        const auto& l = s.players[(size_t) leader];
+        s.opponentNick = l.nick;
+        s.opponentCountry = l.country;
+        s.opponentRating = l.rating;
+        s.hpThem = l.hp;
+        s.scoreThem = l.score;
+    }
+
+    if (! s.players.empty())
+    {
+        const auto& me = s.players[(size_t) s.you];
+        s.yourRating = me.rating;
+        s.hpYou = me.hp;
+        s.scoreYou = me.score;
     }
 
     if (const auto* history = json["history"].getArray())
         for (const auto& h : *history)
         {
-            RoundResult r { (int) h["n"], (bool) h["you"], (bool) h["them"], (bool) h["voided"] };
-            // A server from before damage (ADR 049) sends right/wrong only.
-            r.youError = h.hasProperty ("youError") ? (float) (double) h["youError"] : (r.you ? 0.0f : 2.0f);
-            r.themError = h.hasProperty ("themError") ? (float) (double) h["themError"] : (r.them ? 0.0f : 2.0f);
+            RoundResult r;
+            r.n = (int) h["n"];
+            r.voided = (bool) h["voided"];
+            const auto* errors = h["errors"].getArray();
+            const auto* hps = h["hp"].getArray();
+
+            if (errors != nullptr && s.you < errors->size())
+            {
+                r.youError = (float) (double) errors->getReference (s.you);
+                // The opponent's side of the round: the best answer among the others.
+                r.themError = 99.0f;
+                for (int i = 0; i < errors->size(); ++i)
+                    if (i != s.you)
+                        r.themError = juce::jmin (r.themError, (float) (double) errors->getReference (i));
+                if (r.themError > 50.0f)
+                    r.themError = 0.0f;
+            }
+
+            if (hps != nullptr && s.you < hps->size())
+            {
+                r.hpYou = (float) (double) hps->getReference (s.you);
+                r.hpThem = 0.0f;
+                for (int i = 0; i < hps->size(); ++i)
+                    if (i != s.you)
+                        r.hpThem = juce::jmax (r.hpThem, (float) (double) hps->getReference (i));
+            }
+
             if (r.voided)
                 r.youError = r.themError = 0.0f;
+
+            r.you = ! r.voided && r.youError <= 1.0f;
+            r.them = ! r.voided && r.themError <= 1.0f;
             s.history.push_back (r);
         }
-
-    if (const auto* hp = json["hp"].getArray(); hp != nullptr && hp->size() == 2)
-    {
-        s.hpYou = (float) (double) hp->getReference (0);
-        s.hpThem = (float) (double) hp->getReference (1);
-    }
 
     if (const auto& r = json["round"]; r.isObject())
     {
@@ -71,9 +128,10 @@ OnlineBattle::State OnlineBattle::parse (const juce::var& json, const State& pre
         s.round.startsInMs = (int) r["startsInMs"];
         s.round.deadlineInMs = (int) r["deadlineInMs"];
         s.round.answered = (bool) r["answered"];
-        s.round.opponentAnswered = (bool) r["opponentAnswered"];
+        s.round.opponentAnswered = (int) r["answeredCount"] > (s.round.answered ? 1 : 0);
     }
 
+    s.place = (int) json["place"];
     s.outcome = json["outcome"].toString();
     s.forfeit = json["forfeit"].isString() ? json["forfeit"].toString() : juce::String();
     s.delta = (double) json["delta"];
@@ -92,7 +150,7 @@ void OnlineBattle::setStage (Stage stage)
 
     if (stage == Stage::searching)
         startTimer (searchPollMs);
-    else if (stage == Stage::playing)
+    else if (stage == Stage::ready || stage == Stage::playing)
         startTimer (playPollMs);
     else
         stopTimer();
@@ -118,10 +176,12 @@ void OnlineBattle::take (int status, const juce::var& json)
     failures = 0;
     auto next = parse (json, state);
 
-    // A refused answer (the round closed a moment earlier) is not the
-    // battle ending: keep playing and let the next poll bring the state.
-    if (next.errorCode.isNotEmpty() && state.stage == Stage::playing
-        && (next.errorCode == "wrong_round" || next.errorCode == "too_early"))
+    // A refused answer or accept (the round or the check closed a moment
+    // earlier, or this player is out and watching) is not the battle
+    // ending: keep going and let the next poll bring the state.
+    if (next.errorCode.isNotEmpty() && isActive()
+        && (next.errorCode == "wrong_round" || next.errorCode == "too_early"
+            || next.errorCode == "no_check" || next.errorCode == "eliminated"))
     {
         return;
     }
@@ -178,6 +238,26 @@ void OnlineBattle::search (const juce::String& family)
         if (*flag)
             take (status, json);
     });
+}
+
+void OnlineBattle::accept (bool yes)
+{
+    if (state.stage != Stage::ready)
+        return;
+
+    auto* body = new juce::DynamicObject();
+    body->setProperty ("checkId", state.checkId);
+    body->setProperty ("accept", yes);
+    state.youAccepted = yes ? 1 : 0;
+
+    transport ("POST", "/api/abctrain/battle/accept", juce::var (body), [flag = alive, this] (int status, const juce::var& json)
+    {
+        if (*flag && status != 0)
+            take (status, json);
+    });
+
+    if (onChanged != nullptr)
+        onChanged();
 }
 
 void OnlineBattle::cancel()

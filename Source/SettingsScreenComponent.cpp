@@ -8,11 +8,17 @@
 
 namespace
 {
-    constexpr int railWidth = 190;
+    constexpr int railWidth = AbcTrainTheme::Layout::sideRail;
     constexpr int menuRowHeight = 36;
     constexpr int rowHeight = 62;
     constexpr int titleColumn = 330;
     constexpr int controlHeight = 30;
+
+    // One width for every control that is not a row of segments or a
+    // composite: menus, buttons and faders used to be 140, 220 or the whole
+    // row, so each row's chevron and edge sat somewhere else and the page
+    // read as patched together.
+    constexpr int standardControlWidth = 280;
 
     juce::String n (int value) { return juce::String (value); }
 }
@@ -266,8 +272,7 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         const auto saved = properties.getValue (AbcTrainLookAndFeel::typefaceKey, "System");
 
         for (int i = 0; i < names.size(); ++i)
-            typefaceSelector.addItem (names[i], i + 1,
-                                       names[i] == "System" ? juce::String ("Aa") : names[i].substring (0, 2));
+            typefaceSelector.addItem (names[i] == "System" ? localisation.getText ("set.typeface.system") : names[i], i + 1);
 
         typefaceSelector.setSelectedId (juce::jmax (1, names.indexOf (saved) + 1), juce::dontSendNotification);
 
@@ -299,8 +304,7 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
 
         for (int i = 0; i < 5; ++i)
         {
-            screensaverSelector.addItem (seconds[i] == 0 ? localisation.getText ("set.off") : localisation.getText ("set.minutes", { { "n", n (seconds[i] / 60) } }), i + 1,
-                                          seconds[i] == 0 ? juce::String ("off") : n (seconds[i] / 60) + "m");
+            screensaverSelector.addItem (seconds[i] == 0 ? localisation.getText ("set.off") : localisation.getText ("set.minutes", { { "n", n (seconds[i] / 60) } }), i + 1);
 
             if (seconds[i] == saved)
                 selected = i + 1;
@@ -409,7 +413,7 @@ void SettingsScreenComponent::buildRows()
         { "set.blitz.title",        "set.blitz.hint",        &blitzSeconds,   0, true,  Page::training },
         { "set.penalty.title",      "set.penalty.hint",      &blitzPenalty,   0, true,  Page::training },
 
-        { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, 220, false, Page::hearing },
+        { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, standardControlWidth, false, Page::hearing },
         { "set.hearingOn.title",    "set.hearingOn.hint",    &hearingOn,      0, false, Page::hearing },
         { "set.break.title",        "set.break.hint",        &breakMinutes,   0, true,  Page::hearing },
         { "set.fatigue.title",      "set.fatigue.hint",      &fatigueHint,    0, true,  Page::hearing },
@@ -418,21 +422,21 @@ void SettingsScreenComponent::buildRows()
         { "set.exposure.title",     "set.exposure.hint",     &exposureRow,    0, true,  Page::hearing },
 
         { "set.theme.title",        "set.theme.hint",        &themeChoice,         0,   false, Page::appearance },
-        { "set.language.title",     "set.language.hint",     &languageChoice,      220, false, Page::appearance },
-        { "ui.textSize",            "set.textSize.hint",     &textScaleSlider,     0,   false, Page::appearance },
-        { "set.typeface.title",     "set.typeface.hint",     &typefaceSelector,    140, false, Page::appearance },
-        { "set.screensaver.title",  "set.screensaver.hint",  &screensaverSelector, 140, false, Page::appearance },
+        { "set.language.title",     "set.language.hint",     &languageChoice,      standardControlWidth, false, Page::appearance },
+        { "ui.textSize",            "set.textSize.hint",     &textScaleSlider,     standardControlWidth,   false, Page::appearance },
+        { "set.typeface.title",     "set.typeface.hint",     &typefaceSelector,    standardControlWidth, false, Page::appearance },
+        { "set.screensaver.title",  "set.screensaver.hint",  &screensaverSelector, standardControlWidth, false, Page::appearance },
 
         { "ui.backgroundImage",     "set.background.hint",   &backgroundButtons, 0, false, Page::background },
-        { "ui.backgroundDim",       "set.backgroundDim.hint", &scrimSlider,      0, false, Page::background },
+        { "ui.backgroundDim",       "set.backgroundDim.hint", &scrimSlider,      standardControlWidth, false, Page::background },
 
         { "set.liveTab.title",      "set.liveTab.hint",      &liveTabChoice,    0,   false, Page::live },
-        { "set.account.title",      "set.account.hint",      &accountButton,    220, false, Page::live },
+        { "set.account.title",      "set.account.hint",      &accountButton,    standardControlWidth, false, Page::live },
         { "set.sync.title",         "set.sync.hint",         &syncChoice,       0,   false, Page::live },
-        { "set.syncNow.title",      "set.syncNow.hint",      &syncNowButton,    220, false, Page::live },
+        { "set.syncNow.title",      "set.syncNow.hint",      &syncNowButton,    standardControlWidth, false, Page::live },
 
         { "set.autoUpdate.title",   "set.autoUpdate.hint",   &autoUpdateChoice, 0,   false, Page::about },
-        { "set.checkNow.title",     "set.checkNow.hint",     &checkNowButton,   220, false, Page::about },
+        { "set.checkNow.title",     "set.checkNow.hint",     &checkNowButton,   standardControlWidth, false, Page::about },
     };
 }
 
@@ -846,8 +850,11 @@ void SettingsScreenComponent::resized()
         const auto box = controlArea.removeFromLeft (width).withSizeKeepingCentre (width, controlHeight)
                                     .withY (row.bounds.getY() + 6);
 
+        if (auto* slider = dynamic_cast<juce::Slider*> (row.control))
+            slider->setTextBoxStyle (juce::Slider::TextBoxRight, false, 56, controlHeight - 6);
+
         if (auto* seg = dynamic_cast<SegmentedChoice*> (row.control))
-            seg->setBounds (box.withWidth (juce::jmin (box.getWidth(), juce::jmax (seg->getPreferredWidth(), 220))));
+            seg->setBounds (box.withWidth (juce::jmin (box.getWidth(), juce::jmax (seg->getPreferredWidth(), standardControlWidth))));
         else
             row.control->setBounds (box);
     }
@@ -1038,7 +1045,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
                     juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
-        g.setFont (AbcTrainLookAndFeel::captionFont());
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         AbcTrainLookAndFeel::fitLines (g, hintFor (row), text.withTrimmedBottom (4), juce::Justification::topLeft, 2, 0.9f);
 
         g.setColour (theme.divider);

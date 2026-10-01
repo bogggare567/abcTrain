@@ -411,7 +411,7 @@ void TrainingSoundsComponent::updateStatusLabel()
 
 namespace
 {
-    constexpr int railWidth = 220;
+    constexpr int railWidth = AbcTrainTheme::Layout::sideRail;
     constexpr int railRowHeight = 36;
     constexpr int titleHeight = 44;
     constexpr int previewHeight = 156;
@@ -816,7 +816,9 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
     const auto& categories = library.getCategories();
 
     const auto rail = railBounds();
-    g.setColour (theme.displayBackground.withAlpha (0.35f));
+    // The same rail as Settings - fill, row highlight, accent edge, type -
+    // so moving between the two pages changes the content, not the frame.
+    g.setColour (theme.windowBackground.withAlpha (0.5f));
     g.fillRect (rail);
     g.setColour (theme.divider);
     g.drawVerticalLine (rail.getRight() - 1, (float) rail.getY(), (float) rail.getBottom());
@@ -831,18 +833,24 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
 
         if (index == hoveredCategoryRow || selected)
         {
-            g.setColour (selected ? theme.accent.withAlpha (0.2f) : theme.widgetBackground.withAlpha (0.5f));
-            g.fillRect (row);
+            g.setColour (selected ? theme.accent.withAlpha (0.18f) : theme.widgetBackground.withAlpha (0.6f));
+            g.fillRect (row.toFloat().reduced (2.0f, 0.0f));
         }
 
-        auto label = row.reduced (12, 0);
+        if (selected)
+        {
+            g.setColour (theme.accent);
+            g.fillRect (row.toFloat().withWidth (3.0f).reduced (0.0f, 6.0f));
+        }
+
+        auto label = row.withTrimmedLeft (14).withTrimmedRight (12);
 
         g.setColour (selected ? theme.textBright : theme.text);
-        g.setFont (AbcTrainLookAndFeel::labelFont());
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
         AbcTrainLookAndFeel::fitText (g, name, label.removeFromLeft (label.getWidth() - 30), juce::Justification::centredLeft, true);
 
         g.setColour (theme.textDim);
-        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+        g.setFont (AbcTrainLookAndFeel::labelFont());
         AbcTrainLookAndFeel::fitText (g, detail, label, juce::Justification::centredRight, false);
     };
 

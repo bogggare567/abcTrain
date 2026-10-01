@@ -120,6 +120,14 @@ namespace AbcTrainTheme
         constexpr int section  = 28;  // between grouped sections
     }
 
+    // Shared page geometry. Pages that have a left rail (Settings, Sounds)
+    // take its width from here: at 190 and 220 the rail edge jumped 30 px
+    // every time you went from one page to the other.
+    namespace Layout
+    {
+        constexpr int sideRail = 220;
+    }
+
     // Corner radii - all zero, and that is the design rather than an
     // omission. The mockup this build follows is a blueprint grammar:
     // square corners, hairline frames and registration marks, where a

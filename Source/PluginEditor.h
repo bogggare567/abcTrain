@@ -1669,6 +1669,7 @@ private:
     int onlineScheduledRound = -1;       // a round waiting for its start time
     juce::String onlineOpponent;         // for the HUD and the result, after the state is gone
     juce::String onlineResultNote;       // "Decibelo +16 -> 1516"
+    bool readyCheckShown = false;        // the window was brought up for this room
     struct SavedClip { juce::File file; juce::String category; bool pinned = false; } onlineSavedClip;
 
     void handleOnlineBattle();

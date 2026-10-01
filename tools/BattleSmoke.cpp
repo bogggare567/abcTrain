@@ -6,7 +6,7 @@
 //
 // Two computers, two accounts ("smokeA", "smokeB"). Both stand in the queue
 // through OnlineBattle + LiveAccount::battleCall - the code the app runs -
-// and play the seven rounds the server sets: each builds the round from the
+// and play the ten rounds the server sets: each builds the round from the
 // seed exactly as the editor does (seeded GameManager game, the level from
 // the server), A answers right, B answers wrong. Checked: the server never
 // finds the two rounds different (no voided round), B is knocked out on HP
@@ -246,8 +246,15 @@ int main (int argc, char* argv[])
         waitFor ([&] { return a.battle.getState().stage == OnlineBattle::Stage::searching && a.battle.getState().errorCode.isEmpty(); }, 5000);
         b.battle.search (family);
 
+        // Like CS: two searching opens an accept window; both accept.
+        check (waitFor ([&] { return a.battle.getState().stage == OnlineBattle::Stage::ready
+                                  && b.battle.getState().stage == OnlineBattle::Stage::ready; }, 10000),
+               "a room found, waiting for Accept (" + juce::String (a.battle.getState().members) + " in it)");
+        a.battle.accept (true);
+        b.battle.accept (true);
+
         const auto matched = waitFor ([&] { return a.battle.getState().stage == OnlineBattle::Stage::playing
-                                                && b.battle.getState().stage == OnlineBattle::Stage::playing; }, 10000);
+                                                && b.battle.getState().stage == OnlineBattle::Stage::playing; }, 20000);
         check (matched, "matched: A sees " + a.battle.getState().opponentNick + ", B sees " + b.battle.getState().opponentNick
                             + ", exercise " + juce::String (a.battle.getState().game));
 
@@ -267,6 +274,7 @@ int main (int argc, char* argv[])
         int voided = 0;
         for (const auto& h : sa.history)
             voided += h.voided ? 1 : 0;
+        check (sa.place == 1 && sb.place == 2, "places: A first, B second");
         check (voided == 0, "no round voided by the server");
         check (sa.hpThem <= 0.0f && sa.hpYou >= 99.9f && sb.hpYou <= 0.0f && sa.outcome == "won" && sb.outcome == "lost",
                "knock-out: HP " + juce::String (sa.hpYou) + " : " + juce::String (sa.hpThem) + " after "

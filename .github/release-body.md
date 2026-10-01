@@ -13,8 +13,8 @@
 - **Семинар в зале, без интернета.** Ноутбук ведущего играет упражнение в зал и сам раздаёт страницу телефонам по Wi‑Fi зала. Все сканируют один QR-код и отвечают с телефона: кнопкой или шкалой, без «Отправить», ответ меняется, пока его не показали. Окно для проектора открывается на втором экране само: вопрос, какая версия звучит (A или B), сколько ответили, как проголосовал зал и правильный ответ, в конце таблица мест. Управлять можно и с клавиатуры: Пробел, A, B, S. Прогресс ведущего семинар не трогает.
 - **Список и коды.** Имя и почта вводятся в две колонки, строки добавляются сами. Список из таблицы, письма или CSV вставляется одним действием. Коды печатаются карточками с QR, на каждой уже зашит вход в комнату.
 - **Вход через сайт починен.** Страница `soundkorb.ru/link` отдавала 404. Теперь вход проходит целиком, а на экране входа есть QR: подтвердить можно с телефона.
-- **Батлы с людьми на рейтинг Decibelo.** Live → Батл → «Искать соперника»: семь раундов, одинаковых для обоих. Сервер задаёт раунд и сам засчитывает ответы; итог сразу появляется в таблице на soundkorb.ru/abctrain/rating.
-- **Батлы с ботами.** Шесть «слушателей» с разным профилем слуха: Гончая, Кошка, Гадюка, Сова, Летучая мышь, Слон. Батл идёт семь раундов на одном и том же материале для обоих и работает без сети. Звери здесь игровые персонажи, а не биология.
+- **Батлы с людьми на рейтинг Decibelo.** Live → Батл → «Искать соперника»: когда в поиске двое и больше, всем приходит «Принять»; комната от 2 до 6 человек, десять раундов, у каждого 100 HP — урон тем больше, чем дальше ответ от правильного, побеждает последний с HP. Сервер задаёт раунд и сам засчитывает ответы; итог сразу появляется в таблице на soundkorb.ru/abctrain/rating.
+- **Батлы с ботами.** Шесть «слушателей» с разным профилем слуха: Гончая, Кошка, Гадюка, Сова, Летучая мышь, Слон. Бот промахивается не монеткой, а по своему распределению ошибки; десять раундов, по 100 HP, на одном и том же материале для обоих, и работает без сети. Звери здесь игровые персонажи, а не биология.
 - **Свои звуки по инструментам.**
   - Импорт определяет инструмент. Если не уверен, кладёт звук в «Другое».
   - Нарезает петли без шва по темпу.
@@ -44,7 +44,7 @@
 - **Live.** Optional sign-in on soundkorb.ru with an e-mail code. A computer is linked with a short code. Progress sync is opt-in and sends a ~1 KB summary. The app tells you why Live is unreachable, and shows the Decibelo rating.
 - **A seminar in a room, no internet.** The presenter's laptop plays into the hall and serves a page to the phones on the venue's Wi-Fi: one QR code, answers on the phone, a projector window with the votes and the answer. Invitee lists paste from a spreadsheet and print as cards with a QR each.
 - **Sign-in works end to end** (the site's /link page answered 404), with a QR to confirm from a phone.
-- **Battles against people for the Decibelo rating.** Live → Battle → Find an opponent: seven rounds, the same for both. The server sets each round and scores the answers; the result shows up at soundkorb.ru/abctrain/rating right away.
+- **Battles against people for the Decibelo rating.** Live → Battle → Find an opponent: once two or more are searching, everyone gets Accept; rooms of 2 to 6, ten rounds, 100 HP each, damage grows with how far off the answer is, and the last one with HP wins. The server sets each round and scores the answers; the result shows up at soundkorb.ru/abctrain/rating right away.
 - **Offline battles against six bot listeners.** Each bot has its own hearing profile. They are game characters, not biology.
 - **Your own sounds, sorted by instrument.** Import cuts seamless tempo-aware loops. You can pick a fragment from a track by hand, and delete clips in the app, several at once.
 - **25 built-in sounds synthesized by the app**: drums, basses, keys, pads, a choir, guitar, bell, lead and six loops at 90-140 BPM. CC0.

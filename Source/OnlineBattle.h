@@ -25,13 +25,24 @@ public:
     explicit OnlineBattle (Transport);
     ~OnlineBattle() override;
 
-    enum class Stage { idle, searching, playing, finished, failed };
+    // ready: a room was found and waits for "Accept" (like CS: as soon as
+    // two are searching, up to six; ADR 050).
+    enum class Stage { idle, searching, ready, playing, finished, failed };
 
     struct RoundResult
     {
         int n = 0;
         bool you = false, them = false, voided = false;
-        float youError = 0.0f, themError = 0.0f;   // relative, as Game::answerErrorRelative (ADR 049)
+        float youError = 0.0f, themError = 0.0f;   // relative, as Game::answerErrorRelative (ADR 049); them = the leader
+        float hpYou = 100.0f, hpThem = 100.0f;     // after the round; them = the strongest opponent
+    };
+
+    struct Player
+    {
+        juce::String nick, country;
+        int rating = 0, score = 0;
+        float hp = 100.0f;
+        bool alive = true;
     };
 
     struct Round
@@ -49,8 +60,17 @@ public:
         juce::String family;
         int waitingMs = 0, inQueue = 0;
 
+        // ready
+        juce::String checkId;
+        int deadlineInMs = 0, members = 0, accepted = 0, maxPlayers = 6;
+        int youAccepted = -1;   // -1 not yet, 0 declined, 1 accepted
+
         juce::String matchId;
         int game = -1, rounds = 10;
+        std::vector<Player> players;   // everyone in the room, in the server's order
+        int you = 0;                   // index into players
+        int aliveCount = 0;
+        int place = 0;                 // when finished: 1 = won
         juce::String opponentNick, opponentCountry;
         int opponentRating = 0, yourRating = 0;
         int scoreYou = 0, scoreThem = 0;
@@ -72,12 +92,16 @@ public:
     static State parse (const juce::var& json, const State& previous);
 
     void search (const juce::String& family);
+    void accept (bool yes);   // the room found: in or out
     void cancel();     // out of the queue - or, mid-battle, give up
     void answer (const juce::var& fields);   // matchId and round are added here
     void reset();      // after the result was shown: back to idle, polling stops
 
     const State& getState() const noexcept { return state; }
-    bool isActive() const noexcept { return state.stage == Stage::searching || state.stage == Stage::playing; }
+    bool isActive() const noexcept
+    {
+        return state.stage == Stage::searching || state.stage == Stage::ready || state.stage == Stage::playing;
+    }
 
     std::function<void()> onChanged;
 

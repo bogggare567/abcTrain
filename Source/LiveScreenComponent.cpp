@@ -202,6 +202,12 @@ LiveScreenComponent::LiveScreenComponent()
     addChildComponent (battleFamily);
     searchButton.onClick = [this]
     {
+        if (readyForYou)
+        {
+            if (onAcceptMatch != nullptr) onAcceptMatch (true);
+            return;
+        }
+
         if (searchingOnline)
         {
             if (onCancelSearch != nullptr) onCancelSearch();
@@ -217,8 +223,9 @@ LiveScreenComponent::LiveScreenComponent()
         if (requireServer() && onFindOpponent != nullptr)
             onFindOpponent (juce::jlimit (0, 3, battleFamily.getValue()));
     };
-    // Challenges by code need a second queue on the server; not yet (ADR 048).
-    challengeButton.onClick = [this] { if (requireServer()) setNote (text.battlesNext); };
+    // While a room waits for "Accept", this is "Decline". (Challenges by
+    // code need a second queue on the server; not yet - ADR 048.)
+    challengeButton.onClick = [this] { if (readyForYou && onAcceptMatch != nullptr) onAcceptMatch (false); };
     battleSignInButton.onClick = [this] { openSignIn(); };
 
     for (auto* b : { &searchButton, &challengeButton, &battleSignInButton })
@@ -377,7 +384,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
     startButton.setButtonText (text.start);
     closeRoomButton.setButtonText (text.closeRoom);
     searchButton.setButtonText (searchingOnline ? text.cancelSearch : text.search);
-    challengeButton.setButtonText (text.challenge);
+    challengeButton.setButtonText (text.decline);
     battleSignInButton.setButtonText (text.signIn);
     botStartButton.setButtonText (text.botStart);
     {
@@ -735,7 +742,7 @@ void LiveScreenComponent::refreshVisibility()
                      (juce::Component*) &botChoice, (juce::Component*) &botStartButton })
         c->setVisible (battle);
 
-    challengeButton.setVisible (false);
+    challengeButton.setVisible (battle && readyForYou);
 
     for (auto* c : { (juce::Component*) &ratingFamily, (juce::Component*) &scopeChoice,
                      (juce::Component*) &periodChoice, (juce::Component*) &openSiteButton })
@@ -903,8 +910,19 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
 
     // Left: people - Decibelo, and the buttons that wait for the round server.
     auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 4 * 40 + Spacing::medium + 44 + Spacing::large + 30);
-    searchButton.setBounds (a.removeFromTop (controlHeight + 4));
-    challengeButton.setBounds ({});
+    {
+        auto row = a.removeFromTop (controlHeight + 4);
+        if (readyForYou)
+        {
+            challengeButton.setBounds (row.removeFromRight (row.getWidth() / 3));
+            row.removeFromRight (Spacing::small);
+        }
+        else
+        {
+            challengeButton.setBounds ({});
+        }
+        searchButton.setBounds (row);
+    }
     battleSignInButton.setBounds (cardA.reduced (Spacing::large).removeFromBottom (controlHeight + 4).removeFromLeft (160));
 }
 
@@ -1173,7 +1191,7 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
 
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitLines (g, signedIn ? text.battleOnline : text.battleOnline + "\n" + text.battleNeedsAccount,
+        LnF::fitLines (g, signedIn ? text.battleOnline : text.battleNeedsAccount,
                        a.withTrimmedBottom (controlHeight + 4 + Spacing::medium), juce::Justification::topLeft, 6, 0.85f);
     }
 
@@ -1757,7 +1775,20 @@ void LiveScreenComponent::setOnlineStatus (bool searching, const juce::String& l
 {
     searchingOnline = searching;
     onlineLine = line;
-    searchButton.setButtonText (searching ? text.cancelSearch : text.search);
+    searchButton.setButtonText (readyForYou ? text.accept : searching ? text.cancelSearch : text.search);
+    repaint();
+}
+
+void LiveScreenComponent::setReadyCheck (bool waitingForYou)
+{
+    if (readyForYou == waitingForYou)
+        return;
+
+    readyForYou = waitingForYou;
+    searchButton.setButtonText (readyForYou ? text.accept : searchingOnline ? text.cancelSearch : text.search);
+    challengeButton.setButtonText (text.decline);
+    refreshVisibility();
+    resized();
     repaint();
 }
 

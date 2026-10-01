@@ -271,44 +271,93 @@ void RunResultsComponent::paint (juce::Graphics& g)
 
     // --- round by round ----------------------------------------------------
     //
-    // One cell per answer: green inside the band, red outside, and filled
-    // from the bottom by how close it was. The run as it happened, where
-    // a percentage says only how it averaged out.
+    // A line, not a row of bars (the owner's call: graphs, not columns).
+    // Each point is one answer: how close it was, 0 to 1, green inside the
+    // band and red outside, so the run's shape - a wobble at round five -
+    // reads as a dip in one line. In a battle the two HP lines take the
+    // same place: yours in the accent, the opponent's warm, falling as
+    // the damage lands - who was ahead when, not only who won.
     {
         AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.roundByRound),
                                                inner.removeFromTop (16).toFloat(),
                                                AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
 
-        auto strip = inner.removeFromTop (46);
-        const auto n = juce::jmax (1, (int) summary.marks.size());
-        const auto gap = 4;
-        const auto cellWidth = juce::jmin (64, (strip.getWidth() - gap * (n - 1)) / n);
+        auto plot = inner.removeFromTop (62).toFloat().withTrimmedLeft (26.0f).reduced (0.0f, 5.0f);
+        const auto battle = ! summary.hpYou.empty() && summary.hpYou.size() == summary.hpThem.size();
+        const auto n = battle ? (int) summary.hpYou.size() + 1 : (int) summary.marks.size();
 
-        for (int i = 0; i < (int) summary.marks.size(); ++i)
+        // Grid: three faint lines and their labels.
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
+        for (int k = 0; k <= 2; ++k)
         {
-            const auto& m = summary.marks[(size_t) i];
-            auto cell = juce::Rectangle<int> (strip.getX() + i * (cellWidth + gap), strip.getY(), cellWidth, strip.getHeight()).toFloat();
-            const auto colour = m.correct ? theme.positive : theme.negative;
-            const auto shown = (float) i < counted * (float) n;
-
-            g.setColour (colour.withAlpha (0.10f));
-            g.fillRect (cell);
-
-            if (shown)
-            {
-                const auto height = cell.getHeight() * (m.correct ? juce::jmax (0.12f, m.quality) : 1.0f);
-                g.setColour (colour.withAlpha (m.correct ? 0.55f : 0.30f));
-                g.fillRect (cell.withTop (cell.getBottom() - height));
-            }
-
-            g.setColour (colour.withAlpha (0.7f));
-            g.drawRect (cell, 1.0f);
-
-            g.setColour (theme.textBright);
-            g.setFont (AbcTrainLookAndFeel::microFont());
-            AbcTrainLookAndFeel::fitText (g, juce::String (i + 1), cell.toNearestInt().withTrimmedTop (4).withHeight (12),
-                        juce::Justification::centred, false);
+            const auto y = plot.getBottom() - plot.getHeight() * (float) k * 0.5f;
+            g.setColour (theme.divider);
+            g.drawHorizontalLine (juce::roundToInt (y), plot.getX(), plot.getRight());
+            g.setColour (theme.textDim);
+            AbcTrainLookAndFeel::fitText (g, battle ? juce::String (k * 50) : juce::String (k * 50) + "%",
+                                          juce::Rectangle<float> (plot.getX() - 28.0f, y - 7.0f, 24.0f, 14.0f).toNearestInt(),
+                                          juce::Justification::centredRight, false);
         }
+
+        const auto xAt = [&] (int i) { return n <= 1 ? plot.getCentreX() : plot.getX() + plot.getWidth() * (float) i / (float) (n - 1); };
+        const auto shownUpTo = counted * (float) (n - 1);
+
+        const auto line = [&] (const std::vector<float>& values01, juce::Colour colour)
+        {
+            juce::Path p;
+            for (int i = 0; i < (int) values01.size() && (float) i <= shownUpTo + 0.001f; ++i)
+            {
+                const juce::Point<float> pt { xAt (i), plot.getBottom() - plot.getHeight() * juce::jlimit (0.0f, 1.0f, values01[(size_t) i]) };
+                if (i == 0) p.startNewSubPath (pt); else p.lineTo (pt);
+            }
+            g.setColour (colour);
+            g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        };
+
+        if (battle)
+        {
+            std::vector<float> you { 1.0f }, them { 1.0f };
+            for (size_t i = 0; i < summary.hpYou.size(); ++i)
+            {
+                you.push_back (summary.hpYou[i] / 100.0f);
+                them.push_back (summary.hpThem[i] / 100.0f);
+            }
+            line (them, theme.accentWarm);
+            line (you, theme.accent);
+
+            for (int i = 0; i < n && (float) i <= shownUpTo + 0.001f; ++i)
+                for (auto [values, colour] : { std::pair { &you, theme.accent }, std::pair { &them, theme.accentWarm } })
+                {
+                    g.setColour (colour);
+                    g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre ({ xAt (i), plot.getBottom() - plot.getHeight() * (*values)[(size_t) i] }));
+                }
+        }
+        else if (n > 0)
+        {
+            std::vector<float> values;
+            for (const auto& m : summary.marks)
+                values.push_back (m.correct ? juce::jmax (0.08f, m.quality) : 0.0f);
+
+            line (values, theme.textDim);
+
+            for (int i = 0; i < n && (float) i <= shownUpTo + 0.001f; ++i)
+            {
+                const auto& m = summary.marks[(size_t) i];
+                g.setColour (m.correct ? theme.positive : theme.negative);
+                g.fillEllipse (juce::Rectangle<float> (8.0f, 8.0f).withCentre ({ xAt (i), plot.getBottom() - plot.getHeight() * values[(size_t) i] }));
+            }
+        }
+
+        // Round numbers under the line, every one up to twelve, then sparser.
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
+        const auto first = battle ? 1 : 0;
+        const auto every = n > 12 ? (n + 11) / 12 : 1;
+        for (int i = first; i < n; i += every)
+            AbcTrainLookAndFeel::fitText (g, juce::String (battle ? i : i + 1),
+                                          juce::Rectangle<float> (xAt (i) - 12.0f, plot.getBottom() + 3.0f, 24.0f, 12.0f).toNearestInt(),
+                                          juce::Justification::centred, false);
+        inner.removeFromTop (12);
     }
 
     inner.removeFromTop (AbcTrainTheme::Spacing::large);
@@ -318,11 +367,16 @@ void RunResultsComponent::paint (juce::Graphics& g)
     // Counts, not a histogram: "Mids 2 / 3" says exactly what happened,
     // where a bar a few pixels tall made the reader estimate it.
     {
-        auto block = inner.removeFromTop (16 + 7 * 20);
+        auto block = inner.removeFromTop (16 + 6 * 20);
         auto left = block.removeFromLeft (juce::jmin (330, block.getWidth() / 2));
         block.removeFromLeft (AbcTrainTheme::Spacing::large);
 
-        AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.byRange),
+        auto anyTried = false;
+        for (const auto& bucket : summary.buckets)
+            anyTried = anyTried || bucket.attempts > 0;
+
+        if (anyTried)
+            AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.byRange),
                                                left.removeFromTop (16).toFloat(),
                                                AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
 
@@ -336,35 +390,61 @@ void RunResultsComponent::paint (juce::Graphics& g)
                 worst = b;
             }
 
-        for (int b = 0; b < juce::jmin (7, (int) summary.buckets.size()); ++b)
+        // A line over the ranges, in their order (low to high, left to
+        // right): the share of hits in each. A range never tried has no
+        // point - a gap in the line, not a fake zero. Nothing tried at all:
+        // no empty axes, the sentence beside says so.
+        if (anyTried)
         {
-            const auto& bucket = summary.buckets[(size_t) b];
-            auto line = left.removeFromTop (20);
+            const auto count = juce::jmin (7, (int) summary.buckets.size());
+            auto plot = left.withTrimmedBottom (18).toFloat().reduced (8.0f, 8.0f);
+            const auto xAt = [&] (int i) { return count <= 1 ? plot.getCentreX() : plot.getX() + plot.getWidth() * (float) i / (float) (count - 1); };
 
-            g.setColour (b == worst ? theme.textBright : theme.text);
-            g.setFont (AbcTrainLookAndFeel::captionFont());
-            AbcTrainLookAndFeel::fitText (g, bucket.label, line.removeFromLeft (96), juce::Justification::centredLeft, true);
-
-            auto count = line.removeFromRight (56);
-            g.setColour (theme.textDim);
-            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
-            AbcTrainLookAndFeel::fitText (g, juce::String (bucket.attempts - bucket.misses) + " / " + juce::String (bucket.attempts),
-                        count, juce::Justification::centredRight, false);
-
-            // Hits then misses as one bar, the share of each - the same
-            // two colours as the round cells above.
-            auto bar = line.reduced (6, 5).toFloat();
-            g.setColour (theme.displayBackground);
-            g.fillRect (bar);
-
-            if (bucket.attempts > 0)
+            for (int k = 0; k <= 2; ++k)
             {
-                const auto hitShare = (float) (bucket.attempts - bucket.misses) / (float) bucket.attempts;
-                g.setColour (theme.positive.withAlpha (0.75f));
-                g.fillRect (bar.withWidth (bar.getWidth() * hitShare * counted));
-                g.setColour (theme.negative.withAlpha (0.85f));
-                g.fillRect (bar.withLeft (bar.getX() + bar.getWidth() * hitShare).withWidth (
-                    bar.getWidth() * (1.0f - hitShare) * counted));
+                g.setColour (theme.divider);
+                g.drawHorizontalLine (juce::roundToInt (plot.getBottom() - plot.getHeight() * (float) k * 0.5f), plot.getX(), plot.getRight());
+            }
+
+            juce::Path p;
+            bool open = false;
+            for (int b = 0; b < count; ++b)
+            {
+                const auto& bucket = summary.buckets[(size_t) b];
+                if (bucket.attempts == 0) { open = false; continue; }
+                const auto hit = 1.0f - bucket.missRate();
+                const juce::Point<float> pt { xAt (b), plot.getBottom() - plot.getHeight() * hit * counted };
+                if (! open) p.startNewSubPath (pt); else p.lineTo (pt);
+                open = true;
+            }
+            g.setColour (theme.textDim);
+            g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+
+            for (int b = 0; b < count; ++b)
+            {
+                const auto& bucket = summary.buckets[(size_t) b];
+                const auto x = xAt (b);
+
+                if (bucket.attempts > 0)
+                {
+                    const auto hit = 1.0f - bucket.missRate();
+                    const auto y = plot.getBottom() - plot.getHeight() * hit * counted;
+                    g.setColour (b == worst ? theme.negative : theme.positive);
+                    g.fillEllipse (juce::Rectangle<float> (8.0f, 8.0f).withCentre ({ x, y }));
+                    g.setColour (theme.textDim);
+                    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
+                    AbcTrainLookAndFeel::fitText (g, juce::String (bucket.attempts - bucket.misses) + "/" + juce::String (bucket.attempts),
+                                                  juce::Rectangle<float> (x - 20.0f, y - 18.0f, 40.0f, 12.0f).toNearestInt(),
+                                                  juce::Justification::centred, false);
+                }
+
+                g.setColour (b == worst ? theme.textBright : theme.textDim);
+                g.setFont (AbcTrainLookAndFeel::microFont());
+                const auto labelWidth = count <= 1 ? 80.0f : juce::jmax (40.0f, plot.getWidth() / (float) (count - 1));
+                AbcTrainLookAndFeel::fitText (g, bucket.label,
+                                              juce::Rectangle<float> (x - labelWidth * 0.5f, left.toFloat().getBottom() - 16.0f, labelWidth, 14.0f).toNearestInt(),
+                                              b == 0 ? juce::Justification::centredLeft : b == count - 1 ? juce::Justification::centredRight
+                                                                                                         : juce::Justification::centred, true);
             }
         }
 

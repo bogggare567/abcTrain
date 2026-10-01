@@ -350,16 +350,16 @@ juce::Font AbcTrainLookAndFeel::getTextButtonFont (juce::TextButton&, int)
     return bodyFont();
 }
 
+// The family by name found the embedded Barlow only where it happened to be
+// installed: a menu by name drew in the system face on every other machine.
 juce::Font AbcTrainLookAndFeel::getComboBoxFont (juce::ComboBox&)
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+    return bodyFont();
 }
 
 juce::Font AbcTrainLookAndFeel::getPopupMenuFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+    return bodyFont();
 }
 
 juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
@@ -369,8 +369,7 @@ juce::Font AbcTrainLookAndFeel::getAlertWindowTitleFont()
 
 juce::Font AbcTrainLookAndFeel::getAlertWindowMessageFont()
 {
-    return juce::Font (juce::FontOptions (interfaceTypefaceName(),
-                                       bodyFontHeight * sharedTextScale, juce::Font::plain));
+    return bodyFont();
 }
 
 // -------------------------------------------------------------- buttons
@@ -561,7 +560,10 @@ void AbcTrainLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
     const auto textArea = bounds.withTrimmedLeft (switchWidth + (float) Spacing::small);
     g.setColour (button.findColour (juce::ToggleButton::textColourId)
                        .withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
-    g.setFont (juce::Font (juce::FontOptions (bodyFontHeight)));
+    // bodyFont, not a bare FontOptions (height): that was JUCE's default
+    // sans - "Режим Pro" in Arial beside Barlow everywhere else - and it
+    // ignored the text size setting.
+    g.setFont (bodyFont());
     AbcTrainLookAndFeel::fitText (g, button.getButtonText(), textArea, juce::Justification::centredLeft, true);
 }
 
