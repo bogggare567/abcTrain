@@ -58,6 +58,11 @@ public:
     void newRound() override;
 
     void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
+    float answerErrorNative() const override
+    {
+        return std::abs (std::log2 (normalisedToFrequency (getChosenNormalised()) / normalisedToFrequency (getCorrectNormalised())));
+    }
+    juce::String answerErrorUnit() const override { return "oct"; }
     void submitAnswer (int choiceIndex) override;
 
     bool usesContinuousScale() const override { return true; }

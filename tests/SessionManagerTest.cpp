@@ -286,7 +286,7 @@ public:
             expectEquals (session.getRunPointsTenths(), 29);
             expectEquals (session.getRunScore(), 2);
         }
-        beginTest ("a duel: seven rounds, both scores counted, no hints, an outcome at the end");
+        beginTest ("a duel: ten rounds, both scores counted, no hints, an outcome by HP");
         {
             SessionManager session;
             session.setOpponent (BotListener::Bot::owl);
@@ -295,18 +295,20 @@ public:
             expect (! session.areHintsAllowed(), "no hints in a battle - the bot gets none either");
             expect (! session.spendHint());
 
-            const bool player[] { true, true, false, true, false, true, true };
-            const bool bot[]    { true, false, false, true, true, false, true };
+            // Two wrong answers each would be a draw; the bot misses three.
+            const bool player[] { true, true, false, true, false, true, true, true, true, true };
+            const bool bot[]    { true, false, false, true, true, false, true, true, true, true };
             for (int i = 0; i < SessionManager::duelRounds; ++i)
             {
                 const auto going = session.registerDuelRound (player[i], bot[i], -1.0f);
-                expect (going == (i < SessionManager::duelRounds - 1), "ends on the seventh round, not before");
+                expect (going == (i < SessionManager::duelRounds - 1), "ends on the tenth round, not before");
                 expectEquals ((int) session.getLastOpponentAnswer(), (int) bot[i]);
             }
 
             expect (! session.isRunActive());
-            expectEquals (session.getRunScore(), 5);
-            expectEquals (session.getOpponentScore(), 4);
+            expectEquals (session.getRunScore(), 8);
+            expectEquals (session.getOpponentScore(), 7);
+            expect (session.getPlayerHp() > session.getOpponentHp());
             expect (session.getDuelOutcome() == SessionManager::Outcome::won);
             expect (session.getOpponent() == BotListener::Bot::owl);
 
@@ -314,6 +316,7 @@ public:
 
             session.startRun();
             expectEquals (session.getOpponentScore(), 0, "a new battle starts at 0:0");
+            expectEquals (session.getPlayerHp(), SessionManager::startHp);
             expect (session.getDuelOutcome() == SessionManager::Outcome::draw);
 
             SessionManager practice;

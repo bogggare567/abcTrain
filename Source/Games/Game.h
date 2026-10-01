@@ -242,6 +242,39 @@ public:
     // with them on, one seed gives two players two different rounds).
     // tests/SeededRoundTest holds it for all nine exercises.
     virtual void seedNextRound (juce::int64 seed) { juce::ignoreUnused (seed); }
+
+    // ---- how far off the last answer was (ADR 049) -----------------------
+    //
+    // A battle takes damage from *how wrong* an answer was, not from "right
+    // or wrong". Each exercise measures the miss on its own natural scale
+    // (octaves for a band, dB for a gain change, ms for a delay, % of the
+    // stereo half for pan): answerErrorNative() and its unit, for showing.
+    // answerErrorRelative() puts every exercise on one scale: the miss
+    // divided by the round's tolerance - 0 dead on, 1 at the edge of
+    // "right", 2 twice as far. The scales the rulers use are already
+    // perceptual (log frequency, log time), so this ratio means the same
+    // thing in every exercise. A named pair has no distance: right is 0,
+    // wrong is wrongError. No answer at all is missedError.
+    static constexpr float wrongError = 2.0f;
+    static constexpr float missedError = 3.0f;
+
+    virtual float answerErrorNative() const { return 0.0f; }
+    virtual juce::String answerErrorUnit() const { return {}; }
+
+    float answerErrorRelative() const
+    {
+        if (! hasAnswered())
+            return missedError;
+
+        if (! usesContinuousScale())
+            return wasLastAnswerCorrect() ? 0.0f : wrongError;
+
+        const auto tolerance = getToleranceNormalised();
+        if (tolerance <= 0.0f)
+            return wasLastAnswerCorrect() ? 0.0f : wrongError;
+
+        return std::abs (getChosenNormalised() - getCorrectNormalised()) / tolerance;
+    }
     void setSeededRounds (bool on) noexcept { seededRounds = on; }
     bool areRoundsSeeded() const noexcept { return seededRounds; }
     const std::vector<float>& getBucketWeights() const noexcept { return bucketWeights; }

@@ -34,14 +34,29 @@ public:
         survival,
         blitz,
 
-        // A battle with a virtual listener (BotListener, ADR 046): seven
-        // rounds, the same round for both, the bot answering from its
-        // hearing profile at the round's level. Not remembered per
-        // exercise - a battle is started from Live, not left switched on.
+        // A battle (ADR 046, 049): ten rounds, the same round for both,
+        // each side starting with startHp. An answer costs damage by how
+        // far off it was (Game::answerErrorRelative), so a near miss
+        // hurts a little and a wild one a lot. Ends early when someone's
+        // HP runs out. Not remembered per exercise - a battle is started
+        // from Live, not left switched on.
         duel
     };
 
-    static constexpr int duelRounds = 7;
+    static constexpr int duelRounds = 10;
+    static constexpr float startHp = 100.0f;
+    static constexpr float maxDamage = 20.0f;
+
+    // Damage for one answer, from its relative error (0 dead on, 1 at the
+    // edge of the tolerance). Smooth, not a step: under 0.7 nothing, at
+    // the edge of "right" about 2, at twice the tolerance about 18, a
+    // missed round about 20. Five wild answers end a battle; ten near
+    // misses do not. The same curve is in server/lib/abctrainBattles.js.
+    static float damageFor (float relativeError) noexcept
+    {
+        const auto over = juce::jmax (0.0f, relativeError - 0.7f);
+        return maxDamage * (1.0f - std::exp (-over * over / 0.8f));
+    }
 
     static constexpr int survivalLives = 3;
     static constexpr int blitzSeconds = 90;
@@ -127,14 +142,29 @@ public:
     int getOpponentScore() const noexcept { return opponentScore; }
     bool getLastOpponentAnswer() const noexcept { return lastOpponentRight; }
 
-    // One duel round: the player's answer and the bot's. Ends the run after
-    // duelRounds. Returns true if the run is still going.
+    // One battle round, by how far off each side was (relative errors, as
+    // Game::answerErrorRelative). Each takes damageFor its own error; a
+    // round counts as won by whoever was inside the tolerance. Ends the
+    // run when someone's HP is gone or after duelRounds. Returns true if
+    // the run is still going.
+    bool registerBattleRound (float playerError, float opponentError, float precision = -1.0f);
+
+    // The same with right/wrong only (a server that judged right/wrong, the
+    // snapshots): right is an error of 0, wrong Game::wrongError.
     bool registerDuelRound (bool playerRight, bool botRight, float precision = -1.0f);
 
+    float getPlayerHp() const noexcept { return playerHp; }
+    float getOpponentHp() const noexcept { return opponentHp; }
+    float getLastPlayerDamage() const noexcept { return lastPlayerDamage; }
+    float getLastOpponentDamage() const noexcept { return lastOpponentDamage; }
+
+    // By HP left - not by rounds won: a battle is lost by missing badly,
+    // not by missing narrowly more often.
     enum class Outcome { won, lost, draw };
     Outcome getDuelOutcome() const noexcept
     {
-        return runScore > opponentScore ? Outcome::won : runScore < opponentScore ? Outcome::lost : Outcome::draw;
+        const auto diff = playerHp - opponentHp;
+        return diff > 0.05f ? Outcome::won : diff < -0.05f ? Outcome::lost : Outcome::draw;
     }
 
     // Call once a second while a run is active. Returns true if this tick
@@ -184,4 +214,6 @@ private:
     BotListener::Bot opponent = BotListener::Bot::hound;
     int opponentScore = 0;
     bool lastOpponentRight = false;
+    float playerHp = startHp, opponentHp = startHp;
+    float lastPlayerDamage = 0.0f, lastOpponentDamage = 0.0f;
 };

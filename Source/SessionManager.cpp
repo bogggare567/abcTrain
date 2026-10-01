@@ -25,6 +25,8 @@ void SessionManager::startRun()
     secondsRemaining = mode == Mode::blitz ? rules.blitzSeconds : 0;
     opponentScore = 0;
     lastOpponentRight = false;
+    playerHp = opponentHp = startHp;
+    lastPlayerDamage = lastOpponentDamage = 0.0f;
 }
 
 void SessionManager::endRun()
@@ -101,14 +103,24 @@ bool SessionManager::registerAnswer (bool wasCorrect, float precision)
 
 bool SessionManager::registerDuelRound (bool playerRight, bool botRight, float precision)
 {
+    return registerBattleRound (playerRight ? 0.0f : 2.0f, botRight ? 0.0f : 2.0f, precision);
+}
+
+bool SessionManager::registerBattleRound (float playerError, float opponentError, float precision)
+{
     if (! runActive || mode != Mode::duel)
         return false;
 
-    lastOpponentRight = botRight;
-    opponentScore += botRight ? 1 : 0;
-    registerAnswer (playerRight, precision);
+    lastPlayerDamage = damageFor (playerError);
+    lastOpponentDamage = damageFor (opponentError);
+    playerHp = juce::jmax (0.0f, playerHp - lastPlayerDamage);
+    opponentHp = juce::jmax (0.0f, opponentHp - lastOpponentDamage);
 
-    if (roundsThisRun >= duelRounds)
+    lastOpponentRight = opponentError <= 1.0f;
+    opponentScore += lastOpponentRight ? 1 : 0;
+    registerAnswer (playerError <= 1.0f, precision);
+
+    if (roundsThisRun >= duelRounds || playerHp <= 0.0f || opponentHp <= 0.0f)
     {
         endRun();
         return false;

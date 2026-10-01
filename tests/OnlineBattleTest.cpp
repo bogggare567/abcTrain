@@ -33,6 +33,21 @@ public:
             expect (s.round.opponentAnswered && ! s.round.answered);
         }
 
+        beginTest ("damage: errors and HP from the server; an old server's right/wrong still maps");
+        {
+            const auto s = OnlineBattle::parse (json (R"({"ok":true,"status":"playing","hp":[82.4,64],
+                "history":[{"n":0,"you":true,"them":false,"voided":false,"youError":0.4,"themError":2.6},
+                           {"n":1,"you":false,"them":true,"voided":false},
+                           {"n":2,"you":false,"them":false,"voided":true,"youError":3,"themError":3}]})"), {});
+            expectWithinAbsoluteError (s.hpYou, 82.4f, 1.0e-4f);
+            expectEquals (s.hpThem, 64.0f);
+            expectWithinAbsoluteError (s.history[0].youError, 0.4f, 1.0e-6f);
+            expectWithinAbsoluteError (s.history[0].themError, 2.6f, 1.0e-6f);
+            expectEquals (s.history[1].youError, 2.0f);
+            expectEquals (s.history[1].themError, 0.0f);
+            expectEquals (s.history[2].youError, 0.0f, "a voided round costs nobody");
+        }
+
         beginTest ("the result: Decibelo delta, forfeit");
         {
             const auto s = OnlineBattle::parse (json (R"({"ok":true,"status":"finished","matchId":"m1","score":[7,0],"history":[],

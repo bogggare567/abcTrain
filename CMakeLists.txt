@@ -318,6 +318,7 @@ target_sources(abc_trainer_engine INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/GameManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/SessionManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/BotListener.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/PerceptualModel.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ProgressManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Achievements.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/HearingGuard.cpp
@@ -578,6 +579,7 @@ target_sources(EarTrainerTests
         tests/EQGameTest.cpp
         tests/SeededRoundTest.cpp
         tests/OnlineBattleTest.cpp
+        tests/BattleTest.cpp
         tests/CompressionGameTest.cpp
         tests/ReverbGameTest.cpp
         tests/PanGameTest.cpp

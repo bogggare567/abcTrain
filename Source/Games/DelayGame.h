@@ -52,6 +52,8 @@ public:
     void newRound() override;
 
     void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
+    float answerErrorNative() const override { return std::abs (normalisedToMs (getChosenNormalised()) - normalisedToMs (getCorrectNormalised())); }
+    juce::String answerErrorUnit() const override { return "ms"; }
     void submitAnswer (int choiceIndex) override;
 
     // Continuous: any delay time in the range, with an accept band that

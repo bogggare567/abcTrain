@@ -368,8 +368,8 @@ public:
     // mode pills, so it is a different screen and needs its own shot.
     // Started directly rather than through beginRunWithCountdown(), since
     // the countdown needs a message loop the snapshot tool never pumps.
-    // A battle with the Cat: three rounds in (HUD with both scores), or all
-    // seven played (the results screen says who won).
+    // A battle with the Cat: three rounds in (HUD with both HP bars), or
+    // all played (the results screen says who won).
     void duelForSnapshot (bool finished)
     {
         for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
@@ -381,17 +381,18 @@ public:
         beginRunLog();
         startNewRun();
 
-        const bool player[] { true, true, false, true, true, false, true };
-        const bool bot[]    { true, false, true, true, false, false, true };
+        // Relative errors (ADR 049): near misses, a couple of wild ones.
+        const float player[] { 0.3f, 0.8f, 1.6f, 0.2f, 0.5f, 2.2f, 0.4f, 0.9f, 0.3f, 0.6f };
+        const float bot[]    { 0.6f, 1.9f, 0.4f, 1.2f, 2.5f, 1.8f, 0.7f, 0.5f, 2.0f, 1.1f };
         runMarks.clear();
 
-        for (int i = 0; i < (finished ? SessionManager::duelRounds : 3); ++i)
+        for (int i = 0; i < (finished ? SessionManager::duelRounds : 3) && session.isRunActive(); ++i)
         {
             RunResultsComponent::Summary::RoundMark mark;
-            mark.correct = player[i];
-            mark.quality = player[i] ? 0.6f + 0.05f * (float) i : 0.0f;
+            mark.correct = player[i] <= 1.0f;
+            mark.quality = mark.correct ? 1.0f - 0.5f * player[i] : 0.0f;
             runMarks.push_back (mark);
-            session.registerDuelRound (player[i], bot[i], -1.0f);   // the seventh ends the run: results
+            session.registerBattleRound (player[i], bot[i], -1.0f);   // the last ends the run: results
         }
 
         if (finished)
@@ -770,6 +771,16 @@ private:
             repaint();
         }
 
+        // ... and both sides' HP (ADR 049).
+        void setDuelHp (float newPlayerHp, float newOpponentHp)
+        {
+            if (std::abs (newPlayerHp - playerHp) + std::abs (newOpponentHp - opponentHp) < 0.01f)
+                return;
+            playerHp = newPlayerHp;
+            opponentHp = newOpponentHp;
+            repaint();
+        }
+
         // The run's points as the player reads them, "14,3" - set after
         // set(), which keeps the count for the lives/clock logic.
         void setScoreText (juce::String text)
@@ -782,14 +793,50 @@ private:
             const auto& theme = AbcTrainTheme::current();
             auto area = getLocalBounds().toFloat();
 
+            // A battle is about HP (ADR 049): two bars facing each other,
+            // yours in the accent, the opponent's warm, then who and which
+            // round. Drawn instead of the run score.
+            if (mode == SessionManager::Mode::duel)
+            {
+                const auto barH = 8.0f;
+                const auto hpW = 32.0f;
+                const auto barW = juce::jlimit (40.0f, 84.0f, (area.getWidth() - 2.0f * hpW - 22.0f - 104.0f) * 0.5f);
+                const auto cy = area.getCentreY();
+
+                const auto bar = [&] (juce::Rectangle<float> r, float hp, juce::Colour c, bool fromRight)
+                {
+                    g.setColour (theme.displayBackground);
+                    g.fillRect (r);
+                    const auto w = r.getWidth() * juce::jlimit (0.0f, 1.0f, hp / SessionManager::startHp);
+                    g.setColour (hp < 30.0f ? theme.negative : c);
+                    g.fillRect (fromRight ? r.withLeft (r.getRight() - w) : r.withWidth (w));
+                };
+
+                g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (AbcTrainLookAndFeel::monoFontHeight
+                                                                     * AbcTrainLookAndFeel::getTextScale() * 1.2f));
+                g.setColour (theme.textBright);
+                AbcTrainLookAndFeel::fitText (g, juce::String (juce::roundToInt (playerHp)), area.removeFromLeft (hpW),
+                                              juce::Justification::centredLeft, false);
+                bar (area.removeFromLeft (barW).withSizeKeepingCentre (barW, barH).withY (cy - barH * 0.5f), playerHp, theme.accent, true);
+                g.setColour (theme.textDim);
+                AbcTrainLookAndFeel::fitText (g, "vs", area.removeFromLeft (22.0f), juce::Justification::centred, false);
+                bar (area.removeFromLeft (barW).withSizeKeepingCentre (barW, barH).withY (cy - barH * 0.5f), opponentHp, theme.accentWarm, false);
+                g.setColour (theme.accentWarm);
+                AbcTrainLookAndFeel::fitText (g, juce::String (juce::roundToInt (opponentHp)), area.removeFromLeft (hpW).withTrimmedLeft (6.0f),
+                                              juce::Justification::centredLeft, false);
+                g.setColour (theme.text);
+                g.setFont (AbcTrainLookAndFeel::labelFont());
+                AbcTrainLookAndFeel::fitText (g, opponentName + " · " + juce::String (juce::jmin (round, rounds)) + "/" + juce::String (rounds),
+                                              area.withTrimmedLeft (8.0f), juce::Justification::centredLeft, true);
+                return;
+            }
+
             // Run score first: it is the number the run is *about*.
             g.setColour (theme.textBright);
             g.setFont (AbcTrainLookAndFeel::titleFont());
             const auto scoreBox = area.removeFromLeft (52.0f);
-            // In a battle the two scores face each other across the colon.
             AbcTrainLookAndFeel::fitText (g, scoreText.isNotEmpty() ? scoreText : juce::String (score), scoreBox,
-                                          mode == SessionManager::Mode::duel ? juce::Justification::centredRight
-                                                                             : juce::Justification::centredLeft, false);
+                                          juce::Justification::centredLeft, false);
 
             if (mode == SessionManager::Mode::survival)
             {
@@ -824,21 +871,6 @@ private:
 
                     x += r * 2.0f + 7.0f;
                 }
-            }
-            else if (mode == SessionManager::Mode::duel)
-            {
-                // "3 : 2  Cat  4/7" - your score was drawn first, then the
-                // bot's beside it, then where in the seven rounds you are.
-                g.setColour (theme.textDim);
-                g.setFont (AbcTrainLookAndFeel::titleFont());
-                AbcTrainLookAndFeel::fitText (g, ":", area.removeFromLeft (14.0f), juce::Justification::centred, false);
-                g.setColour (theme.accentWarm);
-                AbcTrainLookAndFeel::fitText (g, juce::String (opponentScore), area.removeFromLeft (40.0f),
-                                              juce::Justification::centredLeft, false);
-                g.setColour (theme.text);
-                g.setFont (AbcTrainLookAndFeel::labelFont());
-                AbcTrainLookAndFeel::fitText (g, opponentName + "   " + juce::String (juce::jmin (round, rounds)) + "/" + juce::String (rounds),
-                                              area, juce::Justification::centredLeft, true);
             }
             else if (mode == SessionManager::Mode::blitz)
             {
@@ -883,6 +915,7 @@ private:
         SessionManager::Mode mode = SessionManager::Mode::practice;
         int lives = -1, seconds = 0, score = 0, maxLives = SessionManager::survivalLives;
         int opponentScore = 0, round = 0, rounds = SessionManager::duelRounds;
+        float playerHp = SessionManager::startHp, opponentHp = SessionManager::startHp;
         juce::String opponentName;
         juce::String scoreText;
         float flash = 0.0f;

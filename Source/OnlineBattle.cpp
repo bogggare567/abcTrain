@@ -33,7 +33,7 @@ OnlineBattle::State OnlineBattle::parse (const juce::var& json, const State& pre
 
     s.matchId = json["matchId"].toString();
     s.game = json.hasProperty ("game") ? (int) json["game"] : -1;
-    s.rounds = json.hasProperty ("rounds") ? (int) json["rounds"] : 7;
+    s.rounds = json.hasProperty ("rounds") ? (int) json["rounds"] : 10;
     s.opponentNick = json["opponent"]["nick"].toString();
     s.opponentCountry = json["opponent"]["country"].toString();
     s.opponentRating = (int) json["opponent"]["rating"];
@@ -47,7 +47,21 @@ OnlineBattle::State OnlineBattle::parse (const juce::var& json, const State& pre
 
     if (const auto* history = json["history"].getArray())
         for (const auto& h : *history)
-            s.history.push_back ({ (int) h["n"], (bool) h["you"], (bool) h["them"], (bool) h["voided"] });
+        {
+            RoundResult r { (int) h["n"], (bool) h["you"], (bool) h["them"], (bool) h["voided"] };
+            // A server from before damage (ADR 049) sends right/wrong only.
+            r.youError = h.hasProperty ("youError") ? (float) (double) h["youError"] : (r.you ? 0.0f : 2.0f);
+            r.themError = h.hasProperty ("themError") ? (float) (double) h["themError"] : (r.them ? 0.0f : 2.0f);
+            if (r.voided)
+                r.youError = r.themError = 0.0f;
+            s.history.push_back (r);
+        }
+
+    if (const auto* hp = json["hp"].getArray(); hp != nullptr && hp->size() == 2)
+    {
+        s.hpYou = (float) (double) hp->getReference (0);
+        s.hpThem = (float) (double) hp->getReference (1);
+    }
 
     if (const auto& r = json["round"]; r.isObject())
     {

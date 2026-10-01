@@ -52,6 +52,8 @@ public:
     void newRound() override;
 
     void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
+    float answerErrorNative() const override { return std::abs (normalisedToDb (getChosenNormalised()) - normalisedToDb (getCorrectNormalised())); }
+    juce::String answerErrorUnit() const override { return "dB"; }
     void submitAnswer (int choiceIndex) override;
 
     // Continuous: the level change is any value in the range, and the

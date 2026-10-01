@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "PerceptualModel.h"
 #include "Games/ReverbGame.h"
 #include "shared/ui/WindowFit.h"
 #include "shared/audio/InstrumentLabel.h"
@@ -1678,7 +1679,9 @@ void EarTrainerEditor::resized()
         {
             auto slot = gameRow.removeFromRight (360);
             const auto running = isRunHudActive();
-            runHud.setBounds (running ? slot.withSizeKeepingCentre (210, 30) : juce::Rectangle<int>());
+            // A battle shows two HP bars and a name: it takes the whole slot.
+            const auto hudWidth = session.getMode() == SessionManager::Mode::duel ? 330 : 210;
+            runHud.setBounds (running ? slot.withSizeKeepingCentre (hudWidth, 30) : juce::Rectangle<int>());
 
             // The bar takes the right end of the slot and the sentence the
             // rest, so "100 / 200 to level 3" has a picture of itself
@@ -2103,6 +2106,8 @@ void EarTrainerEditor::showRunResults (int finalScore)
                                  .replace ("{{you}}", juce::String (finalScore))
                                  .replace ("{{them}}", juce::String (session.getOpponentScore()))
                                  .replace ("{{bot}}", opponentName());
+    if (duel)
+        summary.pointsNote << "   HP " << juce::roundToInt (session.getPlayerHp()) << " : " << juce::roundToInt (session.getOpponentHp());
     if (duel && onlineResultNote.isNotEmpty())
         summary.pointsNote << "\n" << onlineResultNote;
 
@@ -2843,6 +2848,7 @@ void EarTrainerEditor::refreshRunStatus()
                 runHud.setScoreText (juce::String (session.getRunScore()));
                 runHud.setDuel (session.getOpponentScore(), opponentName(),
                                 session.getRoundsThisRun() + 1, SessionManager::duelRounds);
+                runHud.setDuelHp (session.getPlayerHp(), session.getOpponentHp());
             }
         }
 
@@ -3617,14 +3623,14 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
 
     if (session.getMode() == SessionManager::Mode::duel)
     {
-        // The bot hears the same round at the same level and answers from
-        // its profile (BotListener) - two answers, one round.
+        // The bot hears the same round at the same level and answers with
+        // an error drawn from its hearing profile (PerceptualModel, ADR 049);
+        // both errors become damage.
         const auto index = processor.getGameManager().getActiveGameIndex();
         const auto level = processor.getProgressManager().getLevelForGame (index);
-        const auto botRight = BotListener::answers (session.getOpponent(), index, level, duelRandom,
-                                                    game.usesContinuousScale() ? 5 : 2,
-                                                    game.getSkillBucketForRound());
-        session.registerDuelRound (wasCorrect, botRight, precision);
+        const auto bot = makePerceptualModel (session.getOpponent())
+                             ->answer ({ index, level, game.getSkillBucketForRound(), game.usesContinuousScale() }, duelRandom);
+        session.registerBattleRound (game.answerErrorRelative(), bot.relativeError, precision);
     }
     else
     {
@@ -4203,7 +4209,7 @@ void EarTrainerEditor::registerOnlineResults()
         if (h.voided)
             pointsFlyup.show (localisation.getText ("live.roundVoided"), AbcTrainTheme::current().negative);
 
-        session.registerDuelRound (h.you, h.them);
+        session.registerBattleRound (h.youError, h.themError);
     }
 }
 

@@ -31,6 +31,7 @@ public:
     {
         int n = 0;
         bool you = false, them = false, voided = false;
+        float youError = 0.0f, themError = 0.0f;   // relative, as Game::answerErrorRelative (ADR 049)
     };
 
     struct Round
@@ -49,10 +50,11 @@ public:
         int waitingMs = 0, inQueue = 0;
 
         juce::String matchId;
-        int game = -1, rounds = 7;
+        int game = -1, rounds = 10;
         juce::String opponentNick, opponentCountry;
         int opponentRating = 0, yourRating = 0;
         int scoreYou = 0, scoreThem = 0;
+        float hpYou = 100.0f, hpThem = 100.0f;
         std::vector<RoundResult> history;
         Round round;
 

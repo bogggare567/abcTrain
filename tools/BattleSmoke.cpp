@@ -9,8 +9,9 @@
 // and play the seven rounds the server sets: each builds the round from the
 // seed exactly as the editor does (seeded GameManager game, the level from
 // the server), A answers right, B answers wrong. Checked: the server never
-// finds the two rounds different (no voided round), the score is 7:0 on
-// both sides, Decibelo moves by the same amount up and down.
+// finds the two rounds different (no voided round), B is knocked out on HP
+// before the tenth round (ADR 049), Decibelo moves by the same amount up
+// and down.
 //
 // Not part of CI - it needs the site's server.
 
@@ -267,8 +268,10 @@ int main (int argc, char* argv[])
         for (const auto& h : sa.history)
             voided += h.voided ? 1 : 0;
         check (voided == 0, "no round voided by the server");
-        check (sa.scoreYou == 7 && sa.scoreThem == 0 && sb.scoreYou == 0 && sb.scoreThem == 7,
-               "7:0 - A right every round (" + juce::String (sa.scoreYou) + ":" + juce::String (sa.scoreThem) + ")");
+        check (sa.hpThem <= 0.0f && sa.hpYou >= 99.9f && sb.hpYou <= 0.0f && sa.outcome == "won" && sb.outcome == "lost",
+               "knock-out: HP " + juce::String (sa.hpYou) + " : " + juce::String (sa.hpThem) + " after "
+                   + juce::String ((int) sa.history.size()) + " rounds (" + juce::String (sa.scoreYou) + ":" + juce::String (sa.scoreThem) + ")");
+        check ((int) sa.history.size() < 10, "over before the tenth round");
         check (sa.recorded && sa.delta > 0 && std::abs (sa.delta + sb.delta) < 0.01,
                "Decibelo +" + juce::String (sa.delta) + " / " + juce::String (sb.delta) + " -> " + juce::String (sa.rating));
 

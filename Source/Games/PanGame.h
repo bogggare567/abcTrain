@@ -47,6 +47,8 @@ public:
     void newRound() override;
 
     void seedNextRound (juce::int64 seed) override { random.setSeed (seed); }
+    float answerErrorNative() const override { return 100.0f * std::abs (normalisedToPan (getChosenNormalised()) - normalisedToPan (getCorrectNormalised())); }
+    juce::String answerErrorUnit() const override { return "%"; }
     void submitAnswer (int choiceIndex) override;
 
     // Continuous: the target sits anywhere across the stereo field, and
