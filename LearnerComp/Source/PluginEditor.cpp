@@ -42,7 +42,8 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
                         { "knee",      t ("knob.knee", "Knee"),           " " + t ("unit.dB", "dB"), 0 },
                         { "makeup",    t ("knob.makeup", "Makeup"),       " " + t ("unit.dB", "dB"), 1 },
                         { "dryWet",    t ("knob.mix", "Mix"),             "%", 0 } }, decimalPoint()),
-      presets()
+      presets(),
+      sidechain (p.apvts)
 {
     presets.setCaption (t ("lp.startFrom", "Start from"));
     presets.setItems (presetNames (localisation));
@@ -74,6 +75,15 @@ LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
         showGuide (what, 9000);
     };
     addAndMakeVisible (presets);
+
+    sidechain.onTouched = [this]
+    {
+        showGuide (t ("guide.comp.sidechain",
+                      "Sidechain: the detector listens to a different signal than the one it turns down. "
+                      "Kick ducks the bass under a kick; Ext takes the plugin's second input in a DAW. "
+                      "HPF keeps low notes in the key from pumping; Listen > Key plays what the detector hears."), 9000);
+    };
+    addAndMakeVisible (sidechain);
 
     compProcessor.setWaveformDisplay (&waveform);
 
@@ -115,7 +125,10 @@ void LearnerCompEditor::layoutAnalysis (juce::Rectangle<int> area)
 
 void LearnerCompEditor::layoutControls (juce::Rectangle<int> area)
 {
-    presets.setBounds (area.removeFromBottom (controlsFooterHeight()).withTrimmedLeft (0).translated (-AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::medium));
+    auto footer = area.removeFromBottom (controlsFooterHeight()).translated (-AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::medium);
+    presets.setBounds (footer.removeFromBottom (30));
+    footer.removeFromBottom (8);
+    sidechain.setBounds (footer.removeFromBottom (30).withWidth (juce::jmin (footer.getWidth(), sidechain.getPreferredWidth())));
     area.removeFromBottom (2 * rowGap());
     knobs.setBounds (area.withTrimmedTop (rowGap()));
 }
@@ -125,6 +138,7 @@ void LearnerCompEditor::themeChanged()
     transferCurve.setAccentColour (accent);
     waveform.setAccentColour (accent);
     presets.setAccent (accent);
+    sidechain.setAccent (accent);
     knobs.refreshColours();
 }
 
@@ -134,5 +148,6 @@ void LearnerCompEditor::tick()
     transferCurve.setInputLevel (juce::Decibels::gainToDecibels (waveform.getInputPeak(), -100.0f));
 
     gainReductionMeter.setGainReductionDb (waveform.getCurrentHighlightAmount());
+    sidechain.syncFromParameters();
 
 }

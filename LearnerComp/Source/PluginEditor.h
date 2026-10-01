@@ -7,6 +7,7 @@
 #include "shared/analysis/WaveformDisplay.h"
 #include "TransferCurveView.h"
 #include "shared/analysis/GainReductionMeter.h"
+#include "SidechainStrip.h"
 
 // Learner Comp: a real compressor with the analysis above and seven knobs
 // below. Everything else - title row, theme, language, updates, bypass,
@@ -28,7 +29,8 @@ public:
 private:
     int analysisContentHeight() const override { return 250; }
     int controlsContentHeight() const override { return knobRowHeight() + controlsFooterHeight() + 3 * rowGap(); }
-    int controlsFooterHeight() const override { return 30; }
+    // Two rows under the knobs: the sidechain, then "Start from".
+    int controlsFooterHeight() const override { return 2 * 30 + 8; }
     void layoutAnalysis (juce::Rectangle<int>) override;
     void layoutControls (juce::Rectangle<int>) override;
     void themeChanged() override;
@@ -42,6 +44,7 @@ private:
     GainReductionMeter gainReductionMeter;
     KnobRow knobs;
     ChipRow presets;
+    SidechainStrip sidechain;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerCompEditor)
 };

@@ -514,6 +514,7 @@
   "guide.comp.makeup": "找回被压缩损失的响度——它不改变动态，只改变压缩之后的整体电平。把压缩后的信号拉回到与原信号的感知响度一致（或更高）。在音量不匹配的情况下比较压缩信号和干信号，是在“压缩本身到底有没有用”这件事上骗自己最容易的方式之一。\nLearn more: Bob Katz - Mastering Audio: The Art and the Science.",
   "guide.comp.ratio": "对超过阈值的部分施加多少压缩。4:1 表示超出阈值 4 dB 的部分在输出端变成 1 dB。2-4:1 听起来是温和的电平整理；8:1 及以上开始有限制器的感觉——不过没有相应的阈值配合，单靠高压缩比并不会听起来明显很硬。\nLearn more: Bobby Owsinski - The Mixing Engineer's Handbook.",
   "guide.comp.release": "信号回落到阈值以下后，压缩多快松开。在快速素材上太短会产生可闻的抽吸（增益随节奏明显地“呼吸”）；太长则反应迟钝，下一个峰值到来前还没恢复。观察增益衰减表随时间的运动，而不只是它的峰值，是判断释放时间是否合适更可靠的方法。\nLearn more: Roey Izhaki - Mixing Audio.",
+  "guide.comp.sidechain": "Sidechain：检测器听的是另一个信号，而不是它要压低的那个。Kick 让贝斯在底鼓下让位；Ext 使用 DAW 中插件的第二个输入。HPF 防止键信号中的低音造成抽吸；Listen > Key 播放检测器听到的声音。",
   "guide.comp.threshold": "压缩器开始工作的电平。-12 dB 表示只有高于 -12 dB 的峰值会被压低；更小的部分原样通过。阈值越低，被压缩的信号越多——最好和压缩比、拐点一起决定，而不是各自单独调。\nLearn more: Roey Izhaki - Mixing Audio.",
   "guide.eq.freq.0": "超低频/低频基音——重量和厚度。在这里提升能增加低频力量；过多则在小音箱上变得轰鸣或浑浊。在这个区域稍上方加一个高通，往往比提升更有用——要在上下文中用耳朵判断，而不是套一个固定的截止频率。\nLearn more: Mike Senior - Mixing Secrets for the Small Studio.",
   "guide.eq.freq.1": "中低频——温暖和饱满，但也是多件乐器叠在一起时变得浑浊或有箱体感的地方。这里衰减往往比提升更有用；如果确实需要提升，把它分摊到这个频率和高一个八度的位置，听起来会比一个又大又窄的峰更少共振感。\nLearn more: Roey Izhaki - Mixing Audio.",

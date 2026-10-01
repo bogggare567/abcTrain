@@ -7,7 +7,8 @@
 LearnerCompProcessor::LearnerCompProcessor()
     : AudioProcessor (BusesProperties()
                            .withInput ("Input", juce::AudioChannelSet::stereo(), true)
-                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
+                           .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
+                           .withInput ("Sidechain", juce::AudioChannelSet::stereo(), false)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
 }
@@ -47,6 +48,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout LearnerCompProcessor::create
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID (bypassParamId, 1), "Bypass", false));
 
+    // Appended, never inserted: hosts and saved sessions find parameters
+    // by ID, and the existing eight keep theirs.
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID (scSourceParamId, 1), "Sidechain", juce::StringArray { "Self", "External", "Kick" }, scSelf));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID (scHpfParamId, 1), "Sidechain HPF",
+        juce::NormalisableRange<float> (scHpfOffHz, 300.0f, 1.0f, 0.5f), scHpfOffHz));
+
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        juce::ParameterID (scListenParamId, 1), "Sidechain Listen", false));
+
     return { params.begin(), params.end() };
 }
 
@@ -57,7 +70,74 @@ bool LearnerCompProcessor::isBusesLayoutSupported (const BusesLayout& layouts) c
     if (mainOut != juce::AudioChannelSet::mono() && mainOut != juce::AudioChannelSet::stereo())
         return false;
 
-    return layouts.getMainInputChannelSet() == mainOut;
+    if (layouts.getMainInputChannelSet() != mainOut)
+        return false;
+
+    // The sidechain may be off, mono or stereo; nothing else.
+    if (layouts.inputBuses.size() > 1)
+    {
+        const auto sc = layouts.getChannelSet (true, 1);
+        return sc.isDisabled() || sc == juce::AudioChannelSet::mono() || sc == juce::AudioChannelSet::stereo();
+    }
+
+    return true;
+}
+
+void LearnerCompProcessor::KeyFilter::reset() noexcept
+{
+    for (int ch = 0; ch < 2; ++ch)
+        x1[ch] = x2[ch] = y1[ch] = y2[ch] = 0.0f;
+}
+
+void LearnerCompProcessor::KeyFilter::setHighPass (float hz, double sampleRate) noexcept
+{
+    if (hz == frequency)
+        return;
+
+    frequency = hz;
+    // RBJ cookbook high-pass, Q = 0.707 (Butterworth).
+    const auto w0 = juce::MathConstants<double>::twoPi * juce::jlimit (10.0, sampleRate * 0.45, (double) hz) / sampleRate;
+    const auto cosw = std::cos (w0), alpha = std::sin (w0) / (2.0 * 0.7071067811865476);
+    const auto a0 = 1.0 + alpha;
+    b0 = (float) (((1.0 + cosw) * 0.5) / a0);
+    b1 = (float) (-(1.0 + cosw) / a0);
+    b2 = b0;
+    a1 = (float) ((-2.0 * cosw) / a0);
+    a2 = (float) ((1.0 - alpha) / a0);
+}
+
+float LearnerCompProcessor::KeyFilter::process (int ch, float x) noexcept
+{
+    ch = juce::jlimit (0, 1, ch);
+    const auto y = b0 * x + b1 * x1[ch] + b2 * x2[ch] - a1 * y1[ch] - a2 * y2[ch];
+    x2[ch] = x1[ch]; x1[ch] = x;
+    y2[ch] = y1[ch]; y1[ch] = y;
+    return y;
+}
+
+float LearnerCompProcessor::KickVoice::next() noexcept
+{
+    // 0.35 s of kick, then silence until the next beat.
+    const auto t = position / sampleRate;
+    float out = 0.0f;
+
+    if (t < 0.35)
+    {
+        const auto freq = 48.0 + 92.0 * std::exp (-t / 0.03);
+        phase += juce::MathConstants<double>::twoPi * freq / sampleRate;
+        const auto body = std::exp (-t / 0.12);
+        const auto click = t < 0.004 ? (1.0 - t / 0.004) * 0.3 : 0.0;
+        out = (float) (0.9 * body * std::sin (phase) + click);
+    }
+
+    position += 1.0;
+    if (position >= samplesPerBeat)
+    {
+        position -= samplesPerBeat;
+        phase = 0.0;
+    }
+
+    return out;
 }
 
 void LearnerCompProcessor::prepareToPlay (double sampleRate, int)
@@ -68,6 +148,10 @@ void LearnerCompProcessor::prepareToPlay (double sampleRate, int)
 
     engine.prepare (sampleRate);
     engine.reset();
+    currentSampleRate = sampleRate;
+    keyFilter.frequency = -1.0f;
+    keyFilter.reset();
+    kick.prepare (sampleRate);
     updateEngineParameters();
 
     makeupGain.reset (sampleRate, 0.03);
@@ -106,13 +190,33 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 
     // When no host is feeding us, play the practice clip instead - see
     // shared/learning/PracticeAudioSource.h. Off by default.
-    practiceSource.fillBlock (buffer);
+    {
+        auto main = getBusBuffer (buffer, true, 0);
+        practiceSource.fillBlock (main);
+    }
 
     for (auto ch = getTotalNumInputChannels(); ch < getTotalNumOutputChannels(); ++ch)
         buffer.clear (ch, 0, buffer.getNumSamples());
 
-    const auto numChannels = buffer.getNumChannels();
-    const auto numSamples = buffer.getNumSamples();
+    // Main bus only: with a sidechain bus enabled the host's buffer also
+    // carries its channels, and those must neither be compressed nor
+    // reach the output.
+    auto mainBuffer = getBusBuffer (buffer, true, 0);
+    const auto sideBuffer = getBusCount (true) > 1 && getBus (true, 1)->isEnabled()
+                              ? getBusBuffer (buffer, true, 1) : juce::AudioBuffer<float>();
+
+    const auto source = (int) valueOf (scSourceParamId);
+    const auto hpf = valueOf (scHpfParamId);
+    const auto listen = valueOf (scListenParamId) > 0.5f;
+    const auto useHpf = hpf > scHpfOffHz + 0.5f;
+    if (useHpf)
+        keyFilter.setHighPass (hpf, currentSampleRate);
+
+    const auto external = source == scExternal && sideBuffer.getNumChannels() > 0;
+    const auto kickKey = source == scKick;
+
+    const auto numChannels = mainBuffer.getNumChannels();
+    const auto numSamples = mainBuffer.getNumSamples();
     auto* display = waveformDisplay.load();
     auto* analyzer = spectrumAnalyzer.load();
 
@@ -131,12 +235,40 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     {
         float detection = 0.0f;
         float monoInput = 0.0f;
+        float keyMono = 0.0f;   // what Listen plays
+        const auto kickSample = kickKey ? kick.next() : 0.0f;
 
         for (int ch = 0; ch < numChannels; ++ch)
         {
-            const auto x = buffer.getSample (ch, i);
-            detection = juce::jmax (detection, std::abs (x));
+            const auto x = mainBuffer.getSample (ch, i);
             monoInput += x;
+        }
+
+        if (external)
+        {
+            for (int ch = 0; ch < sideBuffer.getNumChannels(); ++ch)
+            {
+                auto k = sideBuffer.getSample (ch, i);
+                if (useHpf) k = keyFilter.process (ch, k);
+                detection = juce::jmax (detection, std::abs (k));
+                keyMono += k / (float) sideBuffer.getNumChannels();
+            }
+        }
+        else if (kickKey)
+        {
+            const auto k = useHpf ? keyFilter.process (0, kickSample) : kickSample;
+            detection = std::abs (k);
+            keyMono = k;
+        }
+        else
+        {
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                auto k = mainBuffer.getSample (ch, i);
+                if (useHpf) k = keyFilter.process (ch, k);
+                detection = juce::jmax (detection, std::abs (k));
+                keyMono += k / (float) numChannels;
+            }
         }
 
         if (numChannels > 0)
@@ -147,20 +279,27 @@ void LearnerCompProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         const auto gain = engine.computeGain (detection) * makeupGain.getNextValue();
         const auto mix = mixAmount.getNextValue();
         const auto active = activeAmount.getNextValue();
-        const auto inputForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
+        const auto inputForDisplay = numChannels > 0 ? mainBuffer.getSample (0, i) : 0.0f;
 
         for (int ch = 0; ch < numChannels; ++ch)
         {
-            const auto dry = buffer.getSample (ch, i);
+            const auto dry = mainBuffer.getSample (ch, i);
             const auto processed = mix * (dry * gain) + (1.0f - mix) * dry;
-            buffer.setSample (ch, i, active >= 1.0f ? processed
-                                     : active <= 0.0f ? dry
-                                                      : dry + active * (processed - dry));
+            auto out = active >= 1.0f ? processed
+                     : active <= 0.0f ? dry
+                                      : dry + active * (processed - dry);
+
+            // The teaching kick is heard as well as used: ducking only
+            // makes sense against the thing that ducks it.
+            if (kickKey)
+                out += 0.5f * kickSample;
+
+            mainBuffer.setSample (ch, i, listen ? keyMono : out);
         }
 
         if (display != nullptr)
         {
-            const auto outputForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
+            const auto outputForDisplay = numChannels > 0 ? mainBuffer.getSample (0, i) : 0.0f;
             display->pushSample (inputForDisplay, outputForDisplay, engine.getLastGainReductionDb() * active);
         }
 

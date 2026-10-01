@@ -62,6 +62,20 @@ public:
     static constexpr const char* dryWetParamId = "dryWet";
     static constexpr const char* bypassParamId = "bypass";
 
+    // Sidechain (2026-10): what the detector listens to. Self = the signal
+    // being compressed; External = the plugin's second input (a DAW routes
+    // a kick or a vocal there); Kick = a four-on-the-floor kick the plugin
+    // makes itself and also plays, so the classic "bass ducks under the
+    // kick" works in the app's Studio with no DAW at all. The key passes a
+    // high-pass first (Off/60/120/200 Hz) - the usual cure for a bass-heavy
+    // key that pumps on every note - and Listen plays the key instead of
+    // the output, so you hear what the detector hears.
+    static constexpr const char* scSourceParamId = "scSource";
+    static constexpr const char* scHpfParamId = "scHpf";
+    static constexpr const char* scListenParamId = "scListen";
+    enum ScSource { scSelf = 0, scExternal = 1, scKick = 2 };
+    static constexpr float scHpfOffHz = 20.0f;
+
     // Practice audio: the shared reference library, played through this
     // plugin so it is not silent outside a DAW. Off by default - see
     // shared/learning/PracticeAudioSource.h.
@@ -119,6 +133,33 @@ private:
     void updateEngineParameters();
 
     CompressorEngine engine;
+
+    // The key's high-pass: one RBJ biquad per channel, coefficients redone
+    // only when the frequency changes (plain arithmetic - no lock, no
+    // allocation on the audio thread).
+    struct KeyFilter
+    {
+        float b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
+        float x1[2] {}, x2[2] {}, y1[2] {}, y2[2] {};
+        float frequency = -1.0f;
+
+        void setHighPass (float hz, double sampleRate) noexcept;
+        float process (int ch, float x) noexcept;
+        void reset() noexcept;
+    } keyFilter;
+
+    // The teaching kick: 120 BPM, a pitch-swept sine with a short body.
+    struct KickVoice
+    {
+        double sampleRate = 44100.0;
+        double samplesPerBeat = 22050.0;
+        double position = 0.0;
+        double phase = 0.0;
+
+        void prepare (double rate) noexcept { sampleRate = rate; samplesPerBeat = rate * 0.5; position = 0.0; phase = 0.0; }
+        float next() noexcept;
+    } kick;
+    double currentSampleRate = 44100.0;
     juce::SmoothedValue<float> makeupGain { 1.0f }, mixAmount { 1.0f }, activeAmount { 1.0f };
     std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrumAnalyzer { nullptr };

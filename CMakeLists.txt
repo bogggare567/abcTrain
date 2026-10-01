@@ -604,6 +604,7 @@ target_sources(EarTrainerTests
         tests/ContinuousScaleTest.cpp
         tests/LearnerEQTest.cpp
         tests/LearnerCompTest.cpp
+        tests/SidechainTest.cpp
         tests/LearnerVerbTest.cpp
         tests/MicroLessonTest.cpp
         tests/UpdateCheckerTest.cpp
