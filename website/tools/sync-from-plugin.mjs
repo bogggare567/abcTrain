@@ -77,7 +77,9 @@ const toleranceRamp = (source, game) =>
     source,
     `${game}'s toleranceForLevel ramp`,
     new RegExp(
-      `${game}::toleranceForLevel \\(int level\\) noexcept\\s*\\{\\s*` +
+      // [^}]*? and not \\s*: a comment inside the body (PanGame has one,
+      // on why level 1 got narrower) must not break the extractor.
+      `${game}::toleranceForLevel \\(int level\\) noexcept\\s*\\{[^}]*?` +
         'return rampTolerance \\(level, ([0-9.]+)f, ([0-9.]+)f\\);',
     ),
   );
