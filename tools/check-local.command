@@ -60,16 +60,21 @@ if node scripts/abctrain-battles-test.mjs >"$TMP/srv.log" 2>&1; then ok "$(tail 
 
 say "Локальный API на 127.0.0.1:$API_PORT (временная база)"
 (
-  cd "$TMP" && env -u SMTP_HOST -u SMTP_USER -u SMTP_PASS -u MAIL_FROM -u MAIL_TO \
+  cd "$TMP" && exec env -u SMTP_HOST -u SMTP_USER -u SMTP_PASS -u MAIL_FROM -u MAIL_TO \
     PORT=$API_PORT SQLITE_PATH="$TMP/check.db" NODE_ENV=test ABCTRAIN_TEST_HOOKS=1 \
     ABCTRAIN_PEPPER=check NOTIFICATION_CHANNEL=none ALLOWED_ORIGINS="http://127.0.0.1:5173,http://localhost:5173" \
     ABCTRAIN_BATTLE_ACCEPT_MS=8000 ABCTRAIN_BATTLE_COUNTDOWN_MS=1500 \
     ABCTRAIN_BATTLE_REVEAL_MS=1500 ABCTRAIN_BATTLE_ROUND_MS=8000 \
-    exec node "$SITE/server/index.js"
+    node "$SITE/server/index.js"
 ) >"$TMP/api.log" 2>&1 &
 PIDS+=($!)
 for _ in $(seq 50); do curl -fs "http://127.0.0.1:$API_PORT/api/abctrain/health" >/dev/null && break; sleep 0.2; done
-curl -fs "http://127.0.0.1:$API_PORT/api/abctrain/health" >/dev/null && ok "отвечает" || { bad "API не поднялся"; tail -20 "$TMP/api.log"; }
+if curl -fs "http://127.0.0.1:$API_PORT/api/abctrain/health" >/dev/null; then
+  ok "отвечает"
+else
+  bad "API не поднялся"; tail -20 "$TMP/api.log"
+  echo; read -r -p "Enter — выйти"; exit 1
+fi
 
 say "BattleSmoke: два клиента играют батл через локальный сервер"
 if "$SMOKE" "http://127.0.0.1:$API_PORT" >"$TMP/smoke.log" 2>&1; then ok "$(tail -1 "$TMP/smoke.log")"; else bad "BattleSmoke"; tail -30 "$TMP/smoke.log"; fi
