@@ -176,6 +176,48 @@ public:
             room.setRoom (0, 0.0f, 240.0f, 0.4f);
             expect (room.isPreDelayBeyondRoom());
         }
+
+        beginTest ("Send in a DAW: wet only - the dry impulse does not come out, the tail does");
+        {
+            constexpr double rate = 44100.0;
+            constexpr int n = 16384;
+            LearnerVerbProcessor p;
+            p.prepareToPlay (rate, n);
+            p.apvts.getRawParameterValue (LearnerVerbProcessor::routingParamId)->store ((float) LearnerVerbProcessor::send);
+            p.apvts.getRawParameterValue (LearnerVerbProcessor::dryWetParamId)->store (20.0f);
+            p.apvts.getRawParameterValue (LearnerVerbProcessor::preDelayParamId)->store (30.0f);
+            p.prepareToPlay (rate, n);   // settle the smoothed levels on the new routing
+
+            juce::AudioBuffer<float> b (2, n);
+            b.clear();
+            b.setSample (0, 0, 1.0f); b.setSample (1, 0, 1.0f);
+            juce::MidiBuffer midi;
+            p.processBlock (b, midi);
+
+            expect (std::abs (b.getSample (0, 0)) < 0.05f, "dry impulse leaked: " + juce::String (b.getSample (0, 0)));
+            expect (b.getMagnitude (0, 2000, n - 2000) > 0.001f, "no tail");
+        }
+
+        beginTest ("Send in the app's Studio: the dry track stays at unity, Mix is the return level");
+        {
+            constexpr double rate = 44100.0;
+            constexpr int n = 16384;
+            LearnerVerbProcessor p;
+            p.setSimulatesSendBus (true);
+            p.apvts.getRawParameterValue (LearnerVerbProcessor::routingParamId)->store ((float) LearnerVerbProcessor::send);
+            p.apvts.getRawParameterValue (LearnerVerbProcessor::dryWetParamId)->store (20.0f);
+            p.apvts.getRawParameterValue (LearnerVerbProcessor::preDelayParamId)->store (30.0f);
+            p.prepareToPlay (rate, n);
+
+            juce::AudioBuffer<float> b (2, n);
+            b.clear();
+            b.setSample (0, 0, 1.0f); b.setSample (1, 0, 1.0f);
+            juce::MidiBuffer midi;
+            p.processBlock (b, midi);
+
+            expectWithinAbsoluteError (b.getSample (0, 0), 1.0f, 0.02f);
+            expect (b.getMagnitude (0, 2000, n - 2000) > 0.0005f, "no tail");
+        }
     }
 };
 

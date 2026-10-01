@@ -113,6 +113,20 @@ LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     };
     addAndMakeVisible (presets);
 
+    routing.setOptions ({ LearnerVerbProcessor::insert, LearnerVerbProcessor::send }, { "Insert", "Send" });
+    routing.onChange = [this] (int v)
+    {
+        if (auto* param = verbProcessor.apvts.getParameter (LearnerVerbProcessor::routingParamId))
+            param->setValueNotifyingHost (param->convertTo0to1 ((float) v));
+        updateNotes();
+        showGuide (t ("guide.verb.routing",
+                      "Insert: the Mix knob blends dry and room on this track. Send: the way a mix is usually built - "
+                      "the reverb sits on an aux return at 100% wet, several tracks send to it, and each track's dry "
+                      "level stays its own. Here in the Studio the return is simulated: Mix becomes the return fader."), 9000);
+    };
+    addAndMakeVisible (routing);
+    addAndMakeVisible (routingCaption);
+
     verbProcessor.setWaveformDisplay (&waveform);
 
     auto modules = ReverbModules::all();
@@ -171,7 +185,12 @@ void LearnerVerbEditor::layoutAnalysis (juce::Rectangle<int> area)
 
 void LearnerVerbEditor::layoutControls (juce::Rectangle<int> area)
 {
-    presets.setBounds (area.removeFromBottom (controlsFooterHeight()).translated (-AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::medium));
+    auto footer = area.removeFromBottom (controlsFooterHeight()).translated (-AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::medium);
+    // INSERT | SEND at the right end of the "Start from" row.
+    routing.setBounds (footer.removeFromRight (routing.getPreferredWidth()).translated (2 * AbcTrainTheme::Spacing::medium, 0));
+    routingCaption.setBounds (footer.removeFromRight (routingCaptionWidth() + AbcTrainTheme::Spacing::medium)
+                                    .translated (2 * AbcTrainTheme::Spacing::medium, 0));
+    presets.setBounds (footer);
     area.removeFromBottom (2 * rowGap());
     knobs.setBounds (area.withTrimmedTop (rowGap()));
 }
@@ -230,7 +249,10 @@ void LearnerVerbEditor::updateNotes()
                                           : t ("lp.note.curtains", "curtains and people");
     knobs.setNote ("damping", t ("lp.note.walls", "walls: {{what}}").replace ("{{what}}", material));
     knobs.setNote ("width", t ("lp.note.width", "mono to wide"));
-    knobs.setNote ("dryWet", t ("lp.note.mix", "how much room against the dry"));
+    const auto sending = juce::roundToInt (value (LearnerVerbProcessor::routingParamId)) == LearnerVerbProcessor::send;
+    knobs.setNote ("dryWet", ! sending ? t ("lp.note.mix", "how much room against the dry")
+                           : verbProcessor.simulatesSendBus() ? t ("lp.note.returnLevel", "return level; the dry track is untouched")
+                                                              : t ("lp.note.sendWet", "Send: 100% wet, Mix is not used"));
 }
 
 void LearnerVerbEditor::themeChanged()
@@ -239,6 +261,7 @@ void LearnerVerbEditor::themeChanged()
     room.setAccentColour (accent);
     typeChips.setAccent (accent);
     presets.setAccent (accent);
+    routing.setAccent (accent);
     waveform.setAccentColour (accent);
     knobs.refreshColours();
 }
@@ -247,6 +270,14 @@ void LearnerVerbEditor::tick()
 {
     // The type can change from the host, a preset, or a module step.
     syncType();
+    routing.setValue (juce::roundToInt (verbProcessor.apvts.getRawParameterValue (LearnerVerbProcessor::routingParamId)->load()));
     updateEchogram();
     updateNotes();
 }
+
+int LearnerVerbEditor::routingCaptionWidth() const
+{
+    return juce::roundToInt (AbcTrainLookAndFeel::trackedTextWidth (AbcTrainLookAndFeel::toCaps ("Routing"),
+                                                                    AbcTrainLookAndFeel::microFont(), 1.4f)) + 4;
+}
+

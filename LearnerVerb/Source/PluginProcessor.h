@@ -4,6 +4,7 @@
 #include "shared/learning/PracticeAudioSource.h"
 #include "shared/dsp/ReverbEngine.h"
 #include <atomic>
+#include <utility>
 
 class WaveformDisplay;
 class SpectrumAnalyzerComponent;
@@ -59,6 +60,19 @@ public:
     static constexpr const char* dryWetParamId = "dryWet";
     static constexpr const char* widthParamId = "width";
     static constexpr const char* bypassParamId = "bypass";
+
+    // Insert or Send (2026-10). In a mix a reverb almost always lives on
+    // an aux return, fed by sends from several tracks, at 100% wet - the
+    // dry signal stays on its own fader. Send makes the plugin behave like
+    // that return: wet only, Mix ignored. Inside the app's Studio there is
+    // no aux bus, so there the whole send/return is simulated instead:
+    // dry untouched, Mix becomes the return fader (see setSimulatesSendBus).
+    static constexpr const char* routingParamId = "routing";
+    enum Routing { insert = 0, send = 1 };
+
+    // The app's Studio calls this once: it has no aux return of its own.
+    void setSimulatesSendBus (bool shouldSimulate) noexcept { simulateSendBus.store (shouldSimulate); }
+    bool simulatesSendBus() const noexcept { return simulateSendBus.load(); }
 
     // Practice audio: the shared reference library, played through this
     // plugin so it is not silent outside a DAW. Off by default - see
@@ -119,6 +133,11 @@ private:
     ReverbEngine engine;
     juce::AudioBuffer<float> wetBuffer;
     juce::SmoothedValue<float> wetAmount { 0.3f };
+    juce::SmoothedValue<float> dryAmount { 1.0f };
+    std::atomic<bool> simulateSendBus { false };
+
+    // Wet and dry levels the routing, the Mix knob and bypass ask for.
+    std::pair<float, float> targetLevels() const noexcept;
     std::atomic<WaveformDisplay*> waveformDisplay { nullptr };
     std::atomic<SpectrumAnalyzerComponent*> spectrumAnalyzer { nullptr };
 

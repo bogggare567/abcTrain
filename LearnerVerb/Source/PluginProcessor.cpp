@@ -47,6 +47,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout LearnerVerbProcessor::create
     params.push_back (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID (bypassParamId, 1), "Bypass", false));
 
+    // Appended: saved sessions find parameters by ID.
+    params.push_back (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID (routingParamId, 1), "Routing", juce::StringArray { "Insert", "Send" }, insert));
+
     return { params.begin(), params.end() };
 }
 
@@ -78,7 +82,10 @@ void LearnerVerbProcessor::prepareToPlay (double sampleRate, int samplesPerBlock
     // make makeCopyOf reallocate on the audio thread.
     wetBuffer.setSize (juce::jmax (2, getTotalNumOutputChannels()), juce::jmax (samplesPerBlock, 8192));
     wetAmount.reset (sampleRate, 0.03);
-    wetAmount.setCurrentAndTargetValue (valueOf (bypassParamId) > 0.5f ? 0.0f : valueOf (dryWetParamId) / 100.0f);
+    dryAmount.reset (sampleRate, 0.03);
+    const auto [wet, dry] = targetLevels();
+    wetAmount.setCurrentAndTargetValue (wet);
+    dryAmount.setCurrentAndTargetValue (dry);
 
     updateEngineParameters();
 }
@@ -106,6 +113,19 @@ void LearnerVerbProcessor::setCheckOverride (const juce::String& parameterID, fl
 void LearnerVerbProcessor::clearCheckOverride()
 {
     checkOverrideTarget.store (nullptr);
+}
+
+std::pair<float, float> LearnerVerbProcessor::targetLevels() const noexcept
+{
+    if (valueOf (bypassParamId) > 0.5f)
+        return { 0.0f, 1.0f };
+
+    const auto mix = juce::jlimit (0.0f, 1.0f, valueOf (dryWetParamId) / 100.0f);
+
+    if ((int) valueOf (routingParamId) == send)
+        return simulateSendBus.load() ? std::pair { mix, 1.0f } : std::pair { 1.0f, 0.0f };
+
+    return { mix, 1.0f - mix };
 }
 
 void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
@@ -141,7 +161,13 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // if bypass is toggled off mid-tail.
     // Smoothed per sample: a mix knob dragged, or bypass pressed, must
     // glide rather than step - a step in the wet level mid-tail clicks.
-    wetAmount.setTargetValue (bypassed ? 0.0f : juce::jlimit (0.0f, 1.0f, valueOf (dryWetParamId) / 100.0f));
+    // Insert: one Mix knob crossfades dry and wet. Send in a DAW: this is
+    // the return channel, so wet only. Send in the app's Studio: the dry
+    // track stays at unity and Mix is the return fader.
+    juce::ignoreUnused (bypassed);
+    const auto [wetTarget, dryTarget] = targetLevels();
+    wetAmount.setTargetValue (wetTarget);
+    dryAmount.setTargetValue (dryTarget);
 
     auto* display = waveformDisplay.load();
     auto* analyzer = spectrumAnalyzer.load();
@@ -155,6 +181,7 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             monoIn /= (float) numChannels;
 
         const auto dryWetFraction = wetAmount.getNextValue();
+        const auto dryFraction = dryAmount.getNextValue();
         const auto dryForDisplay = numChannels > 0 ? buffer.getSample (0, i) : 0.0f;
         const auto wetForDisplay = numChannels > 0 ? wetBuffer.getSample (0, i) : 0.0f;
 
@@ -162,12 +189,12 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         {
             const auto dry = buffer.getSample (ch, i);
             const auto wet = wetBuffer.getSample (ch, i);
-            buffer.setSample (ch, i, dryWetFraction * wet + (1.0f - dryWetFraction) * dry);
+            buffer.setSample (ch, i, dryWetFraction * wet + dryFraction * dry);
         }
 
         if (display != nullptr)
         {
-            const auto outputForDisplay = dryWetFraction * wetForDisplay + (1.0f - dryWetFraction) * dryForDisplay;
+            const auto outputForDisplay = dryWetFraction * wetForDisplay + dryFraction * dryForDisplay;
             display->pushSample (dryForDisplay, outputForDisplay);
         }
 

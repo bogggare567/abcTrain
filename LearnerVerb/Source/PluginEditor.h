@@ -39,6 +39,7 @@ private:
     void updateEchogram (bool immediately = false);
     void updateNotes();
     juce::String typeDescription (int type) const;
+    int routingCaptionWidth() const;
 
     LearnerVerbProcessor& verbProcessor;
 
@@ -50,6 +51,18 @@ private:
     int shownType = -1;
     KnobRow knobs;
     ChipRow presets;
+    SegmentedChoice routing;   // INSERT | SEND
+
+    // "ROUTING", in the same tracked caps as "Start from".
+    struct Caption : juce::Component
+    {
+        void paint (juce::Graphics& g) override
+        {
+            AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps ("Routing"), getLocalBounds().toFloat(),
+                                                  AbcTrainLookAndFeel::microFont(), AbcTrainTheme::current().textDim, 1.4f,
+                                                  juce::Justification::centredLeft);
+        }
+    } routingCaption;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerVerbEditor)
 };

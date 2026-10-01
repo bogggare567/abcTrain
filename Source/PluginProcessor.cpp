@@ -12,6 +12,9 @@ EarTrainerProcessor::EarTrainerProcessor()
     studio[0] = std::make_unique<LearnerEQProcessor>();
     studio[1] = std::make_unique<LearnerCompProcessor>();
     studio[2] = std::make_unique<LearnerVerbProcessor>();
+    // The Studio has no aux bus: Verb's Send simulates one (dry track at
+    // unity, Mix as the return fader) instead of going wet-only.
+    static_cast<LearnerVerbProcessor*> (studio[2].get())->setSimulatesSendBus (true);
 
     // Before any audio device exists, so the editor (and the snapshot
     // tool, which never has one) can already convert levels.
