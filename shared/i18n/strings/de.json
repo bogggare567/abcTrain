@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Näher bei dir und weiter von den Wänden kommt die erste Reflexion später: diese Lücke ist das Pre-Delay.",
   "ui.res.points": "Punkte",
   "ui.res.pointsNote": "{{n}} richtig, Rekord {{best}}",
+  "ui.res.you": "Sie",
   "set.theme.title": "Design",
   "set.theme.hint": "Hell für helle Räume, dunkel fürs Studio.",
   "set.theme.light": "Hell",

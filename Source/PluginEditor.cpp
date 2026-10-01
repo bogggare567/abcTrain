@@ -2111,6 +2111,8 @@ void EarTrainerEditor::showRunResults (int finalScore)
     {
         summary.hpYou = session.getPlayerHpHistory();
         summary.hpThem = session.getOpponentHpHistory();
+        summary.youLabel = localisation.getText ("ui.res.you");
+        summary.themLabel = opponentName();
     }
     if (duel)
         summary.pointsNote << "   HP " << juce::roundToInt (session.getPlayerHp()) << " : " << juce::roundToInt (session.getOpponentHp());

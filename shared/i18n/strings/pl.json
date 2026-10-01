@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Bliżej ciebie i dalej od ścian pierwsze odbicie przychodzi później: ta przerwa to pre-delay.",
   "ui.res.points": "Punkty",
   "ui.res.pointsNote": "{{n}} dobrze, rekord {{best}}",
+  "ui.res.you": "Ty",
   "set.theme.title": "Motyw",
   "set.theme.hint": "Jasny do jasnego pokoju, ciemny do studia.",
   "set.theme.light": "Jasny",

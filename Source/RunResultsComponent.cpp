@@ -278,12 +278,40 @@ void RunResultsComponent::paint (juce::Graphics& g)
     // same place: yours in the accent, the opponent's warm, falling as
     // the damage lands - who was ahead when, not only who won.
     {
+        const auto battle = ! summary.hpYou.empty() && summary.hpYou.size() == summary.hpThem.size();
+        auto heading = inner.removeFromTop (16);
+
+        // Who is which line - two colours with no key was a guess.
+        if (battle)
+        {
+            g.setFont (AbcTrainLookAndFeel::labelFont());
+            for (auto [label, colour] : { std::pair { summary.themLabel, theme.accentWarm }, std::pair { summary.youLabel, theme.accent } })
+            {
+                if (label.isEmpty())
+                    continue;
+                const auto w = juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), label)) + 4;
+                auto key = heading.removeFromRight (w + 14);
+                g.setColour (theme.textDim);
+                AbcTrainLookAndFeel::fitText (g, label, key.removeFromRight (w), juce::Justification::centredLeft, false);
+                g.setColour (colour);
+                g.fillEllipse (key.removeFromRight (14).toFloat().withSizeKeepingCentre (7.0f, 7.0f));
+                heading.removeFromRight (AbcTrainTheme::Spacing::medium);
+            }
+        }
+
         AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.roundByRound),
-                                               inner.removeFromTop (16).toFloat(),
+                                               heading.toFloat(),
                                                AbcTrainLookAndFeel::microFont(), theme.textDim, 1.4f);
 
-        auto plot = inner.removeFromTop (62).toFloat().withTrimmedLeft (26.0f).reduced (0.0f, 5.0f);
-        const auto battle = ! summary.hpYou.empty() && summary.hpYou.size() == summary.hpThem.size();
+        // A battle has no by-range block under it, so its HP lines take
+        // the room that block would have had instead of leaving it empty.
+        auto anyBucketTried = false;
+        for (const auto& bucket : summary.buckets)
+            anyBucketTried = anyBucketTried || bucket.attempts > 0;
+        const auto spare = inner.getHeight() - 38 - 2 * AbcTrainTheme::Spacing::large - 12;
+        const auto plotHeight = anyBucketTried ? 62 : juce::jlimit (62, 220, spare);
+
+        auto plot = inner.removeFromTop (plotHeight).toFloat().withTrimmedLeft (26.0f).reduced (0.0f, 5.0f);
         const auto n = battle ? (int) summary.hpYou.size() + 1 : (int) summary.marks.size();
 
         // Grid: three faint lines and their labels.

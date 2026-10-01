@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Closer to you and further from the walls, the first reflection comes later: that gap is pre-delay.",
   "ui.res.points": "Points",
   "ui.res.pointsNote": "{{n}} right, best {{best}}",
+  "ui.res.you": "You",
   "set.theme.title": "Theme",
   "set.theme.hint": "Light for a bright room, dark for the studio.",
   "set.theme.light": "Light",

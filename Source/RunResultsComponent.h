@@ -105,6 +105,7 @@ public:
         // A battle (ADR 049): both sides' HP after each round. Drawn as two
         // lines in place of the closeness line when present.
         std::vector<float> hpYou, hpThem;
+        juce::String youLabel, themLabel;   // the legend over those lines
 
         // The staircase level before and after, already formatted by the
         // editor ("±1/3 oct" and the like). Delta > 0 means narrower.

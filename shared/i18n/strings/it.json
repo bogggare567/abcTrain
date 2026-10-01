@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Più vicino a te e lontano dalle pareti, la prima riflessione arriva più tardi: quel vuoto è il pre-delay.",
   "ui.res.points": "Punti",
   "ui.res.pointsNote": "{{n}} giuste, record {{best}}",
+  "ui.res.you": "Tu",
   "set.theme.title": "Tema",
   "set.theme.hint": "Chiaro per una stanza luminosa, scuro per lo studio.",
   "set.theme.light": "Chiaro",

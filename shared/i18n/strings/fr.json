@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Plus près de vous et loin des murs, la première réflexion arrive plus tard : cet écart, c'est le pré-délai.",
   "ui.res.points": "Points",
   "ui.res.pointsNote": "{{n}} justes, record {{best}}",
+  "ui.res.you": "Vous",
   "set.theme.title": "Thème",
   "set.theme.hint": "Clair pour une pièce lumineuse, sombre pour le studio.",
   "set.theme.light": "Clair",

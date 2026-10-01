@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "당신에게 가깝고 벽에서 멀수록 첫 반사가 늦게 온다. 그 간격이 프리딜레이다.",
   "ui.res.points": "점수",
   "ui.res.pointsNote": "정답 {{n}}, 최고 {{best}}",
+  "ui.res.you": "나",
   "set.theme.title": "테마",
   "set.theme.hint": "밝은 방에는 라이트, 스튜디오에는 다크.",
   "set.theme.light": "라이트",

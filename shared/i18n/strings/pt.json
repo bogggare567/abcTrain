@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Mais perto de você e longe das paredes, a primeira reflexão chega mais tarde: essa lacuna é o pre-delay.",
   "ui.res.points": "Pontos",
   "ui.res.pointsNote": "{{n}} certas, recorde {{best}}",
+  "ui.res.you": "Você",
   "set.theme.title": "Tema",
   "set.theme.hint": "Claro para uma sala iluminada, escuro para o estúdio.",
   "set.theme.light": "Claro",

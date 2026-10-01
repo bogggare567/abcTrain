@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "Más cerca de ti y lejos de las paredes, la primera reflexión llega más tarde: ese hueco es el pre-delay.",
   "ui.res.points": "Puntos",
   "ui.res.pointsNote": "{{n}} aciertos, récord {{best}}",
+  "ui.res.you": "Tú",
   "set.theme.title": "Tema",
   "set.theme.hint": "Claro para una sala luminosa, oscuro para el estudio.",
   "set.theme.light": "Claro",

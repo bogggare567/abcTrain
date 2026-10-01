@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "あなたに近く壁から遠いほど最初の反射は遅れて届く。その隙間がプリディレイ。",
   "ui.res.points": "ポイント",
   "ui.res.pointsNote": "正解 {{n}}・最高 {{best}}",
+  "ui.res.you": "あなた",
   "set.theme.title": "テーマ",
   "set.theme.hint": "明るい部屋ならライト、スタジオならダーク。",
   "set.theme.light": "ライト",

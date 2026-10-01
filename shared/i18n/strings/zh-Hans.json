@@ -928,6 +928,7 @@
   "guide.verb.roomDrag": "离你越近、离墙越远，首次反射来得越晚：这段间隔就是预延迟。",
   "ui.res.points": "得分",
   "ui.res.pointsNote": "答对 {{n}}，最佳 {{best}}",
+  "ui.res.you": "你",
   "set.theme.title": "主题",
   "set.theme.hint": "明亮的房间用浅色，录音棚用深色。",
   "set.theme.light": "浅色",
