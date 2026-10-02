@@ -80,7 +80,7 @@ public:
         juce::String ratingEmpty { "Empty for now: no battles in this family yet. Play one - the table fills itself." };
         juce::String openOnSite { "Open on soundkorb.ru" };
         juce::String communityHint { "No opponent? Find one in the Community, topic \"Battles\"." };
-        juce::String communityFind { "Find an opponent" };
+        juce::String communityFind { "Open Community" };
 
         juce::String signInTitle { "Sign in on soundkorb.ru" };
         juce::String signInSteps { "1. Open the site - the code fills itself in.\n2. Sign in with your e-mail: a 6-digit code arrives.\n3. Press Connect, then come back here." };

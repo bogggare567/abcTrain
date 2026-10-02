@@ -1,4 +1,7 @@
 #include "PluginEditor.h"
+#include "BattleShare.h"
+#include "shared/ui/CommunityLink.h"
+#include "shared/audio/GainMatch.h"
 #include "PerceptualModel.h"
 #include "Games/ReverbGame.h"
 #include "shared/ui/WindowFit.h"
