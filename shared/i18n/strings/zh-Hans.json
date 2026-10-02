@@ -1360,5 +1360,8 @@
   "sounds.packsLoading": "正在询问 GitHub…",
   "sounds.packsNone": "暂无已发布的音色包。",
   "sounds.packsOffline": "GitHub 没有响应——请检查网络。",
-  "sounds.packsDownloading": "正在下载…"
+  "sounds.packsDownloading": "正在下载…",
+  "ui.soundsBuiltInDrums": "鼓（录音）",
+  "ui.soundsBuiltInInstruments": "乐器（录音）",
+  "ui.soundsBuiltInVoice": "人声（录音）"
 }

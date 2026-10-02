@@ -360,6 +360,60 @@ void ReferenceAudioLibrary::addBuiltInCategories()
         }
     }
 
+    // The starter set (ADR 057): real recordings, Bogdan Korablev, CC BY
+    // 4.0 - "<folder>__NN.flac" in SampleData, grouped into three
+    // categories so the list reads as drums / instruments / voice, not as
+    // eighty folders of one file each.
+    {
+        static const std::array<std::pair<const char*, const char*>, 2> groups {{
+            { "vocal", "Built-in Voice" }, { "choir", "Built-in Voice" } }};
+        static const juce::StringArray instruments { "synth", "bass", "arp", "string", "brass", "sitar",
+                                                     "guitar", "whistle", "main", "loops" };
+
+        for (int i = 0; i < SampleBinaryData::namedResourceListSize; ++i)
+        {
+            const juce::String original (SampleBinaryData::originalFilenames[i]);
+            if (! original.contains ("__") || ! original.endsWithIgnoreCase (".flac"))
+                continue;
+
+            const auto folder = original.upToFirstOccurrenceOf ("__", false, false);
+            juce::String categoryName ("Built-in Drums");
+            for (const auto& [word, name] : groups)
+                if (folder.contains (word))
+                    categoryName = name;
+            if (categoryName == "Built-in Drums")
+                for (const auto& word : instruments)
+                    if (folder.contains (word) && ! folder.contains ("kick") && ! folder.contains ("snare") && ! folder.contains ("hit"))
+                        categoryName = "Built-in Instruments";
+
+            int size = 0;
+            const auto* data = SampleBinaryData::getNamedResource (SampleBinaryData::namedResourceList[i], size);
+            if (data == nullptr || size <= 0)
+                continue;
+
+            auto file = cacheDir.getChildFile ("starter-" + original);
+            if (! file.existsAsFile() || file.getSize() != (juce::int64) size)
+                file.replaceWithData (data, (size_t) size);
+
+            Category* target = nullptr;
+            for (auto& c : builtInCategories)
+                if (c.name == categoryName)
+                    target = &c;
+            if (target == nullptr)
+            {
+                builtInCategories.add ({ categoryName, {} });
+                target = &builtInCategories.getReference (builtInCategories.size() - 1);
+            }
+
+            target->files.add (file);
+            ClipInfo info;
+            info.credit = { folder.replaceCharacter ('-', ' ') + " " + original.fromLastOccurrenceOf ("__", false, false)
+                                                                            .upToLastOccurrenceOf (".", false, false),
+                            "Bogdan Korablev", "https://soundkorb.ru", "CC-BY-4.0" };
+            target->clips.add (info);
+        }
+    }
+
     // Inserted ahead of anything scanned from rootFolder, so built-in
     // categories always land at the front - TrainingSoundsComponent's
     // lock rule is "index < maxLevelReached", and level starts at 1, so

@@ -1360,5 +1360,8 @@
   "sounds.packsLoading": "GitHub에 묻는 중…",
   "sounds.packsNone": "아직 공개된 팩이 없습니다.",
   "sounds.packsOffline": "GitHub가 응답하지 않습니다 — 연결을 확인하세요.",
-  "sounds.packsDownloading": "다운로드 중…"
+  "sounds.packsDownloading": "다운로드 중…",
+  "ui.soundsBuiltInDrums": "드럼(녹음)",
+  "ui.soundsBuiltInInstruments": "악기(녹음)",
+  "ui.soundsBuiltInVoice": "목소리(녹음)"
 }

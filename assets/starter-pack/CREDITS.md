@@ -1,0 +1,87 @@
+# Встроенный набор / Starter set
+
+Записи: **Bogdan Korablev**, CC-BY-4.0. Отобрано из библиотеки автора скриптом tools/library/pack_from_folder.py: тишина в начале обрезана, длина до 4 с, пик -1 dBFS.
+
+- `china-cymbals__01.flac` — Drums/Acoustic Drums/Acoustic Cymbals/China Cymbals/Сhina5.wav
+- `crashes__01.flac` — Drums/Acoustic Drums/Acoustic Cymbals/Crashes/Crash4.wav
+- `rides__01.flac` — Drums/Acoustic Drums/Acoustic Cymbals/Rides/Ride3.wav
+- `splash__01.flac` — Drums/Acoustic Drums/Acoustic Cymbals/Splash/Splash2.wav
+- `acoustic-hats-closed__01.flac` — Drums/Acoustic Drums/Acoustic Hats/Acoustic Hats Closed/Hat19.wav
+- `acoustic-hats-open__01.flac` — Drums/Acoustic Drums/Acoustic Hats/Acoustic Hats Open/Open Hat3.wav
+- `acoustic-kicks__01.flac` — Drums/Acoustic Drums/Acoustic Kicks/Kick5.wav
+- `acoustic-miscellaneous__01.flac` — Drums/Acoustic Drums/Acoustic Miscellaneous/Acoustic Miscellaneous20.wav
+- `acoustic-snares__01.flac` — Drums/Acoustic Drums/Acoustic Snares/Acoustic Snares2.wav
+- `acoustic-toms__01.flac` — Drums/Acoustic Drums/Acoustic Toms/Acoustic Toms18.wav
+- `clap-fx__01.flac` — Drums/Claps/Clap FX/ Clap FX - Sub Clap 01.wav
+- `drop-claps__01.flac` — Drums/Claps/Drop Claps/ Drop Claps 04.wav
+- `jungle-claps__01.flac` — Drums/Claps/Jungle Claps/ Jungle Clap 05 (D).wav
+- `pre-shifted-claps__01.flac` — Drums/Claps/Pre-Shifted Claps/ Pre-Shifted Clap 05.wav
+- `regular-claps__01.flac` — Drums/Claps/Regular Claps/ Clap 15 - Open 01.wav
+- `stadium-claps__01.flac` — Drums/Claps/Stadium Claps/ Stadium Clap 05.wav
+- `trap-claps__01.flac` — Drums/Claps/Trap Claps/ Trap Clap 09.wav
+- `crashes__02.flac` — Drums/Cymbals/Crashes/ Crash 04.wav
+- `hi-hats-closed__01.flac` — Drums/Cymbals/Hi-Hats Closed/ Hi Hats Closed 09.wav
+- `hi-hats-open__01.flac` — Drums/Cymbals/Hi-Hats Open/ Hi Hats Open 05.wav
+- `rides__02.flac` — Drums/Cymbals/Rides/ Rides 03.wav
+- `transitions__01.flac` — Drums/Cymbals/Transitions/ Cymbal Transition 04.wav
+- `big-kicks__01.flac` — Drums/Kicks/Big Kicks/ Big Kick 07 (F).wav
+- `punchy-kicks__01.flac` — Drums/Kicks/Punchy Kicks/ Punchy Kick 16 (E).wav
+- `signature-kicks__01.flac` — Drums/Kicks/Signature Kicks/ Signature Kick 08 - Jungle Whistle (D).wav
+- `stadium-kicks__01.flac` — Drums/Kicks/Stadium Kicks/ Stadium Kick 05 - Thud.wav
+- `top-kicks__01.flac` — Drums/Kicks/Top Kicks/ Top Kick 04.wav
+- `trap-and-808-kicks__01.flac` — Drums/Kicks/Trap and 808 Kicks/ Trap 808 09 E.wav
+- `simple-808-family__01.flac` — Drums/Kicks/Trap and 808 Kicks/ Simple 808 Family/ Simple 808 - D# Lo.wav
+- `chinese-gong__01.flac` — Drums/Orchestral Drums/Chinese Gong/ Chinese Gong 02.wav
+- `clanks__01.flac` — Drums/Orchestral Drums/Clanks/ Orchestra Clank 04.wav
+- `crash-transitions__01.flac` — Drums/Orchestral Drums/Crash Transitions/ Orchestra Crash Transition 04.wav
+- `crashes__03.flac` — Drums/Orchestral Drums/Crashes/ Orchestra Crash 03.wav
+- `crashes-scary__01.flac` — Drums/Orchestral Drums/Crashes Scary/ Orchestra Crash Scary 03.wav
+- `deep-impact__01.flac` — Drums/Orchestral Drums/Deep Impact/ Deep Impact 03.wav
+- `double-hits__01.flac` — Drums/Orchestral Drums/Double Hits/ Orchestra Double Hit 03.wav
+- `main-hits__01.flac` — Drums/Orchestral Drums/Main Hits/ Orchestra Hit 09.wav
+- `miscellaneous__01.flac` — Drums/Orchestral Drums/Miscellaneous/ Orchestra Misc 04 - Stick.wav
+- `small-rolls__01.flac` — Drums/Orchestral Drums/Small Rolls/ Orchestra Small Roll 02.wav
+- `snares__01.flac` — Drums/Orchestral Drums/Snares/ Orchestra Snare 04.wav
+- `tom-rolls__01.flac` — Drums/Orchestral Drums/Tom Rolls/ Orchestra Tom Roll 04.wav
+- `flams-and-rolls__01.flac` — Drums/Percussion/Flams and Rolls/ Percussion Flam 09.wav
+- `percussion-high__01.flac` — Drums/Percussion/Percussion High/ Percussion High 09 (F).wav
+- `percussion-low__01.flac` — Drums/Percussion/Percussion Low/ Percussion Low 05 (C#).wav
+- `shakers__01.flac` — Drums/Percussion/Shakers/ Shaker 07.wav
+- `snaps__01.flac` — Drums/Snaps/ Snap 05.wav
+- `big-snares__01.flac` — Drums/Snares/Big Snares/ Big Snare 05.wav
+- `big-snares-reverb-fx__01.flac` — Drums/Snares/Big Snares Reverb FX/ Reverb Snare 04 (D).wav
+- `flam-and-roll-snares__01.flac` — Drums/Snares/Flam and Roll Snares/ Snare Effect 07 - Small Roll 03.wav
+- `hard-snares__01.flac` — Drums/Snares/Hard Snares/ Hard Snare 10 (F#).wav
+- `tight-snares__01.flac` — Drums/Snares/Tight Snares/ Tight Snare 12 (E).wav
+- `trap-snares__01.flac` — Drums/Snares/Trap Snares/ Trap Snare 09 (E).wav
+- `toms__01.flac` — Drums/Toms/ Tom 15 - D.wav
+- `main__01.flac` — Live Instruments/Ethnic Instruments/Main/ Harmonium (124, E).wav
+- `sitar-ambiance__01.flac` — Live Instruments/Ethnic Instruments/Sitar/Sitar Ambiance/ Sitar - Hypnotic Ambiance 02 - (F).wav
+- `sitar-chords__01.flac` — Live Instruments/Ethnic Instruments/Sitar/Sitar Chords/ Chords 08 - (D).wav
+- `sitar-loops-110bpm__01.flac` — Live Instruments/Ethnic Instruments/Sitar/Sitar Loops 110BPM/ Sitar - 110BPM Loop 04 - (F).wav
+- `sitar-loops-128bpm__01.flac` — Live Instruments/Ethnic Instruments/Sitar/Sitar Loops 128BPM/ Sitar - 128BPM Loop 04 - (F).wav
+- `whistle__01.flac` — Live Instruments/Ethnic Instruments/Whistle/ Whistle 04 (Dm).wav
+- `guitar-loops-100bpm__01.flac` — Live Instruments/Guitar Loops/Guitar Loops 100BPM/ Guitar 100BPM 08 - (F#m, D, A, E) (Lo).wav
+- `guitar-loops-112bpm__01.flac` — Live Instruments/Guitar Loops/Guitar Loops 112BPM/ Guitar 112BPM 10 - (Em).wav
+- `guitar-loops-125bpm__01.flac` — Live Instruments/Guitar Loops/Guitar Loops 125BPM/ Guitar 125BPM 08 - (Em, G, D, C) (LO).wav
+- `brass-rips-and-falls__01.flac` — Live Instruments/Orchestral Instruments/Brass/Brass Rips and Falls/ Brass Rips & Falls 09 - Brass Rip (C Major).wav
+- `brass-rises__01.flac` — Live Instruments/Orchestral Instruments/Brass/Brass Rises/ Brass Rise 04 - (F).wav
+- `brass-stabs__01.flac` — Live Instruments/Orchestral Instruments/Brass/Brass Stabs/ Brass Stab 03 - (F).wav
+- `brass-sustains__01.flac` — Live Instruments/Orchestral Instruments/Brass/Brass Sustains/ Brass Sustain 03 - Middle F.wav
+- `choir__01.flac` — Live Instruments/Orchestral Instruments/Choir/ Choir 04 - C# Major.wav
+- `string-ethnic-bends__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Ethnic Bends/ Ethnic Bend 03 - (D up to D#).wav
+- `string-loops__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Loops/ String Loop 04 - (140bpm) (Fm).wav
+- `string-rips__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Rips/ String Rip 03 - D#.wav
+- `string-rises__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Rises/ String Rise 04.wav
+- `string-runs-up-and-down__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Runs Up and Down/ Strings Run Up 01 - E.wav
+- `string-stabs__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Stabs/ String Stab 04 (D).wav
+- `string-swells__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Swells/ String Swell 02 (Fm).wav
+- `string-trills__01.flac` — Live Instruments/Orchestral Instruments/Strings/String Trills/ Trill 02 - F.wav
+- `arp-loops__01.flac` — Synths/Arp Loops/ Arp 06 - (F#m).wav
+- `bass-shots__01.flac` — Synths/Bass Shots/ Bass Shot 07 - (E).wav
+- `synth-shots__01.flac` — Synths/Synth Shots/ Synth Shot 18 - (E).wav
+- `vocals-arps-and-melodies__01.flac` — Vocals/Vocals - Arps and Melodies/ Vocal Arp 09 - (F Arabic) (128bpm).wav
+- `vocals-beds__01.flac` — Vocals/Vocals - Beds/ Vocal Bed 05 - (Fm).wav
+- `vocals-ethnic__01.flac` — Vocals/Vocals - Ethnic/ Ethnic Vocal Shot 04 (C).wav
+- `vocal-tones__01.flac` — Vocals/Vocals - One Shots/Vocal Tones/ Vocal Tone 18 (F#).wav
+- `vocal-words__01.flac` — Vocals/Vocals - One Shots/Vocal Words/ Vocal Words - No 01.wav

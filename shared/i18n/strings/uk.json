@@ -1360,5 +1360,8 @@
   "sounds.packsLoading": "Питаємо GitHub…",
   "sounds.packsNone": "Пакетів поки не викладено.",
   "sounds.packsOffline": "GitHub не відповів — перевірте підключення.",
-  "sounds.packsDownloading": "Завантажуємо…"
+  "sounds.packsDownloading": "Завантажуємо…",
+  "ui.soundsBuiltInDrums": "Барабани (записи)",
+  "ui.soundsBuiltInInstruments": "Інструменти (записи)",
+  "ui.soundsBuiltInVoice": "Голос (записи)"
 }

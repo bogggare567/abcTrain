@@ -194,6 +194,9 @@ juce::String TrainingSoundsComponent::displayNameForCategory (const juce::String
     if (rawName == "Built-in Percussive") return text.builtInPercussive;
     if (rawName == "Built-in Sustained")  return text.builtInSustained;
     if (rawName == "Built-in Loops")      return text.builtInLoops;
+    if (rawName == "Built-in Drums")       return text.builtInDrums;
+    if (rawName == "Built-in Instruments") return text.builtInInstruments;
+    if (rawName == "Built-in Voice")       return text.builtInVoice;
 
     const auto instrumentName = [this] (InstrumentLabel::Instrument instrument)
     {

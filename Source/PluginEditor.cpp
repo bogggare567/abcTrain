@@ -3463,6 +3463,9 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.builtInPercussive  = localisation.getText ("ui.soundsBuiltInPercussive");
         sounds.builtInSustained   = localisation.getText ("ui.soundsBuiltInSustained");
         sounds.builtInLoops       = localisation.getText ("ui.soundsBuiltInLoops");
+        sounds.builtInDrums       = localisation.getText ("ui.soundsBuiltInDrums");
+        sounds.builtInInstruments = localisation.getText ("ui.soundsBuiltInInstruments");
+        sounds.builtInVoice       = localisation.getText ("ui.soundsBuiltInVoice");
         sounds.exerciseSound      = localisation.getText ("ui.soundsExercise");
         sounds.trainingOnExerciseSound = localisation.getText ("ui.soundsOnExercise");
         sounds.credits            = localisation.getText ("ui.credits");

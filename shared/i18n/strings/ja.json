@@ -1360,5 +1360,8 @@
   "sounds.packsLoading": "GitHub に問い合わせ中…",
   "sounds.packsNone": "まだ公開されたパックはありません。",
   "sounds.packsOffline": "GitHub から応答がありません — 接続を確認してください。",
-  "sounds.packsDownloading": "ダウンロード中…"
+  "sounds.packsDownloading": "ダウンロード中…",
+  "ui.soundsBuiltInDrums": "ドラム（録音）",
+  "ui.soundsBuiltInInstruments": "楽器（録音）",
+  "ui.soundsBuiltInVoice": "声（録音）"
 }

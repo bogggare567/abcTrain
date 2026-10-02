@@ -66,8 +66,10 @@ public:
             // No filesystem folder configured/found - but the bundled,
             // programmatically-synthesized samples (see decisions/018)
             // are always present, so this is never actually empty.
+            // Three synthesized categories, then the starter set's three
+            // (drums, instruments, voice - ADR 057).
             const auto& categories = library.getCategories();
-            expectEquals (categories.size(), 3);
+            expectEquals (categories.size(), 6);
             expectEquals (categories.getReference (0).name, juce::String ("Built-in Percussive"));
             expectEquals (categories.getReference (1).name, juce::String ("Built-in Sustained"));
             expectEquals (categories.getReference (2).name, juce::String ("Built-in Loops"));
@@ -94,8 +96,8 @@ public:
             library.setRootFolder (tempRoot);
 
             const auto& categories = library.getCategories();
-            // 3 built-in + "Rock" - "EmptyGenre" has no real audio in it.
-            expectEquals (categories.size(), 4);
+            // "EmptyGenre" has no real audio in it.
+            expectEquals (categories.size(), 7);   // 6 built-in + "Rock"
 
             bool foundRock = false;
             for (const auto& category : categories)
@@ -115,7 +117,13 @@ public:
             library.setRootFolder (tempRoot.getChildFile ("nonexistent"));
 
             const auto& categories = library.getCategories();
-            expectEquals (categories.size(), 3);
+            expectEquals (categories.size(), 6);
+            for (int i = 3; i < 6; ++i)
+            {
+                expect (categories.getReference (i).name.startsWith ("Built-in"), categories.getReference (i).name);
+                expect (categories.getReference (i).files.size() >= 5, categories.getReference (i).name);
+                expect (categories.getReference (i).clips.getReference (0).credit.license == "CC-BY-4.0");
+            }
             expect (categories.getReference (0).files.size() == 2 + 9);  // Kick, Snare + the synthesized drums
             expect (categories.getReference (1).files.size() == 3 + 10); // Pad, Pluck, Tone + the synthesized tones
             expectEquals (categories.getReference (2).files.size(), 6);  // the loops

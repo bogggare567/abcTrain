@@ -6,8 +6,8 @@
 The folder holds one subfolder per event (correct, wrong, step-up,
 new-record, achievement, run-end, battle-won, battle-lost, round-start,
 open - see assets/ui-sounds/README.md); every audio file inside is a take.
-Each take is trimmed of leading/trailing silence, faded (2 ms in, 20 ms
-out), peak-normalised to -6 dBFS, cut to 1.5 s at most, and written as
+Each take is trimmed of leading/trailing silence, faded (2 ms in; 20 ms out,
+150 ms when the take was cut short), peak-normalised to -6 dBFS, cut to 1.5 s at most, and written as
 16-bit 48 kHz FLAC. Existing takes of an event are replaced. Needs ffmpeg.
 """
 import re
@@ -35,7 +35,16 @@ def convert(src: Path, dst: Path) -> None:
             "areverse,silenceremove=start_periods=1:start_threshold=-60dB:start_silence=0.01,areverse,"
             f"atrim=0:{MAX_S}")
     gain = PEAK_DB - peak_db(src, trim)
-    chain = f"{trim},afade=t=in:d=0.002,areverse,afade=t=in:d=0.02,areverse,volume={gain:.2f}dB"
+    # A take cut short (an impact, a crash) needs a real tail, not a click
+    # at 1.5 s; a short one keeps its own ending.
+    probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(src)],
+                           capture_output=True, text=True)
+    try:
+        cut = float(probe.stdout.strip()) > MAX_S
+    except ValueError:
+        cut = False
+    tail = 0.15 if cut else 0.02
+    chain = f"{trim},afade=t=in:d=0.002,areverse,afade=t=in:d={tail},areverse,volume={gain:.2f}dB"
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src), "-af", chain,
                     "-ar", "48000", "-sample_fmt", "s16", str(dst)], check=True)
 

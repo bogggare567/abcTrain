@@ -1360,5 +1360,8 @@
   "sounds.packsLoading": "Chiedo a GitHub…",
   "sounds.packsNone": "Nessun pacchetto pubblicato per ora.",
   "sounds.packsOffline": "GitHub non ha risposto: controlla la connessione.",
-  "sounds.packsDownloading": "Download in corso…"
+  "sounds.packsDownloading": "Download in corso…",
+  "ui.soundsBuiltInDrums": "Batteria (registrata)",
+  "ui.soundsBuiltInInstruments": "Strumenti (registrati)",
+  "ui.soundsBuiltInVoice": "Voce (registrata)"
 }

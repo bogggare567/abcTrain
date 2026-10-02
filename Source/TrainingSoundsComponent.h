@@ -74,6 +74,9 @@ public:
                      packsDownloading { "Downloading..." };
         juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
         juce::String builtInPercussive, builtInSustained, builtInLoops { "Built-in loops" };
+        // The starter set (ADR 057): real recordings.
+        juce::String builtInDrums { "Drums (recorded)" }, builtInInstruments { "Instruments (recorded)" },
+                     builtInVoice { "Voice (recorded)" };
         juce::String exerciseSound, trainingOnExerciseSound, credits;
         juce::String clipsCaption, allClips, thisClip;   // "{{n}} clips · click to hear..."
 

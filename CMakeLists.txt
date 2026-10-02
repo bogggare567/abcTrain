@@ -133,10 +133,17 @@ juce_add_binary_data(I18nData SOURCES
 # distinct from I18nData's (both default to BinaryData/BinaryData.h) -
 # EarTrainer and EarTrainerTests link both binary-data targets at once,
 # and two same-named generated headers on one include path would collide.
+# The starter set (ADR 057): Bogdan Korablev's own one-shots and phrases,
+# CC BY 4.0, picked from his library by tools/library/pack_from_folder.py
+# --embed - one per folder, ~17 MB. The full library is the bogdan-studio
+# pack in abcTrain-library.
+file (GLOB abcStarterFiles CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/starter-pack/*.flac)
+
 juce_add_binary_data(SampleData
     NAMESPACE SampleBinaryData
     HEADER_NAME SampleBinaryData.h
     SOURCES
+        ${abcStarterFiles}
         assets/samples/Percussive/Kick.wav
         assets/samples/Percussive/Snare.wav
         assets/samples/Sustained/Pad.wav

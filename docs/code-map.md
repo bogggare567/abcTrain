@@ -1565,3 +1565,4 @@ too, only Windows needed the fix (see
 - Loudness match (t03, ADR 055): `GainMatch::mode` RMS / BS.1770 K-weighting (`kRms`), set from Settings → Training.
 - Battle judge (b05, ADR 056): `tools/RoundOracle.cpp` answers "exercise level seed" with the right answer for the site server; `tests/RoundOracleTest` holds that a seeded round depends on those three only.
 - Sound packs (s03): `shared/audio/PackCatalog` lists .zip assets of abcTrain-library releases and downloads one; `TrainingSoundsComponent::choosePack` hands it to the ordinary import. Mini-DAW sketch (p04): docs/design/mini-daw.md.
+- Starter set and studio pack (ADR 057): `assets/starter-pack/<folder>__NN.flac` (SampleData) → ReferenceAudioLibrary's 'Built-in Drums/Instruments/Voice'; `tools/library/pack_from_folder.py` builds both the starter set (--embed) and the full pack.
