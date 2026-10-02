@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "This lesson is in English for now.",
   "lessons.chooseTitle": "Choose a lesson on the left",
   "lessons.chooseBody": "Each lesson is three to five minutes on one thing you can hear right away. Read a step and listen: the lesson sets the knobs of EQ, Comp or Verb in the Studio, and you can take over at any moment - the next step sets its own values again. Click any step to go back to it.",
-  "lessons.booksNote": "Written from the books - Owsinski, Izhaki, Senior, Stavrou, the Systematic Mixing Guide - in our own words, with the chapter named under every lesson."
+  "lessons.booksNote": "Written from the books - Owsinski, Izhaki, Senior, Stavrou, the Systematic Mixing Guide - in our own words, with the chapter named under every lesson.",
+  "share.button": "Share the result",
+  "share.copied": "Copied - paste it in the chat",
+  "share.won": "Win",
+  "share.lost": "Loss",
+  "share.draw": "Draw",
+  "share.rounds": "{{n}} [[round|rounds]]",
+  "community.open": "Open Community",
+  "community.button": "Community",
+  "community.findOpponent": "Find an opponent",
+  "community.battleHint": "No opponent? Find one in the Community, topic \"Battles\".",
+  "set.uiSounds.title": "Interface sounds",
+  "set.uiSounds.hint": "Short cues on an answer, a step up, a battle's end - several takes each, never the same twice in a row. They follow the output level.",
+  "set.uiSounds.quiet": "Quiet",
+  "set.uiSounds.normal": "Normal"
 }

@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "UiSoundData.h"
 #include "PluginEditor.h"
 #include "LearnerEQ/Source/PluginProcessor.h"
 #include "LearnerComp/Source/PluginProcessor.h"
@@ -9,6 +10,17 @@ EarTrainerProcessor::EarTrainerProcessor()
                            .withInput ("Input", juce::AudioChannelSet::stereo(), true)
                            .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
+    // The app's one-shots: <event>-<n>.flac in UiSoundData.
+    for (int i = 0; i < UiSoundData::namedResourceListSize; ++i)
+    {
+        const juce::String file (UiSoundData::originalFilenames[i]);
+        const auto stem = file.upToLastOccurrenceOf (".", false, false);
+        const auto event = UiSounds::eventFromId (stem.upToLastOccurrenceOf ("-", false, false));
+        int size = 0;
+        if (const auto* data = UiSoundData::getNamedResource (UiSoundData::namedResourceList[i], size); event >= 0 && data != nullptr)
+            uiSounds.addTake ((UiSounds::Event) event, data, (size_t) size);
+    }
+
     studio[0] = std::make_unique<LearnerEQProcessor>();
     studio[1] = std::make_unique<LearnerCompProcessor>();
     studio[2] = std::make_unique<LearnerVerbProcessor>();
@@ -70,6 +82,7 @@ bool EarTrainerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     clipPreview.prepare (sampleRate);
+    uiSounds.prepare (sampleRate);
     probeTone.prepare (sampleRate);
     hearingCompensation.prepare (sampleRate);
 
@@ -131,6 +144,7 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         // controller's EQ, not part of the mix. Does nothing without an
         // active profile and the Settings switch.
         hearingCompensation.process (buffer);
+        uiSounds.render (buffer);
         applyOutputGain (buffer);
         outputMeter.process (buffer);
         return;
@@ -165,8 +179,11 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
         // A clip being auditioned from the Training Sounds page, through
         // the same output level as everything else.
-        if (clipPreview.render (buffer))
-            applyOutputGain (buffer);
+        // The app's own one-shots go through the same output level, so
+        // turning the monitoring down turns them down too.
+        clipPreview.render (buffer);
+        uiSounds.render (buffer);
+        applyOutputGain (buffer);
 
         // Silence is metered too: quiet time on the menus is what makes a
         // break count as one.
@@ -232,6 +249,7 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     // levels its treated signal against its untreated one so loudness
     // cannot be the tell, and one gain applied to everything downstream
     // moves both sides of every A/B by the same amount.
+    uiSounds.render (buffer);
     applyOutputGain (buffer);
 
     // What actually leaves, for the hearing dose.

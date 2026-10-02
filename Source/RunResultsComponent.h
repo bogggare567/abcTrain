@@ -111,6 +111,11 @@ public:
         // editor ("±1/3 oct" and the like). Delta > 0 means narrower.
         juce::String levelBefore, levelAfter;
         int levelDelta = 0;
+
+        // A battle as text for a chat (BattleShare, ADR 053). Non-empty
+        // shows "Share the result": it goes to the clipboard, never
+        // anywhere by itself, and the community link appears after.
+        juce::String shareText;
     };
 
     // Captions for the detail parts of the card; English defaults so a
@@ -163,6 +168,12 @@ public:
     std::function<void (int mode)> onModeChosen;
     void setModeOffer (juce::String caption, juce::StringArray modeNames, int currentMode);
 
+    // "Share the result" / "Copied" / "Open Community".
+    void setShareStrings (juce::String share, juce::String copied, juce::String community);
+    std::function<void()> onOpenCommunity;
+    // For tools/EditorSnapshots: the state after the copy.
+    void showSharedForSnapshot() { shared = true; refreshShare(); }
+
     void paint (juce::Graphics&) override;
     void resized() override;
 
@@ -188,6 +199,10 @@ private:
     DetailStrings detail;
 
     juce::TextButton againButton, homeButton;
+    juce::TextButton shareButton, communityButton;
+    juce::String shareLabel { "Share the result" }, copiedLabel { "Copied" }, communityLabel { "Open Community" };
+    bool shared = false;
+    void refreshShare();
 
     // At most two: the modes that are not the one just played.
     juce::OwnedArray<juce::TextButton> modeButtons;

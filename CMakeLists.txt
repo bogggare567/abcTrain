@@ -159,6 +159,17 @@ juce_add_binary_data(LessonData
     SOURCES ${abcLessonFiles}
 )
 
+# The app's own short sounds (ADR 054): <event>-<n>.flac, several takes per
+# event. The README goes in too so the target exists before any take does.
+file (GLOB abcUiSoundFiles CONFIGURE_DEPENDS
+      ${CMAKE_CURRENT_SOURCE_DIR}/assets/ui-sounds/*.flac
+      ${CMAKE_CURRENT_SOURCE_DIR}/assets/ui-sounds/*.wav)
+juce_add_binary_data(UiSoundData
+    NAMESPACE UiSoundData
+    HEADER_NAME UiSoundData.h
+    SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/assets/ui-sounds/README.md ${abcUiSoundFiles}
+)
+
 # The interface typeface, embedded because a plugin cannot ask its host's
 # machine to have a font installed. Twelve faces, 356 KB: Barlow carries
 # the Latin at three widths, and a Cyrillic companion pinned out of
@@ -286,6 +297,7 @@ target_sources(abc_audio INTERFACE
     ${abcShared}/audio/AudioSliceAnalyzer.cpp
     ${abcShared}/audio/InstrumentLabel.cpp
     ${abcShared}/audio/LessonAudioBed.cpp
+    ${abcShared}/audio/UiSounds.cpp
     ${abcShared}/audio/HearingProfile.cpp
 )
 target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -416,6 +428,7 @@ target_sources(EarTrainer
         Source/StudioScreenComponent.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
+        Source/BattleShare.cpp
         Source/LessonsPanel.cpp
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
@@ -448,6 +461,7 @@ target_link_libraries(EarTrainer
         FontData
         SampleData
         LessonData
+        UiSoundData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -653,8 +667,11 @@ target_sources(EarTrainerTests
         tests/HearingGuardTest.cpp
         tests/HearingCalibrationTest.cpp
         tests/LessonFormatTest.cpp
+        tests/BattleShareTest.cpp
+        tests/UiSoundsTest.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
+        Source/BattleShare.cpp
         tests/LearnerRedesignTest.cpp
 )
 
@@ -680,6 +697,7 @@ target_link_libraries(EarTrainerTests
         FontData
         SampleData
         LessonData
+        UiSoundData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -717,6 +735,7 @@ set(abcTrainEditorToolSources
         Source/StudioScreenComponent.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
+        Source/BattleShare.cpp
         Source/LessonsPanel.cpp
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
@@ -758,6 +777,7 @@ target_link_libraries(EditorSnapshots
         FontData
         SampleData
         LessonData
+        UiSoundData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -802,6 +822,7 @@ target_link_libraries(LearnerStrings
         FontData
         SampleData
         LessonData
+        UiSoundData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -838,6 +859,7 @@ target_link_libraries(ClickMap
         FontData
         SampleData
         LessonData
+        UiSoundData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags

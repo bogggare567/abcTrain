@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "이 레슨은 아직 영어로만 제공됩니다.",
   "lessons.chooseTitle": "왼쪽에서 레슨을 선택하세요",
   "lessons.chooseBody": "각 레슨은 3~5분 동안 바로 들을 수 있는 한 가지를 다룹니다. 단계를 읽고 들어 보세요. 레슨이 스튜디오에서 EQ, Comp, Verb의 노브를 설정하지만 언제든 직접 조작할 수 있습니다. 다음 단계에서 다시 자체 값으로 설정됩니다. 단계를 클릭하면 그 단계로 돌아갑니다.",
-  "lessons.booksNote": "Owsinski, Izhaki, Senior, Stavrou의 책과 Systematic Mixing Guide를 바탕으로 직접 정리했으며, 각 레슨 아래에 해당 챕터를 밝혔습니다."
+  "lessons.booksNote": "Owsinski, Izhaki, Senior, Stavrou의 책과 Systematic Mixing Guide를 바탕으로 직접 정리했으며, 각 레슨 아래에 해당 챕터를 밝혔습니다.",
+  "share.button": "결과 공유",
+  "share.copied": "복사됨 — 채팅에 붙여 넣으세요",
+  "share.won": "승리",
+  "share.lost": "패배",
+  "share.draw": "무승부",
+  "share.rounds": "{{n}}라운드",
+  "community.open": "Community 열기",
+  "community.button": "Community",
+  "community.findOpponent": "상대 찾기",
+  "community.battleHint": "상대가 없나요? Community의 «Battles» 주제에서 찾아보세요.",
+  "set.uiSounds.title": "인터페이스 소리",
+  "set.uiSounds.hint": "답, 단계 상승, 배틀 종료 때 짧은 신호 — 각각 여러 테이크가 있어 같은 소리가 연달아 나지 않습니다. 출력 레벨을 따릅니다.",
+  "set.uiSounds.quiet": "작게",
+  "set.uiSounds.normal": "보통"
 }

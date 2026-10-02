@@ -84,6 +84,11 @@ public:
     // address at all), and signing in, which the Live page runs.
     static constexpr const char* liveTabKey = "liveTab";
     std::function<void (bool)> onLiveTabChanged;
+
+    // The app's own one-shots (ADR 054): 0 off, 1 quiet, 2 normal.
+    static constexpr const char* uiSoundsKey = "uiSounds";
+    static float uiSoundsDb (int choice) noexcept { return choice == 1 ? -28.0f : -20.0f; }
+    std::function<void (int)> onUiSoundsChanged;
     std::function<void()> onSignIn;
 
     // The account (ADR 045): signed in or not, and sync. The editor pushes
@@ -198,7 +203,7 @@ private:
 
     // Feedback without telemetry: opens a prefilled GitHub issue with the
     // version and system filled in - the person decides what to send.
-    juce::TextButton feedbackButton;
+    juce::TextButton feedbackButton, communityButton;
 
     // "Offer beta versions" - read by every plugin's update check
     // (UpdateChecker::betaOptInKey in the shared settings file).
@@ -212,6 +217,7 @@ private:
 
     // Live
     SegmentedChoice liveTabChoice;
+    SegmentedChoice uiSoundsChoice;
     juce::TextButton accountButton;
     SegmentedChoice syncChoice;
     juce::TextButton syncNowButton;

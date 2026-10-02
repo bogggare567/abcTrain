@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "Ta lekcja jest na razie tylko po angielsku.",
   "lessons.chooseTitle": "Wybierz lekcję po lewej",
   "lessons.chooseBody": "Każda lekcja to trzy do pięciu minut o jednej rzeczy, którą od razu słychać. Przeczytaj krok i posłuchaj: lekcja sama ustawi gałki EQ, Comp lub Verb w Studiu, a ty możesz przejąć je w każdej chwili – następny krok znów ustawi swoje wartości. Kliknij dowolny krok, by do niego wrócić.",
-  "lessons.booksNote": "Napisane na podstawie książek – Owsinski, Izhaki, Senior, Stavrou, Systematic Mixing Guide – własnymi słowami, z rozdziałem podanym pod każdą lekcją."
+  "lessons.booksNote": "Napisane na podstawie książek – Owsinski, Izhaki, Senior, Stavrou, Systematic Mixing Guide – własnymi słowami, z rozdziałem podanym pod każdą lekcją.",
+  "share.button": "Udostępnij wynik",
+  "share.copied": "Skopiowano — wklej na czacie",
+  "share.won": "Wygrana",
+  "share.lost": "Przegrana",
+  "share.draw": "Remis",
+  "share.rounds": "{{n}} [[runda|rundy|rund]]",
+  "community.open": "Otwórz Community",
+  "community.button": "Community",
+  "community.findOpponent": "Znajdź przeciwnika",
+  "community.battleHint": "Brak przeciwnika? Znajdź go w Community, wątek „Battles”.",
+  "set.uiSounds.title": "Dźwięki interfejsu",
+  "set.uiSounds.hint": "Krótkie sygnały przy odpowiedzi, kroku w górę, końcu bitwy — każdy ma kilka wersji, ta sama nie zabrzmi dwa razy z rzędu. Idą przez wspólny poziom wyjścia.",
+  "set.uiSounds.quiet": "Cicho",
+  "set.uiSounds.normal": "Normalnie"
 }

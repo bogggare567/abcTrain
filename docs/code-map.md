@@ -1554,3 +1554,9 @@ too, only Windows needed the fix (see
   `juce::PropertiesFile` (`ProgressManager`) for per-*user* progress that
   should persist across every session/instance/project regardless of
   host. Don't mix them up when adding new persisted state.
+
+## Community and interface sounds (ADR 053, 054)
+
+- `shared/ui/CommunityLink.h` — the Telegram group's address and `open()`; used by Settings → About, Live → Battle and the results card.
+- `Source/BattleShare.*` — a finished battle as chat text (`format`), filled by `EarTrainerEditor::showRunResults`; `RunResultsComponent` copies it to the clipboard and then offers the community.
+- `shared/audio/UiSounds.*` — the app's one-shots: takes per event from `UiSoundData` (`assets/ui-sounds/<event>-<n>.flac`), no repeated take, ±35 cents / ±1.5 dB, bursts back off; mixed in `EarTrainerProcessor::processBlock` before the output level. `tools/ui_sounds/import.py` prepares takes.

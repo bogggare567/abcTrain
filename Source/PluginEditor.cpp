@@ -1017,6 +1017,19 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the app does not even know the server's address).
     topNav.setItemHidden (TopNavComponent::Item::live,
                           ! localisationProperties.getBoolValue (SettingsScreenComponent::liveTabKey, true));
+    settingsScreen.onUiSoundsChanged = [this] (int choice)
+    {
+        auto& ui = processor.getUiSounds();
+        ui.enabled = choice > 0;
+        ui.levelDb = SettingsScreenComponent::uiSoundsDb (choice);
+        if (choice > 0)
+            ui.trigger (UiSounds::Event::correct);   // so the level is heard
+    };
+    {
+        const auto choice = localisationProperties.getIntValue (SettingsScreenComponent::uiSoundsKey, 2);
+        processor.getUiSounds().enabled = choice > 0;
+        processor.getUiSounds().levelDb = SettingsScreenComponent::uiSoundsDb (choice);
+    }
     settingsScreen.onLiveTabChanged = [this] (bool on)
     {
         topNav.setItemHidden (TopNavComponent::Item::live, ! on);
@@ -1056,6 +1069,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         runResults.setVisible (false);
         showScreen (Screen::home);
     };
+
+    runResults.onOpenCommunity = [] { CommunityLink::open(); };
 
     runResults.onModeChosen = [this] (int mode)
     {
@@ -1231,6 +1246,7 @@ void EarTrainerEditor::openLessons()
         lessonsWindow->centreWithSize (1000, 660);
     }
 
+    processor.getUiSounds().trigger (UiSounds::Event::open);
     lessonsWindow->setVisible (true);
     lessonsWindow->toFront (true);
 }
@@ -2148,6 +2164,10 @@ void EarTrainerEditor::showRunResults (int finalScore)
     RunResultsComponent::Summary summary;
     summary.exerciseName = translateGameName (englishName, localisation);
     const auto duel = session.getMode() == SessionManager::Mode::duel;
+
+    processor.getUiSounds().trigger (! duel ? UiSounds::Event::runEnd
+                                     : session.getDuelOutcome() == SessionManager::Outcome::lost ? UiSounds::Event::battleLost
+                                                                                                 : UiSounds::Event::battleWon);
     summary.modeName = duel ? localisation.getText ("bots.battleWith").replace ("{{bot}}", opponentName())
                             : localisation.getText (session.getMode() == SessionManager::Mode::survival
                                                         ? "ui.modeSurvival" : "ui.modeBlitz");
@@ -2174,6 +2194,35 @@ void EarTrainerEditor::showRunResults (int finalScore)
         summary.pointsNote << "   HP " << juce::roundToInt (session.getPlayerHp()) << " : " << juce::roundToInt (session.getOpponentHp());
     if (duel && onlineResultNote.isNotEmpty())
         summary.pointsNote << "\n" << onlineResultNote;
+
+    // The battle as text for the community chat (ADR 053): only what the
+    // battle produced - names, outcome, HP, rounds, the Decibelo change.
+    if (duel)
+    {
+        BattleShare::Result r;
+        r.exercise = summary.exerciseName;
+        auto& account = processor.getLiveAccount();
+        r.you = account.isSignedIn() && account.getNick().isNotEmpty() ? account.getNick()
+                                                                         : localisation.getText ("ui.res.you");
+        r.them = opponentName();
+        r.themBot = onlineOpponent.isEmpty() ? juce::String (BotListener::idOf (session.getOpponent())) : juce::String();
+        const auto outcome = session.getDuelOutcome();
+        r.outcome = outcome == SessionManager::Outcome::won ? BattleShare::Outcome::won
+                  : outcome == SessionManager::Outcome::lost ? BattleShare::Outcome::lost
+                                                             : BattleShare::Outcome::draw;
+        r.hpYou = juce::roundToInt (session.getPlayerHp());
+        r.hpThem = juce::roundToInt (session.getOpponentHp());
+        r.scoreYou = finalScore;
+        r.scoreThem = session.getOpponentScore();
+        r.rounds = localisation.getText ("share.rounds", { { "n", juce::String (session.getRoundsThisRun()) } });
+        r.notes = juce::StringArray::fromLines (onlineResultNote);
+
+        BattleShare::Words w;
+        w.won = localisation.getText ("share.won");
+        w.lost = localisation.getText ("share.lost");
+        w.draw = localisation.getText ("share.draw");
+        summary.shareText = BattleShare::format (r, w);
+    }
 
     const auto roundsThisRun = juce::jmax (1, session.getRoundsThisRun());
     summary.runAccuracy = (float) finalScore / (float) roundsThisRun;
@@ -2330,6 +2379,9 @@ void EarTrainerEditor::showRunResults (int finalScore)
         d.byRange = localisation.getText ("ui.res.byRange");
         d.lastMiss = localisation.getText ("ui.res.lastMiss");
         runResults.setDetailStrings (std::move (d));
+        runResults.setShareStrings (localisation.getText ("share.button"),
+                                    localisation.getText ("share.copied"),
+                                    localisation.getText ("community.open"));
     }
 
     runResults.show (std::move (summary));
@@ -2337,6 +2389,8 @@ void EarTrainerEditor::showRunResults (int finalScore)
 
 void EarTrainerEditor::showAchievementToast (const juce::String& achievementId)
 {
+    if (Achievements::find (achievementId) != nullptr)
+        processor.getUiSounds().trigger (UiSounds::Event::achievement);
     if (const auto* definition = Achievements::find (achievementId))
         achievementToast.show (localisation.getText (definition->layer == Achievements::Layer::milestone
                                                          ? "ui.milestones" : "ui.achievementEarned"),
@@ -2401,6 +2455,15 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
 
     if (isRunHudActive())
         logRoundForRun (outcome.wasCorrect);
+
+    // The app's own cue for the answer (ADR 054): a step up or a record
+    // says more than "right", so it takes the place of it.
+    {
+        using E = UiSounds::Event;
+        processor.getUiSounds().trigger (outcome.newBest ? E::newRecord
+                                       : outcome.leveledUp ? E::stepUp
+                                       : outcome.wasCorrect ? E::correct : E::wrong);
+    }
 
     promotionPips.setVisible (true);
     promotionPips.set (outcome.stepRun, processor.getProgressManager().getStepUpAfter());
@@ -4043,6 +4106,8 @@ void EarTrainerEditor::refreshLiveStrings()
     s.colRecord = g ("live.colRecord", s.colRecord);
     s.ratingEmpty = g ("live.ratingEmpty", s.ratingEmpty);
     s.openOnSite = g ("live.openOnSite", s.openOnSite);
+    s.communityHint = g ("community.battleHint", s.communityHint);
+    s.communityFind = g ("community.findOpponent", s.communityFind);
     s.signInTitle = g ("live.signInTitle", s.signInTitle);
     s.signInSteps = g ("live.signInSteps", s.signInSteps);
     s.waiting = g ("live.waiting", s.waiting);

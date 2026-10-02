@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "Por enquanto, esta aula só está em inglês.",
   "lessons.chooseTitle": "Escolha uma aula à esquerda",
   "lessons.chooseBody": "Cada aula tem de três a cinco minutos sobre uma coisa que dá para ouvir na hora. Leia um passo e escute: a aula ajusta os botões do EQ, Comp ou Verb no Estúdio, e você pode assumir a qualquer momento; o próximo passo volta a definir seus próprios valores. Clique em qualquer passo para voltar a ele.",
-  "lessons.booksNote": "Escrito com base nos livros (Owsinski, Izhaki, Senior, Stavrou, o Systematic Mixing Guide), com nossas próprias palavras e o capítulo indicado abaixo de cada aula."
+  "lessons.booksNote": "Escrito com base nos livros (Owsinski, Izhaki, Senior, Stavrou, o Systematic Mixing Guide), com nossas próprias palavras e o capítulo indicado abaixo de cada aula.",
+  "share.button": "Compartilhar o resultado",
+  "share.copied": "Copiado — cole no chat",
+  "share.won": "Vitória",
+  "share.lost": "Derrota",
+  "share.draw": "Empate",
+  "share.rounds": "{{n}} [[rodada|rodadas]]",
+  "community.open": "Abrir a Community",
+  "community.button": "Community",
+  "community.findOpponent": "Encontrar um adversário",
+  "community.battleHint": "Sem adversário? Encontre um na Community, tópico «Battles».",
+  "set.uiSounds.title": "Sons da interface",
+  "set.uiSounds.hint": "Sinais curtos numa resposta, num passo acima, no fim de uma batalha — várias versões de cada, nunca a mesma duas vezes seguidas. Seguem o nível de saída.",
+  "set.uiSounds.quiet": "Baixo",
+  "set.uiSounds.normal": "Normal"
 }

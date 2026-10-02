@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "Diese Lektion gibt es vorerst nur auf Englisch.",
   "lessons.chooseTitle": "Wähle links eine Lektion",
   "lessons.chooseBody": "Jede Lektion dauert drei bis fünf Minuten und behandelt eine Sache, die du sofort hörst. Lies einen Schritt und hör hin: Die Lektion stellt die Regler von EQ, Comp oder Verb im Studio ein, und du kannst jederzeit übernehmen – der nächste Schritt setzt wieder seine eigenen Werte. Klicke auf einen Schritt, um zu ihm zurückzukehren.",
-  "lessons.booksNote": "Nach den Büchern geschrieben – Owsinski, Izhaki, Senior, Stavrou, der Systematic Mixing Guide – in eigenen Worten, mit dem Kapitel unter jeder Lektion."
+  "lessons.booksNote": "Nach den Büchern geschrieben – Owsinski, Izhaki, Senior, Stavrou, der Systematic Mixing Guide – in eigenen Worten, mit dem Kapitel unter jeder Lektion.",
+  "share.button": "Ergebnis teilen",
+  "share.copied": "Kopiert – füg es im Chat ein",
+  "share.won": "Sieg",
+  "share.lost": "Niederlage",
+  "share.draw": "Unentschieden",
+  "share.rounds": "{{n}} [[Runde|Runden]]",
+  "community.open": "Community öffnen",
+  "community.button": "Community",
+  "community.findOpponent": "Gegner finden",
+  "community.battleHint": "Kein Gegner? Such dir einen in der Community, Thema „Battles“.",
+  "set.uiSounds.title": "Interface-Sounds",
+  "set.uiSounds.hint": "Kurze Signale bei einer Antwort, einem Schritt nach oben, dem Ende eines Battles – jeweils mehrere Takes, nie zweimal derselbe hintereinander. Sie folgen dem Ausgangspegel.",
+  "set.uiSounds.quiet": "Leise",
+  "set.uiSounds.normal": "Normal"
 }

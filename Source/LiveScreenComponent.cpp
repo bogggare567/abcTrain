@@ -1,4 +1,5 @@
 #include "LiveScreenComponent.h"
+#include "shared/ui/CommunityLink.h"
 #include <array>
 #include "shared/updates/Version.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
@@ -259,6 +260,12 @@ LiveScreenComponent::LiveScreenComponent()
     }
 
     openSiteButton.onClick = [] { juce::URL ("https://soundkorb.ru/abctrain/rating").launchInDefaultBrowser(); };
+
+    // People to battle are found by hand, in the group's "Battles" topic -
+    // no matchmaking through Telegram, just the way there.
+    communityButton.setComponentID ("live.community");
+    communityButton.onClick = [] { CommunityLink::open(); };
+    addChildComponent (communityButton);
     addChildComponent (openSiteButton);
 
     // ---- overlays ----
@@ -394,6 +401,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
         botChoice.setOptions (ids, text.botNames);
     }
     openSiteButton.setButtonText (text.openOnSite);
+    communityButton.setButtonText (text.communityFind);
     inviteList.setStrings ({ text.nameCol, text.mailCol, text.codeCol, text.namePlaceholder, text.mailPlaceholder, text.cancel });
     playAButton.setButtonText (text.playA);
     playBButton.setButtonText (text.playB);
@@ -738,7 +746,7 @@ void LiveScreenComponent::refreshVisibility()
         b->setVisible (onSeminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
 
     for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &searchButton,
-                     (juce::Component*) &battleSignInButton,
+                     (juce::Component*) &battleSignInButton, (juce::Component*) &communityButton,
                      (juce::Component*) &botChoice, (juce::Component*) &botStartButton })
         c->setVisible (battle);
 
@@ -923,7 +931,12 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
         }
         searchButton.setBounds (row);
     }
-    battleSignInButton.setBounds (cardA.reduced (Spacing::large).removeFromBottom (controlHeight + 4).removeFromLeft (160));
+    {
+        auto bottom = cardA.reduced (Spacing::large).removeFromBottom (controlHeight + 4);
+        battleSignInButton.setBounds (bottom.removeFromLeft (160));
+        bottom.removeFromLeft (Spacing::small);
+        communityButton.setBounds (bottom.removeFromRight (juce::jmin (240, bottom.getWidth())));
+    }
 }
 
 void LiveScreenComponent::layoutRating (juce::Rectangle<int> area)
@@ -1191,8 +1204,12 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
 
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
+        auto bottom = a.withTrimmedBottom (controlHeight + 4 + Spacing::small);
+        auto hint = bottom.removeFromBottom (36);
         LnF::fitLines (g, signedIn ? text.battleOnline : text.battleNeedsAccount,
-                       a.withTrimmedBottom (controlHeight + 4 + Spacing::medium), juce::Justification::topLeft, 6, 0.85f);
+                       bottom.withTrimmedBottom (Spacing::small), juce::Justification::topLeft, 6, 0.85f);
+        g.setColour (theme.text);
+        LnF::fitLines (g, text.communityHint, hint, juce::Justification::bottomLeft, 2, 0.85f);
     }
 
     paintCard (g, cardB, text.botTitle);

@@ -1,4 +1,5 @@
 #include "SettingsScreenComponent.h"
+#include "shared/ui/CommunityLink.h"
 #include "shared/ui/IdleScreensaver.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
@@ -224,6 +225,18 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         addAndMakeVisible (languageChoice);
     }
 
+    // ---- the app's own sounds ------------------------------------------
+    uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
+    uiSoundsChoice.onChange = [this] (int value)
+    {
+        properties.setValue (uiSoundsKey, value);
+        properties.saveIfNeeded();
+
+        if (onUiSoundsChanged != nullptr)
+            onUiSoundsChanged (value);
+    };
+    addAndMakeVisible (uiSoundsChoice);
+
     // ---- Live and the account ------------------------------------------
     liveTabChoice.setValue (properties.getBoolValue (liveTabKey, true) ? 1 : 0);
     liveTabChoice.onChange = [this] (int value)
@@ -409,6 +422,10 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     };
     addAndMakeVisible (feedbackButton);
 
+    communityButton.setComponentID ("settings.community");
+    communityButton.onClick = [] { CommunityLink::open(); };
+    addAndMakeVisible (communityButton);
+
     betaToggle.onClick = [this]
     {
         properties.setValue (UpdateChecker::betaOptInKey,
@@ -454,6 +471,7 @@ void SettingsScreenComponent::buildRows()
 
         { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, standardControlWidth, false, Page::hearing },
         { "set.hearingProfile.title", "set.hearingProfile.hintNone", &profileRow, 0, false, Page::hearing },
+        { "set.uiSounds.title",     "set.uiSounds.hint",     &uiSoundsChoice, 0, false, Page::hearing },
         { "set.hearingApply.title", "set.hearingApply.hint",  &applyChoice,    0, false, Page::hearing },
         { "set.hearingOn.title",    "set.hearingOn.hint",    &hearingOn,      0, false, Page::hearing },
         { "set.break.title",        "set.break.hint",        &breakMinutes,   0, true,  Page::hearing },
@@ -607,6 +625,7 @@ void SettingsScreenComponent::refresh()
     chooseBackgroundButton.setButtonText (t ("ui.chooseImage"));
     clearBackgroundButton.setButtonText (t ("ui.clearImage"));
     feedbackButton.setButtonText (t ("ui.feedback"));
+    communityButton.setButtonText (t ("community.button"));
     refreshBetaToggle();
 
     themeChoice.setOptions ({ 0, 1 }, { t ("set.theme.light"), t ("set.theme.dark") });
@@ -616,6 +635,8 @@ void SettingsScreenComponent::refresh()
     autoUpdateChoice.setOptions ({ 0, 1 }, { t ("set.autoUpdate.manual"), t ("set.autoUpdate.auto") });
     checkNowButton.setButtonText (t ("set.checkNow.button"));
     liveTabChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
+    uiSoundsChoice.setOptions ({ 0, 1, 2 }, { t ("set.off"), t ("set.uiSounds.quiet"), t ("set.uiSounds.normal") });
+    uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
     accountButton.setButtonText (t (accountSignedIn ? "set.account.signOut" : "set.account.signIn"));
     syncChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
     syncNowButton.setButtonText (t ("set.syncNow.button"));
@@ -890,6 +911,7 @@ void SettingsScreenComponent::selectPage (Page page)
     licenceView.setVisible (page == Page::about);
     licenceToggle.setVisible (page == Page::about);
     feedbackButton.setVisible (page == Page::about);
+    communityButton.setVisible (page == Page::about);
     betaToggle.setVisible (page == Page::about);
 
     syncControlsFromSettings();
@@ -998,7 +1020,7 @@ void SettingsScreenComponent::resized()
     if (currentPage == Page::about)
     {
         page.removeFromTop (AbcTrainTheme::Spacing::medium);
-        auto body = page.removeFromTop (juce::jmin (page.getHeight() - 44, 420))
+        auto body = page.removeFromTop (juce::jmin (page.getHeight() - 88, 420))
                         .removeFromLeft (juce::jmin (page.getWidth(), 760));
         licenceView.setBounds (body);
         auto row = juce::Rectangle<int> (body.getX(), body.getBottom() + AbcTrainTheme::Spacing::small,
@@ -1008,6 +1030,11 @@ void SettingsScreenComponent::resized()
         feedbackButton.setBounds (row.removeFromLeft (juce::jmin (280, row.getWidth() / 2)));
         row.removeFromLeft (AbcTrainTheme::Spacing::small);
         betaToggle.setBounds (row.removeFromLeft (juce::jmin (220, row.getWidth())));
+
+        // The people around abcTrain: a second row, quieter than the rest.
+        auto row2 = juce::Rectangle<int> (body.getX(), row.getBottom() + AbcTrainTheme::Spacing::small,
+                                          body.getWidth(), controlHeight);
+        communityButton.setBounds (row2.removeFromLeft (juce::jmin (280, row2.getWidth())));
     }
 
     closeButton.setBounds (pageBounds().removeFromBottom (32).removeFromRight (100));

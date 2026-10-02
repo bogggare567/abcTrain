@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "このレッスンは現在英語のみです。",
   "lessons.chooseTitle": "左からレッスンを選んでください",
   "lessons.chooseBody": "各レッスンは 3〜5 分で、すぐに聴き取れることをひとつだけ扱います。ステップを読んで聴いてください。レッスンがスタジオの EQ、Comp、Verb のノブを設定しますが、いつでも自分で操作できます。次のステップでまた独自の値に設定されます。ステップをクリックすると、そこに戻れます。",
-  "lessons.booksNote": "Owsinski、Izhaki、Senior、Stavrou、Systematic Mixing Guide などの書籍をもとに独自の言葉で書き、各レッスンの下に該当する章を記しています。"
+  "lessons.booksNote": "Owsinski、Izhaki、Senior、Stavrou、Systematic Mixing Guide などの書籍をもとに独自の言葉で書き、各レッスンの下に該当する章を記しています。",
+  "share.button": "結果を共有",
+  "share.copied": "コピーしました — チャットに貼り付けてください",
+  "share.won": "勝利",
+  "share.lost": "敗北",
+  "share.draw": "引き分け",
+  "share.rounds": "{{n}} ラウンド",
+  "community.open": "Community を開く",
+  "community.button": "Community",
+  "community.findOpponent": "対戦相手を探す",
+  "community.battleHint": "相手がいない？ Community の「Battles」トピックで探そう。",
+  "set.uiSounds.title": "インターフェース音",
+  "set.uiSounds.hint": "回答、ステップアップ、バトル終了時の短い合図。各数テイクあり、同じ音は続けて鳴りません。出力レベルに従います。",
+  "set.uiSounds.quiet": "小",
+  "set.uiSounds.normal": "標準"
 }

@@ -1332,5 +1332,19 @@
   "lessons.englishOnly": "本课暂时只有英文版。",
   "lessons.chooseTitle": "请在左侧选择一节课",
   "lessons.chooseBody": "每节课三到五分钟，只讲一件马上就能听出来的事。读一步，然后听：课程会在工作室里设置 EQ、Comp 或 Verb 的旋钮，你随时可以接手——下一步会重新设置它自己的数值。点击任意一步即可回到那一步。",
-  "lessons.booksNote": "根据 Owsinski、Izhaki、Senior、Stavrou 的著作和 Systematic Mixing Guide 用我们自己的话写成，每节课下方都注明了对应章节。"
+  "lessons.booksNote": "根据 Owsinski、Izhaki、Senior、Stavrou 的著作和 Systematic Mixing Guide 用我们自己的话写成，每节课下方都注明了对应章节。",
+  "share.button": "分享结果",
+  "share.copied": "已复制——粘贴到聊天中",
+  "share.won": "胜利",
+  "share.lost": "失败",
+  "share.draw": "平局",
+  "share.rounds": "{{n}} 回合",
+  "community.open": "打开 Community",
+  "community.button": "Community",
+  "community.findOpponent": "寻找对手",
+  "community.battleHint": "没有对手？到 Community 的「Battles」话题里找。",
+  "set.uiSounds.title": "界面音效",
+  "set.uiSounds.hint": "回答、升级、对战结束时的短提示音——每种都有多个版本，不会连续播放同一个。随输出电平变化。",
+  "set.uiSounds.quiet": "小",
+  "set.uiSounds.normal": "正常"
 }

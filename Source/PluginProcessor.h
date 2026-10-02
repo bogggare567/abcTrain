@@ -1,6 +1,7 @@
 #pragma once
 
 #include "shared/audio/ClipPreview.h"
+#include "shared/audio/UiSounds.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "GameManager.h"
@@ -158,8 +159,14 @@ public:
     // trainer's own signal is off (menus), so it can never mix into a round.
     ClipPreview& getClipPreview() noexcept { return clipPreview; }
 
+    // The app's own one-shots (ADR 054). Triggered from the editor, mixed
+    // before the output level so the monitoring knob turns them down too;
+    // silent during the hearing test and calibration.
+    UiSounds& getUiSounds() noexcept { return uiSounds; }
+
 private:
     ClipPreview clipPreview;
+    UiSounds uiSounds;
 
     std::atomic<bool> hearingTest { false };
     ProbeTone probeTone;

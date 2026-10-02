@@ -19,6 +19,21 @@ RunResultsComponent::RunResultsComponent()
     homeButton.onClick = [this] { if (onGoHome != nullptr) onGoHome(); };
     addAndMakeVisible (homeButton);
 
+    shareButton.setComponentID ("results.share");
+    shareButton.onClick = [this]
+    {
+        if (summary.shareText.isEmpty())
+            return;
+        juce::SystemClipboard::copyTextToClipboard (summary.shareText);
+        shared = true;
+        refreshShare();
+    };
+    addChildComponent (shareButton);
+
+    communityButton.setComponentID ("results.community");
+    communityButton.onClick = [this] { if (onOpenCommunity != nullptr) onOpenCommunity(); };
+    addChildComponent (communityButton);
+
     startTimerHz (tickHz);
 }
 
@@ -48,9 +63,33 @@ void RunResultsComponent::setStrings (juce::String title, juce::String again, ju
     repaint();
 }
 
+void RunResultsComponent::setShareStrings (juce::String share, juce::String copied, juce::String community)
+{
+    shareLabel = std::move (share);
+    copiedLabel = std::move (copied);
+    communityLabel = std::move (community);
+    refreshShare();
+}
+
+void RunResultsComponent::refreshShare()
+{
+    const auto offer = summary.shareText.isNotEmpty();
+    shareButton.setVisible (offer);
+    shareButton.setButtonText (shared ? copiedLabel : shareLabel);
+    communityButton.setVisible (offer && shared);
+    communityButton.setButtonText (communityLabel);
+
+    for (auto* b : modeButtons)
+        b->setVisible (! offer);
+
+    resized();
+}
+
 void RunResultsComponent::show (Summary newSummary)
 {
     summary = std::move (newSummary);
+    shared = false;
+    refreshShare();
 
     appearAmount = 0.0f;
     countAmount = 0.0f;
@@ -516,7 +555,15 @@ void RunResultsComponent::resized()
     // two mode buttons at 128 plus a gap need 272px against the ~204 this
     // row actually has once "Play again" and "Home" have taken their side,
     // so they used to run underneath them.
-    if (! modeButtons.isEmpty())
+    // A battle: share instead of the other modes - "again" and "show
+    // someone" are what a battle ending asks for.
+    if (summary.shareText.isNotEmpty())
+    {
+        shareButton.setBounds (footer.removeFromLeft (juce::jmin (220, footer.getWidth() / 2)));
+        footer.removeFromLeft (Spacing::small);
+        communityButton.setBounds (footer.removeFromLeft (juce::jmin (200, footer.getWidth() - Spacing::small)));
+    }
+    else if (! modeButtons.isEmpty())
     {
         const auto gaps = Spacing::small * (modeButtons.size() - 1);
         const auto width = juce::jlimit (72, 128,
@@ -547,7 +594,8 @@ void RunResultsComponent::setModeOffer (juce::String caption, juce::StringArray 
 
         auto* button = modeButtons.add (new juce::TextButton (modeNames[i]));
         button->onClick = [this, i] { if (onModeChosen != nullptr) onModeChosen (i); };
-        addAndMakeVisible (*button);
+        addChildComponent (*button);
+        button->setVisible (summary.shareText.isEmpty());
     }
 
     resized();
