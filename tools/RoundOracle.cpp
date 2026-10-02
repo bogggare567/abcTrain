@@ -10,8 +10,8 @@
 //
 // Protocol, one line each way:
 //   in:  <exercise index> <level> <seed>
-//   out: {"continuous":false,"correct":1}
-//        {"continuous":true,"correctNorm":0.4321,"tolerance":0.0625}
+//   out: {"continuous":false,"correct":1,"bucket":2}
+//        {"continuous":true,"correctNorm":0.4321,"tolerance":0.0625,"bucket":3}
 //        {"error":"..."}
 // About 1 ms a question after a ~0.2 s start.
 
@@ -33,11 +33,24 @@ static juce::String answerFor (GameManager& manager, int exercise, int level, ju
     game.seedNextRound (seed);
     game.newRound();
 
+    // Which part of the exercise the round falls in (the skill bucket) - for
+    // the answers the server keeps to train the bots on (b07). A game knows
+    // it only after an answer, so the right one is given here, after the
+    // answer has been read off.
     if (game.usesContinuousScale())
-        return "{\"continuous\":true,\"correctNorm\":" + juce::String (game.getCorrectNormalised(), 6)
-             + ",\"tolerance\":" + juce::String (game.getToleranceNormalised(), 6) + "}";
+    {
+        const auto norm = game.getCorrectNormalised();
+        const auto tol = game.getToleranceNormalised();
+        game.submitNormalisedAnswer (norm);
+        return "{\"continuous\":true,\"correctNorm\":" + juce::String (norm, 6)
+             + ",\"tolerance\":" + juce::String (tol, 6)
+             + ",\"bucket\":" + juce::String (game.getSkillBucketForRound()) + "}";
+    }
 
-    return "{\"continuous\":false,\"correct\":" + juce::String (game.getCorrectChoiceIndex()) + "}";
+    const auto correct = game.getCorrectChoiceIndex();
+    game.submitAnswer (correct);
+    return "{\"continuous\":false,\"correct\":" + juce::String (correct)
+         + ",\"bucket\":" + juce::String (game.getSkillBucketForRound()) + "}";
 }
 
 int main()

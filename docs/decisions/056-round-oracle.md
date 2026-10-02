@@ -42,6 +42,17 @@ deploy.sh rsyncs it and checks it starts). It needs `libasound2t64`,
 `libfontconfig1`, `libfreetype6` on the VPS — the engine links the shared UI
 module. A narrower link (engine only) is a later cleanup.
 
+## Training data for the bots (b07)
+
+The oracle also names the round's skill bucket (the part of the exercise —
+frequency range, pan zone, reverb type), so every judged round becomes a
+row: exercise, bucket, level, error, rating, answer time — no player. The
+site keeps them (`abctrain_round_answers`); `scripts/abctrain-export-answers.mjs`
+writes the CSV `tools/bots/train_bots.py --answers` fits. So the bots are
+synthesized first (the hearing-literature teacher, as since ADR 046) and
+fitted to real players once there are enough rounds — a "human" bot, then
+per-rating twins.
+
 ## Not done
 
 Hiding the setting from a memory reader inside the app — impossible while
