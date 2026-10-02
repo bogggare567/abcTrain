@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "Für heute geschafft",
   "dose.done": "{{n}} [[Minute|Minuten]] Hören heute. Mehr ist freiwillig – eine Pause und morgen bringen mehr als eine Stunde extra.",
   "set.loudness.title": "Lautheitsangleich",
-  "set.loudness.hint": "Wie bearbeitete und unbearbeitete Seite gleich laut gemacht werden. RMS: reine Energie. BS.1770: K-gewichtet wie ein LUFS-Meter – näher am Gehör, wenn sich die Höhen oder der tiefste Bass ändern."
+  "set.loudness.hint": "Wie bearbeitete und unbearbeitete Seite gleich laut gemacht werden. RMS: reine Energie. BS.1770: K-gewichtet wie ein LUFS-Meter – näher am Gehör, wenn sich die Höhen oder der tiefste Bass ändern.",
+  "sounds.packs": "Pakete laden…",
+  "sounds.packsLoading": "Frage GitHub…",
+  "sounds.packsNone": "Noch keine Pakete veröffentlicht.",
+  "sounds.packsOffline": "GitHub antwortet nicht – prüf die Verbindung.",
+  "sounds.packsDownloading": "Lade…"
 }

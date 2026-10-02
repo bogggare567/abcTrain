@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "Na dziś gotowe",
   "dose.done": "{{n}} [[minuta|minuty|minut]] słuchania dzisiaj. Dalej — jak chcesz: przerwa i jutro nauczą więcej niż dodatkowa godzina.",
   "set.loudness.title": "Wyrównanie głośności",
-  "set.loudness.hint": "Jak strona przetworzona i oryginalna stają się równie głośne. RMS: sama energia. BS.1770: ważenie K, jak w mierniku LUFS — bliżej słuchu, gdy zmiana dotyczy góry albo samego dołu."
+  "set.loudness.hint": "Jak strona przetworzona i oryginalna stają się równie głośne. RMS: sama energia. BS.1770: ważenie K, jak w mierniku LUFS — bliżej słuchu, gdy zmiana dotyczy góry albo samego dołu.",
+  "sounds.packs": "Pobierz paczki…",
+  "sounds.packsLoading": "Pytamy GitHub…",
+  "sounds.packsNone": "Nie ma jeszcze opublikowanych paczek.",
+  "sounds.packsOffline": "GitHub nie odpowiedział — sprawdź połączenie.",
+  "sounds.packsDownloading": "Pobieranie…"
 }

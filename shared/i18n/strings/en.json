@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "Done for today",
   "dose.done": "{{n}} minutes of listening today. More is up to you - a break and tomorrow teach more than an extra hour.",
   "set.loudness.title": "Loudness match",
-  "set.loudness.hint": "How the treated and untreated sides are made equally loud. RMS: plain energy. BS.1770: K-weighted, as a LUFS meter - closer to the ear when a change moves the top or the very bottom."
+  "set.loudness.hint": "How the treated and untreated sides are made equally loud. RMS: plain energy. BS.1770: K-weighted, as a LUFS meter - closer to the ear when a change moves the top or the very bottom.",
+  "sounds.packs": "Download packs...",
+  "sounds.packsLoading": "Asking GitHub...",
+  "sounds.packsNone": "No packs published yet.",
+  "sounds.packsOffline": "GitHub did not answer - check the connection.",
+  "sounds.packsDownloading": "Downloading..."
 }

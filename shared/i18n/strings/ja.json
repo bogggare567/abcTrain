@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "今日の分は達成",
   "dose.done": "今日は {{n}} 分聴きました。続けるかは自由です — 休憩と明日のほうが、1時間の追加より多くを教えてくれます。",
   "set.loudness.title": "音量の揃え方",
-  "set.loudness.hint": "処理あり／なしを同じ音量にする方法。RMS：単純なエネルギー。BS.1770：LUFS メーターと同じ K 特性 — 高域や最低域が変わるときに耳の感覚に近い。"
+  "set.loudness.hint": "処理あり／なしを同じ音量にする方法。RMS：単純なエネルギー。BS.1770：LUFS メーターと同じ K 特性 — 高域や最低域が変わるときに耳の感覚に近い。",
+  "sounds.packs": "パックをダウンロード…",
+  "sounds.packsLoading": "GitHub に問い合わせ中…",
+  "sounds.packsNone": "まだ公開されたパックはありません。",
+  "sounds.packsOffline": "GitHub から応答がありません — 接続を確認してください。",
+  "sounds.packsDownloading": "ダウンロード中…"
 }

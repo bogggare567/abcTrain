@@ -1564,3 +1564,4 @@ too, only Windows needed the fix (see
 - Daily dose (t02): `ProgressManager::getPracticeSecondsToday`, `EarTrainerEditor::refreshToday` → `TopNavComponent::setToday`; Settings → Training «Доза на день».
 - Loudness match (t03, ADR 055): `GainMatch::mode` RMS / BS.1770 K-weighting (`kRms`), set from Settings → Training.
 - Battle judge (b05, ADR 056): `tools/RoundOracle.cpp` answers "exercise level seed" with the right answer for the site server; `tests/RoundOracleTest` holds that a seeded round depends on those three only.
+- Sound packs (s03): `shared/audio/PackCatalog` lists .zip assets of abcTrain-library releases and downloads one; `TrainingSoundsComponent::choosePack` hands it to the ordinary import. Mini-DAW sketch (p04): docs/design/mini-daw.md.

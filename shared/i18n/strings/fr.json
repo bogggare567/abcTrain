@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "Fini pour aujourd'hui",
   "dose.done": "{{n}} [[minute|minutes]] d'écoute aujourd'hui. La suite est facultative : une pause et demain vous apprendront plus qu'une heure de plus.",
   "set.loudness.title": "Égalisation du volume",
-  "set.loudness.hint": "Comment les côtés traité et non traité sont rendus aussi forts. RMS : l'énergie seule. BS.1770 : pondération K, comme un indicateur LUFS — plus proche de l'oreille quand le changement touche l'aigu ou l'extrême grave."
+  "set.loudness.hint": "Comment les côtés traité et non traité sont rendus aussi forts. RMS : l'énergie seule. BS.1770 : pondération K, comme un indicateur LUFS — plus proche de l'oreille quand le changement touche l'aigu ou l'extrême grave.",
+  "sounds.packs": "Télécharger des packs…",
+  "sounds.packsLoading": "Interrogation de GitHub…",
+  "sounds.packsNone": "Aucun pack publié pour l'instant.",
+  "sounds.packsOffline": "GitHub n'a pas répondu — vérifiez la connexion.",
+  "sounds.packsDownloading": "Téléchargement…"
 }

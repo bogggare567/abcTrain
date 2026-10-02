@@ -298,6 +298,7 @@ target_sources(abc_audio INTERFACE
     ${abcShared}/audio/InstrumentLabel.cpp
     ${abcShared}/audio/LessonAudioBed.cpp
     ${abcShared}/audio/UiSounds.cpp
+    ${abcShared}/audio/PackCatalog.cpp
     ${abcShared}/audio/HearingProfile.cpp
 )
 target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -671,6 +672,7 @@ target_sources(EarTrainerTests
         tests/UiSoundsTest.cpp
         tests/LoudnessMatchTest.cpp
         tests/RoundOracleTest.cpp
+        tests/PackCatalogTest.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
         Source/BattleShare.cpp

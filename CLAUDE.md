@@ -109,6 +109,8 @@ Learner*/Source (no PluginEntry) abc_learner_eq/comp/verb, abc_learners — plug
 - **Offline-first:** no account, no server, no telemetry in anything
   installed. The one request the app makes on its own is the release
   list for the update check, and it has a switch in Settings (ADR 042).
+  Sound packs from abcTrain-library are listed and downloaded only when
+  the player presses "Download packs" (PackCatalog).
   Live (seminars, battles) is a separate deployable; the app connects to
   it only when the player opens Live himself. A local seminar (ADR 047)
   opens a listening socket on the local network only while the presenter

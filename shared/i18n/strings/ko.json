@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "오늘 분량 완료",
   "dose.done": "오늘 {{n}}분 들었습니다. 더 할지는 자유입니다 — 휴식과 내일이 추가 한 시간보다 더 많이 가르칩니다.",
   "set.loudness.title": "음량 맞추기",
-  "set.loudness.hint": "처리된 쪽과 원본을 같은 음량으로 맞추는 방식. RMS: 단순 에너지. BS.1770: LUFS 미터와 같은 K 가중 — 고역이나 최저역이 바뀔 때 귀에 더 가깝습니다."
+  "set.loudness.hint": "처리된 쪽과 원본을 같은 음량으로 맞추는 방식. RMS: 단순 에너지. BS.1770: LUFS 미터와 같은 K 가중 — 고역이나 최저역이 바뀔 때 귀에 더 가깝습니다.",
+  "sounds.packs": "팩 다운로드…",
+  "sounds.packsLoading": "GitHub에 묻는 중…",
+  "sounds.packsNone": "아직 공개된 팩이 없습니다.",
+  "sounds.packsOffline": "GitHub가 응답하지 않습니다 — 연결을 확인하세요.",
+  "sounds.packsDownloading": "다운로드 중…"
 }

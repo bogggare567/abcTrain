@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "今天已完成",
   "dose.done": "今天听了 {{n}} 分钟。之后随意——休息和明天比多练一小时更有用。",
   "set.loudness.title": "响度匹配",
-  "set.loudness.hint": "处理前后如何调成同样响。RMS：单纯能量。BS.1770：K 加权，与 LUFS 表相同——当改变涉及高频或极低频时更接近听感。"
+  "set.loudness.hint": "处理前后如何调成同样响。RMS：单纯能量。BS.1770：K 加权，与 LUFS 表相同——当改变涉及高频或极低频时更接近听感。",
+  "sounds.packs": "下载音色包…",
+  "sounds.packsLoading": "正在询问 GitHub…",
+  "sounds.packsNone": "暂无已发布的音色包。",
+  "sounds.packsOffline": "GitHub 没有响应——请检查网络。",
+  "sounds.packsDownloading": "正在下载…"
 }

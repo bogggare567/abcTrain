@@ -1,4 +1,5 @@
 #include "TrainingSoundsComponent.h"
+#include "shared/audio/PackCatalog.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/audio/InstrumentLabel.h"
@@ -42,6 +43,10 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
 
     importButton.onClick = [this] { importAndSort(); };
     addAndMakeVisible (importButton);
+
+    packsButton.setComponentID ("sounds.packs");
+    packsButton.onClick = [this] { choosePack(); };
+    addAndMakeVisible (packsButton);
 
     // A loop of your own choosing, from any track on disk: pick the file,
     // drag across its waveform, save.
@@ -166,6 +171,8 @@ void TrainingSoundsComponent::setStrings (Strings strings)
         text.importHint = keptHint;
 
     importButton.setButtonText (text.importAndSort);
+    if (! packsBusy)
+        packsButton.setButtonText (text.packs);
     fragmentButton.setButtonText (text.fragmentFromTrack);
     saveSelectionButton.setButtonText (text.saveFragment);
     cancelSelectionButton.setButtonText (text.cancelSelection);
@@ -1532,6 +1539,9 @@ void TrainingSoundsComponent::resized()
     importButton.setBounds (rail.removeFromBottom (34));
     rail.removeFromBottom (6);
 
+    packsButton.setBounds (rail.removeFromBottom (28));
+    rail.removeFromBottom (4);
+
     fragmentButton.setBounds (rail.removeFromBottom (28));
     rail.removeFromBottom (4);
 
@@ -1662,6 +1672,70 @@ void TrainingSoundsComponent::chooseFilesToImport()
 
             safeThis->startImport (chosen);
         });
+}
+
+void TrainingSoundsComponent::choosePack()
+{
+    if (packsBusy || importRunning)
+        return;
+
+    packsBusy = true;
+    packsButton.setButtonText (text.packsLoading);
+    packsButton.setEnabled (false);
+
+    juce::Component::SafePointer<TrainingSoundsComponent> safe (this);
+    PackCatalog::fetch ([safe] (std::vector<PackCatalog::Entry> list, juce::String error)
+    {
+        if (safe == nullptr)
+            return;
+
+        const auto reset = [safe]
+        {
+            safe->packsBusy = false;
+            safe->packsButton.setEnabled (true);
+            safe->packsButton.setButtonText (safe->text.packs);
+        };
+
+        if (list.empty())
+        {
+            reset();
+            safe->text.importHint = error == "offline" ? safe->text.packsOffline : safe->text.packsNone;
+            safe->refresh();
+            return;
+        }
+
+        juce::PopupMenu menu;
+        for (size_t i = 0; i < list.size(); ++i)
+            menu.addItem ((int) i + 1, list[i].name.upToLastOccurrenceOf (".zip", false, true)
+                                           + "   " + juce::String ((double) list[i].bytes / 1.0e6, 1) + " MB");
+
+        menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&safe->packsButton),
+                            [safe, list, reset] (int chosen)
+        {
+            if (safe == nullptr)
+                return;
+            if (chosen <= 0)
+            {
+                reset();
+                return;
+            }
+
+            safe->packsButton.setButtonText (safe->text.packsDownloading);
+            PackCatalog::download (list[(size_t) chosen - 1], [safe, reset] (juce::File zip)
+            {
+                if (safe == nullptr)
+                    return;
+                reset();
+                if (! zip.existsAsFile())
+                {
+                    safe->text.importHint = safe->text.packsOffline;
+                    safe->refresh();
+                    return;
+                }
+                safe->startImport ({ zip });   // the ordinary import: installPack
+            });
+        });
+    });
 }
 
 void TrainingSoundsComponent::startImport (const juce::Array<juce::File>& files)

@@ -68,6 +68,10 @@ public:
         juce::String title, sourceSection, trainOnSection, chooseFolder, openFolder;
         juce::String pinkNoise, close, empty, pickCategory, clipsHeading;
         juce::String importAndSort, importing, importedClips, importedNothing, importHint;
+        // Packs from abcTrain-library on GitHub (s03).
+        juce::String packs { "Download packs..." }, packsLoading { "Asking GitHub..." },
+                     packsNone { "No packs published yet." }, packsOffline { "GitHub did not answer - check the connection." },
+                     packsDownloading { "Downloading..." };
         juce::String trainingOnPinkNoise, trainingOnFile, shuffling;
         juce::String builtInPercussive, builtInSustained, builtInLoops { "Built-in loops" };
         juce::String exerciseSound, trainingOnExerciseSound, credits;
@@ -139,6 +143,9 @@ private:
 
     void importAndSort();
     juce::TextButton importButton;
+    juce::TextButton packsButton;   // s03: PackCatalog
+    bool packsBusy = false;
+    void choosePack();
 
     // ---- your own fragment (2026-09-24) ----
     // Drag across the big waveform to select; Save cuts it into a loop

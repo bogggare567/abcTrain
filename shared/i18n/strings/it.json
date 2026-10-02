@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "Fatto per oggi",
   "dose.done": "{{n}} [[minuto|minuti]] di ascolto oggi. Il resto è facoltativo: una pausa e domani insegnano più di un'ora in più.",
   "set.loudness.title": "Allineamento del volume",
-  "set.loudness.hint": "Come i lati trattato e non trattato vengono resi ugualmente forti. RMS: energia pura. BS.1770: pesatura K, come un misuratore LUFS — più vicina all'orecchio quando il cambiamento tocca gli alti o il basso estremo."
+  "set.loudness.hint": "Come i lati trattato e non trattato vengono resi ugualmente forti. RMS: energia pura. BS.1770: pesatura K, come un misuratore LUFS — più vicina all'orecchio quando il cambiamento tocca gli alti o il basso estremo.",
+  "sounds.packs": "Scarica pacchetti…",
+  "sounds.packsLoading": "Chiedo a GitHub…",
+  "sounds.packsNone": "Nessun pacchetto pubblicato per ora.",
+  "sounds.packsOffline": "GitHub non ha risposto: controlla la connessione.",
+  "sounds.packsDownloading": "Download in corso…"
 }

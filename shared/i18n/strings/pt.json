@@ -1355,5 +1355,10 @@
   "dose.doneCaption": "Feito por hoje",
   "dose.done": "{{n}} [[minuto|minutos]] de escuta hoje. O resto é opcional: uma pausa e o dia de amanhã ensinam mais que uma hora extra.",
   "set.loudness.title": "Igualação de volume",
-  "set.loudness.hint": "Como os lados processado e original ficam igualmente altos. RMS: energia pura. BS.1770: ponderação K, como um medidor LUFS — mais perto do ouvido quando a mudança mexe nos agudos ou no grave extremo."
+  "set.loudness.hint": "Como os lados processado e original ficam igualmente altos. RMS: energia pura. BS.1770: ponderação K, como um medidor LUFS — mais perto do ouvido quando a mudança mexe nos agudos ou no grave extremo.",
+  "sounds.packs": "Baixar pacotes…",
+  "sounds.packsLoading": "Consultando o GitHub…",
+  "sounds.packsNone": "Ainda não há pacotes publicados.",
+  "sounds.packsOffline": "O GitHub não respondeu — verifique a conexão.",
+  "sounds.packsDownloading": "Baixando…"
 }

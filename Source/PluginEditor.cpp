@@ -3449,6 +3449,11 @@ void EarTrainerEditor::refreshLocalisedText()
         sounds.importedClips      = localisation.getText ("ui.importedClips");
         sounds.importedNothing    = localisation.getText ("ui.importedNothing");
         sounds.importHint         = localisation.getText ("ui.importHint");
+        sounds.packs              = localisation.getText ("sounds.packs");
+        sounds.packsLoading       = localisation.getText ("sounds.packsLoading");
+        sounds.packsNone          = localisation.getText ("sounds.packsNone");
+        sounds.packsOffline       = localisation.getText ("sounds.packsOffline");
+        sounds.packsDownloading   = localisation.getText ("sounds.packsDownloading");
         sounds.trainingOnPinkNoise= localisation.getText ("ui.soundsOnPinkNoise");
         sounds.trainingOnFile     = localisation.getText ("ui.soundsOnFile");
         sounds.shuffling          = localisation.getText ("ui.soundsShuffling");
