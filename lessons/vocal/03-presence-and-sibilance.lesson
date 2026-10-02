@@ -1,0 +1,97 @@
+id: vocal-presence-sibilance
+course: vocal
+order: 3
+minutes: 5
+plugin: eq
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 14 «Эквалайзеры», разделы «Сибилянты» и «Вокалы»; M. Senior, «Mixing Secrets for the Small Studio», ch. 13, «Sibilance Reduction», ch. 15; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 7 и ch. 9, «De-Essing»; «Систематизированный гид по сведению», гл. 5 (таблица частот вокала); Б. Овсински, «Настольная книга звукорежиссёра», раздел о частотных диапазонах; «Микширование тяжёлой музыки», раздел о де-эссере; база знаний abcTrain, COMP-012, PSY-009
+title.ru: Присутствие и шипящие: где живут слова
+title.en: Presence and sibilance: where the words live
+
+@step
+@eq-reset
+@eq 1 highpass 100
+@highlight 2000 9000
+ru: Голос с фильтром на 100 Гц из первого урока. Теперь слушайте верх: между 2 и 5 кГц
+    живёт разборчивость — по этой области мы понимаем слова. Выше, примерно
+    от 5 до 9 кГц, свистят «с», «ш», «щ», «ч», а в русском тексте их много.
+en: The voice with the 100 Hz filter from lesson one. Now listen to the top: between
+    2 and 5 kHz lives intelligibility — this is the region we understand words by.
+    Higher, roughly 5 to 9 kHz, is where «s», «sh», «shch» and «ch» hiss, and Russian
+    lyrics are full of them.
+
+@step
+@eq 2 bell 3000 3 1.0
+@highlight 2000 5000
+ru: Широкий подъём +3 дБ на 3 кГц. Согласные стали чётче, голос придвинулся к слушателю
+    и легче пробьётся сквозь гитары. Поднимайте эту область широкой полосой и
+    понемногу: у сценического динамического микрофона здесь уже есть свой подъём
+    присутствия.
+en: A wide +3 dB boost at 3 kHz. The consonants are clearer, the voice has moved toward
+    the listener and will cut through guitars more easily. Boost this region wide and
+    a little at a time: a stage dynamic mic already has a presence lift of its own here.
+
+@step
+@eq 2 bell 3000 9 1.0
+ru: А вот +9 дБ. Голос режет уши и быстро утомляет: к области около 3 кГц слух
+    особенно чувствителен. На живой записи вместе с голосом вылезли гитары и тарелки
+    из протечки — эквалайзер не отличает их от вокала.
+en: And here is +9 dB. The voice stabs the ears and tires them quickly: hearing is
+    especially sensitive around 3 kHz. On a live recording the guitar and cymbal bleed
+    jumped out with the voice — the EQ can't tell them apart from the vocal.
+
+@step
+@eq 2 bell 3000 2.5 1.0
+@eq 3 bell 7000 10 6
+@highlight 5000 9000
+ru: Присутствие снова +2,5 дБ. Третья полоса — узкий подъём +10 дБ на 7 кГц:
+    так ищут, где именно свистит «с». Эта частота у каждого певца и микрофона своя,
+    поэтому на своём материале её находят, проводя такой узкий подъём между 5 и 9 кГц,
+    пока шипящие не станут невыносимыми.
+en: Presence back to +2.5 dB. Band 3 is a narrow +10 dB boost at 7 kHz: this is how you
+    find exactly where the «s» whistles. That frequency is different for every singer
+    and mic, so on your own material you sweep this narrow boost between 5 and 9 kHz
+    until the sibilants become unbearable.
+
+@step
+@eq 3 bell 7000 -5 5
+ru: Вырежьте найденную частоту: −5 дБ узкой полосой. «С» перестали колоть, а
+    присутствие на 3 кГц осталось. Это замена де-эссеру, когда его нет под рукой,
+    но с оговоркой: де-эссер приглушает только сами шипящие, а эквалайзер режет эту
+    полосу всегда. Поэтому вырез держат узким и неглубоким.
+en: Cut the frequency you found: −5 dB, narrow. The «s» sounds no longer sting, and
+    the presence at 3 kHz is still there. This stands in for a de-esser when you don't
+    have one, with a caveat: a de-esser ducks only the sibilants themselves, while the
+    EQ cuts that band all the time. So keep the cut narrow and shallow.
+
+@step
+@eq 3 bell 7000 -12 2
+ru: Для сравнения — перерез: −12 дБ широкой полосой. Голос потускнел, а певец
+    зашепелявил, будто без передних зубов. Шипящие должны остаться в голосе, только
+    без свиста.
+en: For comparison, overdone: −12 dB with a wide band. The voice has gone dull and the
+    singer lisps as if missing his front teeth. The sibilants should stay in the voice,
+    just without the whistle.
+
+@step
+@eq 3 bell 7000 -5 5
+@bypass on
+ru: Вырез снова −5 дБ. Теперь сравните с исходником: без обработки слова менее
+    разборчивы, а «с» после компрессии из прошлого урока кололи бы ещё сильнее.
+en: The −5 dB cut is back. Now compare with the original: unprocessed, the words are
+    less intelligible, and after the compression from the last lesson the «s» sounds
+    would sting even harder.
+
+@step
+@bypass off
+ru: У женского голоса шипящие обычно выше, ближе к 8–10 кГц, а присутствие —
+    около 4–5 кГц. В рэпе текст — главное, поэтому присутствие поднимают смелее,
+    но и шипящие лечат тщательнее. В хоре «с» у разных певцов звучат вразнобой и
+    растягиваются в длинное шипение; его прибирают широким мягким вырезом, а певцов
+    просят чётко договаривать.
+en: In a female voice sibilance is usually higher, nearer 8–10 kHz, and presence around
+    4–5 kHz. In rap the lyric is everything, so presence is boosted more boldly, but
+    sibilance is treated more carefully too. In a choir the singers' «s» sounds don't
+    line up and smear into a long hiss; it is tamed with a wide gentle cut, and the
+    singers are asked to land their consonants together.

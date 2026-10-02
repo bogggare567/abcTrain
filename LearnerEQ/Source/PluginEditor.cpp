@@ -505,6 +505,22 @@ void LearnerEQEditor::chooseInstrument (int index)
     refreshLesson();
 }
 
+void LearnerEQEditor::setLessonHighlight (juce::Range<float> hz, const juce::String& label)
+{
+    if (hz.isEmpty())
+    {
+        chooseInstrument (instrument);
+        return;
+    }
+
+    SpectrumAnalyserComponent::CustomZone zone;
+    zone.lowHz = hz.getStart();
+    zone.highHz = hz.getEnd();
+    zone.name = label;
+    zone.colour = AbcTrainTheme::current().accentWarm;
+    spectrum.setCustomZones ({ zone });
+}
+
 void LearnerEQEditor::refreshLesson()
 {
     if (instrument < 0)

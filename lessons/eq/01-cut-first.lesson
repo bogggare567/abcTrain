@@ -1,0 +1,89 @@
+id: eq-cut-first
+course: eq
+order: 1
+minutes: 4
+plugin: eq
+material: vocal
+author: abcTrain
+sources: Б. Овсински, «Настольная книга звукорежиссёра», гл. 5 «Элемент третий: частотный диапазон — эквализация» (общие советы, «золотые» правила); B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 7, «Method 1: Equalize for Definition»; Д. Гибсон, «Искусство сведения», гл. 4, «Использование эквалайзера: инструкции шаг за шагом»; R. Izhaki, «Mixing Audio» (рус. пер.), гл. 14 «Эквалайзеры», «Параметрические фильтры»; M. Senior, «Mixing Secrets for the Small Studio», ch. 11.2, «Some Applications of Notching»; М. Ставроу, «Сведение с разумом», ч. II, «Эквалайзер — Не крутите наугад!»; база знаний abcTrain, EQ-001
+title.ru: Сначала убрать, потом добавить
+title.en: Cut first, then boost
+
+@step
+@eq-reset
+ru: Голос без обработки. Прежде чем трогать эквалайзер, послушайте его
+    полностью и ответьте себе на один вопрос: что в нём мешает? Не «чего
+    не хватает», а что лишнее: гул, «коробка», звон, резкость.
+en: The voice with nothing on it. Before you touch the EQ, listen to the
+    whole thing and answer one question: what gets in the way? Not "what is
+    missing" but what is too much: boom, boxiness, ringing, harshness.
+
+@step
+@eq 1 bell 400 12 8
+@highlight 300 600
+ru: Чтобы найти лишнее, полосу временно превращают в лупу: узкий Bell,
+    Q 8, подъём +12 дБ. Так любой резонанс в этой зоне становится
+    преувеличенно заметным. Держите громкость мониторов пониже — сильный
+    узкий подъём бьёт по ушам.
+en: To find what is too much, turn a band into a magnifying glass for a
+    moment: a narrow Bell, Q 8, boosted +12 dB. Any resonance in this area
+    now sticks out on purpose. Keep the monitors down — a strong narrow
+    boost is hard on the ears.
+
+@step
+@eq 1 bell 800 12 8
+@highlight 600 1000
+ru: Лупа сдвинулась на 800 Гц. Сравните с прошлым шагом: где голос
+    сильнее гудит или звенит, как в картонной коробке? Это и есть поиск
+    частоты «прогоном». Пользуйтесь им как учебным приёмом: опытные
+    инженеры предупреждают, что постоянный прогон притупляет слух и
+    приучает искать на ощупь, а не слушать.
+en: The magnifier has moved to 800 Hz. Compare with the last step: where
+    does the voice honk or ring more, like inside a cardboard box? That is
+    the boost-and-sweep search. Treat it as a learning aid: experienced
+    engineers warn that sweeping all the time dulls your hearing and
+    teaches you to grope instead of listen.
+
+@step
+@eq 1 bell 500 -5 4
+@highlight 400 650
+ru: Допустим, хуже всего звучало около 500 Гц (на вашем голосе точка
+    может быть другой — подстройте частоту сами). Найденную частоту не
+    поднимают, а вырезают: −5 дБ. Q 4 — уже, чем для подъёма, но
+    шире, чем при поиске. Вырезают обычно узко, чтобы не забрать у голоса
+    тело.
+en: Say it sounded worst around 500 Hz (on your voice the spot may differ —
+    move the frequency yourself). You do not boost what you found, you cut
+    it: −5 dB. Q 4 is narrower than you would use for a boost but wider
+    than the search. Cuts are usually narrow so the voice keeps its body.
+
+@step
+@bypass on
+ru: Эквалайзер выключен. Коробка вернулась? Переключайтесь коротко — на
+    секунду-две: ухо хорошо замечает разницу при мгновенном сравнении и
+    быстро привыкает к любому звуку, если слушать его долго.
+en: The EQ is bypassed. Did the boxiness come back? Switch quickly, for a
+    second or two: the ear is good at hearing a difference in an instant
+    A/B and quickly gets used to anything you listen to for long.
+
+@step
+@bypass off
+@eq 2 bell 3000 2 0.8
+@highlight 2000 4500
+ru: Только теперь добавляем: широкий Bell, Q 0,8, +2 дБ на 3 кГц —
+    разборчивость и близость голоса. После выреза хватает небольшого
+    подъёма. Принцип прост: вырезать узко, поднимать широко и понемногу.
+en: Only now do we add: a wide Bell, Q 0.8, +2 dB at 3 kHz — clarity and
+    closeness. After the cut, a small boost is enough. The rule is simple:
+    cut narrow, boost wide and gently.
+
+@step
+@eq-off 1
+ru: Вырез убран, подъём остался. Голос стал чуть громче и ярче, но коробка
+    снова на месте — и рука тянется добавить ещё верха. Так и начинается
+    эквализация «всё громче и громче». Сначала уберите мешающее, потом
+    решайте, чего действительно не хватает.
+en: The cut is gone, the boost is still on. The voice is a bit louder and
+    brighter, but the boxiness is back — and you feel like adding more top.
+    That is how "louder and louder" EQ starts. Take out what is in the way
+    first, then decide what is really missing.

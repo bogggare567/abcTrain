@@ -14,7 +14,10 @@ inline MicroLesson buildVocalSpaceLesson()
         { "Dry signal, no reverb.",
           { { P::dryWetParamId, 0.0f }, { P::bypassParamId, 0.0f }, { P::typeParamId, 2.0f },
             { P::decayParamId, 1.5f }, { P::preDelayParamId, 0.0f }, { P::sizeParamId, 50.0f },
-            { P::dampingParamId, 30.0f }, { P::widthParamId, 100.0f } } },
+            { P::dampingParamId, 30.0f }, { P::widthParamId, 100.0f },
+            // On a send, as a voice's reverb is in a real mix: the dry voice
+            // stays whole and Mix becomes the return fader.
+            { P::routingParamId, (float) P::send } } },
         { "Add Plate reverb: 1.5 s decay, 20% wet.",
           { { P::typeParamId, 2.0f }, { P::decayParamId, 1.5f }, { P::dryWetParamId, 20.0f } } },
         { "Pre-Delay 40 ms - separate the voice from the reverb before it blooms.",

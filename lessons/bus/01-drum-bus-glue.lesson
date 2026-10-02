@@ -1,0 +1,89 @@
+id: bus-drum-glue
+course: bus
+order: 1
+minutes: 5
+plugin: comp
+material: drums
+author: abcTrain
+sources: M. Senior, «Mixing Secrets for the Small Studio», гл. 19.1 «Buss Compression»; R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», разделы «Время срабатывания компрессии (Attack)», «Время восстановления компрессора (Release)»; Б. Овсински, «Настольная книга звукорежиссёра», «Настройка компрессора»; база знаний abcTrain, COMP-003, COMP-007
+title.ru: Склейка на шине барабанов
+title.en: Glue on the drum bus
+
+@step
+@bypass off
+@comp threshold=0 ratio=1 attack=30 release=150 knee=6 makeup=0 mix=100
+ru: Установка, собранная в одну группу. Каждый барабан уже обработан на своём
+    канале, так что задача шины — не выровнять, а склеить: чтобы бочка,
+    рабочий, тарелки и комната звучали как один инструмент. Компрессор пока
+    стоит на 1:1.
+en: A drum kit summed to one group. Each drum is already processed on its own
+    channel, so the job of the bus is not to even things out but to glue them:
+    kick, snare, cymbals and room should sound like one instrument. The
+    compressor is still at 1:1.
+
+@step
+@comp threshold=-12 ratio=2
+ru: Ratio 2:1, порог такой, чтобы на самых громких ударах индикатор
+    показывал 1–3 дБ, не больше. Если видите 5–6 дБ, поднимите Threshold.
+    Для склейки этого хватает: важна не глубина, а то, что все барабаны
+    теперь управляют одним общим усилением.
+en: Ratio 2:1 with the threshold set so the loudest hits show 1–3 dB on the
+    meter, no more. If you see 5–6 dB, raise Threshold. That is enough for
+    glue: what matters is not depth but that all the drums now drive one shared
+    gain.
+
+@step
+@comp attack=1
+ru: Для контраста — Attack 1 мс. Компрессор срезает начало каждого удара:
+    бочка и рабочий теряют щелчок, установка сплющивается и уходит назад.
+    На шине это почти всегда ошибка.
+en: For contrast, Attack 1 ms. The compressor shaves the start off every hit:
+    the kick and snare lose their click, the kit flattens and moves back. On a
+    bus this is almost always a mistake.
+
+@step
+@comp attack=30
+ru: Attack 30 мс — привычная отправная точка для шины. Удар проходит целым,
+    компрессор вступает чуть позже и слегка прижимает хвосты. Барабаны
+    сохраняют панч и при этом звучат плотнее и цельнее.
+en: Attack 30 ms is the usual starting point for a bus. The hit gets through
+    whole, the compressor comes in a little later and gently holds down the
+    tails. The drums keep their punch and sound denser and more of a piece.
+
+@step
+@comp release=700
+ru: Теперь Release 700 мс. Индикатор почти не возвращается к нулю: усиление
+    снижено постоянно, и компрессор работает как обычный фейдер. Склейки нет,
+    барабаны просто стали тише.
+en: Now Release 700 ms. The meter hardly returns to zero: the gain is cut all
+    the time and the compressor behaves like a plain fader. There is no glue,
+    the drums are just quieter.
+
+@step
+@comp release=150
+ru: Release 150 мс. Подстраивайте его по индикатору: стрелка должна уходить
+    на сильных долях и возвращаться до следующего удара, то есть «дышать»
+    в темпе песни. Тогда компрессия качает вместе с грувом, а не против него.
+en: Release 150 ms. Fine-tune it by watching the meter: it should dip on strong
+    beats and come back before the next hit — breathing at the tempo of the
+    song. Then the compression moves with the groove, not against it.
+
+@step
+@comp makeup=2
+ru: Makeup +2 дБ возвращает то, что забрал компрессор. Без этого сравнение
+    нечестное: более громкий вариант всегда кажется лучше, и вы начнёте
+    добавлять сжатие ради громкости, а не ради звука.
+en: Makeup +2 dB gives back what the compressor took. Without it the comparison
+    is unfair: the louder version always seems better, and you end up adding
+    compression for loudness rather than for sound.
+
+@step
+@bypass on
+ru: Переключайте Bypass. Разница тонкая: со сжатием установка звучит
+    собраннее, комната и хвосты чуть ближе, удары не потеряли атаку. Если
+    без компрессора стало заметно громче или ярче, вы перестарались —
+    вернитесь к меньшему подавлению.
+en: Toggle Bypass. The difference is subtle: compressed, the kit sounds more
+    together, the room and tails are a little closer, and the hits keep their
+    attack. If bypassing makes it clearly louder or brighter, you have gone too
+    far — go back to less gain reduction.

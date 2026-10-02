@@ -1,0 +1,100 @@
+id: eq-frequency-map
+course: eq
+order: 3
+minutes: 5
+plugin: eq
+material: mix
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio» (рус. пер.), гл. 14 «Эквалайзеры», описание диапазонов частотного спектра и раздел «Сибилянты»; Б. Овсински, «Настольная книга звукорежиссёра», гл. 5, рис. 5 «Волшебные частоты» и «золотые» правила эквализации; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 7, «Method 1: Equalize for Definition», ch. 9 о де-эссере; Д. Гибсон, «Искусство сведения», гл. 4, «Использование эквалайзера: инструкции шаг за шагом»; М. Ставроу, «Сведение с разумом», ч. II, «Эквалайзер»; база знаний abcTrain, EQ-007
+title.ru: Частотная карта на слух
+title.en: The frequency map by ear
+
+@step
+@eq-reset
+ru: Микс без обработки. В этом уроке мы не исправляем, а учимся узнавать
+    зоны: каждую по очереди подчеркнём подъёмом и подсветим на графике.
+    Цель — чтобы «300 Гц» или «3 кГц» стали для вас звуком, а не цифрой.
+    Границы зон приблизительные, у разных книг они расходятся на
+    полоктавы.
+en: The mix with nothing on it. In this lesson we do not fix anything; we
+    learn to recognise areas. We will exaggerate each one with a boost and
+    highlight it on the graph. The goal is for "300 Hz" or "3 kHz" to become
+    a sound, not a number. The borders are approximate; books disagree by
+    half an octave.
+
+@step
+@eq 1 bell 300 6 1.2
+@highlight 200 400
+ru: 200–400 Гц, низкая середина. Подъём делает звук мутным, «ватным»,
+    будто микс накрыли одеялом. Здесь накапливается низ почти всех
+    инструментов, поэтому эту зону чаще убирают, чем поднимают.
+en: 200–400 Hz, the low mids. The boost makes the sound muddy and woolly,
+    as if the mix were under a blanket. The low end of almost every
+    instrument piles up here, so this area is cut more often than boosted.
+
+@step
+@eq 1 bell 300 -3 1.2
+ru: Та же зона, вырез −3 дБ. Микс прояснился и стал прозрачнее. Не
+    перестарайтесь: на этих частотах живёт тело инструментов, и глубокий
+    широкий вырез делает звук тонким и холодным.
+en: The same area, cut −3 dB. The mix clears up and opens. Do not overdo
+    it: the body of the instruments lives here, and a deep wide cut makes
+    the sound thin and cold.
+
+@step
+@eq 1 bell 600 6 1.4
+@highlight 400 800
+ru: 400–800 Гц — «коробка». Звук становится картонным, как из закрытого
+    ящика или из дешёвого динамика. Ближе к 1 кГц добавляется гнусавость.
+    Если инструменту не хватает чёткости, причиной часто бывает избыток
+    именно здесь.
+en: 400–800 Hz — boxiness. The sound turns cardboard-like, as if from a
+    closed box or a cheap speaker. Closer to 1 kHz it gets nasal. When an
+    instrument lacks definition, an excess here is often the reason.
+
+@step
+@eq 1 bell 3000 5 1
+@highlight 2000 5000
+ru: 2–5 кГц — присутствие. Звук будто шагнул к вам, слова и атаки стали
+    разборчивее. Слух в этой зоне особенно чувствителен, поэтому уже 2–3 дБ
+    заметны, а лишнее быстро превращается в резкость, от которой устаёшь.
+en: 2–5 kHz — presence. The sound seems to step towards you; words and
+    attacks get clearer. Hearing is especially sensitive here, so even
+    2–3 dB is noticeable, and too much quickly becomes tiring harshness.
+
+@step
+@material vocal
+@eq 1 bell 7000 6 2
+@highlight 5000 9000
+ru: Голос, подъём на 7 кГц. Слушайте «с», «ш», «ч» — они стали свистящими
+    и колючими. Сибилянты обычно лежат около 5–9 кГц, но у каждого голоса
+    и микрофона своя точка. Статичным вырезом их убирают редко: он
+    приглушает весь голос. Чаще берут де-эссер, который работает только в
+    момент шипящей.
+en: Voice, boost at 7 kHz. Listen to "s", "sh", "ch" — they turned
+    whistly and spiky. Sibilance usually sits around 5–9 kHz, but every
+    voice and mic has its own spot. A static cut is rarely the fix, since
+    it dulls the whole voice. A de-esser, which acts only while the "s"
+    sounds, is the usual tool.
+
+@step
+@material mix
+@eq 1 highshelf 12000 3 0.7
+@highlight 10000 20000
+ru: Выше 10 кГц — «воздух». Полка High shelf +3 дБ от 12 кГц: микс
+    раскрылся и заблестел, но громче не стал. Энергии здесь мало, поэтому
+    подъём звучит как лёгкость и пространство. Переборщите — и появятся
+    шипение и стеклянный звон тарелок.
+en: Above 10 kHz — air. A High shelf, +3 dB from 12 kHz: the mix opens up
+    and sparkles without getting louder. There is little energy up here, so
+    a boost reads as lightness and space. Overdo it and you get hiss and
+    glassy cymbals.
+
+@step
+@bypass on
+ru: Сравните с исходным миксом. Теперь закройте глаза и попробуйте
+    назвать каждую зону по памяти: муть, коробка, присутствие, шипящие,
+    воздух. Пока зона не узнаётся на слух, вернитесь к её шагу.
+en: Compare with the original mix. Now close your eyes and try to name each
+    area from memory: mud, box, presence, sibilance, air. If an area does
+    not come to mind by ear yet, go back to its step.

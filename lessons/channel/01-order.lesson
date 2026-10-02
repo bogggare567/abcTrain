@@ -1,0 +1,85 @@
+id: channel-order
+course: channel
+order: 1
+minutes: 4
+plugin: eq
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio» (рус. пер.), гл. 16 «Компрессоры», раздел «До или после эквалайзера?»; гл. 14 «Эквалайзеры», «Применение различных форм»; M. Senior, «Mixing Secrets for the Small Studio», ch. 11.2, «What Order Should I Put EQ and Dynamics Processors?»; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 9, «Placement in the Signal Chain»; Б. Овсински, «Настольная книга звукорежиссёра», гл. 5 (Д. Сассмен о срезе низа на вокале перед компрессором); «The Systematic Mixing Guide» (рус. пер.), гл. 5 «Вокал — центр твоего микса»; база знаний abcTrain, EQ-003
+title.ru: Порядок обработки в канале
+title.en: The order of a channel chain
+
+@step
+@eq-reset
+ru: Сырой вокал. Типичная цепочка на канале: обрезной фильтр → вырез
+    проблемных частот → компрессор → тональная эквализация. Логика в том,
+    что компрессор реагирует на всё, что к нему приходит. Всё, что мешает
+    ему работать, убирают до него; всё, что лепит тембр, — после. В этом
+    уроке обе части собраны на одном эквалайзере, а компрессор стоит
+    между ними мысленно.
+en: The raw vocal. A typical channel chain: high-pass → cut the problem
+    frequencies → compressor → tonal EQ. The logic: a compressor reacts to
+    everything it receives. Whatever gets in its way is removed before it;
+    whatever shapes the tone comes after. In this lesson both parts sit on
+    one EQ, and the compressor stands between them in your head.
+
+@step
+@eq 1 highpass 90 0 0.7
+@highlight 20 90
+ru: Первое звено — High pass на 90 Гц. Удары взрывных, гул стойки и
+    помещения несут много энергии внизу, и компрессор срабатывал бы на
+    них, а не на голос. Поэтому низ на вокале срезают до компрессора, а
+    не после.
+en: First link — High pass at 90 Hz. Plosive bumps, stand and room rumble
+    carry a lot of low-end energy, and the compressor would react to them
+    instead of the voice. That is why the low end of a vocal is cut before
+    the compressor, not after.
+
+@step
+@eq 2 bell 350 -4 3
+@highlight 250 450
+ru: Второе звено — узкий вырез −4 дБ на 350 Гц. Если резонанс выскакивает
+    только на некоторых нотах, компрессор будет давить именно эти ноты
+    сильнее остальных и выровнять партию не сможет. Коррекция, без которой
+    компрессор работает неправильно, ставится перед ним.
+en: Second link — a narrow −4 dB cut at 350 Hz. If a resonance jumps out
+    only on some notes, the compressor will squash exactly those notes
+    harder than the rest and cannot even out the part. Any correction the
+    compressor needs in order to work properly goes before it.
+
+@step
+@bypass on
+ru: Сравните с сырым голосом. Включённый вариант — это то, что «услышит»
+    компрессор: меньше низа и гула, ровнее середина. На сыром голосе ему
+    пришлось бы реагировать на мусор.
+en: Compare with the raw voice. The processed version is what the
+    compressor would "hear": less low end and rumble, smoother mids. On the
+    raw voice it would have to react to junk.
+
+@step
+@bypass off
+@eq 3 bell 3500 3 0.9
+@highlight 2000 5000
+ru: Здесь в цепочке стоит компрессор. Дальше — тон: широкий подъём +3 дБ
+    на 3,5 кГц для присутствия. Этот подъём ставят после компрессора: если
+    поставить его до, компрессор частично придавит то, что вы подняли, а
+    каждое движение эквалайзера будет менять его срабатывание.
+en: The compressor sits here in the chain. Next comes tone: a wide +3 dB
+    boost at 3.5 kHz for presence. This boost goes after the compressor:
+    placed before it, the compressor would partly push down what you raised,
+    and every EQ move would change how it reacts.
+
+@step
+@eq 4 highshelf 10000 2.5 0.7
+@highlight 10000 20000
+ru: Последний штрих — High shelf +2,5 дБ от 10 кГц, «воздух». Это не закон:
+    Овсински советует ставить динамику первой, а некоторые инженеры
+    нарочно поднимают верх вокала до компрессора, чтобы тот сгладил подъём.
+    Общее правило из книг такое: если компрессор работает как надо —
+    эквалайзер после; если нет — попробуйте эквализацию до него и заново
+    проверьте его настройку.
+en: The last touch — High shelf +2.5 dB from 10 kHz, air. This is not a
+    law: Owsinski advises putting dynamics first, and some engineers boost
+    a vocal's top before the compressor on purpose so it smooths the boost.
+    The general rule from the books: if the compressor works as you want,
+    EQ after it; if not, try EQ before it and check its settings again.

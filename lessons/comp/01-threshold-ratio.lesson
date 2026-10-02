@@ -1,0 +1,80 @@
+id: comp-threshold-ratio
+course: comp
+order: 1
+minutes: 4
+plugin: comp
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», разделы «Порог (Threshold)», «Отношение (Ratio)», «Взаимосвязь между порогом и отношением»; M. Senior, «Mixing Secrets for the Small Studio», гл. 9; база знаний abcTrain, COMP-007, COMP-008
+title.ru: Threshold и Ratio: сколько и насколько сильно
+title.en: Threshold and Ratio: how much and how hard
+
+@step
+@bypass off
+@comp threshold=0 ratio=1 attack=10 release=120 knee=0 makeup=0 mix=100
+ru: Голос, компрессор включён, но Ratio 1:1 — он ничего не делает, индикатор
+    подавления усиления стоит на нуле. Послушайте, как фразы то выходят
+    вперёд, то проваливаются: эту разницу мы и будем сокращать.
+en: A voice with the compressor in but Ratio at 1:1, so it does nothing and
+    the gain reduction meter sits at zero. Listen to phrases jumping forward
+    and then sinking back: that is the difference we are going to narrow.
+
+@step
+@comp threshold=-20
+ru: Опускаем Threshold до −20 дБ — и по-прежнему ничего. Порог лишь отделяет
+    то, что компрессор будет трогать, от того, что он оставит в покое. Насколько
+    сильно трогать, решает Ratio, а он пока 1:1.
+en: Threshold down to −20 dB, and still nothing happens. The threshold only
+    divides what the compressor will touch from what it leaves alone. How hard
+    it touches is up to Ratio, which is still 1:1.
+
+@step
+@comp ratio=4
+ru: Ratio 4:1: всё, что выше порога на 8 дБ, на выходе превысит его только на
+    2 дБ — подавление 6 дБ. Смотрите на индикатор: на громких словах он уходит
+    вниз, на тихих возвращается. Голос стал ровнее и заметно тише.
+en: Ratio 4:1: anything 8 dB over the threshold comes out only 2 dB over it,
+    so 6 dB of gain reduction. Watch the meter dip on loud words and come back
+    on quiet ones. The voice is more even and noticeably quieter.
+
+@step
+@comp threshold=-32
+ru: Порог −32 дБ при том же Ratio: теперь сжимается почти весь голос,
+    индикатор показывает 10 дБ и больше и почти не возвращается. Динамика
+    исчезла, слышно, как компрессор «давит» на каждом слове. Это уже слишком.
+en: Threshold at −32 dB with the same Ratio: now almost the whole voice is
+    squeezed, the meter shows 10 dB or more and barely comes back. The dynamics
+    are gone and you can hear the compressor leaning on every word. Too much.
+
+@step
+@comp threshold=-32 ratio=1.5
+ru: Оставим низкий порог, но уменьшим Ratio до 1.5:1. Подавление заметно
+    уменьшилось, и звучит мягче: Threshold определяет, какую часть сигнала
+    обрабатывать, Ratio — насколько круто. Низкий порог с малым Ratio обычно
+    прозрачнее, чем высокий порог с большим.
+en: Keep the low threshold but drop Ratio to 1.5:1. Gain reduction drops
+    noticeably and it sounds gentler: Threshold sets how much of the signal
+    is processed, Ratio sets how steeply. A low threshold with a small ratio is
+    usually more transparent than a high threshold with a big one.
+
+@step
+@comp threshold=-24 ratio=3 makeup=4
+ru: Рабочая точка для голоса: −24 дБ и 3:1, на громких фразах 3–5 дБ
+    подавления. Makeup +4 дБ возвращает потерянную громкость. Выставляйте
+    не цифры на ручках, а число на индикаторе: оно зависит от уровня
+    материала.
+en: A working setting for a voice: −24 dB and 3:1, with 3–5 dB of gain
+    reduction on loud phrases. Makeup +4 dB brings back the lost level. Aim for
+    the number on the meter, not the numbers on the knobs: those depend on how
+    loud the material is.
+
+@step
+@bypass on
+ru: Сравните с исходным голосом, переключая Bypass. Громкость примерно
+    одинаковая, поэтому слышна именно разница в динамике: со сжатием голос
+    держится на одном месте и не прячется за инструментами. Если сравнивать
+    без Makeup, громкий вариант всегда кажется лучше — не попадайтесь.
+en: Compare with the dry voice by toggling Bypass. Loudness is roughly matched,
+    so what you hear is the change in dynamics: compressed, the voice stays in
+    one place and does not hide behind the band. Without makeup the louder
+    version always seems better — don't fall for it.

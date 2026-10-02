@@ -32,6 +32,10 @@ StudioScreenComponent::StudioScreenComponent (Host hostToUse)
         addAndMakeVisible (button);
     }
 
+    lessonsButton.setComponentID ("studio.lessons");
+    lessonsButton.onClick = [this] { if (onLessons) onLessons(); };
+    addAndMakeVisible (lessonsButton);
+
     refreshSwitch();
 }
 
@@ -131,9 +135,11 @@ void StudioScreenComponent::refreshSwitch()
     }
 }
 
-void StudioScreenComponent::setLabels (juce::String studioCaption)
+void StudioScreenComponent::setLabels (juce::String studioCaption, juce::String lessonsLabel)
 {
     caption = std::move (studioCaption);
+    lessonsButton.setButtonText (lessonsLabel.isNotEmpty() ? lessonsLabel : juce::String ("Lessons"));
+    resized();
     repaint();
 }
 
@@ -170,6 +176,10 @@ void StudioScreenComponent::resized()
         button.setBounds (x, bar.getY(), 96, bar.getHeight());
         x += 95;
     }
+
+    // The way to the courses, at the far end of the same bar: the lessons
+    // turn these plugins' knobs, so they open from where the plugins are.
+    lessonsButton.setBounds (bar.removeFromRight (150).withTrimmedRight (20));
 
     if (editor != nullptr)
         editor->setBounds (area);

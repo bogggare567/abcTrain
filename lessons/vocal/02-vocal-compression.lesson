@@ -1,0 +1,94 @@
+id: vocal-compression-steady-alive
+course: vocal
+order: 2
+minutes: 5
+plugin: comp
+material: vocal
+author: abcTrain
+sources: B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 9, «Compressing Vocals»; M. Senior, «Mixing Secrets for the Small Studio», ch. 9, «Compressors in Series»; «Систематизированный гид по сведению», гл. 5, раздел «Компрессия»; «Микширование тяжёлой музыки», раздел о компрессии вокала; база знаний abcTrain, COMP-005, COMP-011
+title.ru: Компрессия вокала: ровно, но живо
+title.en: Compressing a vocal: steady but alive
+
+@step
+@comp threshold=0 ratio=1 attack=20 release=150 knee=6 makeup=0 mix=100
+ru: Компрессор стоит, но не работает: Ratio 1:1. Послушайте, как гуляет уровень:
+    тихие слова тонут, громкие выпрыгивают. На сцене к этому добавляется микрофонная
+    техника — певец то прижимает микрофон к губам, то отводит, и вместе с громкостью
+    меняется и низ из-за эффекта близости.
+en: The compressor is in, but idle: Ratio 1:1. Listen to the level wander: quiet words
+    sink, loud ones jump out. On stage, mic technique adds to it — the singer pushes the
+    mic to his lips, then pulls it away, and with the level the low end changes too,
+    because of the proximity effect.
+
+@step
+@comp threshold=-24 ratio=3 attack=20 release=150 knee=6 makeup=3
+ru: Ratio 3:1, Attack 20 мс, Release 150 мс, мягкое колено. Следите за индикатором
+    подавления: на громких фразах должно быть 3–6 дБ. Если меньше — опустите Threshold,
+    если больше — поднимите. Слова выровнялись, а голос по-прежнему дышит.
+en: Ratio 3:1, Attack 20 ms, Release 150 ms, soft knee. Watch the gain-reduction meter:
+    loud phrases should show 3–6 dB. If it's less, lower the Threshold; if more, raise it.
+    The words have evened out and the voice still breathes.
+
+@step
+@comp attack=1
+ru: Теперь Attack 1 мс. Компрессор успевает зажать начало каждого слова, согласные
+    теряют чёткость, голос становится ватным и уходит назад. Быстрая атака на вокале
+    нужна только для отдельных пиков, а не для основного выравнивания.
+en: Now Attack 1 ms. The compressor clamps the start of every word, consonants lose
+    their edge, the voice turns woolly and steps back. A fast attack on a vocal is for
+    catching odd peaks, not for the main levelling.
+
+@step
+@comp attack=20 release=40
+ru: Attack обратно на 20 мс, а Release сократите до 40 мс. Уровень начинает дёргаться
+    внутри слов, появляются искажения на низких нотах. Release подбирают так, чтобы
+    подавление успевало вернуться к нулю между фразами, но не дрожало внутри слова:
+    для вокала обычно 100–250 мс.
+en: Attack back to 20 ms, and cut the Release to 40 ms. The level starts to flutter
+    inside words and low notes distort. Set the Release so that gain reduction returns
+    to zero between phrases but doesn't wobble inside a word: usually 100–250 ms for
+    a vocal.
+
+@step
+@comp threshold=-40 ratio=10 attack=1 release=60 makeup=12
+ru: Так выглядит одна жёсткая ступень: Ratio 10:1, быстрая атака, подавление
+    15 дБ и больше. Голос ровный, но плоский, пропало дыхание фразы. А на живой записи
+    вылезает ещё одна беда: в паузах компрессор отпускает, и тарелки с мониторами
+    из протечки поднимаются вместе с Makeup.
+en: This is one hard stage: Ratio 10:1, fast attack, 15 dB of reduction and more. The
+    voice is level but flat, the phrasing has lost its breath. On a live recording
+    another problem shows up: in the gaps the compressor lets go, and cymbal and wedge
+    bleed come up along with the Makeup.
+
+@step
+@comp threshold=-24 ratio=3 attack=20 release=150 knee=6 makeup=3
+ru: Вернитесь к мягкой настройке. Когда вокалу нужно больше контроля, лучше поставить
+    две мягкие ступени, чем одну жёсткую. Первая, как здесь, выравнивает фразы на 3–4 дБ;
+    вторая — быстрая, с Ratio 4:1 и выше — срезает только редкие пики на 1–3 дБ.
+    Каждая работает в своей зоне, ни одна не перегружена, и голос остаётся живым.
+en: Go back to the gentle setting. When a vocal needs more control, two gentle stages
+    beat one hard one. The first, like this, levels phrases by 3–4 dB; the second — fast,
+    with Ratio 4:1 or more — shaves only the odd peak by 1–3 dB. Each works in its own
+    range, neither is overloaded, and the voice stays alive.
+
+@step
+@bypass on
+ru: Сравните с исходником. Makeup подобран так, чтобы громкость была примерно равной:
+    иначе громкий вариант всегда кажется лучше. Обратите внимание, что после компрессии
+    громче стали и «с», и дыхание — это прямая дорога к следующему уроку.
+en: Compare with the original. Makeup is set so the loudness roughly matches — otherwise
+    the louder version always seems better. Notice that after compression the «s»
+    sounds and breaths got louder too — which leads straight to the next lesson.
+
+@step
+@bypass off
+ru: Женский голос с большим диапазоном требует той же схемы, но следите за верхними
+    нотами: компрессор сильнее подчёркивает резкость. Рэп обычно жмут сильнее и с
+    быстрой атакой — подача ровная, а разборчивость важнее нюансов. Хор по отдельным
+    голосам почти не компрессируют: баланс задают расстановкой певцов, а на шину ставят
+    1–2 дБ мягкого сжатия.
+en: A female voice with a wide range takes the same scheme, but watch the top notes:
+    compression brings out harshness more. Rap is usually compressed harder and with
+    a faster attack — the delivery is even and intelligibility matters more than nuance.
+    A choir is barely compressed voice by voice: the balance comes from how the singers stand, and
+    the bus gets 1–2 dB of gentle compression.

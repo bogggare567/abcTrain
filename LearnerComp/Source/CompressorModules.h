@@ -224,7 +224,7 @@ namespace CompressorModules
         using TrainingModule::Bed;
 
         return {
-            TrainingModule::walkthrough ("comp.walk.vocal", "A vocal chain, knob by knob.", Bed::bassNote, buildVocalCompressionLesson()),
+            TrainingModule::walkthrough ("comp.walk.vocal", "A vocal chain, knob by knob.", Bed::vocal, buildVocalCompressionLesson()),
             TrainingModule::walkthrough ("comp.walk.glue", "Two or three dB that hold a mix together.", Bed::drumLoop, buildBusGlueLesson()),
             TrainingModule::walkthrough ("comp.walk.attack", "Why a slow attack punches harder.", Bed::drumLoop, buildAttackLesson()),
             TrainingModule::walkthrough ("comp.walk.release", "Where pumping comes from.", Bed::drumLoop, buildReleaseLesson())

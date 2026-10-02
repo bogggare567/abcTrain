@@ -1,0 +1,77 @@
+id: channel-low-end-sidechain
+course: channel
+order: 3
+minutes: 4
+plugin: comp
+material: drums
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio» (рус. пер.), гл. 16 «Компрессоры», разделы «Эквализация боковой цепи» и «До или после эквалайзера?»; M. Senior, «Mixing Secrets for the Small Studio», ch. 11.2, «What Order Should I Put EQ and Dynamics Processors?»; Б. Овсински, «Настольная книга звукорежиссёра», гл. 5 (Д. Сассмен о срезе низа перед компрессором); база знаний abcTrain, EQ-003
+title.ru: Низ управляет компрессором
+title.en: The low end drives the compressor
+
+@step
+@sidechain self hpf=off
+@comp threshold=-24 ratio=4 attack=5 release=80 knee=3 makeup=0 mix=100
+ru: Барабаны через компрессор, фильтр в боковой цепи выключен. Слушайте
+    тарелки: на каждом ударе бочки они проседают. Компрессор реагирует
+    на низ сильнее, чем на верх: у низких частот больше энергии и длиннее
+    период, они дольше держатся над порогом. В итоге бочка решает, когда
+    приглушить всю установку.
+en: Drums through a compressor, the sidechain filter is off. Listen to the
+    cymbals: they dip on every kick. A compressor responds to the low end
+    more than to the top: low frequencies carry more energy and longer
+    cycles, so they stay above the threshold longer. The kick ends up
+    deciding when the whole kit gets turned down.
+
+@step
+@bypass on
+ru: Исходные барабаны. Тарелки звучат ровно, никто их не качает. Запомните
+    это и вернитесь к компрессору.
+en: The original drums. The cymbals are steady; nothing pumps them.
+    Remember this and go back to the compressor.
+
+@step
+@bypass off
+@sidechain self hpf=120
+ru: В боковой цепи включён фильтр на 120 Гц. Это эквалайзер только для
+    «ушей» компрессора: сам звук не изменился, а детектор больше не слышит
+    основной удар бочки. Провалы на тарелках ушли, сжатие стало ровнее.
+en: The sidechain filter is on at 120 Hz. It is an EQ for the compressor's
+    "ears" only: the sound itself is unchanged, but the detector no longer
+    hears the body of the kick. The dips in the cymbals are gone and the
+    compression is smoother.
+
+@step
+@comp threshold=-30
+ru: Без низа на детектор приходит меньше энергии, и подавление уменьшилось.
+    Порог опущен до −30 дБ, чтобы вернуть примерно прежнюю глубину сжатия.
+    Сравните по индикатору: подавление то же, но теперь его распределяют
+    малый барабан и тарелки, а не только бочка.
+en: Without the lows, less energy reaches the detector and gain reduction
+    dropped. The threshold goes down to −30 dB to get back roughly the same
+    amount. Check the meter: the reduction is similar, but now the snare
+    and cymbals share it, not just the kick.
+
+@step
+@sidechain self hpf=200
+ru: Фильтр на 200 Гц. Компрессор почти не замечает ни бочку, ни тело
+    малого и реагирует в основном на верх. Чем выше фильтр, тем меньше
+    низ управляет сжатием, — но в какой-то момент компрессор перестаёт
+    контролировать удары вообще.
+en: The filter at 200 Hz. The compressor barely notices the kick or the
+    body of the snare and responds mostly to the top. The higher the filter,
+    the less the low end drives the compression — but at some point the
+    compressor stops controlling the hits at all.
+
+@step
+@sidechain self hpf=120
+ru: Вернулись к 120 Гц. Обрезной фильтр на канале перед компрессором
+    делает то же самое, но вдобавок убирает низ из звука. На вокале и
+    оверхедах это и нужно — там низ всё равно лишний. На бочке, басе и
+    всей установке низ нужен в звуке, поэтому фильтруют только боковую
+    цепь.
+en: Back to 120 Hz. A high-pass on the channel before the compressor does
+    the same, but also removes the lows from the sound. On vocals and
+    overheads that is exactly what you want — the lows are not needed
+    there. On kick, bass and the whole kit the lows belong in the sound,
+    so only the sidechain gets filtered.

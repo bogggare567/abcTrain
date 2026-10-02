@@ -1,5 +1,7 @@
 #include "shared/audio/LessonAudioBed.h"
 #include "shared/audio/PinkNoiseGenerator.h"
+#include <juce_audio_formats/juce_audio_formats.h>
+#include "SampleBinaryData.h"
 #include <cmath>
 
 namespace LessonAudioBed
@@ -178,6 +180,35 @@ namespace LessonAudioBed
             }
         }
 
+        // The embedded vocal, decoded and resampled to `sampleRate`, into
+        // both channels. Two phrases; the seed picks one, like the other
+        // beds' variations.
+        juce::AudioBuffer<float> decodeVocal (double sampleRate, int seed)
+        {
+            const auto first = (seed % 2) == 0;
+            const auto* data = first ? SampleBinaryData::vocallive01_flac : SampleBinaryData::vocallive02_flac;
+            const auto size = first ? SampleBinaryData::vocallive01_flacSize : SampleBinaryData::vocallive02_flacSize;
+
+            juce::FlacAudioFormat flac;
+            std::unique_ptr<juce::AudioFormatReader> reader (
+                flac.createReaderFor (new juce::MemoryInputStream (data, (size_t) size, false), true));
+
+            if (reader == nullptr || reader->lengthInSamples <= 0)
+                return {};
+
+            juce::AudioBuffer<float> source (1, (int) reader->lengthInSamples);
+            reader->read (&source, 0, source.getNumSamples(), 0, true, false);
+
+            const auto ratio = reader->sampleRate / sampleRate;
+            const auto outLength = juce::jmax (1, (int) ((double) source.getNumSamples() / ratio));
+            juce::AudioBuffer<float> out (2, outLength);
+
+            juce::LagrangeInterpolator interpolator;
+            interpolator.process (ratio, source.getReadPointer (0), out.getWritePointer (0), outLength);
+            out.copyFrom (1, 0, out, 0, 0, outLength);
+            return out;
+        }
+
         void renderPinkNoise (juce::AudioBuffer<float>& buffer)
         {
             PinkNoiseGenerator left, right;
@@ -229,6 +260,7 @@ namespace LessonAudioBed
             case Bed::brightHit: return 3.0;
             case Bed::chord:     return 4.0;
             case Bed::pinkNoise: return 4.0;
+            case Bed::vocal:     return 9.0;  // the phrase itself; see render
         }
 
         return 4.0;
@@ -237,6 +269,19 @@ namespace LessonAudioBed
     juce::AudioBuffer<float> render (Bed bed, double sampleRate,
                                      int variationSeed)
     {
+        // A recording, not a recipe: its own length, its own level shape.
+        if (bed == Bed::vocal)
+        {
+            auto voice = decodeVocal (sampleRate, variationSeed);
+            if (voice.getNumSamples() > 1)
+            {
+                normalise (voice);
+                fadeEdges (voice, sampleRate);
+                return voice;
+            }
+            bed = Bed::chord;   // the media failed to decode: never silence
+        }
+
         const auto numSamples = juce::jmax (1, (int) (lengthSeconds (bed) * sampleRate));
 
         juce::AudioBuffer<float> buffer (2, numSamples);
@@ -309,6 +354,9 @@ namespace LessonAudioBed
             case Bed::pinkNoise:
                 renderPinkNoise (buffer);
                 break;
+
+            case Bed::vocal:
+                break;   // handled above
         }
 
         normalise (buffer);

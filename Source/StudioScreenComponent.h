@@ -53,7 +53,15 @@ public:
     void select (Effect);
     Effect getSelected() const noexcept { return selected; }
 
-    void setLabels (juce::String studioCaption);
+    void setLabels (juce::String studioCaption, juce::String lessonsLabel = {});
+
+    // The course lessons window (ADR 052), opened from the right end of
+    // the switch bar.
+    std::function<void()> onLessons;
+
+    // The editor on show, if any - the lessons window lights a frequency
+    // band on Learner EQ's spectrum through it.
+    juce::AudioProcessorEditor* getEditor() const noexcept { return editor.get(); }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -70,6 +78,7 @@ private:
     juce::String caption;
 
     std::array<juce::TextButton, numEffects> switchButtons;
+    juce::TextButton lessonsButton;
     std::unique_ptr<juce::AudioProcessorEditor> editor;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (StudioScreenComponent)

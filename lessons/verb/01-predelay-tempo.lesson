@@ -1,0 +1,87 @@
+id: verb-predelay-tempo
+course: verb
+order: 1
+minutes: 4
+plugin: verb
+material: vocal
+author: abcTrain
+sources: B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8 «Timing Reverbs to the Track»; Б. Овсински, «Настольная книга звукорежиссёра», разд. «Реверберация звучит лучше, если привязана к темпу»; Д. Гибсон, «Искусство сведения», разд. «Ревербератор: время предварительной задержки»; М. Ставроу, «Сведение с разумом», о пре-дилее и длине хвоста; M. Senior, «Mixing Secrets for the Small Studio», ch. 16.3 «Reverb for Blend»
+title.ru: Пре-дилей в темп песни
+title.en: Pre-delay in time with the song
+
+@step
+@verb type=plate decay=2 predelay=0 size=60 damping=40 width=100 mix=25 routing=send
+ru: Пластина на посыле, Decay 2 с, Pre-delay 0. Реверберация вступает
+    одновременно с голосом и ложится прямо на согласные: слова мягчеют,
+    голос отъезжает назад. Почему так происходит, разобрано в уроке
+    «Пре-дилей: остаться перед комнатой»; здесь подберём значение по темпу.
+en: A plate on a send, Decay 2 s, Pre-delay 0. The reverb starts together
+    with the voice and lands right on the consonants: the words soften and
+    the voice slips back. Why this happens is covered in the lesson
+    "Pre-delay: staying in front of the room"; here we pick the value from
+    the tempo.
+
+@step
+@verb predelay=38
+ru: Считаем от темпа. Четверть в миллисекундах — 60 000 / BPM: при 100 BPM
+    это 600 мс, шестнадцатая — 150 мс. Делим пополам ещё дважды: 75, затем
+    38 мс. Голос успевает прозвучать раньше комнаты, а сама комната
+    вступает в сетку песни, а не случайно.
+en: Work it out from the tempo. A quarter note in milliseconds is
+    60,000 / BPM: at 100 BPM that is 600 ms, a sixteenth is 150 ms. Halve
+    it twice more: 75, then 38 ms. The voice now speaks before the room
+    does, and the room comes in on the song's grid rather than at random.
+
+@step
+@verb predelay=75
+ru: Ещё вдвое больше — 75 мс. Голос стоит отдельно от хвоста и остаётся
+    разборчивым даже при заметном объёме реверберации; длинные значения
+    от 60 мс и выше как раз для этого и ставят. Ближе к 100 мс зазор
+    начнёт слышаться как отдельное отражение.
+en: Double it — 75 ms. The voice stands apart from the tail and stays
+    intelligible even with a fair amount of reverb; settings of 60 ms and up
+    are used for exactly this. Closer to 100 ms the gap starts to be heard
+    as a separate reflection.
+
+@step
+@verb predelay=19
+ru: Теперь в другую сторону — 19 мс, ещё одно деление пополам. Пространство
+    снова прилегает к голосу: звук интимнее, но и чуть дальше. Чем меньше
+    пре-дилей, тем глубже реверберация утягивает источник назад. Самый
+    ходовой диапазон — 20–40 мс, а 20 мс — разумный старт, если считать
+    некогда.
+en: Now the other way — 19 ms, one more halving. The space hugs the voice
+    again: more intimate, but also a little further away. The less
+    pre-delay, the deeper the reverb pulls the source back. The most common
+    range is 20–40 ms, and 20 ms is a sensible start when there is no time
+    to calculate.
+
+@step
+@verb predelay=38 decay=1.4
+ru: Пре-дилей меняет и то, сколько реверберации нужно. Хвост, отделённый
+    от голоса, ухо замечает легче, поэтому Decay можно сократить: здесь
+    1,4 с вместо 2 с при тех же 38 мс. Пространства слышно не меньше,
+    а голос замаскирован меньше.
+en: Pre-delay also changes how much reverb you need. A tail separated from
+    the voice is easier for the ear to notice, so Decay can come down: here
+    1.4 s instead of 2 s with the same 38 ms. You hear no less space, and
+    the voice is masked less.
+
+@step
+@bypass on
+ru: Сравните с сухим голосом. Обратите внимание, что разборчивость с
+    реверберацией почти не потеряна: согласные звучат раньше, чем
+    раскрывается комната.
+en: Compare with the dry voice. Notice that the reverb has cost almost no
+    intelligibility: the consonants arrive before the room opens up.
+
+@step
+@bypass off
+ru: Порядок работы: считайте четверть от темпа, делите её до 1/64 или
+    1/128 ноты и ставьте это значение в Pre-delay. Дальше доводите на слух
+    в пределах нескольких миллисекунд: расчёт даёт сетку, а решение
+    остаётся за ухом.
+en: The routine: work out the quarter note from the tempo, divide it down
+    to a 1/64 or 1/128 note and set that as Pre-delay. Then refine by ear
+    within a few milliseconds: the maths gives the grid, the ear makes the
+    call.

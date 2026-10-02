@@ -1,0 +1,95 @@
+id: routing-shared-space
+course: routing
+order: 2
+minutes: 5
+plugin: verb
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», 2nd ed., гл. 9 «Посылы (Auxiliary sends)»; гл. 23 «Количество и распределение ревербераций», «До или после фейдера?»; M. Senior, «Mixing Secrets for the Small Studio», ch. 16.2–16.3; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8 «Typical Reverb Setups»
+title.ru: Один ревербератор — одно помещение
+title.en: One reverb, one room
+
+@step
+@verb type=hall decay=1.6 predelay=20 size=60 damping=50 width=100 mix=20 routing=send
+ru: Представьте микшер: на возврате aux стоит один зал на 100 % wet, и в
+    него шлют несколько каналов. Сейчас звучит вокал. Пока источник один,
+    Mix работает так же, как ручка посыла с канала вокала.
+en: Picture a mixer: one hall sits on an aux return at 100 % wet, and
+    several channels send to it. Right now you hear the vocal. While there is
+    only one source, Mix behaves just like the send knob on the vocal
+    channel.
+
+@step
+@material snare
+@verb mix=15
+ru: Тот же зал, ни одна ручка ревербератора не тронута — сменился только
+    источник. Малому даём посыл поменьше, чтобы барабаны остались ближе.
+    Уровень посыла у каждого канала свой, а пространство общее.
+en: The same hall, not one reverb knob touched — only the source changed.
+    The snare gets a smaller send so the drums stay closer. Each channel has
+    its own send level, but the space is shared.
+
+@step
+@material guitar
+@verb mix=30
+ru: Гитаре — посыл побольше, и она отходит вглубь. Глубина в миксе
+    строится соотношением сухого звука и реверберации на каждом канале:
+    все инструменты стоят в одном зале на разном расстоянии от слушателя.
+    Поэтому общий ревербератор и склеивает треки, записанные по
+    отдельности, — они начинают звучать так, будто сыграны в одном месте.
+en: The guitar gets a bigger send and moves back. Depth in a mix is built
+    from the ratio of dry sound to reverb on each channel: every instrument
+    stands in the same hall at a different distance from the listener. That
+    is why a shared reverb glues together tracks recorded separately — they
+    start to sound as if played in one place.
+
+@step
+@verb type=spring decay=0.8 size=20 damping=10
+ru: Теперь дадим гитаре свою комнату — металлическую пружину, а голос и
+    малый оставим в зале. Каждая реверберация по отдельности может звучать
+    хорошо, но вместе это несколько несвязанных помещений, и слушатель
+    перестаёт понимать, кто где стоит. Отсюда практика: два-четыре общих
+    пространства на микс, например короткая комната для барабанов и
+    пластина или зал для остального.
+en: Now give the guitar a room of its own — a metallic spring — while the
+    voice and the snare stay in the hall. Each reverb may sound fine on its
+    own, but together they are several unrelated rooms, and the listener
+    can no longer tell who stands where. Hence the practice: two to four
+    shared spaces per mix, for example a short room for the drums and a
+    plate or hall for the rest.
+
+@step
+@verb type=hall decay=1.6 size=60 damping=50
+ru: Вернёмся в общий зал и разберём, откуда посыл берёт копию сигнала.
+    Постфейдерный посыл снимается после фейдера канала: опускаете фейдер —
+    проседает и реверберация, соотношение сухого и комнаты остаётся
+    прежним. Для реверберации в миксе обычно выбирают именно его: при
+    автоматизации громкости или мьюте канала хвост уходит вместе с ним.
+en: Back to the shared hall, and to where a send takes its copy from. A
+    post-fader send is taken after the channel fader: pull the fader down
+    and the reverb drops with it, so the dry-to-room ratio stays the same.
+    That is the usual choice for reverb in a mix: when the channel's level
+    is automated or muted, the tail goes with it.
+
+@step
+@verb routing=insert mix=100
+ru: Префейдерный посыл берёт сигнал до фейдера, и реверберация от фейдера
+    не зависит. Уведите фейдер в ноль — останется ровно то, что звучит
+    сейчас: комната без сухого. В миксе это бывает ошибкой (хвост после
+    мьюта) или приёмом, а на записи префейдерные посылы нужны для
+    мониторинга в наушниках, чтобы движения фейдеров не мешали музыканту.
+en: A pre-fader send takes the signal before the fader, so the reverb does
+    not follow the fader. Pull the fader all the way down and you are left
+    with exactly what plays now: the room without the dry. In a mix that is
+    either a mistake (a tail after the mute) or a trick, and in tracking
+    pre-fader sends feed the headphone mixes so fader moves do not disturb
+    the musician.
+
+@step
+@verb routing=send mix=30
+ru: Обратно на посыл. Схема для микса: общий ревербератор на aux, 100 %
+    wet, посылы постфейдерные; префейдерный посыл — когда эффект должен
+    жить независимо от фейдера канала.
+en: Back to the send. The mix setup: a shared reverb on an aux, 100 % wet,
+    post-fader sends; a pre-fader send when the effect must live
+    independently of the channel fader.

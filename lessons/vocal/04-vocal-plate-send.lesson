@@ -1,0 +1,91 @@
+id: vocal-plate-send
+course: vocal
+order: 4
+minutes: 5
+plugin: verb
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 23 «Реверберация», раздел «Предварительная задержка Pre-delay» и примеры с эквализацией хвоста; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8, «Timing Reverbs to the Track», «Typical Reverb Setups»; M. Senior, «Mixing Secrets for the Small Studio», ch. 16; база знаний abcTrain, SPACE-004, SPACE-009
+title.ru: Вокал в пространстве: плейт на посыле
+title.en: Putting a vocal in space: a plate on a send
+
+@step
+@verb type=plate decay=1.8 predelay=0 size=60 damping=40 width=100 mix=0 routing=send
+ru: Ревербератор стоит на посыле, сейчас возврат на нуле. На посыле сухой голос
+    остаётся нетронутым, а в один ревербератор можно отправить и другие партии, чтобы
+    они оказались в общем пространстве. Тип — Plate: плотный, ровный хвост без
+    отчётливых отражений комнаты, поэтому плейт так любят для вокала.
+en: The reverb is on a send, and the return is at zero for now. On a send the dry voice
+    stays untouched, and other parts can go to the same reverb so they share one space.
+    The type is Plate: a dense, even tail with no distinct room reflections, which is
+    why plates are such a favourite on vocals.
+
+@step
+@verb mix=25
+ru: Подмешайте ревер, Mix 25 %, Pre-delay пока 0. Голос оказался в пространстве, но
+    отошёл назад, а концы слов размылись: хвост начинается в тот же момент, что и
+    слово, и маскирует согласные. Учтите, что в живой записи уже есть сцена и протечки,
+    и в ревер уходят ещё и тарелки.
+en: Bring the reverb in, Mix 25 %, Pre-delay still 0. The voice is in a space now, but it
+    has stepped back and the word endings are smeared: the tail starts the moment the word
+    does and masks the consonants. Bear in mind a live recording already has the stage
+    and bleed in it, and the cymbals go into the reverb too.
+
+@step
+@verb predelay=30
+ru: Pre-delay 30 мс. Слово успевает прозвучать сухим, и только потом вступает хвост.
+    Голос снова впереди, текст разборчив, а пространство осталось. Рабочий диапазон
+    для вокала — примерно 20–40 мс; можно привязать к темпу, взяв долю от
+    шестнадцатой.
+en: Pre-delay 30 ms. The word gets out dry, and only then does the tail come in. The voice
+    is in front again, the lyric is clear, and the space is still there. The working
+    range for a vocal is about 20–40 ms; you can tie it to the tempo by taking
+    a fraction of a sixteenth note.
+
+@step
+@verb predelay=120
+ru: А теперь 120 мс. Ревер отделился от голоса и звучит как отдельный повтор.
+    Это уже самостоятельный эффект, который бывает уместен, но для естественного
+    пространства задержка слишком заметна.
+en: Now 120 ms. The reverb has come apart from the voice and sounds like a separate
+    repeat. That's an effect in its own right and can be the right call, but for
+    a natural space the gap is too obvious.
+
+@step
+@verb predelay=30 decay=4
+ru: Pre-delay снова 30 мс, а Decay — 4 секунды. Хвост тянется на следующие слова, и
+    в быстрой песне голос тонет в каше. Decay подбирают по темпу: хвост должен
+    затихать примерно к следующей доле или к концу такта.
+en: Pre-delay back to 30 ms, and Decay at 4 seconds. The tail runs into the next words,
+    and in a fast song the voice drowns in mush. Set the Decay by the tempo: the tail
+    should die away around the next beat or by the end of the bar.
+
+@step
+@verb decay=1.6 damping=60
+ru: Decay 1,6 с, Damping 60 %. Верх в хвосте гаснет быстрее, и «с» перестали
+    шипеть в ревербераторе отдельно от голоса. Плейт стал теплее и меньше спорит
+    со словами, а прозрачность осталась.
+en: Decay 1.6 s, Damping 60 %. The highs in the tail die away faster, and the «s» sounds
+    no longer hiss in the reverb on their own. The plate is warmer and fights the words
+    less, while staying clear.
+
+@step
+@verb mix=15
+@bypass on
+ru: Mix 15 %. Переключите на исходник и обратно: хороший вокальный ревер
+    замечают, только когда его выключают. Если вы слышите ревер как отдельный звук,
+    скорее всего, его слишком много.
+en: Mix 15 %. Switch to the original and back: a good vocal reverb is hardly noticed
+    until you switch it off. If you hear the reverb as a separate sound, there is
+    probably too much of it.
+
+@step
+@bypass off
+ru: Для женского голоса яркий плейт сильнее подчёркивает шипящие, поэтому Damping
+    ставят выше. Рэп обычно держат суше и ближе: короткая комната или задержка вместо
+    длинного хвоста, чтобы не терять текст. Хор уже записан с пространством зала:
+    ему нужно меньше ревера, а если добавляете, лучше Hall с той же логикой Pre-delay.
+en: For a female voice a bright plate brings out sibilance more, so Damping goes higher.
+    Rap is usually kept drier and closer: a short room or a delay instead of a long tail,
+    so the lyric isn't lost. A choir is already recorded with the hall's space: it needs
+    less reverb, and if you add some, a Hall with the same Pre-delay logic works better.

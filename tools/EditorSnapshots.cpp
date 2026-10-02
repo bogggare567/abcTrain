@@ -172,7 +172,8 @@ namespace
                        liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, eqSlope,
                        liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack,
                        liveRoundOpen, liveRoundAnswer, soundsChecked,
-                       hearingSetup, hearingTest, hearingResult, hearingOffer, eqHearing, studioEQHearing };
+                       hearingSetup, hearingTest, hearingResult, hearingOffer, eqHearing, studioEQHearing,
+                       lessons, lessonEq, lessonComp };
 
     // The hearing profiles file (ADR 051), fresh for every shot: the offer
     // before training already declined - so it does not appear on every
@@ -385,8 +386,16 @@ namespace
             juce::Component* companionShot = nullptr;
 
             if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
+            {
                 if (extra == Extra::liveRoom || extra == Extra::liveRoundOpen || extra == Extra::liveRoundAnswer)
                     companionShot = editor.projectorForSnapshot();
+
+                // The lessons window (ADR 052): the course list alone, then
+                // a lesson mid-way, with the Studio it drives as the main shot.
+                if (extra == Extra::lessons)    companionShot = &editor.lessonsForSnapshot ({}, 0);
+                if (extra == Extra::lessonEq)   companionShot = &editor.lessonsForSnapshot ("eq-frequency-map", 1);
+                if (extra == Extra::lessonComp) companionShot = &editor.lessonsForSnapshot ("comp-sidechain-kick", 2);
+            }
 
             if constexpr (std::is_base_of_v<LearnerEditorBase, EditorType>)
             {
@@ -623,6 +632,9 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQ", -1, Extra::studioEQ);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQHearing", -1, Extra::studioEQHearing);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Lessons", -1, Extra::lessons);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LessonEQ", -1, Extra::lessonEq);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LessonComp", -1, Extra::lessonComp);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingSetup", -1, Extra::hearingSetup);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingTest", -1, Extra::hearingTest);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingResult", -1, Extra::hearingResult);

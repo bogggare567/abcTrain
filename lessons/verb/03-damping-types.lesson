@@ -1,0 +1,90 @@
+id: verb-damping-types
+course: verb
+order: 3
+minutes: 5
+plugin: verb
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», 2nd ed., гл. 23 «Частоты и демпфирование»; Б. Овсински, «Настольная книга звукорежиссёра», разд. «Эквализация реверберации», «Виртуальные планы эффектов»; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 7 «Create Effects Channels», ch. 8 «Types of Reverb»; Д. Гибсон, «Искусство сведения», разд. «Типы помещений»; С. И. Швец, «Акустика для звукорежиссёра», разд. 6.1.5 «Реверберация»
+title.ru: Тёмный хвост, яркий хвост и выбор типа
+title.en: Dark tail, bright tail, and choosing a type
+
+@step
+@verb type=plate decay=1.8 predelay=30 size=60 damping=0 width=100 mix=25 routing=send
+ru: Пластина, Decay 1,8 с, Damping 0. Верх в хвосте живёт столько же,
+    сколько низ: шипящие «с» и «ш» тянутся за голосом, хвост блестит и
+    спорит с ним за внимание. В реальном помещении так не бывает: время
+    реверберации на разных частотах разное, и поверхности с воздухом
+    поглощают верх быстрее низа.
+en: A plate, Decay 1.8 s, Damping 0. The top of the tail lasts as long as
+    the bottom: the "s" and "sh" sounds trail behind the voice, and the tail
+    glitters and competes with it for attention. A real room does not do
+    this: reverb time differs across frequencies, and surfaces and air
+    absorb the top faster than the bottom.
+
+@step
+@verb damping=55
+ru: Damping задаёт, насколько быстрее верх гаснет относительно всего
+    хвоста. При 55 % хвост темнеет по мере затухания, сибилянты в нём
+    исчезают, а реверберация уходит за голос: пространство остаётся, но
+    перестаёт быть на виду. Яркий хвост выставляет эффект напоказ, тёмный —
+    растворяет его в миксе.
+en: Damping sets how much faster the top dies than the tail as a whole. At
+    55 % the tail darkens as it decays, the sibilants in it vanish, and the
+    reverb moves behind the voice: the space is still there but no longer
+    on display. A bright tail puts the effect on show; a dark one dissolves
+    it into the mix.
+
+@step
+@verb damping=90
+ru: Перебор: 90 %. Хвост тусклый и бубнящий, вокруг голоса пропал воздух.
+    Тёмная реверберация кажется дальше, но слишком тёмная звучит как
+    ватная стена. Обычно ищут середину: верх гаснет раньше, но успевает
+    прозвучать.
+en: Too much: 90 %. The tail is dull and boomy, the air around the voice is
+    gone. A dark reverb seems further away, but one that is too dark sounds
+    like a wall of cotton wool. The usual aim is the middle: the top dies
+    first, but it gets to be heard.
+
+@step
+@verb type=hall decay=2.6 predelay=40 size=80 damping=35
+ru: Зал для того же голоса: длинный, ровный, просторный хвост — для
+    медленных песен и больших припевов. Одна из рабочих схем — длинные
+    пространства держать светлее, короткие темнее, чтобы планы не
+    слипались. Пластина звучит плотной с первого мгновения и не задаёт
+    стен помещения, поэтому её так часто ставят на голос.
+en: A hall on the same voice: a long, even, spacious tail — for slow songs
+    and big choruses. One working scheme is to keep long spaces brighter and
+    short ones darker so the layers do not stick together. A plate is dense
+    from the very first instant and implies no walls, which is why it is so
+    often used on vocals.
+
+@step
+@material snare
+@verb type=room decay=1.5 predelay=20 size=35 damping=60
+ru: Малый барабан в тёмной комнате: Decay 1,5 с, Pre-delay 20 мс, Damping
+    60 %. Короткое плотное пространство склеивает барабаны, а тёмный хвост
+    не лезет в верх, где живут тарелки. Стартовой связки «тёмная комната
+    для барабанов, пластина для остального» многим хватает на весь микс.
+en: The snare in a dark room: Decay 1.5 s, Pre-delay 20 ms, Damping 60 %.
+    A short dense space glues the drums, and the dark tail stays out of the
+    top end where the cymbals live. Many engineers find the starting pair
+    "dark room for drums, plate for everything else" enough for a whole mix.
+
+@step
+@verb type=plate decay=1.2 damping=25
+ru: Пластина на малом — тоже классика: плотный, яркий, гладкий хвост,
+    который становится частью звука самого барабана. Она заметнее комнаты
+    и ярче; выбор между ними — вопрос жанра и вкуса, строгого правила
+    здесь нет.
+en: A plate on the snare is a classic too: a dense, bright, smooth tail that
+    becomes part of the drum's own sound. It is more noticeable and brighter
+    than the room; choosing between them is a matter of genre and taste,
+    there is no strict rule.
+
+@step
+@bypass on
+ru: Сравните с сухим малым, затем выключите Bypass и решите, что нужно
+    этой песне: заметная пластина или комната, которая лишь угадывается.
+en: Compare with the dry snare, then switch Bypass off and decide what this
+    song needs: a plate you notice or a room you only sense.

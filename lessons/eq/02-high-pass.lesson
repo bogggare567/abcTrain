@@ -1,0 +1,110 @@
+id: eq-high-pass
+course: eq
+order: 2
+minutes: 5
+plugin: eq
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio» (рус. пер.), гл. 14 «Эквалайзеры», разделы «Фильтр высоких частот» и о крутизне спада; M. Senior, «Mixing Secrets for the Small Studio», ch. 8.2, «High-Pass Filtering», ch. 3.5; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 7, «The Magic High-Pass Filter»; «The Systematic Mixing Guide» (рус. пер.), гл. 4 «Фильтрация частотного диапазона перегруженных гитар», гл. 5 «Вокал — центр твоего микса»; база знаний abcTrain, EQ-004, EQ-008
+title.ru: Обрезной фильтр: куда его ставить
+title.en: High-pass: where to set it
+
+@step
+@eq-reset
+@eq 1 highpass 40 0 0.7
+@highlight 20 40
+ru: Обрезной фильтр (High pass) на 40 Гц. На голосе почти ничего не
+    изменилось — и это правильно: ниже 40 Гц у вокала только гул стойки,
+    шаги и вибрация. Слышно это не всегда, но такой мусор съедает запас
+    по уровню и мутит микс. Убедитесь, что Slope стоит на 12 дБ/окт:
+    урок крутизну не меняет.
+en: A high-pass at 40 Hz. Almost nothing changed on the voice — and that
+    is the point: below 40 Hz a vocal track holds only stand rumble,
+    footsteps and vibration. You do not always hear it, but this junk eats
+    headroom and muddies the mix. Make sure Slope is at 12 dB/oct: the
+    lesson does not change it.
+
+@step
+@eq 1 highpass 80 0 0.7
+@highlight 20 80
+ru: Фильтр на 80 Гц. Для вокала это почти стандартная отправная точка:
+    ниже полезных звуков голоса практически нет, зато есть удары от
+    взрывных «п» и «б» и гул помещения. Голос стал собраннее, но не
+    тоньше.
+en: The filter at 80 Hz. For vocals this is close to a standard starting
+    point: there is practically nothing useful from a voice below it, but
+    there are bumps from plosive "p" and "b" and room rumble. The voice
+    is tighter, not thinner.
+
+@step
+@eq 1 highpass 160 0 0.7
+@highlight 20 160
+ru: Поднимаем до 160 Гц. Где-то по дороге голос начал терять грудь и
+    тело — это и есть граница. Распространённый приём: ведите частоту
+    вверх, пока не услышите изменение в низу, а затем верните её примерно
+    на 15 % ниже.
+en: Up to 160 Hz. Somewhere on the way the voice began losing chest and
+    body — that is the limit. A common method: raise the frequency until
+    you hear the low end change, then bring it back down by about 15 %.
+
+@step
+@eq 1 highpass 135 0 0.7
+@highlight 20 135
+ru: 135 Гц — чуть ниже найденной границы. В плотном миксе вокалу обычно
+    нужно меньше низа, и фильтр ставят выше; в тихой аранжировке — ниже,
+    чтобы голос не стал тонким. Типичный разброс для вокала — от 60 до
+    150 Гц.
+en: 135 Hz — just below the limit you found. In a dense mix a vocal usually
+    needs less low end, so the filter goes higher; in a sparse arrangement
+    it goes lower so the voice does not turn thin. The typical range for
+    vocals is 60 to 150 Hz.
+
+@step
+@material guitar
+@eq 1 highpass 120 0 0.7
+@highlight 20 120
+ru: Гитара, фильтр на 120 Гц. Низ гитары спорит с басом и бочкой, и в
+    миксе его часто срезают — обычно где-то между 60 и 140 Гц. Обратите
+    внимание: аккорды узнаются так же легко. Мозг достраивает срезанные
+    основные тоны по гармоникам, поэтому обрезным фильтром можно работать
+    смелее, чем кажется.
+en: Guitar, filter at 120 Hz. A guitar's low end fights the bass and kick,
+    and in a mix it is often cut — usually somewhere between 60 and 140 Hz.
+    Notice that the chords are just as easy to recognise. The brain rebuilds
+    the missing fundamentals from the harmonics, so you can use a high-pass
+    more boldly than it seems.
+
+@step
+@material kick
+ru: Та же настройка на бочке. Остался щелчок, а тело удара пропало: у
+    бочки основная энергия как раз ниже 100 Гц. То, что спасает голос и гитару, у бочки и баса
+    забирает главное.
+en: The same setting on a kick. The click is left, but the body of the hit
+    is gone: most of a kick's energy lives below 100 Hz. What helps the voice and the guitar takes the most
+    important part away from the kick and bass.
+
+@step
+@eq 1 highpass 35 0 0.7
+@highlight 20 35
+ru: Бочка с фильтром на 35 Гц. Удар на месте, а неслышимый инфранизкий
+    гул убран. Бочке и басу фильтр ставят низко, часто в районе 30–60 Гц.
+    На барабанах слушайте атаку: фильтр может смягчить удар раньше, чем
+    заметно изменится тембр, поэтому его ставят с запасом ниже.
+en: The kick with the filter at 35 Hz. The punch is back, and the inaudible
+    subsonic rumble is gone. On kick and bass the filter goes low, often
+    around 30–60 Hz. On drums, listen to the attack: a filter can soften
+    the hit before the tone noticeably changes, so set it a little lower
+    to be safe.
+
+@step
+@bypass on
+ru: Сравните с исходной бочкой. Разницы почти нет — так и должно быть.
+    О крутизне: для очистки обычно хватает 12–18 дБ/окт; 24 и 48 дБ/окт
+    режут как стена, но сильнее поворачивают фазу у частоты среза. Если
+    Q у фильтра выше 0,7, у границы появляется горб — для чистки это не
+    нужно.
+en: Compare with the original kick. There is almost no difference — as it
+    should be. About slope: for cleanup 12–18 dB/oct is usually enough;
+    24 and 48 dB/oct cut like a wall but turn the phase more around the
+    corner. With Q above 0.7 the filter gets a bump at the corner — you do
+    not want that for cleanup.

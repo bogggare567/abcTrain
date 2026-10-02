@@ -235,6 +235,16 @@ full rationale.
   triple-buffered processor the app runs on the Studio output only.
   Learner EQ draws the active profile as a dashed line
   (`SpectrumAnalyserComponent::setOverlayCurves`).
+- **Course lessons (ADR 052)** — `lessons/<course>/*.lesson` are text
+  (format in `lessons/FORMAT.md`), embedded as `LessonData`.
+  `shared/learning/LessonFile.{h,cpp}` parses and checks one file (pure);
+  `Source/LessonLibrary` holds every shipped one by course;
+  `Source/LessonRunner` turns a step into parameter targets and glides the
+  knobs there; `Source/LessonsPanel` is the window («Уроки» in the Studio
+  bar), which also picks the material (`LessonAudioBed::Bed::vocal` or a
+  `BuiltInSynth` sound) and lights `@highlight` on Learner EQ
+  (`LearnerEQEditor::setLessonHighlight`). `tests/LessonFormatTest` reads
+  every lesson.
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail with the
   **Beginner / Pro** switch at the top and five pages (Training, Hearing,
   Appearance, Background, About), each a column of rows: what it is, one

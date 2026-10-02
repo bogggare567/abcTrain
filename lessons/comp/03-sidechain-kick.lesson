@@ -1,0 +1,88 @@
+id: comp-sidechain-kick
+course: comp
+order: 3
+minutes: 5
+plugin: comp
+material: bass
+author: abcTrain
+sources: M. Senior, «Mixing Secrets for the Small Studio», гл. 13.1 и гл. 14 «The Power of Side Chains»; R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», разделы «Внешняя боковая цепь», «Управление боковой цепью»; база знаний abcTrain, COMP-006
+title.ru: Sidechain: бас уступает бочке
+title.en: Sidechain: the bass makes room for the kick
+
+@step
+@bypass off
+@sidechain kick hpf=off
+@comp threshold=0 ratio=1 attack=1 release=120 knee=0 makeup=0 mix=100
+ru: Бас и учебная бочка в темпе 120 BPM. Ключом компрессора выбрана бочка:
+    он будет слушать её, а убавлять бас. Пока Ratio 1:1 и ничего не
+    происходит. Обратите внимание, как на каждой доле низ бочки и баса
+    складывается в общий гул.
+en: Bass and a practice kick at 120 BPM. The compressor's key is the kick: it
+    will listen to the kick and turn the bass down. Ratio is 1:1 for now, so
+    nothing happens. Notice how on every beat the low end of kick and bass merges
+    into one boom.
+
+@step
+@comp threshold=-30 ratio=4
+ru: Включаем сжатие: на каждом ударе бас проседает на несколько децибел и
+    сразу возвращается. Сам бас компрессор не слушает — команду даёт бочка.
+    Здесь эффект преувеличен, чтобы его было ясно слышно.
+en: Compression on: on every hit the bass dips by several dB and comes straight
+    back. The compressor is not listening to the bass at all — the kick gives
+    the command. The effect is exaggerated here so you can hear it clearly.
+
+@step
+@comp release=400
+ru: Release 400 мс. В 120 BPM между долями 500 мс, и бас едва успевает
+    подняться до следующего удара: он всё время прижат и вяло «качается».
+    Release для ключевой компрессии подбирают по темпу — бас должен
+    вернуться задолго до следующей бочки.
+en: Release 400 ms. At 120 BPM there are 500 ms between beats, and the bass
+    barely recovers before the next hit: it stays held down and pumps sluggishly.
+    Release for keyed compression is set by the tempo: the bass should be back
+    well before the next kick.
+
+@step
+@comp threshold=-22 ratio=3 release=100
+ru: Рабочая настройка: бас уходит на 2–3 дБ только в момент удара; если
+    индикатор показывает больше, поднимите Threshold. Как
+    эффект это почти не слышно, но бочка начинает читаться отчётливее, а
+    низ перестаёт копиться. Сравните, переключая Bypass, — бочка звучит в
+    обоих вариантах.
+en: A working setting: the bass ducks 2–3 dB only at the moment of the hit;
+    if the meter shows more, raise Threshold. You
+    barely hear it as an effect, but the kick reads more clearly and the low end
+    stops piling up. Compare by toggling Bypass — the kick plays in both.
+
+@step
+@sidechain kick hpf=200
+ru: Включаем в ключе фильтр высоких частот 200 Гц — и бас почти перестаёт
+    уходить. Основная энергия бочки лежит ниже 100 Гц, и именно она
+    управляла компрессором. Детектор реагирует прежде всего на низ: это
+    стоит запомнить.
+en: Switch a 200 Hz high-pass into the key, and the bass almost stops ducking.
+    Most of a kick's energy is below 100 Hz, and that is what was driving the
+    compressor. The detector responds above all to low end — worth remembering.
+
+@step
+@sidechain self hpf=off
+@comp threshold=-24 ratio=4 attack=10 release=150
+ru: Теперь ключ — сам бас, обычная компрессия. Если в партии есть низкие
+    ноты, они давят на детектор сильнее высоких: нижнее ми на 41 Гц сожмётся
+    больше, чем ми двумя октавами выше. Следите за индикатором на низких
+    нотах — уровень начинает «качать».
+en: Now the key is the bass itself — ordinary compression. If the part has low
+    notes, they push the detector harder than high ones: a low E at 41 Hz gets
+    squeezed more than the E two octaves up. Watch the meter on the low notes —
+    the level starts to pump.
+
+@step
+@sidechain self hpf=120
+ru: Фильтр 120 Гц в ключе: самые низкие ноты больше не управляют сжатием,
+    компрессия становится ровнее по всей партии. Сам звук фильтр не трогает —
+    срезан только сигнал, который слушает детектор. Тот же приём спасает
+    шину барабанов и мастер-шину от раскачки бочкой.
+en: A 120 Hz filter in the key: the lowest notes no longer drive the
+    compression, and it evens out across the part. The filter does not touch the
+    sound itself, only what the detector hears. The same trick keeps the kick
+    from pumping a drum bus or the mix bus.

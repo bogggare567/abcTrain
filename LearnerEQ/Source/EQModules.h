@@ -118,7 +118,7 @@ namespace EQModules
         using TrainingModule::Bed;
 
         return {
-            TrainingModule::walkthrough ("eq.walk.vocal", "Four moves on a voice, one at a time.", Bed::chord, buildVocalEqLesson()),
+            TrainingModule::walkthrough ("eq.walk.vocal", "Four moves on a voice, one at a time.", Bed::vocal, buildVocalEqLesson()),
             TrainingModule::walkthrough ("eq.walk.resonance", "Boost to find it, cut to fix it.", Bed::pinkNoise, buildFindResonanceLesson()),
             TrainingModule::walkthrough ("eq.walk.highpass", "What a high-pass takes with it.", Bed::bassNote, buildHighPassLesson()),
             TrainingModule::walkthrough ("eq.walk.lowpass", "Where the top end stops being useful.", Bed::brightHit, buildLowPassLesson())

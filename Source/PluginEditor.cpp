@@ -996,6 +996,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     settingsScreen.onHearingTest = [this] { openHearingTest(); };
     settingsScreen.onHearingProfileChanged = [this] { processor.applyHearingProfile(); };
     addChildComponent (studioScreen);
+    studioScreen.onLessons = [this] { openLessons(); };
     addChildComponent (liveScreen);
     liveScreen.setAccount (&processor.getLiveAccount());
     createSeminarHost();
@@ -1195,6 +1196,43 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                                      localisation.getText ("tour.decline"));
 
     showScreen (firstRun ? Screen::support : Screen::home);
+}
+
+LessonsPanel::Host EarTrainerEditor::makeLessonsHost()
+{
+    LessonsPanel::Host h;
+
+    // A lesson turns a Studio plugin's knobs: the Studio comes up on that
+    // plugin behind the window, playing, as if chosen by hand.
+    h.showEffect = [this] (int effect) -> juce::AudioProcessor&
+    {
+        if (! studioScreen.isVisible())
+            topNav.onItemChosen (TopNavComponent::Item::studio);
+        studioScreen.select ((StudioScreenComponent::Effect) juce::jlimit (0, 2, effect));
+        return processor.getStudioProcessor (juce::jlimit (0, 2, effect));
+    };
+    h.currentEditor = [this] { return studioScreen.getEditor(); };
+    h.text = [this] (const juce::String& key) { return localisation.getText (key); };
+    h.textWith = [this] (const juce::String& key, const std::map<juce::String, juce::String>& values)
+    {
+        return localisation.getText (key, values);
+    };
+    h.language = localisation.getCurrentLanguage();
+    h.properties = &localisationProperties;
+    h.lookAndFeel = &lookAndFeel;
+    return h;
+}
+
+void EarTrainerEditor::openLessons()
+{
+    if (lessonsWindow == nullptr)
+    {
+        lessonsWindow = std::make_unique<LessonsWindow> (localisation.getText ("lessons.window"), makeLessonsHost());
+        lessonsWindow->centreWithSize (1000, 660);
+    }
+
+    lessonsWindow->setVisible (true);
+    lessonsWindow->toFront (true);
 }
 
 void EarTrainerEditor::countPracticeSecond()
@@ -3364,7 +3402,8 @@ void EarTrainerEditor::refreshLocalisedText()
     }
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
-    studioScreen.setLabels (localisation.getText ("ui.studio.caption"));
+    studioScreen.setLabels (localisation.getText ("ui.studio.caption"), localisation.getText ("lessons.open"));
+    lessonsWindow.reset();   // its words are in the old language; made again when asked
     refreshLiveStrings();
     topNav.setLabels ({ localisation.getText ("ui.trainings"),
                         localisation.getText ("ui.studio"),

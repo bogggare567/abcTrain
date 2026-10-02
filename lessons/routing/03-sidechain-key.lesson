@@ -1,0 +1,96 @@
+id: routing-sidechain-key
+course: routing
+order: 3
+minutes: 4
+plugin: comp
+material: bass
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», 2nd ed., гл. 16 «Внешняя боковая цепь (External side-chain)»; гл. 9 «Посылы (Auxiliary sends)», пре/пост-фейдерный переключатель; M. Senior, «Mixing Secrets for the Small Studio», ch. 14 «The Power of Side Chains»
+title.ru: Сайдчейн: ключ — это тоже коммутация
+title.en: Sidechain: the key is routing too
+
+@step
+@sidechain self hpf=off
+@comp threshold=-24 ratio=3 attack=10 release=120 knee=6 makeup=0 mix=100
+ru: В компрессоре два пути: по одному идёт звук, который он приглушает,
+    по другому — сигнал, который слушает детектор. Обычно это один и тот
+    же сигнал: бас сжимается по собственному уровню. Второй путь и
+    называется боковой цепью — sidechain, а сигнал в нём — ключом.
+en: A compressor has two paths: one carries the sound it turns down, the
+    other the signal its detector listens to. Usually they are the same
+    signal: the bass is compressed by its own level. That second path is
+    the side chain, and the signal in it is the key.
+
+@step
+@sidechain kick hpf=off
+@comp threshold=-22 ratio=3 attack=1 release=100
+ru: Подадим в ключ бочку. Сама бочка звучит по своему каналу, как и
+    раньше, а в компрессор на басе приходит лишь её копия — и только в
+    детектор. Теперь бас проседает на каждом ударе бочки, хотя сам бас
+    компрессор больше не слушает. Как подобрать сами значения, разобрано
+    в уроке «Sidechain: бас уступает бочке»; здесь речь о проводах.
+en: Feed the kick into the key. The kick itself still plays down its own
+    channel; the compressor on the bass gets only a copy of it, and only in
+    the detector. Now the bass dips on every kick, although the compressor
+    no longer listens to the bass at all. How to choose the values is
+    covered in the lesson "Sidechain: the bass makes room for the kick";
+    this one is about the wiring.
+
+@step
+@comp threshold=-28
+ru: В DAW ключ — это обычный посыл: с канала бочки на шину, а с неё на
+    вход sidechain компрессора, где выбран внешний ключ (Ext). Если посыл
+    постфейдерный, фейдер бочки управляет и басом: поднимите бочку на
+    6 дБ — и детектор услышит то же, что сейчас, когда Threshold опущен
+    на 6 дБ. Провалы баса стали глубже, хотя бас никто не трогал.
+en: In a DAW the key is an ordinary send: from the kick channel to a bus,
+    and from there into the compressor's side-chain input with the external
+    key (Ext) selected. If the send is post-fader, the kick fader also
+    controls the bass: raise the kick by 6 dB and the detector hears what it
+    hears now, with Threshold 6 dB lower. The bass dips have deepened,
+    although nobody touched the bass.
+
+@step
+@comp threshold=-22
+ru: Префейдерный посыл в ключ берёт бочку до фейдера, и детектору всё
+    равно, где стоит её фейдер в миксе. Глубина провалов баса остаётся
+    такой, как вы её настроили. Какой вариант выбрать, зависит от того,
+    должна ли расчистка следовать за громкостью бочки.
+en: A pre-fader key send takes the kick before its fader, so the detector
+    does not care where that fader sits in the mix. The depth of the bass
+    dips stays as you set it. Which to choose depends on whether the
+    clean-up should follow the kick's level.
+
+@step
+@sidechain self
+ru: Вернём ключ на сам бас — те же Threshold и Ratio, другой источник.
+    Компрессор снова реагирует на ноты баса, а не на бочку: о бочке он
+    узнаёт только тогда, когда её туда скоммутировали.
+en: Put the key back on the bass itself — same Threshold and Ratio,
+    different source. The compressor reacts to the bass notes again, not to
+    the kick: it only knows about the kick when the kick is routed to it.
+
+@step
+@sidechain kick
+@bypass on
+ru: Ключ снова на бочке; сравните с исходным басом. Ключом может быть
+    любой канал: вокал, поданный в ключ компрессора на гитарах, заставляет
+    их чуть уступать, пока звучит голос. Тот же приём на возврате
+    ревербератора или дилея убирает хвосты из-под слов и отпускает их в
+    паузах.
+en: The key is on the kick again; compare with the original bass. Any
+    channel can be the key: a vocal fed into the key of a compressor on the
+    guitars makes them step back slightly while the voice sings. The same
+    trick on a reverb or delay return pulls the tails out from under the
+    words and lets them bloom in the gaps.
+
+@step
+@bypass off
+ru: Итог: сайдчейн — это вопрос коммутации. Решите, кто должен уступать
+    и кому, и проведите ключ от главного источника к компрессору на том,
+    что уступает; до или после фейдера брать ключ — такое же решение,
+    как для любого посыла.
+en: To sum up: a sidechain is a routing question. Decide who should make
+    way for whom, and run the key from the leading source to the compressor
+    on the part that makes way; taking the key before or after the fader is
+    the same decision as for any send.

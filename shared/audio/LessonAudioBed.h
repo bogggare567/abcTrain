@@ -44,7 +44,10 @@ namespace LessonAudioBed
         singleHit,  // one hit then silence - pre-delay, decay tails
         brightHit,  // repeated bright transient - damping, air, high shelves
         chord,      // three detuned voices - width, mid range
-        pinkNoise   // flat and dense - frequency, Q
+        pinkNoise,  // flat and dense - frequency, Q
+        vocal       // a real voice: Bogdan Korablev's live vocal, CC BY 4.0
+                    // (assets/lesson-media). A vocal lesson on a chord taught
+                    // vocal EQ on something that has no consonants.
     };
 
     // Renders `bed` as a seamless stereo loop at `sampleRate`. The

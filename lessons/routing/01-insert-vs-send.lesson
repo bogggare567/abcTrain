@@ -1,0 +1,83 @@
+id: routing-insert-send
+course: routing
+order: 1
+minutes: 4
+plugin: verb
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», 2nd ed., гл. 9 «Инсерты», «Посылы (Auxiliary sends)», «Подключение процессоров и эффектов»; гл. 23 (сухой сигнал на ревербераторе при подключении через посыл); M. Senior, «Mixing Secrets for the Small Studio», ch. 16.2 «Essential Reverb Controls and Setup»
+title.ru: Insert или Send: где живёт реверберация
+title.en: Insert or Send: where reverb lives
+
+@step
+@verb type=plate decay=1.8 predelay=30 size=60 damping=50 width=100 mix=25 routing=insert
+ru: Insert — точка разрыва в канале: весь сигнал уходит в плагин и
+    возвращается уже обработанным. Ручка Mix смешивает сухой голос и
+    реверберацию внутри плагина. Так подключают обработку, которая меняет
+    сам звук: эквалайзер, компрессор, гейт.
+en: An insert is a break in the channel: the whole signal goes into the
+    plug-in and comes back processed. The Mix knob blends the dry voice and
+    the reverb inside the plug-in. This is how you patch processing that
+    changes the sound itself: EQ, compressor, gate.
+
+@step
+@verb mix=100
+ru: Insert и Mix 100 %: сухого голоса больше нет, осталась только комната.
+    Поворачивая Mix на вставке, вы одновременно добавляете реверберацию и
+    убираете оригинал, поэтому вместе с пространством меняются громкость
+    голоса и его место в балансе.
+en: Insert with Mix at 100 %: the dry voice is gone, only the room is left.
+    Turning Mix on an insert adds reverb and takes away the original at the
+    same time, so the voice's level and its place in the balance change
+    along with the space.
+
+@step
+@verb routing=send mix=25
+ru: Send устроен иначе. Ручкой посыла копия сигнала уходит из канала на
+    вспомогательную шину (aux), а ревербератор стоит на отдельном канале
+    возврата — на 100 % wet, без сухого. Сам голос идёт по своему каналу к
+    своему фейдеру, и плагин его не трогает. В Студии возврат смоделирован:
+    Mix стал фейдером возврата.
+en: A send works differently. The send knob takes a copy of the signal out
+    of the channel to an auxiliary bus (aux), and the reverb sits on a
+    separate return channel — 100 % wet, no dry. The voice itself goes down
+    its own channel to its own fader, and the plug-in does not touch it. In
+    the Studio the return is simulated: Mix has become the return fader.
+
+@step
+@verb mix=50
+ru: Поднимите возврат до 50 %. Реверберации стало больше, а уровень сухого
+    голоса не изменился ни на децибел: баланс, выстроенный фейдерами,
+    остаётся на месте. Поэтому на возврате сухой выключают полностью —
+    иначе каждая поправка посыла меняла бы громкость самого голоса, а две
+    сложенные копии могли бы окрасить тембр.
+en: Bring the return up to 50 %. There is more reverb, and the level of the
+    dry voice has not moved by a decibel: the balance built with the faders
+    stays put. That is why the dry signal is switched off completely on a
+    return — otherwise every send tweak would change the voice's own level,
+    and two summed copies could colour the tone.
+
+@step
+@bypass on
+ru: Сравните с сухим голосом и обратно. В DAW так же: на канале — только
+    сухой звук, на возврате — только комната, а их соотношение задают
+    посыл и фейдер возврата, а не ручка внутри плагина.
+en: Compare with the dry voice and back. In a DAW it is the same: the
+    channel carries only the dry sound, the return only the room, and their
+    ratio is set by the send and the return fader, not by a knob inside the
+    plug-in.
+
+@step
+@bypass off
+@material guitar
+@verb type=spring decay=1.5 size=40 damping=30 mix=30 routing=insert
+ru: Исключения есть. Пружина на гитаре — часть звука самого инструмента,
+    как в комбике, поэтому её ставят прямо в Insert с подобранным Mix.
+    Правило простое: обработку — в Insert, общие эффекты вроде
+    реверберации и дилея — на Send. Реверберацию на вставку ставят, когда
+    она принадлежит одному звуку, а не пространству всего микса.
+en: There are exceptions. A spring on a guitar is part of the instrument's
+    own sound, as in a combo amp, so it goes straight into an Insert with a
+    chosen Mix. The rule is simple: processing on an Insert, shared effects
+    such as reverb and delay on a Send. A reverb goes on an insert when it
+    belongs to one sound rather than to the space of the whole mix.

@@ -43,6 +43,12 @@ public:
         tick();
     }
 
+    // A course lesson's @highlight (ADR 052): one band of frequencies lit
+    // on the spectrum in place of the zones, so "200-450 Hz" is a place on
+    // the picture, not only a number in the text. An empty range gives the
+    // zones back.
+    void setLessonHighlight (juce::Range<float> hz, const juce::String& label);
+
 private:
     int analysisContentHeight() const override { return 280; }
     int controlsContentHeight() const override { return isCompact() ? 104 : 124; }

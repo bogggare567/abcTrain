@@ -1,0 +1,84 @@
+id: comp-attack-release
+course: comp
+order: 2
+minutes: 5
+plugin: comp
+material: snare
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», разделы «Время срабатывания компрессии (Attack)», «Время восстановления компрессора (Release)»; Б. Овсински, «Настольная книга звукорежиссёра», «Настройка компрессора»; база знаний abcTrain, COMP-001, COMP-002
+title.ru: Attack и Release: сохранить удар или убрать
+title.en: Attack and Release: keep the hit or take it away
+
+@step
+@bypass off
+@comp threshold=-25 ratio=4 attack=0.1 release=50 knee=0 makeup=0 mix=100
+ru: Малый барабан с очень быстрой атакой — 0.1 мс. Компрессор успевает
+    схватить самое начало удара, щелчок палки срезан. Барабан звучит тупее
+    и как будто отодвинулся назад.
+en: A snare with a very fast attack, 0.1 ms. The compressor catches the very
+    start of the hit and the stick click is shaved off. The drum sounds duller
+    and seems to sit further back.
+
+@step
+@comp attack=30
+ru: Attack 30 мс: первые миллисекунды удара проходят нетронутыми, а
+    компрессор зажимает уже корпус и хвост. Щелчок вернулся и на фоне
+    приглушённого тела кажется даже острее. Так компрессия делает барабан
+    более «ударным».
+en: Attack 30 ms: the first milliseconds of the hit pass untouched and the
+    compressor clamps down on the body and tail. The click is back and, against
+    the quieter body, sounds even sharper. This is how compression makes a drum
+    punchier.
+
+@step
+@comp attack=100
+ru: Attack 100 мс: удар почти целиком проскакивает до того, как компрессор
+    раскачается, и к этому моменту звук уже затихает. Индикатор едва
+    шевелится. Слишком длинная атака делает компрессор бесполезным.
+en: Attack 100 ms: almost the whole hit is through before the compressor gets
+    going, and by then the sound is already fading. The meter barely moves.
+    Too long an attack makes the compressor pointless.
+
+@step
+@comp attack=15
+ru: Классический способ найти атаку: начать с самой длинной и укорачивать,
+    пока барабан не начнёт тускнеть, — и вернуться чуть назад. На малом
+    барабане граница часто лежит около 10 мс; оставляем 15 мс. Удар на месте, тело плотнее.
+en: The classic way to find the attack: start at the longest and shorten it
+    until the drum starts to go dull, then back off a little. On a snare the
+    edge is often around 10 ms; we leave it at 15 ms. The hit is intact and the body is
+    denser.
+
+@step
+@comp release=600
+ru: Теперь Release 600 мс. Компрессор не успевает отпустить до следующего
+    удара: индикатор почти не возвращается к нулю, и каждый новый удар
+    приходит уже прижатым. Барабан теряет жизнь, а сжатие превращается
+    в простое ослабление, как фейдером.
+en: Now Release 600 ms. The compressor cannot let go before the next hit: the
+    meter hardly returns to zero and each new hit arrives already held down. The
+    drum loses its life, and the compression turns into a plain level cut, like
+    a fader.
+
+@step
+@comp release=120
+ru: Release 120 мс: к следующему удару усиление успевает восстановиться
+    почти полностью. Следите за индикатором — он должен «дышать» в ритме
+    партии и возвращаться к нулю до следующей доли. Совсем короткий Release
+    поднимает хвост и комнату и может дать искажения на низах.
+en: Release 120 ms: gain is almost fully back before the next hit. Watch the
+    meter: it should breathe with the part and return to zero before the next
+    beat. A very short release pulls up the tail and the room and can distort
+    low frequencies.
+
+@step
+@material drums
+@comp attack=20
+ru: Те же настройки на всей установке, атака 20 мс. При быстрой атаке бочка
+    и рабочий тянули бы вниз и хай-хэт, игравший с ними на той же доле.
+    С атакой 15–20 мс хэт успевает прозвучать. Сравните с Bypass, а потом
+    попробуйте Attack 1 мс — услышите, как установка сплющивается.
+en: The same settings on the whole kit, with a 20 ms attack. A fast attack
+    would let the kick and snare pull down the hi-hat played on the same beat.
+    With 15–20 ms the hat gets through. Compare with Bypass, then try Attack
+    1 ms and hear the kit flatten.

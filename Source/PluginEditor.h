@@ -33,6 +33,7 @@
 #include "shared/analysis/WaveformDisplay.h"
 #include "shared/analysis/SpectrumAnalyzer.h"
 #include "shared/i18n/LocalisationManager.h"
+#include "LessonsPanel.h"
 #include <cmath>
 
 // Generic multiple-choice UI driven entirely by the active Game's
@@ -310,6 +311,34 @@ public:
 
     // The projector window's content, off-screen at the projector's usual
     // 1280x720: after openLiveForSnapshot (3, 9 or 10), which opened the room.
+    // The lessons window's content on a lesson and step, for a picture
+    // (ADR 052); the Studio opens behind it as it would for a person.
+    juce::Component& lessonsForSnapshot (const juce::String& lessonId, int step)
+    {
+        // The panel without its desktop window: a native window is the one
+        // thing a headless render cannot make.
+        snapshotLessons = std::make_unique<LessonsPanel> (makeLessonsHost());
+        auto& panel = *snapshotLessons;
+        panel.setSize (1000, 660);
+        if (lessonId.isNotEmpty())
+        {
+            panel.openLesson (lessonId);
+            panel.goToStep (step);
+            panel.finishGlide();
+
+            // The plugin's knobs follow their parameters asynchronously, and
+            // a render has no message loop to deliver that: a fresh editor
+            // reads the values the lesson set. Then the step again, for the
+            // highlight the old editor took with it.
+            studioScreen.close();
+            studioScreen.open();
+            panel.goToStep (step);
+            panel.finishGlide();
+            resized();
+        }
+        return panel;
+    }
+
     juce::Component* projectorForSnapshot()
     {
         if (seminarHost == nullptr)
@@ -321,6 +350,13 @@ public:
         return snapshotProjector.get();
     }
     std::unique_ptr<ProjectorView> snapshotProjector;
+
+    // The course lessons (ADR 052): a window of its own, made the first
+    // time it is asked for and kept, so a lesson left open is still there.
+    std::unique_ptr<LessonsWindow> lessonsWindow;
+    std::unique_ptr<LessonsPanel> snapshotLessons;
+    void openLessons();
+    LessonsPanel::Host makeLessonsHost();
 
     void openSoundClipsForSnapshot()
     {

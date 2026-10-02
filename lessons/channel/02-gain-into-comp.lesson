@@ -1,0 +1,79 @@
+id: channel-gain-into-comp
+course: channel
+order: 2
+minutes: 4
+plugin: comp
+material: vocal
+author: abcTrain
+sources: «The Systematic Mixing Guide» (рус. пер.), гл. 1 «Подготовка — залог успеха», раздел «Установка усиления (Gain Staging)»; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 9, «Placement in the Signal Chain»; R. Izhaki, «Mixing Audio» (рус. пер.), гл. 16 «Компрессоры», «До или после эквалайзера?»; M. Senior, «Mixing Secrets for the Small Studio», ch. 9.1, «The Many Faces of Threshold and Makeup Gain»; база знаний abcTrain, MASTER-002, COMP-005
+title.ru: Уровень на входе компрессора
+title.en: Gain staging into a compressor
+
+@step
+@sidechain self hpf=off
+@comp threshold=-20 ratio=4 attack=10 release=120 knee=6 makeup=0 mix=100
+ru: Вокал через компрессор: Threshold −20 дБ, Ratio 4:1, Attack 10 мс,
+    Release 120 мс. Следите за индикатором подавления усиления. Компрессор
+    трогает только то, что выше порога, а порог отсчитывается от уровня
+    сигнала на входе. Значит, результат зависит не только от ручек, но и
+    от того, насколько громко сигнал пришёл.
+en: Vocal through a compressor: Threshold −20 dB, Ratio 4:1, Attack 10 ms,
+    Release 120 ms. Watch the gain-reduction meter. The compressor only
+    touches what is above the threshold, and the threshold is measured
+    against the level coming in. So the result depends not only on the
+    knobs but on how loud the signal arrives.
+
+@step
+@comp threshold=-26
+ru: Порог опустился на 6 дБ. Для компрессора это ровно то же самое, что
+    вход на 6 дБ громче: например, вы подняли эквалайзером что-то до
+    компрессора или прибавили гейн на треке. Голос сжат заметно сильнее,
+    хотя «компрессор вы не трогали».
+en: The threshold dropped by 6 dB. To the compressor this is exactly the
+    same as an input 6 dB louder: say you boosted something with an EQ
+    before it, or raised the clip gain on the track. The voice is squeezed
+    much harder, though "you never touched the compressor".
+
+@step
+@comp threshold=-14
+ru: Обратный случай: вход на 6 дБ тише, порог фактически −14 дБ. Компрессор
+    почти не работает и срабатывает только на самых громких словах. Отсюда
+    правило: сначала выставьте уровень на входе цепочки, потом настраивайте
+    компрессор — и перепроверяйте его после каждой правки уровня или
+    эквалайзера перед ним.
+en: The opposite case: input 6 dB quieter, effectively a −14 dB threshold.
+    The compressor barely works and catches only the loudest words. Hence
+    the rule: set the level going into the chain first, then set the
+    compressor — and check it again after every level or EQ change in
+    front of it.
+
+@step
+@comp threshold=-20
+ru: Вернулись к −20 дБ. Удобная точка отсчёта — держать средний уровень
+    трека около −18 dBFS, как привыкли на аналоговых пультах. Это не
+    стандарт, а рабочая привычка: так у плагинов остаётся запас по пикам,
+    и типичные пороги оказываются там, где их ждёшь.
+en: Back to −20 dB. A handy reference is to keep the track's average level
+    around −18 dBFS, as on analogue consoles. It is not a standard but a
+    working habit: plugins keep headroom for peaks, and the usual threshold
+    settings land where you expect them.
+
+@step
+@comp makeup=3
+ru: Компрессия сделала голос тише, Makeup +3 дБ возвращает уровень.
+    Подбирайте Makeup так, чтобы с компрессором и без него было одинаково
+    громко. Иначе вы будете сравнивать не обработку, а громкость.
+en: Compression made the voice quieter; Makeup +3 dB brings the level back.
+    Set Makeup so the voice is equally loud with and without the
+    compressor. Otherwise you are comparing loudness, not processing.
+
+@step
+@bypass on
+ru: Сравните с исходным голосом. Если громкость совпадает, вы слышите
+    только то, что сделал компрессор: ровнее фразы, ближе тихие слова. Если
+    обработанный вариант просто громче — он покажется лучше, даже когда
+    хуже.
+en: Compare with the original voice. If the loudness matches, you hear
+    only what the compressor did: steadier phrases, quiet words closer.
+    If the processed version is simply louder, it will seem better even
+    when it is worse.

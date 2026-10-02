@@ -106,6 +106,23 @@ public:
             }
         }
 
+        beginTest ("the vocal bed is a real voice: decoded, at the asked rate, both phrases, not silent");
+        {
+            for (const auto rate : { 44100.0, 48000.0 })
+                for (const auto seed : { 1, 2 })
+                {
+                    const auto voice = LessonAudioBed::render (Bed::vocal, rate, seed);
+                    expectEquals (voice.getNumChannels(), 2);
+                    expectWithinAbsoluteError (voice.getNumSamples() / rate, 9.1, 0.3);
+                    expect (voice.getRMSLevel (0, 0, voice.getNumSamples()) > 0.02f, "the vocal is silent");
+                }
+
+            const auto a = LessonAudioBed::render (Bed::vocal, 44100.0, 1);
+            const auto b = LessonAudioBed::render (Bed::vocal, 44100.0, 2);
+            expect (a.getNumSamples() != b.getNumSamples() || a.getSample (0, 22050) != b.getSample (0, 22050),
+                    "both seeds gave the same phrase");
+        }
+
         beginTest ("the chord bed is genuinely stereo, the bass bed is not");
         {
             // Width modules need a real side signal; a mono bed would make

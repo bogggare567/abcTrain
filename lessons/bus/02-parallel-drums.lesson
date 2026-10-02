@@ -1,0 +1,84 @@
+id: bus-parallel-drums
+course: bus
+order: 2
+minutes: 5
+plugin: comp
+material: drums
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», раздел «Параллельная компрессия»; M. Senior, «Mixing Secrets for the Small Studio», гл. 9.3 «Parallel Compression»; «Систематизированный гид по сведению», «Параллельная компрессия. Да или нет?»; база знаний abcTrain, COMP-004
+title.ru: Параллельная компрессия барабанов
+title.en: Parallel compression on drums
+
+@step
+@bypass off
+@comp threshold=0 ratio=1 attack=1 release=50 knee=0 makeup=0 mix=100
+ru: Барабаны без обработки. Обычная компрессия опускает громкое, параллельная
+    поднимает тихое: к нетронутому сигналу подмешивается сильно сжатая копия.
+    Ухо легче прощает подъём тихих звуков, чем опускание громких, поэтому
+    так можно сжимать гораздо жёстче.
+en: Drums with nothing on them. Ordinary compression turns loud parts down;
+    parallel compression brings quiet parts up by blending a heavily squashed
+    copy under the untouched signal. The ear forgives quiet sounds being raised
+    far more easily than loud ones being lowered, so you can squash much harder.
+
+@step
+@comp threshold=-35 ratio=10 attack=1 release=50 makeup=12
+ru: Это сжатая ветвь сама по себе, Mix 100 %. Быстрые Attack и Release,
+    большой Ratio, подавление 15 дБ и больше: атака съедена, хвосты и комната
+    вылезли вперёд, всё качает. Отдельно так звучать не должно — важно лишь,
+    как эта ветвь ляжет под чистый сигнал.
+en: This is the compressed branch on its own, Mix 100 %. Fast attack and
+    release, a high ratio, 15 dB or more of gain reduction: the attack is gone,
+    the tails and room jump forward, everything pumps. On its own it should not
+    sound good — all that matters is how it sits under the clean signal.
+
+@step
+@comp mix=0
+ru: Mix 0 % — снова только чистый сигнал. Ручка Mix здесь работает как фейдер
+    параллельной шины: в DAW то же самое делают посылом барабанов на отдельную
+    шину с компрессором. Тогда следите, чтобы задержки компенсировались,
+    иначе две ветви дадут гребёнку.
+en: Mix 0 % — only the clean signal again. Here the Mix knob is the fader of
+    the parallel bus: in a DAW you do the same by sending the drums to a separate
+    bus with a compressor. Then make sure latency is compensated, or the two
+    branches will comb-filter.
+
+@step
+@comp mix=30
+ru: Mix 30 %. Чистая ветвь сохраняет удар, сжатая подтягивает хвосты, комнату
+    и тихие доли. Барабаны стали плотнее и крупнее, а атака осталась на месте —
+    это и есть главное преимущество метода.
+en: Mix 30 %. The clean branch keeps the hit, the compressed one lifts the
+    tails, the room and the ghost notes. The drums are denser and bigger, yet
+    the attack is still there — that is the whole point of the method.
+
+@step
+@comp mix=65
+ru: Mix 65 %: сжатой ветви уже слишком много. Баланс внутри установки
+    поплыл, тарелки и комната громче, чем нужно, удары снова мягче. Правило
+    простое: подмешивайте, пока сжатая ветвь не начнёт менять баланс, и
+    остановитесь чуть раньше.
+en: Mix 65 %: too much of the compressed branch. The balance inside the kit has
+    shifted, cymbals and room are louder than they should be, the hits are
+    softer again. The rule is simple: blend it in until the compressed branch
+    starts changing the balance, and stop just before that.
+
+@step
+@comp mix=25
+ru: Mix 25 % — обычно где-то здесь. На быстрой и плотной музыке, где
+    барабанам нужна чёткость, параллельной ветви может не понадобиться
+    вовсе, а в роке и там, где нужен живой звук, она часто к месту.
+en: Mix 25 % — usually somewhere around here. In fast, dense music where the
+    drums need precision you may not want a parallel branch at all; in rock and
+    anything that needs a live feel it often belongs.
+
+@step
+@bypass on
+ru: Сравните с Bypass. Учтите, что параллельная ветвь добавляет громкость,
+    а громче всегда кажется лучше. Слушайте не уровень, а плотность и сустейн
+    при сохранённой атаке; на сведении сравнивайте, подстраивая громкость
+    общим фейдером группы.
+en: Compare with Bypass. Keep in mind the parallel branch adds level, and louder
+    always seems better. Listen for density and sustain with the attack intact,
+    not for level; in a mix, compare with the loudness matched on the group
+    fader.

@@ -142,6 +142,21 @@ juce_add_binary_data(SampleData
         assets/samples/Sustained/Pad.wav
         assets/samples/Sustained/Pluck.wav
         assets/samples/Sustained/Tone.wav
+        # A real voice for the vocal lessons: Bogdan Korablev's live
+        # vocal, CC BY 4.0 (assets/lesson-media/CREDITS.md).
+        assets/lesson-media/vocal-live-01.flac
+        assets/lesson-media/vocal-live-02.flac
+)
+
+# The course lessons (lessons/<course>/*.lesson, ADR 052): text files a
+# guest sound engineer can write without a compiler, read by the app's
+# lessons window. CONFIGURE_DEPENDS so a new lesson file is picked up by
+# the next build without remembering to re-run CMake.
+file (GLOB abcLessonFiles CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/lessons/*/*.lesson)
+juce_add_binary_data(LessonData
+    NAMESPACE LessonData
+    HEADER_NAME LessonData.h
+    SOURCES ${abcLessonFiles}
 )
 
 # The interface typeface, embedded because a plugin cannot ask its host's
@@ -298,6 +313,7 @@ target_sources(abc_learning INTERFACE
     ${abcShared}/learning/LearnerEditorBase.cpp
     ${abcShared}/learning/CompanionPanel.cpp
     ${abcShared}/learning/PracticeSourceSelector.cpp
+    ${abcShared}/learning/LessonFile.cpp
 )
 target_link_libraries(abc_learning INTERFACE abc_ui abc_analysis abc_audio abc_dsp abc_updates)
 
@@ -398,6 +414,9 @@ target_sources(EarTrainer
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/StudioScreenComponent.cpp
+        Source/LessonLibrary.cpp
+        Source/LessonRunner.cpp
+        Source/LessonsPanel.cpp
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
@@ -428,6 +447,7 @@ target_link_libraries(EarTrainer
         I18nData
         FontData
         SampleData
+        LessonData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -632,6 +652,9 @@ target_sources(EarTrainerTests
         tests/SkillBucketTest.cpp
         tests/HearingGuardTest.cpp
         tests/HearingCalibrationTest.cpp
+        tests/LessonFormatTest.cpp
+        Source/LessonLibrary.cpp
+        Source/LessonRunner.cpp
         tests/LearnerRedesignTest.cpp
 )
 
@@ -656,6 +679,7 @@ target_link_libraries(EarTrainerTests
         I18nData
         FontData
         SampleData
+        LessonData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -691,6 +715,9 @@ set(abcTrainEditorToolSources
         Source/AchievementsScreenComponent.cpp
         Source/TrainingSoundsComponent.cpp
         Source/StudioScreenComponent.cpp
+        Source/LessonLibrary.cpp
+        Source/LessonRunner.cpp
+        Source/LessonsPanel.cpp
         Source/LiveScreenComponent.cpp
         Source/LiveLink.cpp
         Source/LiveAccount.cpp
@@ -730,6 +757,7 @@ target_link_libraries(EditorSnapshots
         I18nData
         FontData
         SampleData
+        LessonData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -773,6 +801,7 @@ target_link_libraries(LearnerStrings
         I18nData
         FontData
         SampleData
+        LessonData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags
@@ -808,6 +837,7 @@ target_link_libraries(ClickMap
         I18nData
         FontData
         SampleData
+        LessonData
         BrandData
     PUBLIC
         juce::juce_recommended_config_flags

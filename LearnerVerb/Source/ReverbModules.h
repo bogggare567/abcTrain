@@ -212,7 +212,7 @@ namespace ReverbModules
         using TrainingModule::Bed;
 
         return {
-            TrainingModule::walkthrough ("verb.walk.vocal", "A plate for a voice, then a hall to compare.", Bed::singleHit, buildVocalSpaceLesson()),
+            TrainingModule::walkthrough ("verb.walk.vocal", "A plate for a voice, then a hall to compare.", Bed::vocal, buildVocalSpaceLesson()),
             TrainingModule::walkthrough ("verb.walk.tail", "Why real rooms get darker as they fade.", Bed::brightHit, buildBrightVsDarkTailLesson()),
             TrainingModule::walkthrough ("verb.walk.predelay", "Keeping the source in front of its room.", Bed::singleHit, buildPreDelayLesson()),
             TrainingModule::walkthrough ("verb.walk.bigger", "Decay, size and damping are not the same knob.", Bed::singleHit, buildSizeAndDampingLesson()),

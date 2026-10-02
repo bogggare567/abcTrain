@@ -1,0 +1,98 @@
+id: vocal-dynamic-mic-low-end
+course: vocal
+order: 1
+minutes: 4
+plugin: eq
+material: vocal
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 14 «Эквалайзеры», разделы «Фильтр высоких частот» и «Вокалы»; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 7 «The Frequency Element»; «Систематизированный гид по сведению», гл. 5 «Вокал — центр твоего микса»; Б. Овсински, «Настольная книга звукорежиссёра», раздел «Для вокала»; база знаний abcTrain, EQ-003
+title.ru: Мужской голос в динамическом микрофоне: низ и муть
+title.en: A male voice on a dynamic mic: low end and mud
+
+@step
+@eq-reset
+@highlight 60 400
+ru: Это живой мужской вокал со сцены, снятый динамическим микрофоном у самых губ.
+    Направленный микрофон вблизи источника поднимает низ — это эффект близости,
+    и чем ближе певец держит микрофон, тем гуще и «бубнящее» голос. Вдобавок в этой
+    же области сидят протечки бочки, баса и мониторов. Послушайте, сколько лишнего
+    веса в звуке.
+en: This is a live male vocal from the stage, taken with a dynamic mic right at the
+    lips. A directional mic close to the source lifts the low end — the proximity
+    effect — and the closer the singer holds the mic, the thicker and boomier the
+    voice. On top of that, kick, bass and wedge bleed sit in the same region. Listen
+    to how much extra weight there is.
+
+@step
+@eq 1 highpass 50
+ru: Включите High-pass на 50 Гц. Голос почти не изменился: ниже 80 Гц у вокала полезных
+    звуков нет, там только гул сцены, удары по стойке и хлопки дыхания. Такой фильтр
+    почти ничего не стоит голосу и сразу снимает мусор, который иначе раскачал бы
+    компрессор.
+en: A High-pass at 50 Hz. The voice has barely changed: below 80 Hz a vocal has nothing
+    useful, only stage rumble, stand knocks and breath pops. This filter costs the voice
+    almost nothing and removes junk that would otherwise drive the compressor.
+
+@step
+@eq 1 highpass 100
+@highlight 60 150
+ru: Поднимите фильтр до 100 Гц. Ушла часть эффекта близости и протечка бочки, голос
+    стал собраннее, а тело осталось. Для мужского голоса рабочая зона фильтра —
+    80–120 Гц: если певец уходит в низкие ноты, держите ближе к 80, если поёт выше
+    и много «плюётся» в микрофон — ближе к 120.
+en: Raise the filter to 100 Hz. Part of the proximity effect and the kick bleed are gone,
+    the voice is tighter and still has its body. For a male voice the working range is
+    80–120 Hz: if the singer goes down into low notes, stay near 80; if he sings higher
+    and pops the mic a lot, go nearer 120.
+
+@step
+@eq 1 highpass 200
+ru: А теперь 200 Гц — заведомо слишком высоко. Голос стал тонким и «телефонным»,
+    пропала грудь. Так и ищут частоту фильтра: поднимают, пока не начнёт уходить тело,
+    и возвращают немного вниз.
+en: Now 200 Hz — clearly too high. The voice is thin and telephone-like, the chest is
+    gone. This is how you find the filter frequency: raise it until the body starts to
+    go, then bring it back down a little.
+
+@step
+@eq 1 highpass 100
+@eq 2 bell 300 8 2.5
+@highlight 200 400
+ru: Фильтр снова на 100 Гц. Вторая полоса — узкий подъём на 300 Гц, специально
+    преувеличенный: так проще услышать муть. Между 200 и 400 Гц голос в близко
+    поставленном микрофоне звучит глухо, «в коробке», и это та же область, где
+    копится гул сцены.
+en: The filter is back at 100 Hz. Band 2 is a narrow boost at 300 Hz, deliberately
+    exaggerated: it makes the mud easy to hear. Between 200 and 400 Hz a close-miked
+    voice sounds dull and boxy, and this is also where stage boom builds up.
+
+@step
+@eq 2 bell 300 -4 1.4
+ru: Тот же участок, но теперь вырез −4 дБ средней ширины. Голос стал чище и словно
+    вышел из коробки, хотя мы ничего не поднимали. Не режьте здесь глубже, чем нужно:
+    при перерезе голос теряет теплоту и становится тощим.
+en: The same region, now a −4 dB cut of medium width. The voice is cleaner, as if it has
+    stepped out of the box, though nothing was boosted. Don't cut deeper than you need:
+    overdo it and the voice loses its warmth and goes thin.
+
+@step
+@bypass on
+ru: Сравните с исходным звуком. Без обработки голос жирнее, но в миксе этот жир
+    спорит с басом и бочкой и тянет вокал вниз. С фильтром и вырезом голос легче
+    ложится поверх музыки.
+en: Compare with the original. Unprocessed, the voice is fatter, but in a mix that fat
+    fights the bass and kick and pulls the vocal down. With the filter and the cut it
+    sits on top of the music more easily.
+
+@step
+@bypass off
+ru: Для других голосов меняются цифры, а не метод. Женский голос выше, и фильтр часто
+    ставят на 120–160 Гц. Рэп-вокалу нужен вес груди, поэтому фильтр держат ниже,
+    а близость лечат вырезом в 200–300 Гц. Хор снимают издалека, эффекта близости
+    почти нет, но муть 200–500 Гц копится от многих голосов сразу, и вырезать её
+    приходится шире.
+en: Other voices change the numbers, not the method. A female voice sits higher, and the
+    filter often goes to 120–160 Hz. A rap vocal needs chest weight, so the filter stays
+    lower and the proximity effect is treated with a cut at 200–300 Hz. A choir is miked
+    from a distance, so there is little proximity effect, but 200–500 Hz mud piles up
+    from many voices at once and has to be cut wider.

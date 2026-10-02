@@ -1,0 +1,85 @@
+id: verb-decay-tempo
+course: verb
+order: 2
+minutes: 4
+plugin: verb
+material: drums
+author: abcTrain
+sources: B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8 «Timing the Decay»; Б. Овсински, «Настольная книга звукорежиссёра», разд. «Реверберация звучит лучше, если привязана к темпу»; Д. Гибсон, «Искусство сведения», разд. «Время реверба»; R. Izhaki, «Mixing Audio», 2nd ed., гл. 23 (время затухания и ритм)
+title.ru: Хвост, который успевает до следующего удара
+title.en: A tail that ends before the next hit
+
+@step
+@verb type=hall decay=3.5 predelay=10 size=70 damping=40 width=100 mix=30 routing=send
+ru: Зал с Decay 3,5 с на барабанах. Хвост малого ещё звучит, когда
+    приходит следующий удар, и закрывает его атаку: грув расплывается,
+    бочка и малый тонут в общем гуле. Что означает число на Decay,
+    разобрано в уроке «Что такое RT60».
+en: A hall with Decay 3.5 s on the drums. The snare's tail is still ringing
+    when the next hit arrives and covers its attack: the groove smears, and
+    kick and snare sink into a common wash. What the number on Decay means
+    is covered in the lesson "What is RT60".
+
+@step
+@verb decay=1.2
+ru: Привяжем хвост к малому. Доля при 100 BPM — 600 мс; малый стоит на
+    2 и 4, значит между ударами две доли, 1,2 с. С Decay 1,2 с хвост
+    уходит к следующему удару, и каждый удар звучит чисто и плотно.
+en: Tie the tail to the snare. At 100 BPM a beat is 600 ms; the snare sits
+    on 2 and 4, so there are two beats, 1.2 s, between hits. With Decay
+    1.2 s the tail is gone by the next hit, and every hit sounds clean and
+    tight.
+
+@step
+@verb decay=1.6
+ru: Слушайте хвост, а не ручку. Decay отсчитывает спад на 60 дБ, но в
+    миксе последние десятки децибел хвоста всё равно не слышны:
+    реверберация пропадает для уха задолго до формального конца. Поэтому
+    значение чуть длиннее расчётного, как эти 1,6 с, часто звучит как
+    «ровно в долю».
+en: Listen to the tail, not the knob. Decay counts a 60 dB fall, but in a
+    mix the last few tens of decibels of the tail are inaudible anyway: the
+    reverb disappears for the ear long before its formal end. So a value a
+    little longer than the calculated one, like this 1.6 s, often sounds
+    "right on the beat".
+
+@step
+@verb decay=2.4
+ru: Если хвост кажется коротким, растяните его до второго удара малого —
+    2,4 с. Так часто делают в куплетах, где в аранжировке больше воздуха.
+    В припеве, где нужна плотность, хвост малого обычно укорачивают
+    автоматизацией.
+en: If the tail feels too short, stretch it to the second snare hit —
+    2.4 s. This is common in verses, where the arrangement has more air. In
+    the chorus, where density matters, the snare tail is usually shortened
+    with automation.
+
+@step
+@verb decay=0.6
+ru: Обратная крайность: 0,6 с, одна доля. Барабаны собранные и панчевые,
+    внимание на ритме, а пространство скорее угадывается, чем слышится.
+    Совсем короткий Decay на цифровом ревербераторе может зазвенеть
+    металлом — тогда его немного удлиняют или меняют тип.
+en: The other extreme: 0.6 s, one beat. The drums are tight and punchy,
+    attention goes to the rhythm, and the space is sensed rather than heard.
+    A very short Decay on a digital reverb can ring metallic — then it is
+    lengthened a little or the type is changed.
+
+@step
+@bypass on
+ru: Сравните с сухими барабанами. Послушайте, что даёт короткий хвост:
+    удары те же, но у них появилось место, где они звучат.
+en: Compare with the dry drums. Hear what the short tail adds: the same
+    hits, but now they have a place to sound in.
+
+@step
+@bypass off
+@verb type=room decay=1.2 size=40
+ru: Формула — только старт: у каждого алгоритма свой характер спада.
+    Те же 1,2 с на комнате звучат иначе, чем на зале, — ранние отражения
+    плотнее, а хвост ощущается по-другому. Доводите Decay по малому на
+    слух, а не по калькулятору.
+en: The formula is only a starting point: every algorithm decays in its
+    own way. The same 1.2 s sounds different on a room than on a hall — the
+    early reflections are denser and the tail feels different. Set Decay
+    by ear against the snare, not by the calculator.

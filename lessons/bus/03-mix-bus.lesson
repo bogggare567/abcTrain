@@ -1,0 +1,95 @@
+id: bus-mix-bus-comp
+course: bus
+order: 3
+minutes: 5
+plugin: comp
+material: mix
+author: abcTrain
+sources: M. Senior, «Mixing Secrets for the Small Studio», гл. 19.1 «Buss Compression» и гл. 13.1; Б. Овсински, «Настольная книга звукорежиссёра», «Компрессия на выходе микса», «Настройка компрессора»; R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», раздел «Управление боковой цепью»; база знаний abcTrain, COMP-003, COMP-006
+title.ru: Компрессор на мастер-шине: 1–2 дБ в темпе песни
+title.en: Mix-bus compression: 1–2 dB in time with the song
+
+@step
+@bypass off
+@sidechain self hpf=off
+@comp threshold=0 ratio=1 attack=30 release=200 knee=6 makeup=0 mix=100
+ru: Готовый микс. Компрессор на мастер-шине ставят во время сведения, а не
+    в конце: он меняет баланс, и под него подстраивают остальное. Сжимают
+    здесь бережно — при мастеринге и в эфире микс сожмут ещё раз. То же
+    касается эквалайзера на шине: только широкие сдвиги на 1–2 дБ.
+en: A finished mix. A mix-bus compressor goes on while you mix, not at the end:
+    it changes the balance, and the rest is adjusted around it. Compress gently
+    here — mastering and broadcast will compress the mix again. The same goes
+    for EQ on the bus: only broad moves of 1–2 dB.
+
+@step
+@comp threshold=-26 ratio=4 attack=3 release=60
+ru: Сначала нарочно перестараемся, чтобы услышать побочные эффекты. Бочка
+    и рабочий потеряли атаку, весь микс качает на каждой доле, вокал то
+    выходит, то проваливается. Именно это вы и будете искать на слух, когда
+    вернётесь к разумным значениям.
+en: First, overdo it on purpose to hear the side effects. Kick and snare lose
+    their attack, the whole mix pumps on every beat, the vocal moves in and out.
+    That is exactly what you will be listening for once you go back to sensible
+    settings.
+
+@step
+@comp threshold=-14 ratio=1.5
+ru: Ratio 1.5:1 и порог, при котором на громких местах индикатор показывает
+    1–2 дБ. Для склейки микса больше 2–3 дБ подавления и Ratio выше 2:1
+    обычно не нужны. Если индикатор уходит дальше, поднимите Threshold.
+en: Ratio 1.5:1 and a threshold that gives 1–2 dB on the meter in the loud
+    sections. Glueing a mix rarely needs more than 2–3 dB of gain reduction or a
+    ratio above 2:1. If the meter goes further, raise Threshold.
+
+@step
+@comp attack=30
+ru: Attack 30 мс: удары бочки и рабочего проходят до того, как компрессор
+    вступит, и микс снова бьёт. Медленная атака на шине сохраняет панч, а
+    сжатие ложится на тело звука.
+en: Attack 30 ms: the kick and snare hits get through before the compressor
+    reacts, and the mix punches again. A slow attack on the bus keeps the punch
+    while the compression works on the body of the sound.
+
+@step
+@comp release=250
+ru: Release ставим в темпе песни. В 120 BPM доля длится 500 мс: усиление
+    должно успеть вернуться почти полностью до следующей сильной доли.
+    Подбирайте Release, глядя на индикатор, пока он не начнёт «дышать» в
+    ритм, — тогда сжатие помогает груву.
+en: Set Release in time with the song. At 120 BPM a beat lasts 500 ms: the gain
+    should be almost fully back before the next strong beat. Adjust Release while
+    watching the meter until it breathes with the rhythm — then the compression
+    helps the groove.
+
+@step
+@sidechain self hpf=120
+@comp threshold=-17
+ru: Фильтр 120 Гц в ключе: бочка и бас больше не управляют компрессором
+    одни, и весь микс перестаёт проседать на каждом ударе бочки. Подавление
+    от этого уменьшилось, поэтому Threshold опущен до −17 дБ. Многие
+    известные компрессоры для мастер-шины имеют такой фильтр встроенным.
+en: A 120 Hz filter in the key: the kick and bass no longer run the compressor
+    on their own, and the whole mix stops dipping on every kick. Gain reduction
+    dropped as a result, so Threshold goes down to −17 dB. Many well-known
+    mix-bus compressors have this filter built in.
+
+@step
+@comp makeup=1.5
+ru: Makeup +1.5 дБ — ровно столько, чтобы громкость с компрессором и без
+    совпала. Сравнивать на разной громкости бессмысленно: вы будете слышать
+    уровень, а не обработку.
+en: Makeup +1.5 dB, just enough for the level with and without the compressor to
+    match. Comparing at different levels is pointless: you would be hearing
+    level, not processing.
+
+@step
+@bypass on
+ru: Переключайте Bypass. Со сжатием микс звучит цельнее, детали чуть ближе,
+    атака бочки и рабочего на месте. Если вы слышите, как компрессор
+    работает, — уменьшите подавление: на мастер-шине его скорее чувствуют,
+    чем слышат.
+en: Toggle Bypass. With compression the mix sounds more of a piece, details are
+    a little closer, and the kick and snare keep their attack. If you can hear
+    the compressor working, reduce the gain reduction: on the mix bus it should
+    be felt rather than heard.
