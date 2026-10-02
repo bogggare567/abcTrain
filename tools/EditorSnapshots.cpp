@@ -171,7 +171,25 @@ namespace
                        studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
                        liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, eqSlope,
                        liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack,
-                       liveRoundOpen, liveRoundAnswer, soundsChecked };
+                       liveRoundOpen, liveRoundAnswer, soundsChecked,
+                       hearingSetup, hearingTest, hearingResult, hearingOffer, eqHearing, studioEQHearing };
+
+    // The hearing profiles file (ADR 051), fresh for every shot: the offer
+    // before training already declined - so it does not appear on every
+    // training shot - and the example profile only where a shot is about
+    // it. main() puts the player's own file back.
+    void resetHearingStore (bool withProfile)
+    {
+        const auto options = HearingProfileStore::makeDefaultOptions();
+        options.getDefaultFile().deleteFile();
+
+        juce::PropertiesFile file (options);
+        HearingProfileStore store (file);
+        store.declineOffer (juce::Time::getCurrentTime());
+
+        if (withProfile)
+            store.save (HearingTestScreen::exampleProfile());
+    }
 
     template <typename ProcessorType, typename EditorType>
     int renderOne (const juce::File& outputDir, const juce::String& name,
@@ -210,6 +228,9 @@ namespace
             }
 
             AbcTrainTheme::setMode (mode);
+
+            resetHearingStore (extra == Extra::eqHearing || extra == Extra::studioEQHearing
+                               || extra == Extra::settingsHearing);
 
             ProcessorType processor;
             processor.prepareToPlay (44100.0, 512);
@@ -298,8 +319,13 @@ namespace
                 if (extra == Extra::hearingNotice)
                     editor.showHearingNoticeForSnapshot();
 
-                if (extra == Extra::studioEQ)
+                if (extra == Extra::studioEQ || extra == Extra::studioEQHearing)
                     editor.openStudioForSnapshot (StudioScreenComponent::Effect::eq);
+
+                if (extra == Extra::hearingSetup)  editor.openHearingTestForSnapshot (0);
+                if (extra == Extra::hearingTest)   editor.openHearingTestForSnapshot (1);
+                if (extra == Extra::hearingResult) editor.openHearingTestForSnapshot (2);
+                if (extra == Extra::hearingOffer)  editor.offerHearingTestForSnapshot();
 
                 if (extra == Extra::studioRevisit)
                 {
@@ -347,7 +373,7 @@ namespace
             }
 
             if constexpr (std::is_same_v<EditorType, LearnerEQEditor>)
-                if (extra == Extra::eqKick || extra == Extra::companion)
+                if (extra == Extra::eqKick || extra == Extra::companion || extra == Extra::eqHearing)
                     editor.kickLessonForSnapshot();
 
             if constexpr (std::is_same_v<EditorType, LearnerEQEditor>)
@@ -473,6 +499,12 @@ int main (int argc, char* argv[])
     const auto librarySettingsExisted = librarySettingsFile.existsAsFile();
     const auto librarySettingsBefore = librarySettingsExisted ? librarySettingsFile.loadFileAsString() : juce::String();
 
+    // The hearing profiles file is rewritten for every shot (see
+    // resetHearingStore); keep the player's own to put back.
+    const auto hearingFile = HearingProfileStore::makeDefaultOptions().getDefaultFile();
+    const auto hearingExisted = hearingFile.existsAsFile();
+    const auto hearingBefore = hearingExisted ? hearingFile.loadFileAsString() : juce::String();
+
     const auto outputDir = argc > 1 ? juce::File::getCurrentWorkingDirectory().getChildFile (argv[1])
                                     : juce::File::getCurrentWorkingDirectory().getChildFile ("editor-snapshots");
     outputDir.createDirectory();
@@ -498,6 +530,7 @@ int main (int argc, char* argv[])
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Kick", -1, Extra::eqKick);
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Companion", -1, Extra::companion);
     failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Slope", -1, Extra::eqSlope);
+    failures += renderOne<LearnerEQProcessor,   LearnerEQEditor>   (outputDir, "LearnerEQ-Hearing", -1, Extra::eqHearing);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp-Companion", -1, Extra::companionApp);
     failures += renderOne<LearnerCompProcessor, LearnerCompEditor> (outputDir, "LearnerComp");
     failures += renderOne<LearnerVerbProcessor, LearnerVerbEditor> (outputDir, "LearnerVerb");
@@ -589,6 +622,11 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundClips", -1, Extra::soundClips);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQ", -1, Extra::studioEQ);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioEQHearing", -1, Extra::studioEQHearing);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingSetup", -1, Extra::hearingSetup);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingTest", -1, Extra::hearingTest);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingResult", -1, Extra::hearingResult);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingOffer", -1, Extra::hearingOffer);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioComp", -1, Extra::studioComp);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioRevisit", -1, Extra::studioRevisit);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioVerb", -1, Extra::studioVerb);
@@ -657,6 +695,11 @@ int main (int argc, char* argv[])
 
         snapshotLibrary().getParentDirectory().deleteRecursively();
     }
+
+    if (hearingExisted)
+        hearingFile.replaceWithText (hearingBefore);
+    else
+        hearingFile.deleteFile();
 
     if (failures > 0)
         std::cout << failures << " snapshot(s) failed to render.\n";

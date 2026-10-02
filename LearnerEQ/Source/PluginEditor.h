@@ -7,6 +7,7 @@
 #include "shared/ui/SegmentedChoice.h"
 #include "shared/analysis/WaveformDisplay.h"
 #include "LessonPanel.h"
+#include "shared/audio/HearingProfile.h"
 
 // Learner EQ: the curve is the instrument, and one row of controls follows
 // whichever band is selected. The shell is LearnerEditorBase's (ADR 037).
@@ -91,6 +92,18 @@ private:
     std::array<juce::Rectangle<int>, 3> knobCaptions;
 
     int selectedBand = -1;
+
+    // The listener's hearing compensation (ADR 051), as a faint line on
+    // the curve: in the app's Studio it is what the output really goes
+    // through after this EQ; in a DAW it is only a picture, and says so.
+    // Read-only - the app is the one writer - and re-read when the file
+    // changes, so saving a profile in the app shows up here.
+    juce::PropertiesFile hearingFile { HearingProfileStore::makeDefaultOptions() };
+    HearingProfileStore hearingStore { hearingFile };
+    juce::Time hearingFileTime;
+    int hearingCheckCountdown = 0;
+    bool hearingShownEmbedded = false;
+    void refreshHearingOverlay (bool force);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEQEditor)
 };

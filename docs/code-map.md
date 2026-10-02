@@ -223,6 +223,18 @@ full rationale.
   when `isBusy` says nothing is playing and no overlay is open. The
   welcome screen now opens **every** launch; the old `seenSupportScreen`
   flag became `tourOffered`, which is a different question.
+- **Hearing calibration (ADR 051)** — `Source/AudiometryProcedure.{h,cpp}`
+  is the BSA 2018 / ISO 8253-1 procedure with no sound and no screen
+  (down 10 / up 5, two of three ascents, catch trials, 1 kHz retest);
+  `Source/ProbeTone.h` the three-pulse stimulus, real-time safe;
+  `Source/HearingTestScreen.{h,cpp}` the page (form, test, result) under
+  the bar, lit as Settings. `shared/audio/HearingProfile.{h,cpp}` holds the
+  profile, the compensation rule and the store (its own
+  `hearing.settings` in the shared abcTrain folder, so Learner EQ in a DAW
+  can read it); `shared/dsp/HearingCompensation.h` the bells and the
+  triple-buffered processor the app runs on the Studio output only.
+  Learner EQ draws the active profile as a dashed line
+  (`SpectrumAnalyserComponent::setOverlayCurves`).
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail with the
   **Beginner / Pro** switch at the top and five pages (Training, Hearing,
   Appearance, Background, About), each a column of rows: what it is, one

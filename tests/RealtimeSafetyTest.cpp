@@ -3,6 +3,9 @@
 #include "../LearnerComp/Source/PluginProcessor.h"
 #include "../LearnerVerb/Source/PluginProcessor.h"
 #include "shared/learning/PracticeAudioSource.h"
+#include "shared/dsp/HearingCompensation.h"
+#include "shared/audio/HearingProfile.h"
+#include "../Source/ProbeTone.h"
 #include <cstdlib>
 #include <new>
 
@@ -252,6 +255,56 @@ public:
             eq.processBlock (big, midi);
             RtAlloc::armed = false;
             expectEquals (RtAlloc::allocations, 0);
+        }
+
+        beginTest ("hearing compensation and the probe tone: no allocation, coefficients swapped mid-stream");
+        {
+            // ADR 051. The compensation's coefficients arrive from the
+            // message thread while audio runs; the probe's requests too.
+            for (auto rate : rates)
+            {
+                HearingCompensation::Processor compensation;
+                ProbeTone probe;
+                compensation.prepare (rate);
+                probe.prepare (rate);
+
+                juce::AudioBuffer<float> buffer (2, 512);
+                juce::Random random (5);
+                RtAlloc::allocations = 0;
+                RtAlloc::frees = 0;
+
+                for (int b = 0; b < 40; ++b)
+                {
+                    // Message-thread side, not counted.
+                    if (b % 5 == 0)
+                    {
+                        std::array<float, HearingProfile::numFrequencies> gains {};
+                        gains[(size_t) (b / 5) % gains.size()] = 2.0f + (float) (b % 7);
+                        compensation.setBands (HearingCompensation::makeBands (HearingProfile::frequencies, gains),
+                                               HearingCompensation::makeBands (HearingProfile::frequencies, gains), b % 10 != 5);
+                        probe.present (b % 2, 1000.0f * (float) (1 + b % 8), -40.0f, 0.01, b % 3 == 0);
+                    }
+
+                    for (int c = 0; c < 2; ++c)
+                        for (int i = 0; i < 512; ++i)
+                            buffer.setSample (c, i, (random.nextFloat() * 2.0f - 1.0f) * 0.5f);
+
+                    RtAlloc::armed = true;
+                    compensation.process (buffer);
+                    RtAlloc::armed = false;
+
+                    for (int c = 0; c < 2; ++c)
+                        for (int i = 0; i < 512; ++i)
+                            expect (std::isfinite (buffer.getSample (c, i)));
+
+                    RtAlloc::armed = true;
+                    probe.render (buffer);
+                    RtAlloc::armed = false;
+                }
+
+                expectEquals (RtAlloc::allocations, 0, "hearing at " + juce::String (rate));
+                expectEquals (RtAlloc::frees, 0);
+            }
         }
 
         beginTest ("training beds are freed once no block can be reading them");

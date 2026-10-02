@@ -5,6 +5,7 @@
 #include "shared/ui/CompactSelector.h"
 #include "shared/ui/SegmentedChoice.h"
 #include "TrainerSettings.h"
+#include "shared/audio/HearingProfile.h"
 #include <functional>
 #include <memory>
 
@@ -45,6 +46,12 @@ public:
     // Hearing hooks, wired by the editor to the processor and HearingGuard.
     std::function<void (bool)> onCalibrationNoise;
     std::function<void (double hours, double levelDbA)> onAddExposure;
+
+    // Hearing calibration (ADR 051): the saved pairs and the Studio switch
+    // live in the processor's store; this page shows them and changes them.
+    void setHearingProfiles (HearingProfileStore* storeToUse);
+    std::function<void()> onHearingTest;             // "Take the test"
+    std::function<void()> onHearingProfileChanged;   // a pair chosen, or the switch moved
 
     // "34% of the week · last second 76 dB(A)" - asked once a second while
     // the Hearing page is open.
@@ -165,6 +172,14 @@ private:
     juce::Component exposureRow;
     juce::String hearingStatusText;
     bool noisePlaying = false;
+
+    // Hearing calibration: the active pair and the test, then the switch.
+    HearingProfileStore* hearingProfiles = nullptr;
+    CompactSelector profileSelector;
+    juce::TextButton profileTestButton;
+    juce::Component profileRow;
+    SegmentedChoice applyChoice;
+    void refreshHearingProfileRow();
 
     // Appearance
     SegmentedChoice themeChoice;

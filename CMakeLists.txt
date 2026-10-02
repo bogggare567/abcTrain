@@ -271,6 +271,7 @@ target_sources(abc_audio INTERFACE
     ${abcShared}/audio/AudioSliceAnalyzer.cpp
     ${abcShared}/audio/InstrumentLabel.cpp
     ${abcShared}/audio/LessonAudioBed.cpp
+    ${abcShared}/audio/HearingProfile.cpp
 )
 target_include_directories(abc_audio INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -322,6 +323,7 @@ target_sources(abc_trainer_engine INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/ProgressManager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Achievements.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/HearingGuard.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/Source/AudiometryProcedure.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/EQGame.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/CompressionGame.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/Source/Games/ReverbGame.cpp
@@ -391,6 +393,7 @@ target_sources(EarTrainer
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
         Source/SettingsScreenComponent.cpp
+        Source/HearingTestScreen.cpp
         Source/RunResultsComponent.cpp
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
@@ -628,6 +631,7 @@ target_sources(EarTrainerTests
         tests/HintTest.cpp
         tests/SkillBucketTest.cpp
         tests/HearingGuardTest.cpp
+        tests/HearingCalibrationTest.cpp
         tests/LearnerRedesignTest.cpp
 )
 
@@ -681,6 +685,7 @@ set(abcTrainEditorToolSources
         Source/HomeScreenComponent.cpp
         Source/SupportScreenComponent.cpp
         Source/SettingsScreenComponent.cpp
+        Source/HearingTestScreen.cpp
         Source/RunResultsComponent.cpp
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp

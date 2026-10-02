@@ -538,6 +538,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         const auto onSettings     = (item == TopNavComponent::Item::settings);
         const auto onLive         = (item == TopNavComponent::Item::live);
 
+        // The hearing test is a page of Settings: any tab leaves it, and
+        // leaving stops the tone.
+        hearingTestScreen.abort();
+        hearingTestScreen.setVisible (false);
+
         liveScreen.setVisible (onLive);
 
         if (onLive)
@@ -634,6 +639,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         // gets its 3-2-1 rather than an ambush.
         showScreen (Screen::training);
         beginRunWithCountdown();
+
+        // No hearing profile yet: offer the test, on a strip that leaves
+        // the round alone (ADR 051).
+        offerHearingTestIfDue();
     };
 
     homeScreen.onFavouriteToggled = [this] (int index, bool shouldBeFavourite)
@@ -981,6 +990,11 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         return text;
     };
     addChildComponent (settingsScreen);
+    addChildComponent (hearingTestScreen);
+
+    settingsScreen.setHearingProfiles (&processor.getHearingProfiles());
+    settingsScreen.onHearingTest = [this] { openHearingTest(); };
+    settingsScreen.onHearingProfileChanged = [this] { processor.applyHearingProfile(); };
     addChildComponent (studioScreen);
     addChildComponent (liveScreen);
     liveScreen.setAccount (&processor.getLiveAccount());
@@ -1077,6 +1091,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
                || tour.isRunning()
                || trainingSounds.isVisible()
                || settingsScreen.isVisible()
+               || hearingTestScreen.isVisible()
                || liveScreen.isVisible()
                || studioScreen.isOpen();
     };
@@ -1236,6 +1251,7 @@ void EarTrainerEditor::applyTheme()
     refreshRunStatus();
     refreshBeforeAfter();
     settingsScreen.refresh();
+    hearingTestScreen.refreshText();
 
     repaint();
 }
@@ -1420,6 +1436,7 @@ EarTrainerEditor::~EarTrainerEditor()
     // was the same bug the comment above it already warned about.
     processor.setSignalEnabled (false);
     processor.setCalibrationNoise (false);
+    processor.setHearingTest (false);
     processor.setVectorscope (nullptr);
     processor.setSpectrumAnalyzer (nullptr);
     processor.setWaveformDisplay (nullptr);
@@ -1979,6 +1996,7 @@ void EarTrainerEditor::resized()
     // tab.
     trainingSounds.setBounds (contentBounds());
     settingsScreen.setBounds (contentBounds());
+    hearingTestScreen.setBounds (contentBounds());
     achievementsScreen.setBounds (contentBounds());
     studioScreen.setBounds (contentBounds());
     liveScreen.setBounds (contentBounds());
@@ -2722,6 +2740,69 @@ void EarTrainerEditor::showHearingEvents (const std::vector<HearingGuard::Event>
     }
 }
 
+void EarTrainerEditor::openHearingTest()
+{
+    // Over whatever was showing, as a Settings page.
+    achievementsScreen.setVisible (false);
+    trainingSounds.setVisible (false);
+    liveScreen.setVisible (false);
+    settingsScreen.setVisible (false);
+    studioScreen.setVisible (false);
+    studioScreen.close();
+
+    hearingTestScreen.openSetup();
+    hearingTestScreen.setVisible (true);
+    hearingTestScreen.toFront (false);
+    hideContentUnderNavPage();
+    refreshRailStatus();
+    resized();
+    repaint();
+}
+
+void EarTrainerEditor::openSettingsHearingPage()
+{
+    hearingTestScreen.abort();
+    hearingTestScreen.setVisible (false);
+
+    if (topNav.onItemChosen != nullptr)
+        topNav.onItemChosen (TopNavComponent::Item::settings);
+
+    settingsScreen.selectPage (SettingsScreenComponent::Page::hearing);
+}
+
+void EarTrainerEditor::saveHearingProfile (const HearingProfile& profile)
+{
+    processor.getHearingProfiles().save (profile);
+    processor.applyHearingProfile();
+    openSettingsHearingPage();
+}
+
+void EarTrainerEditor::offerHearingTestIfDue (bool force)
+{
+    // Before an exercise, when there is no profile yet: once per launch,
+    // never over another hearing message, and "Not now" holds for a week
+    // (HearingProfileStore::offerSnoozeDays). It never blocks the round -
+    // the strip only offers.
+    auto& store = processor.getHearingProfiles();
+    const auto now = juce::Time::getCurrentTime();
+
+    // Not into a Survival or Blitz run either: "Take it" leaves the
+    // screen, and a run is a closed room (applyRunLock).
+    if (! force && (hearingOfferShown || hearingNotice.isVisible()
+                    || session.getMode() != SessionManager::Mode::practice))
+        return;
+
+    if (! force && ! store.shouldOffer (now))
+        return;
+
+    hearingOfferShown = true;
+    hearingNotice.setLabel (localisation.getText ("nav.hearingLabel"));
+    hearingNotice.onPrimary = [this] { openHearingTest(); };
+    hearingNotice.onSecondary = [this] { processor.getHearingProfiles().declineOffer (juce::Time::getCurrentTime()); };
+    hearingNotice.show (localisation.getText ("hp.offer.text"),
+                        localisation.getText ("hp.offer.go"), localisation.getText ("hp.offer.later"));
+}
+
 void EarTrainerEditor::refreshRailStatus()
 {
     auto& progress = processor.getProgressManager();
@@ -2736,7 +2817,8 @@ void EarTrainerEditor::refreshRailStatus()
     if (studioScreen.isVisible())         active = TopNavComponent::Item::studio;
     else if (achievementsScreen.isVisible()) active = TopNavComponent::Item::achievements;
     else if (trainingSounds.isVisible())  active = TopNavComponent::Item::sounds;
-    else if (settingsScreen.isVisible())  active = TopNavComponent::Item::settings;
+    else if (settingsScreen.isVisible()
+             || hearingTestScreen.isVisible()) active = TopNavComponent::Item::settings;
     else if (liveScreen.isVisible())      active = TopNavComponent::Item::live;
     topNav.setActiveItem (active);
     topNav.setVisible (railIsVisible());
@@ -3021,6 +3103,8 @@ void EarTrainerEditor::showScreen (Screen screen)
     soundkorbLink.setVisible (! onSupport);
 
     // Leaving for a screen closes whichever page was open over it.
+    hearingTestScreen.abort();
+    hearingTestScreen.setVisible (false);
     settingsScreen.setVisible (false);
     liveScreen.setVisible (false);
     trainingSounds.setVisible (false);
@@ -3213,6 +3297,7 @@ void EarTrainerEditor::refreshLocalisedText()
 {
     supportScreen.refresh();
     settingsScreen.refresh();
+    hearingTestScreen.refreshText();
     instructionsButton.setTooltip (localisation.getText ("ui.showInstructions"));
     donateLink.setButtonText (localisation.getText ("ui.support"));
     endRunButton.setButtonText (localisation.getText ("ui.endRun"));

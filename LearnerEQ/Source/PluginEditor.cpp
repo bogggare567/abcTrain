@@ -7,6 +7,7 @@
 #include "FindResonanceLesson.h"
 #include "HighPassLesson.h"
 #include "InstrumentMaps.h"
+#include "shared/ui/HearingColours.h"
 
 namespace
 {
@@ -338,6 +339,7 @@ LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
         modules.push_back (std::move (w));
 
     finishSetup (std::move (modules), 880, 800);
+    refreshHearingOverlay (true);
 }
 
 LearnerEQEditor::~LearnerEQEditor()
@@ -397,6 +399,10 @@ void LearnerEQEditor::layoutToolbar (juce::Rectangle<int> area)
 
 void LearnerEQEditor::layoutAnalysis (juce::Rectangle<int> area)
 {
+    // Embedded in the Studio or not decides the overlay's caption, and
+    // the Studio says so after construction, then lays the editor out.
+    refreshHearingOverlay (false);
+
     // The curve is the instrument and gets most of the width; the lesson
     // sits beside it, never over it - or, with the companion window open,
     // is in that window and the curve takes the whole width.
@@ -559,6 +565,7 @@ void LearnerEQEditor::refreshLesson()
 void LearnerEQEditor::themeChanged()
 {
     const auto& theme = AbcTrainTheme::current();
+    refreshHearingOverlay (true);   // the ears' colours follow the theme
 
     for (auto* slider : { &freqSlider, &gainSlider, &qSlider, &slopeSlider })
     {
@@ -575,9 +582,52 @@ void LearnerEQEditor::themeChanged()
     chooseInstrument (instrument);
 }
 
+void LearnerEQEditor::refreshHearingOverlay (bool force)
+{
+    const auto file = hearingFile.getFile();
+    const auto modified = file.getLastModificationTime();
+
+    if (! force && modified == hearingFileTime && hearingShownEmbedded == isEmbedded())
+        return;
+
+    hearingFileTime = modified;
+    hearingShownEmbedded = isEmbedded();
+    hearingStore.reload();
+
+    const auto compensation = hearingStore.currentCompensation();
+    const auto* profile = hearingStore.getActive();
+    std::vector<SpectrumAnalyserComponent::OverlayCurve> curves;
+
+    if (compensation.active && profile != nullptr)
+    {
+        const auto left = HearingCompensation::makeBands (HearingProfile::frequencies, compensation.left);
+        const auto right = HearingCompensation::makeBands (HearingProfile::frequencies, compensation.right);
+
+        if (! left.isFlat())
+            curves.push_back ({ left, HearingColours::left() });
+
+        if (! right.isFlat())
+            curves.push_back ({ right, HearingColours::right() });
+    }
+
+    const auto caption = curves.empty() ? juce::String()
+                       : isEmbedded() ? t ("hp.eq.studio", "hearing correction: {{pair}}").replace ("{{pair}}", profile->pairName())
+                                      : t ("hp.eq.daw", "hearing correction: Studio only");
+
+    spectrum.setOverlayCurves (std::move (curves), caption, false);
+}
+
 void LearnerEQEditor::tick()
 {
     pushBandsToDisplay();
+
+    // Once a second is plenty: the file changes when somebody saves a
+    // profile, not while they listen.
+    if (--hearingCheckCountdown <= 0)
+    {
+        hearingCheckCountdown = 30;
+        refreshHearingOverlay (false);
+    }
 
     // A band can go away without this editor doing it - host automation,
     // a preset load, a lesson - so the selection is re-checked every frame.

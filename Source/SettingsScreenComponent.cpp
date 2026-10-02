@@ -136,6 +136,45 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
             onTrainerSettingsChanged();
     };
 
+    // ---- hearing calibration (ADR 051) ----------------------------------
+    profileSelector.setComponentID ("settings.hearingProfile");
+    profileRow.addAndMakeVisible (profileSelector);
+    profileRow.addAndMakeVisible (profileTestButton);
+    profileRow.setInterceptsMouseClicks (false, true);
+    addAndMakeVisible (profileRow);
+
+    profileSelector.onChange = [this]
+    {
+        if (hearingProfiles == nullptr)
+            return;
+
+        const auto index = profileSelector.getSelectedId() - 2;
+        const auto& all = hearingProfiles->getProfiles();
+        hearingProfiles->setActive (index >= 0 && index < (int) all.size() ? all[(size_t) index].id : juce::String());
+        refreshHearingProfileRow();
+
+        if (onHearingProfileChanged != nullptr)
+            onHearingProfileChanged();
+    };
+
+    profileTestButton.onClick = [this]
+    {
+        if (onHearingTest != nullptr)
+            onHearingTest();
+    };
+
+    applyChoice.onChange = [this] (int value)
+    {
+        if (hearingProfiles == nullptr)
+            return;
+
+        hearingProfiles->setApplying (value == 1);
+
+        if (onHearingProfileChanged != nullptr)
+            onHearingProfileChanged();
+    };
+    addAndMakeVisible (applyChoice);
+
     // ---- exposure from outside the trainer -----------------------------
     exposureHours.setValue (4);
     exposureLevel.setValue (95);
@@ -414,6 +453,8 @@ void SettingsScreenComponent::buildRows()
         { "set.penalty.title",      "set.penalty.hint",      &blitzPenalty,   0, true,  Page::training },
 
         { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, standardControlWidth, false, Page::hearing },
+        { "set.hearingProfile.title", "set.hearingProfile.hintNone", &profileRow, 0, false, Page::hearing },
+        { "set.hearingApply.title", "set.hearingApply.hint",  &applyChoice,    0, false, Page::hearing },
         { "set.hearingOn.title",    "set.hearingOn.hint",    &hearingOn,      0, false, Page::hearing },
         { "set.break.title",        "set.break.hint",        &breakMinutes,   0, true,  Page::hearing },
         { "set.fatigue.title",      "set.fatigue.hint",      &fatigueHint,    0, true,  Page::hearing },
@@ -513,6 +554,12 @@ juce::String SettingsScreenComponent::hintFor (const Row& row) const
     if (row.control == &syncNowButton && syncStatusText.isNotEmpty())
         return syncStatusText;
 
+    if (row.control == &profileRow && hearingProfiles != nullptr)
+        if (const auto* active = hearingProfiles->getActive())
+            return localisation.getText ("set.hearingProfile.hintSet",
+                                         { { "pair", active->pairName() },
+                                           { "date", active->created.formatted ("%d.%m.%Y") } });
+
     if (row.control == &calibrationRow)
     {
         const auto db = settings.stored (Id::calibrationDb);
@@ -573,6 +620,9 @@ void SettingsScreenComponent::refresh()
     syncChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
     syncNowButton.setButtonText (t ("set.syncNow.button"));
     audioDeviceButton.setButtonText (t ("set.audioDevice.button"));
+    profileTestButton.setButtonText (t ("set.hearingProfile.test"));
+    applyChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
+    refreshHearingProfileRow();
     closeButton.setButtonText (t ("ui.close"));
 
     // A Slider's text box keeps the colours it was built with; the light
@@ -595,6 +645,40 @@ void SettingsScreenComponent::refresh()
         hearingStatusText = hearingStatus();
 
     resized();
+    repaint();
+}
+
+void SettingsScreenComponent::setHearingProfiles (HearingProfileStore* storeToUse)
+{
+    hearingProfiles = storeToUse;
+    refresh();
+}
+
+void SettingsScreenComponent::refreshHearingProfileRow()
+{
+    profileSelector.clearItems();
+    profileSelector.addItem (localisation.getText ("set.hearingProfile.none"), 1);
+    auto selected = 1;
+
+    if (hearingProfiles != nullptr)
+    {
+        const auto* active = hearingProfiles->getActive();
+        const auto& all = hearingProfiles->getProfiles();
+
+        for (size_t i = 0; i < all.size(); ++i)
+        {
+            profileSelector.addItem (all[i].pairName(), (int) i + 2);
+
+            if (active != nullptr && active->id == all[i].id)
+                selected = (int) i + 2;
+        }
+
+        applyChoice.setValue (hearingProfiles->isApplying() ? 1 : 0);
+    }
+
+    profileSelector.setSelectedId (selected, juce::dontSendNotification);
+    // The switch means nothing without a pair to apply.
+    applyChoice.setEnabled (selected > 1);
     repaint();
 }
 
@@ -879,6 +963,14 @@ void SettingsScreenComponent::resized()
         r.removeFromRight (6);
         calibrationSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 88, r.getHeight());
         calibrationSlider.setBounds (r);
+    }
+    {
+        // The pair on the left, the test on the right - the same edge as
+        // every other row's button.
+        auto r = profileRow.getLocalBounds();
+        profileTestButton.setBounds (r.removeFromRight (180));
+        r.removeFromRight (AbcTrainTheme::Spacing::small);
+        profileSelector.setBounds (r.removeFromLeft (juce::jmin (r.getWidth(), standardControlWidth)));
     }
     {
         // Shares of whatever width the row has, not fixed pixels: 170 + 310

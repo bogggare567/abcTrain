@@ -323,6 +323,17 @@ int main (int argc, char* argv[])
         return 1;
     }
 
+    // The hearing profiles (ADR 051): put aside, and an empty store with the
+    // offer declined, so the training cases see no strip.
+    const auto hearingFile = HearingProfileStore::makeDefaultOptions().getDefaultFile();
+    const auto hearingExisted = hearingFile.existsAsFile();
+    const auto hearingBefore = hearingExisted ? hearingFile.loadFileAsString() : juce::String();
+    {
+        hearingFile.deleteFile();
+        juce::PropertiesFile file (HearingProfileStore::makeDefaultOptions());
+        HearingProfileStore (file).declineOffer (juce::Time::getCurrentTime());
+    }
+
     int problems = 0;
 
     {
@@ -354,6 +365,11 @@ int main (int argc, char* argv[])
             { "Settings - Pro", Expect::everythingLive, 0,            [] (auto& e) { e.openSettingsPageForSnapshot (SettingsScreenComponent::Page::training, true); } },
             { "Settings - Hearing", Expect::everythingLive, 0,        [] (auto& e) { e.openSettingsPageForSnapshot (SettingsScreenComponent::Page::hearing, true, true); } },
             { "Hearing notice", Expect::everythingLive, 0,            [] (auto& e) { e.showHearingNoticeForSnapshot(); } },
+            // The form's Start is dead until both names are typed - right.
+            { "Hearing test - form", Expect::everythingLive, 1,       [] (auto& e) { e.openHearingTestForSnapshot (0); } },
+            { "Hearing test - answering", Expect::everythingLive, 0,  [] (auto& e) { e.openHearingTestForSnapshot (1); } },
+            { "Hearing test - result", Expect::everythingLive, 0,     [] (auto& e) { e.openHearingTestForSnapshot (2); } },
+            { "Hearing test - offer", Expect::everythingLive, 0,      [] (auto& e) { e.offerHearingTestForSnapshot(); } },
             { "Achievements", Expect::everythingLive, 0,              [] (auto& e) { e.openAchievementsForSnapshot(); } },
             { "Studio - EQ", Expect::everythingLive, 0,               [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::eq); } },
             { "Studio - Comp", Expect::everythingLive, 0,             [] (auto& e) { e.openStudioForSnapshot (StudioScreenComponent::Effect::comp); } },
@@ -428,6 +444,25 @@ int main (int argc, char* argv[])
         std::cout << "  " << (silent ? "the exercise goes quiet" : "the exercise keeps playing under the page") << "\n";
         problems += silent ? 0 : 1;
     }
+
+    {
+        std::cout << "\nHearing test -> another tab\n---------------------------\n";
+        EarTrainerProcessor processor;
+        processor.prepareToPlay (44100.0, 512);
+        EarTrainerEditor editor (processor);
+        editor.setVisible (true);
+        editor.openHearingTestForSnapshot (1);
+        processor.setHearingTest (true);   // as if the test were running
+        editor.openSoundsFromTrainingForSnapshot();
+        const auto stopped = ! processor.isRunningHearingTest();
+        std::cout << "  " << (stopped ? "the probe stops" : "the probe keeps playing under another page") << "\n";
+        problems += stopped ? 0 : 1;
+    }
+
+    if (hearingExisted)
+        hearingFile.replaceWithText (hearingBefore);
+    else
+        hearingFile.deleteFile();
 
     if (hadSettings)
         backup.moveFileTo (settings);

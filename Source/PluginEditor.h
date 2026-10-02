@@ -11,6 +11,7 @@
 #include "HomeScreenComponent.h"
 #include "SupportScreenComponent.h"
 #include "SettingsScreenComponent.h"
+#include "HearingTestScreen.h"
 #include "StudioScreenComponent.h"
 #include "LiveScreenComponent.h"
 #include "OnlineBattle.h"
@@ -250,6 +251,28 @@ public:
     {
         openTrainingForSnapshot (0);
         showHearingEvents ({ HearingGuard::Event::breakDue });
+        resized();
+    }
+
+    // The hearing calibration page: 0 the form, 1 the test answering,
+    // 2 the result of HearingTestScreen::exampleProfile().
+    void openHearingTestForSnapshot (int view)
+    {
+        showScreen (Screen::home);
+        openHearingTest();
+
+        if (view == 1)
+            hearingTestScreen.showTestForSnapshot();
+        else if (view == 2)
+            hearingTestScreen.showResultForSnapshot (HearingTestScreen::exampleProfile());
+    }
+
+    // The offer strip before an exercise, as somebody with no profile sees it.
+    void offerHearingTestForSnapshot()
+    {
+        hearingOfferShown = false;
+        openTrainingForSnapshot (0);
+        offerHearingTestIfDue (true);
         resized();
     }
 
@@ -1249,6 +1272,13 @@ private:
 
     // Shows what HearingGuard just said, one strip at a time.
     void showHearingEvents (const std::vector<HearingGuard::Event>&);
+
+    // Hearing calibration (ADR 051).
+    void openHearingTest();
+    void openSettingsHearingPage();
+    void saveHearingProfile (const HearingProfile&);
+    void offerHearingTestIfDue (bool force = false);   // force: the snapshot tools, past every rule
+    bool hearingOfferShown = false;   // once per launch, at most
     void refreshHearingIndicator();
     HearingNotice hearingNotice;
 
@@ -1637,6 +1667,16 @@ private:
     // once. Added after trainingSounds so it paints over it, and before
     // the toast, which paints over everything.
     SettingsScreenComponent settingsScreen { localisation, localisationProperties };
+
+    // A page of its own under the bar, lit as Settings (where it is
+    // reached from). Leaving it any way stops the probe.
+    HearingTestScreen hearingTestScreen { localisation, processor.getHearingProfiles(), HearingTestScreen::Host {
+        [this] (bool active) { processor.setHearingTest (active); },
+        [this] (int channel, float freq, float db, double delay, bool silent)
+        { processor.getProbeTone().present (channel, freq, db, delay, silent); },
+        [this] { processor.getProbeTone().stop(); },
+        [this] (const HearingProfile& profile) { saveHearingProfile (profile); },
+        [this] { openSettingsHearingPage(); } } };
 
     // Seminars, battles, the rating - the screens and buttons, no network
     // yet (LiveScreenComponent.h).

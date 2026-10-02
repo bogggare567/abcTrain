@@ -2,6 +2,7 @@
 
 #include "shared/analysis/SpectrumAnalyzer.h"
 #include "shared/dsp/EQCoefficients.h"
+#include "shared/dsp/HearingCompensation.h"
 #include <functional>
 #include <vector>
 
@@ -66,6 +67,23 @@ public:
     };
 
     void setCustomZones (std::vector<CustomZone> zones) { customZones = std::move (zones); repaint(); }
+
+    // Extra curves drawn under the EQ's own: the listener's hearing
+    // compensation (ADR 051), one per ear. `prominent` false is the
+    // Learner EQ way - thin, dashed, half transparent, a reminder that the
+    // Studio's sound is pre-processed, never something to mistake for a
+    // band. True is for the test's result page, where the curves are the
+    // subject. The caption sits in the top right corner.
+    struct OverlayCurve
+    {
+        HearingCompensation::Bands bands;
+        juce::Colour colour;
+    };
+
+    void setOverlayCurves (std::vector<OverlayCurve> curves, juce::String caption, bool prominent);
+
+    // Off on the result page, which has no bands of its own.
+    void setResponseCurveVisible (bool shouldShow) { responseCurveVisible = shouldShow; repaint(); }
 
     // One colour per band slot, shared with the editor's band chips so a
     // node and its chip are visibly the same thing.
@@ -142,6 +160,12 @@ private:
     void paintCustomZones (juce::Graphics&, juce::Rectangle<float> bounds) const;
 
     float pointerFreq = -1.0f;
+
+    std::vector<OverlayCurve> overlayCurves;
+    juce::String overlayCaption;
+    bool overlayProminent = false;
+    bool responseCurveVisible = true;
+    void paintOverlayCurves (juce::Graphics&, juce::Rectangle<float> bounds) const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SpectrumAnalyserComponent)
 };

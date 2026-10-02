@@ -19,6 +19,16 @@ EarTrainerProcessor::EarTrainerProcessor()
     // Before any audio device exists, so the editor (and the snapshot
     // tool, which never has one) can already convert levels.
     measureCalibrationNoise (48000.0);
+
+    applyHearingProfile();
+}
+
+void EarTrainerProcessor::applyHearingProfile()
+{
+    const auto c = hearingProfiles.currentCompensation();
+    hearingCompensation.setBands (HearingCompensation::makeBands (HearingProfile::frequencies, c.left),
+                                  HearingCompensation::makeBands (HearingProfile::frequencies, c.right),
+                                  c.active);
 }
 
 void EarTrainerProcessor::measureCalibrationNoise (double sampleRate)
@@ -60,6 +70,8 @@ bool EarTrainerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
 void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     clipPreview.prepare (sampleRate);
+    probeTone.prepare (sampleRate);
+    hearingCompensation.prepare (sampleRate);
 
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
@@ -97,6 +109,15 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 {
     juce::ScopedNoDenormals noDenormals;
 
+    // The hearing test wins over everything, the calibration noise
+    // included: one tone in one ear, at exactly the level asked for.
+    if (hearingTest.load())
+    {
+        probeTone.render (buffer);
+        outputMeter.process (buffer);
+        return;
+    }
+
     // The Studio: the Learner's own processBlock, then the same last two
     // steps as the trainer - one output level, and the hearing meter,
     // because an hour of EQ on headphones is an hour of sound. Calibration
@@ -104,6 +125,12 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     if (const auto effect = studioEffect.load(); effect >= 0 && ! calibrationNoise.load())
     {
         studio[(size_t) effect]->processBlock (buffer, midi);
+
+        // The listener's own correction, after the plugin and before the
+        // output level: it is part of the playback chain, like a monitor
+        // controller's EQ, not part of the mix. Does nothing without an
+        // active profile and the Settings switch.
+        hearingCompensation.process (buffer);
         applyOutputGain (buffer);
         outputMeter.process (buffer);
         return;

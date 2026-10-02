@@ -11,6 +11,9 @@
 #include "shared/analysis/WaveformDisplay.h"
 #include "shared/analysis/AWeightedMeter.h"
 #include "shared/audio/PinkNoiseGenerator.h"
+#include "shared/audio/HearingProfile.h"
+#include "shared/dsp/HearingCompensation.h"
+#include "ProbeTone.h"
 #include <array>
 #include <atomic>
 #include <memory>
@@ -125,12 +128,48 @@ public:
     int getStudioEffect() const noexcept { return studioEffect.load(); }
     juce::AudioProcessor& getStudioProcessor (int index) { return *studio[(size_t) juce::jlimit (0, numStudioEffects - 1, index)]; }
 
+    // ---- hearing calibration (ADR 051) ----
+    //
+    // While the audiometry test runs, the probe is the only sound: it
+    // replaces the exercise, the Studio, the calibration noise and the
+    // output level - a threshold measured under a volume slider would be a
+    // threshold of the slider. Switched on by the test screen only.
+    void setHearingTest (bool shouldRun) noexcept
+    {
+        if (! shouldRun)
+            probeTone.stop();
+
+        hearingTest.store (shouldRun);
+    }
+
+    bool isRunningHearingTest() const noexcept { return hearingTest.load(); }
+    ProbeTone& getProbeTone() noexcept { return probeTone; }
+
+    // Saved profiles, the active one and the Studio switch. The processor
+    // owns them because it is the one that applies them.
+    HearingProfileStore& getHearingProfiles() noexcept { return hearingProfiles; }
+
+    // Re-reads the active profile and the switch and hands the boosts to
+    // the Studio's compensation. Message thread; call after any change.
+    void applyHearingProfile();
+    bool isHearingCompensationActive() const noexcept { return hearingCompensation.isActive(); }
+
     // The Training Sounds page's "click to hear". Sounds only while the
     // trainer's own signal is off (menus), so it can never mix into a round.
     ClipPreview& getClipPreview() noexcept { return clipPreview; }
 
 private:
     ClipPreview clipPreview;
+
+    std::atomic<bool> hearingTest { false };
+    ProbeTone probeTone;
+    juce::PropertiesFile hearingFile { HearingProfileStore::makeDefaultOptions() };
+    HearingProfileStore hearingProfiles { hearingFile };
+
+    // Studio output only: never the exercises (they measure the very
+    // hearing it would be correcting) and never a plugin in a DAW (a
+    // bounce would carry one person's ears into the mix).
+    HearingCompensation::Processor hearingCompensation;
 
     void applyOutputGain (juce::AudioBuffer<float>&) noexcept;
 

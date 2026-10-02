@@ -17,6 +17,79 @@ void SpectrumAnalyserComponent::setEQState (double sampleRate, std::vector<Band>
     repaint();
 }
 
+void SpectrumAnalyserComponent::setOverlayCurves (std::vector<OverlayCurve> curves, juce::String caption, bool prominent)
+{
+    overlayCurves = std::move (curves);
+    overlayCaption = std::move (caption);
+    overlayProminent = prominent;
+    repaint();
+}
+
+void SpectrumAnalyserComponent::paintOverlayCurves (juce::Graphics& g, juce::Rectangle<float> bounds) const
+{
+    if (overlayCurves.empty())
+        return;
+
+    constexpr int numPoints = 256;
+    const auto area = curveArea (bounds);
+
+    for (const auto& curve : overlayCurves)
+    {
+        // Designed once per paint, like the EQ's own bands: the same bells
+        // the Studio runs (HearingCompensation::design).
+        const auto design = HearingCompensation::designForTargets (curve.bands, eqSampleRate);
+        juce::Path path;
+
+        for (int i = 0; i < numPoints; ++i)
+        {
+            const auto proportion = (float) i / (float) (numPoints - 1);
+            const auto freq = FrequencyGuide::proportionToFrequency (proportion);
+            double db = 0.0;
+
+            for (int b = 0; b < design.count; ++b)
+            {
+                const auto& c = design.c[(size_t) b];
+                db += juce::Decibels::gainToDecibels (
+                    EQCoefficients::magnitudeOf ({ c[0], c[1], c[2], 1.0f, c[3], c[4] }, (double) freq, eqSampleRate), -200.0);
+            }
+
+            const auto x = area.getX() + area.getWidth() * proportion;
+            const auto y = yForGain ((float) db, area);
+
+            if (i == 0)
+                path.startNewSubPath (x, y);
+            else
+                path.lineTo (x, y);
+        }
+
+        if (overlayProminent)
+        {
+            g.setColour (curve.colour.withAlpha (0.25f));
+            g.strokePath (path, juce::PathStrokeType (4.0f, juce::PathStrokeType::curved));
+            g.setColour (curve.colour);
+            g.strokePath (path, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved));
+        }
+        else
+        {
+            juce::Path dashed;
+            const float dashes[] { 6.0f, 4.0f };
+            juce::PathStrokeType (1.5f).createDashedStroke (dashed, path, dashes, 2);
+            g.setColour (curve.colour.withAlpha (0.55f));
+            g.fillPath (dashed);
+        }
+    }
+
+    if (overlayCaption.isNotEmpty())
+    {
+        const auto& theme = AbcTrainTheme::current();
+        g.setColour (theme.textDim.withAlpha (overlayProminent ? 0.9f : 0.75f));
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        AbcTrainLookAndFeel::fitText (g, overlayCaption,
+                                      area.reduced (8.0f, 4.0f).removeFromTop (14.0f),
+                                      juce::Justification::centredRight, true);
+    }
+}
+
 void SpectrumAnalyserComponent::setSelectedBand (int bandIndex) noexcept
 {
     selectedBandIndex = bandIndex;
@@ -283,6 +356,14 @@ void SpectrumAnalyserComponent::paintOverlay (juce::Graphics& g, juce::Rectangle
     // top look the same.
     g.setColour (theme.outline.withAlpha (0.5f));
     g.drawLine (area.getX(), area.getCentreY(), area.getRight(), area.getCentreY(), 1.0f);
+
+    paintOverlayCurves (g, bounds);
+
+    if (! responseCurveVisible)
+    {
+        paintNodes (g, bounds);
+        return;
+    }
 
     const auto curve = buildResponseCurvePath (bounds);
 
