@@ -12,12 +12,13 @@
 // pre-release and any number here would be invented.
 
 import facts from './generated/plugin-facts.json';
+import release from './generated/release.json';
 
 export const RELEASE = {
   // Generated from `git describe` against the plugin's own tags, so a
   // release updates these links by being tagged rather than by somebody
   // remembering to edit this file. See tools/sync-from-plugin.mjs.
-  version: facts.version,
+  version: release.version,
   repo: 'https://github.com/bogggare567/abcTrain',
   releases: 'https://github.com/bogggare567/abcTrain/releases',
   site: 'https://soundkorb.ru',

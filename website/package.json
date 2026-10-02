@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Landing page for the abcTrain plugin pack by soundkorb.",
   "scripts": {
+    "predev": "node tools/sync-from-plugin.mjs",
     "dev": "vite",
+    "prebuild": "node tools/sync-from-plugin.mjs",
     "build": "vite build",
     "preview": "vite preview"
   },

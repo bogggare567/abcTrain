@@ -28,6 +28,11 @@ import { execSync } from 'node:child_process';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..');
 const out = join(here, '..', 'src', 'generated', 'plugin-facts.json');
+// The release version lives apart from the facts and is not committed: it
+// comes from the newest tag at build time, so tagging a release used to
+// make the committed facts "stale" and fail Pages until somebody
+// regenerated them by hand (v2.0.0 and v2.0.1 both did).
+const releaseOut = join(here, '..', 'src', 'generated', 'release.json');
 
 const read = (relative) => readFileSync(join(root, relative), 'utf8');
 
@@ -97,7 +102,6 @@ const describe = execSync('git describe --tags --abbrev=0 --exclude "*-*"', { cw
 const facts = {
   // Written into the file so it is obvious this is not hand-maintained.
   generatedBy: 'website/tools/sync-from-plugin.mjs',
-  version: describe.replace(/^v/, ''),
 
   families: {
     frequency: familyColour('frequency'),
@@ -170,6 +174,11 @@ const facts = {
 };
 
 const json = `${JSON.stringify(facts, null, 2)}\n`;
+const release = { version: describe.replace(/^v/, '') };
+
+// Always written, also with --check: the build needs it either way.
+mkdirSync(dirname(releaseOut), { recursive: true });
+writeFileSync(releaseOut, `${JSON.stringify(release, null, 2)}\n`, 'utf8');
 
 if (process.argv.includes('--check')) {
   const current = existsSync(out) ? readFileSync(out, 'utf8') : '';
@@ -190,5 +199,5 @@ if (process.argv.includes('--check')) {
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, json, 'utf8');
 console.log(`sync-from-plugin: wrote ${out}`);
-console.log(`  version ${facts.version}`);
+console.log(`  version ${release.version}`);
 console.log(`  tolerances`, facts.tolerances);
