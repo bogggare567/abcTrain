@@ -670,6 +670,7 @@ target_sources(EarTrainerTests
         tests/BattleShareTest.cpp
         tests/UiSoundsTest.cpp
         tests/LoudnessMatchTest.cpp
+        tests/RoundOracleTest.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
         Source/BattleShare.cpp
@@ -910,3 +911,28 @@ juce_add_console_app(RoomDemo PRODUCT_NAME "RoomDemo")
 target_sources(RoomDemo PRIVATE tools/RoomDemo.cpp Source/LocalRoom.cpp)
 target_compile_definitions(RoomDemo PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 target_link_libraries(RoomDemo PRIVATE juce::juce_gui_basics juce::juce_recommended_config_flags)
+
+
+# The battle server's judge (b05, ADR 056): the game engine without a window,
+# answering "exercise level seed" with the round's right answer, one line
+# each way. Built on the VPS by deploy and kept running by the site server.
+juce_add_console_app(RoundOracle
+    PRODUCT_NAME "RoundOracle"
+)
+target_sources(RoundOracle PRIVATE tools/RoundOracle.cpp)
+target_compile_definitions(RoundOracle PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(RoundOracle
+    PRIVATE
+        abc_trainer_engine
+        abc_shared
+        juce::juce_audio_utils
+        juce::juce_dsp
+        SampleData
+        I18nData
+        FontData
+        BrandData
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_warning_flags
+)
+target_include_directories(RoundOracle PRIVATE ${CMAKE_BINARY_DIR}/generated ${CMAKE_CURRENT_SOURCE_DIR})

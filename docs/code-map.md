@@ -1563,3 +1563,4 @@ too, only Windows needed the fix (see
 - Numbers in answers (t01): `CompressionGame::getChoiceLabel` is the measured gain reduction ("−6 dB", 95th percentile on this round's material), `ReverbGame::getChoiceLabel` is the type and its decay ("Hall 2.4 s"); `getChoiceKey` keeps the tier/type name for descriptions and stats.
 - Daily dose (t02): `ProgressManager::getPracticeSecondsToday`, `EarTrainerEditor::refreshToday` → `TopNavComponent::setToday`; Settings → Training «Доза на день».
 - Loudness match (t03, ADR 055): `GainMatch::mode` RMS / BS.1770 K-weighting (`kRms`), set from Settings → Training.
+- Battle judge (b05, ADR 056): `tools/RoundOracle.cpp` answers "exercise level seed" with the right answer for the site server; `tests/RoundOracleTest` holds that a seeded round depends on those three only.
