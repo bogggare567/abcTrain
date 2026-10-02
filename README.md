@@ -63,7 +63,7 @@ Everything is decided in public: what is planned, why, and what testers found.
 | 🗺️ [**Board**](https://github.com/users/bogggare567/projects/1) | what is being worked on, and what is next |
 | 💬 [**Discussions**](https://github.com/bogggare567/abcTrain/discussions) | questions, ideas, what you made with it |
 | 🐞 [**Issues**](https://github.com/bogggare567/abcTrain/issues/new/choose) | something broken |
-| 📣 [**Telegram**]((https://t.me/vstabcchat)) | new versions |
+| 📣 [**Telegram**](https://t.me/vstabcchat) | new versions |
 
 Code, a translation or a sound pack you have the rights to — see [CONTRIBUTING](.github/CONTRIBUTING.md).
 
