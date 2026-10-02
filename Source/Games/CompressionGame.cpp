@@ -1,4 +1,5 @@
 #include "CompressionGame.h"
+#include "shared/audio/GainMatch.h"
 #include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 
@@ -209,16 +210,8 @@ float CompressionGame::measureMakeupForTest (int level, const Variant& variant) 
         }
     }
 
-    const auto rmsOf = [&scratch, numSamples]
-    {
-        auto sum = 0.0;
-        for (int i = 0; i < numSamples; ++i)
-        {
-            const auto v = (double) scratch.getSample (0, i);
-            sum += v * v;
-        }
-        return (float) std::sqrt (sum / (double) numSamples);
-    };
+    // RMS or K-weighted, whichever the player chose (GainMatch::mode).
+    const auto rmsOf = [&scratch] { return GainMatch::level (scratch); };
 
     const auto dry = rmsOf();
 
@@ -263,6 +256,23 @@ void CompressionGame::newRound()
     roundVariant = family[(size_t) PresetFamily::choose (weightsFor (family), difficultyLevel, random)];
     roundMakeupGain = measureMakeupForTest (level, roundVariant);
 
+    // What each side of the question does in numbers. The playing side is
+    // measured with its own voicing; the other with its tier's textbook
+    // one, under the same jitter - the label is the amount, not the recipe.
+    for (size_t i = 0; i < 2; ++i)
+        pairReductionDb[i] = measureGainReductionDb (pairLevels[i], (int) i == correctLevelIndex ? roundVariant
+                                                                                                 : familyFor (pairLevels[i]).front());
+
+    // Two numbers that round to the same whole dB would ask a question
+    // the labels cannot tell apart; keep them a dB apart at least, in the
+    // order the settings really sit.
+    {
+        const auto lo = pairLevels[0] < pairLevels[1] ? 0u : 1u;
+        const auto hi = 1u - lo;
+        if (pairReductionDb[hi] - pairReductionDb[lo] < 1.0f)
+            pairReductionDb[hi] = pairReductionDb[lo] + 1.0f;
+    }
+
     chosenLevelIndex = -1;
     answered = false;
     updateCompressor();
@@ -286,7 +296,44 @@ void CompressionGame::submitAnswer (int choiceIndex)
 
 juce::String CompressionGame::getChoiceLabel (int choiceIndex) const
 {
-    return presets[(size_t) pairLevels[(size_t) juce::jlimit (0, 1, choiceIndex)]].label;
+    // U+2212 minus: a reduction, written the way a GR meter writes it.
+    return juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x92"))
+         + juce::String (juce::roundToInt (choiceReductionDb (choiceIndex))) + " dB";
+}
+
+float CompressionGame::measureGainReductionDb (int level, const Variant& variant) const
+{
+    const auto rate = sampleRate > 0.0 ? sampleRate : 44100.0;
+    const auto numSamples = (int) (rate * 2.4);
+
+    CompressorEngine measuring;
+    measuring.prepare (rate);
+    const auto& preset = presets[(size_t) juce::jlimit (0, numLevels - 1, level)];
+    measuring.setParameters (preset.thresholdDb + variant.thresholdOffsetDb + roundThresholdJitterDb,
+                             juce::jmax (1.05f, preset.ratio * variant.ratioScale + roundRatioJitter),
+                             variant.attackMs, variant.releaseMs, kneeDb, 0.0f);
+
+    std::vector<float> scratch ((size_t) numSamples);
+    noise.fillForMeasurement (scratch.data(), numSamples, 0x5EED);
+
+    // Noise is played as hits; measure the hits (same shaping as above).
+    if (noise.isPlayingNoise())
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const auto position = i % juce::jmax (1, burstPeriodSamples);
+            scratch[(size_t) i] *= position < attackSamples
+                                     ? (float) position / (float) juce::jmax (1, attackSamples)
+                                     : std::exp ((float) -(position - attackSamples) / (float) juce::jmax (1, decayTauSamples));
+        }
+
+    std::vector<float> reduction;
+    reduction.reserve ((size_t) numSamples);
+    for (auto x : scratch)
+        reduction.push_back (-juce::Decibels::gainToDecibels (measuring.computeGain (x), -60.0f));
+
+    const auto at = reduction.begin() + (std::ptrdiff_t) (reduction.size() * 95 / 100);
+    std::nth_element (reduction.begin(), at, reduction.end());
+    return juce::jmax (0.0f, *at);
 }
 
 juce::String CompressionGame::getFeedbackText() const

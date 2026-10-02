@@ -197,7 +197,7 @@ void StereoWidthGame::updateMatchGain()
                                                   + (midValue - side) * (midValue - side))));
     }
 
-    matchGain = GainMatch::from (GainMatch::rms (mono), GainMatch::rms (wide));
+    matchGain = GainMatch::from (GainMatch::level (mono), GainMatch::level (wide));
 }
 
 void StereoWidthGame::submitAnswer (int choiceIndex)

@@ -1560,3 +1560,6 @@ too, only Windows needed the fix (see
 - `shared/ui/CommunityLink.h` — the Telegram group's address and `open()`; used by Settings → About, Live → Battle and the results card.
 - `Source/BattleShare.*` — a finished battle as chat text (`format`), filled by `EarTrainerEditor::showRunResults`; `RunResultsComponent` copies it to the clipboard and then offers the community.
 - `shared/audio/UiSounds.*` — the app's one-shots: takes per event from `UiSoundData` (`assets/ui-sounds/<event>-<n>.flac`), no repeated take, ±35 cents / ±1.5 dB, bursts back off; mixed in `EarTrainerProcessor::processBlock` before the output level. `tools/ui_sounds/import.py` prepares takes.
+- Numbers in answers (t01): `CompressionGame::getChoiceLabel` is the measured gain reduction ("−6 dB", 95th percentile on this round's material), `ReverbGame::getChoiceLabel` is the type and its decay ("Hall 2.4 s"); `getChoiceKey` keeps the tier/type name for descriptions and stats.
+- Daily dose (t02): `ProgressManager::getPracticeSecondsToday`, `EarTrainerEditor::refreshToday` → `TopNavComponent::setToday`; Settings → Training «Доза на день».
+- Loudness match (t03, ADR 055): `GainMatch::mode` RMS / BS.1770 K-weighting (`kRms`), set from Settings → Training.

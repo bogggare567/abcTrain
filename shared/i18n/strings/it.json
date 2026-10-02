@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "Suoni dell'interfaccia",
   "set.uiSounds.hint": "Brevi segnali a una risposta, a un passo in su, alla fine di una sfida: più versioni ciascuno, mai la stessa due volte di fila. Seguono il livello d'uscita.",
   "set.uiSounds.quiet": "Basso",
-  "set.uiSounds.normal": "Normale"
+  "set.uiSounds.normal": "Normale",
+  "set.daily.title": "Dose giornaliera",
+  "set.daily.hint": "Quanto esercitarti al giorno. La barra in alto conta i minuti di oggi con il segnale attivo; la dose basta: brevi sessioni quotidiane insegnano più di una lunga.",
+  "set.daily.n": "{{n}} min",
+  "dose.today": "oggi {{n}}/{{goal}} min",
+  "dose.todayDone": "oggi {{n}} min: fatto",
+  "dose.doneCaption": "Fatto per oggi",
+  "dose.done": "{{n}} [[minuto|minuti]] di ascolto oggi. Il resto è facoltativo: una pausa e domani insegnano più di un'ora in più.",
+  "set.loudness.title": "Allineamento del volume",
+  "set.loudness.hint": "Come i lati trattato e non trattato vengono resi ugualmente forti. RMS: energia pura. BS.1770: pesatura K, come un misuratore LUFS — più vicina all'orecchio quando il cambiamento tocca gli alti o il basso estremo."
 }

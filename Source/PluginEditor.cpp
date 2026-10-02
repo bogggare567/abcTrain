@@ -1017,6 +1017,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // the app does not even know the server's address).
     topNav.setItemHidden (TopNavComponent::Item::live,
                           ! localisationProperties.getBoolValue (SettingsScreenComponent::liveTabKey, true));
+    settingsScreen.onDailyMinutesChanged = [this] { refreshToday(); };
+    // The next round is measured the new way; the one playing keeps its gain.
+    settingsScreen.onLoudnessMatchChanged = [] (int choice) { GainMatch::mode = choice; };
+    GainMatch::mode = localisationProperties.getIntValue (SettingsScreenComponent::loudnessMatchKey, 0);
     settingsScreen.onUiSoundsChanged = [this] (int choice)
     {
         auto& ui = processor.getUiSounds();
@@ -1262,6 +1266,22 @@ void EarTrainerEditor::countPracticeSecond()
     auto& progress = processor.getProgressManager();
     progress.addPracticeSecond();
 
+    // The day's dose (t02): the bar counts minutes; the second the dose is
+    // reached says so once - and says that more is optional, because
+    // spaced short sessions teach more than one long one.
+    {
+        const auto goal = juce::jmax (1, localisationProperties.getIntValue (SettingsScreenComponent::dailyMinutesKey, 15)) * 60;
+        const auto today = progress.getPracticeSecondsToday();
+        if (today % 60 == 0)
+            refreshToday();
+        if (today == goal)
+        {
+            processor.getUiSounds().trigger (UiSounds::Event::achievement);
+            achievementToast.show (localisation.getText ("dose.doneCaption"),
+                                   localisation.getText ("dose.done", { { "n", juce::String (goal / 60) } }));
+        }
+    }
+
     if (progress.getPracticeSeconds() < secondsBeforeSupportAsk
         || localisationProperties.getBoolValue (supportAskedKey, false))
         return;
@@ -1274,6 +1294,14 @@ void EarTrainerEditor::countPracticeSecond()
     localisationProperties.setValue (supportAskedKey, true);
     localisationProperties.saveIfNeeded();
     showScreen (Screen::support);
+}
+
+void EarTrainerEditor::refreshToday()
+{
+    const auto goal = juce::jmax (1, localisationProperties.getIntValue (SettingsScreenComponent::dailyMinutesKey, 15));
+    const auto minutes = processor.getProgressManager().getPracticeSecondsToday() / 60;
+    topNav.setToday (minutes >= goal ? localisation.getText ("dose.todayDone", { { "n", juce::String (minutes) } })
+                                     : localisation.getText ("dose.today", { { "n", juce::String (minutes) }, { "goal", juce::String (goal) } }));
 }
 
 void EarTrainerEditor::applyTheme()
@@ -2909,6 +2937,7 @@ void EarTrainerEditor::refreshRailStatus()
     auto& progress = processor.getProgressManager();
 
     topNav.setStatus (progress.getStreakDays());
+    refreshToday();
 
     // The lit tab follows the page actually showing. It used to be forced
     // back to "Trainings" here, so any refresh (a streak tick, a language

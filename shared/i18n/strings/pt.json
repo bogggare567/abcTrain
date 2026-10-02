@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "Sons da interface",
   "set.uiSounds.hint": "Sinais curtos numa resposta, num passo acima, no fim de uma batalha — várias versões de cada, nunca a mesma duas vezes seguidas. Seguem o nível de saída.",
   "set.uiSounds.quiet": "Baixo",
-  "set.uiSounds.normal": "Normal"
+  "set.uiSounds.normal": "Normal",
+  "set.daily.title": "Dose diária",
+  "set.daily.hint": "Quanto praticar por dia. A barra superior conta os minutos de hoje com o sinal tocando; a dose basta — sessões curtas diárias ensinam mais que uma longa.",
+  "set.daily.n": "{{n}} min",
+  "dose.today": "hoje {{n}}/{{goal}} min",
+  "dose.todayDone": "hoje {{n}} min — feito",
+  "dose.doneCaption": "Feito por hoje",
+  "dose.done": "{{n}} [[minuto|minutos]] de escuta hoje. O resto é opcional: uma pausa e o dia de amanhã ensinam mais que uma hora extra.",
+  "set.loudness.title": "Igualação de volume",
+  "set.loudness.hint": "Como os lados processado e original ficam igualmente altos. RMS: energia pura. BS.1770: ponderação K, como um medidor LUFS — mais perto do ouvido quando a mudança mexe nos agudos ou no grave extremo."
 }

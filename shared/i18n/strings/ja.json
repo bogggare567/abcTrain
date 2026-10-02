@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "インターフェース音",
   "set.uiSounds.hint": "回答、ステップアップ、バトル終了時の短い合図。各数テイクあり、同じ音は続けて鳴りません。出力レベルに従います。",
   "set.uiSounds.quiet": "小",
-  "set.uiSounds.normal": "標準"
+  "set.uiSounds.normal": "標準",
+  "set.daily.title": "1日の量",
+  "set.daily.hint": "1日の練習時間。上部バーは信号再生中の今日の分数を数えます。この量で十分です — 短い毎日の練習は1回の長い練習より身につきます。",
+  "set.daily.n": "{{n}} 分",
+  "dose.today": "今日 {{n}}/{{goal}} 分",
+  "dose.todayDone": "今日 {{n}} 分 — 達成",
+  "dose.doneCaption": "今日の分は達成",
+  "dose.done": "今日は {{n}} 分聴きました。続けるかは自由です — 休憩と明日のほうが、1時間の追加より多くを教えてくれます。",
+  "set.loudness.title": "音量の揃え方",
+  "set.loudness.hint": "処理あり／なしを同じ音量にする方法。RMS：単純なエネルギー。BS.1770：LUFS メーターと同じ K 特性 — 高域や最低域が変わるときに耳の感覚に近い。"
 }

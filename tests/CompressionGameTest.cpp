@@ -8,6 +8,30 @@ public:
 
     void runTest() override
     {
+        beginTest ("the choices are gain reduction in dB, and the stronger setting reduces more (t01)");
+        {
+            CompressionGame game;
+            game.prepare ({ 44100.0, 512, 2 });
+
+            for (int level : { 1, 5, 10 })
+            {
+                game.setDifficulty (level);
+                for (int round = 0; round < 12; ++round)
+                {
+                    game.newRound();
+                    for (int i = 0; i < 2; ++i)
+                        expect (game.getChoiceLabel (i).endsWith (" dB"), game.getChoiceLabel (i));
+
+                    const auto strongerFirst = game.getChoiceKey (0) == "Strong"
+                                            || (game.getChoiceKey (0) == "Medium" && game.getChoiceKey (1) == "Weak");
+                    const auto a = game.choiceReductionDb (0), b = game.choiceReductionDb (1);
+                    expect (strongerFirst ? a > b : b > a,
+                            game.getChoiceKey (0) + " " + juce::String (a) + " / " + game.getChoiceKey (1) + " " + juce::String (b));
+                    expect (game.getChoiceLabel (0) != game.getChoiceLabel (1));
+                }
+            }
+        }
+
         beginTest ("always exactly two choices");
         {
             CompressionGame game;
@@ -87,8 +111,8 @@ public:
                 {
                     game.newRound();
 
-                    const auto a = game.getChoiceLabel (0);
-                    const auto b = game.getChoiceLabel (1);
+                    const auto a = game.getChoiceKey (0);
+                    const auto b = game.getChoiceKey (1);
 
                     expect (known.contains (a), "unknown label " + a);
                     expect (known.contains (b), "unknown label " + b);
@@ -121,8 +145,8 @@ public:
                     game.newRound();
 
                     juce::StringArray offered;
-                    offered.add (game.getChoiceLabel (0));
-                    offered.add (game.getChoiceLabel (1));
+                    offered.add (game.getChoiceKey (0));
+                    offered.add (game.getChoiceKey (1));
 
                     // The easy pair is the only one without "Medium" in it.
                     if (offered.contains ("Medium"))
@@ -238,7 +262,7 @@ public:
                 const auto rms = std::sqrt (sum / (double) buffer.getNumSamples());
                 expect (rms > 0.0, "a round produced silence");
 
-                const auto label = game.getChoiceLabel (game.getCorrectChoiceIndex());
+                const auto label = game.getChoiceKey (game.getCorrectChoiceIndex());
                 const auto slot = label == "Weak" ? 0 : label == "Medium" ? 1 : 2;
                 total[(size_t) slot] += rms;
                 count[(size_t) slot] += 1;

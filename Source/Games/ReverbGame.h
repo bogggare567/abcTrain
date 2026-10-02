@@ -83,7 +83,15 @@ public:
     // It also means the choice count never changes mid-session, which is
     // the one thing ADR 002 made the editor cope with.
     int getNumChoices() const override { return 2; }
+    // The type and its decay in seconds (t01): "Hall 2.4 s" - the number
+    // a sound engineer would dial in, next to the name it goes with. The
+    // playing side shows its own decay, the other side its type's
+    // textbook one. The key stays the bare type, for the descriptions.
     juce::String getChoiceLabel (int choiceIndex) const override;
+    juce::String getChoiceKey (int choiceIndex) const override
+    {
+        return typeLabels[(size_t) pairTypes[(size_t) juce::jlimit (0, 1, choiceIndex)]];
+    }
 
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctTypeIndex; }

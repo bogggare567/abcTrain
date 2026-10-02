@@ -89,6 +89,14 @@ public:
     static constexpr const char* uiSoundsKey = "uiSounds";
     static float uiSoundsDb (int choice) noexcept { return choice == 1 ? -28.0f : -20.0f; }
     std::function<void (int)> onUiSoundsChanged;
+
+    // The day's practice dose in minutes (t02).
+    static constexpr const char* dailyMinutesKey = "dailyMinutes";
+    std::function<void()> onDailyMinutesChanged;
+
+    // How before and after are matched in loudness (t03): 0 RMS, 1 BS.1770.
+    static constexpr const char* loudnessMatchKey = "loudnessMatch";
+    std::function<void (int)> onLoudnessMatchChanged;
     std::function<void()> onSignIn;
 
     // The account (ADR 045): signed in or not, and sync. The editor pushes
@@ -217,7 +225,7 @@ private:
 
     // Live
     SegmentedChoice liveTabChoice;
-    SegmentedChoice uiSoundsChoice;
+    SegmentedChoice uiSoundsChoice, dailyMinutesChoice, loudnessMatchChoice;
     juce::TextButton accountButton;
     SegmentedChoice syncChoice;
     juce::TextButton syncNowButton;

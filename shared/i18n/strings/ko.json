@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "인터페이스 소리",
   "set.uiSounds.hint": "답, 단계 상승, 배틀 종료 때 짧은 신호 — 각각 여러 테이크가 있어 같은 소리가 연달아 나지 않습니다. 출력 레벨을 따릅니다.",
   "set.uiSounds.quiet": "작게",
-  "set.uiSounds.normal": "보통"
+  "set.uiSounds.normal": "보통",
+  "set.daily.title": "하루 분량",
+  "set.daily.hint": "하루에 얼마나 연습할지. 상단 바는 신호가 재생 중인 오늘의 분을 셉니다. 이 분량이면 충분합니다 — 짧은 매일 연습이 한 번의 긴 연습보다 더 많이 가르칩니다.",
+  "set.daily.n": "{{n}}분",
+  "dose.today": "오늘 {{n}}/{{goal}}분",
+  "dose.todayDone": "오늘 {{n}}분 — 완료",
+  "dose.doneCaption": "오늘 분량 완료",
+  "dose.done": "오늘 {{n}}분 들었습니다. 더 할지는 자유입니다 — 휴식과 내일이 추가 한 시간보다 더 많이 가르칩니다.",
+  "set.loudness.title": "음량 맞추기",
+  "set.loudness.hint": "처리된 쪽과 원본을 같은 음량으로 맞추는 방식. RMS: 단순 에너지. BS.1770: LUFS 미터와 같은 K 가중 — 고역이나 최저역이 바뀔 때 귀에 더 가깝습니다."
 }

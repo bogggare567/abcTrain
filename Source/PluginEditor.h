@@ -1754,6 +1754,7 @@ private:
     void registerOnlineResults();
     void endOnlineBattle();
     void refreshMyRatings();
+    void refreshToday();   // the day's dose in the top bar (t02)
     juce::String opponentName() const;
 
     // Learner EQ / Comp / Verb inside the app (ADR 041). The processors

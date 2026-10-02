@@ -92,7 +92,17 @@ void TopNavComponent::setHearing (float weeklyFraction, bool show, juce::String 
 
 juce::String TopNavComponent::streakCaption() const
 {
-    return streakTemplate.replace ("{{days}}", juce::String (streakDays));
+    const auto streak = streakTemplate.replace ("{{days}}", juce::String (streakDays));
+    return todayText.isEmpty() ? streak
+                               : streak + juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  ")) + todayText;
+}
+
+void TopNavComponent::setToday (juce::String text)
+{
+    if (text == todayText)
+        return;
+    todayText = std::move (text);
+    repaint();
 }
 
 int TopNavComponent::lastTabRight() const

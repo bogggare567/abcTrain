@@ -260,7 +260,10 @@ juce::String ReverbGame::getChoiceLabel (int choiceIndex) const
     if (choiceIndex < 0 || choiceIndex >= 2)
         return {};
 
-    return typeLabels[(size_t) pairTypes[(size_t) choiceIndex]];
+    const auto type = pairTypes[(size_t) choiceIndex];
+    const auto decay = choiceIndex == correctTypeIndex ? roundVariant.decaySeconds
+                                                       : familyFor (type).front().decaySeconds;
+    return juce::String (typeLabels[(size_t) type]) + " " + juce::String (decay, 1) + " s";
 }
 
 juce::String ReverbGame::getFeedbackText() const

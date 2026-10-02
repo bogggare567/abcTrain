@@ -53,6 +53,10 @@ public:
     // sentence.
     void setStatus (int streakDays);
 
+    // Today's practice against the day's dose (t02), already worded by the
+    // editor ("today 7/15 min"); drawn after the streak. Empty hides it.
+    void setToday (juce::String text);
+
     // This week's hearing dose as a fraction of the limit (ADR 036), drawn
     // as ten segments left of the streak. Hidden when `show` is false -
     // hearing protection off, or nothing measured yet.
@@ -92,6 +96,7 @@ private:
 
     juce::StringArray labels;
     juce::String streakTemplate;
+    juce::String todayText;
     float hearingFraction = 0.0f;
     bool hearingShown = false;
     juce::String hearingCaption;

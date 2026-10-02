@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "界面音效",
   "set.uiSounds.hint": "回答、升级、对战结束时的短提示音——每种都有多个版本，不会连续播放同一个。随输出电平变化。",
   "set.uiSounds.quiet": "小",
-  "set.uiSounds.normal": "正常"
+  "set.uiSounds.normal": "正常",
+  "set.daily.title": "每日剂量",
+  "set.daily.hint": "每天练习多久。顶部栏统计今天信号播放时的分钟数；达到剂量就够了——每天短时练习比一次长时间练习学得更多。",
+  "set.daily.n": "{{n}} 分钟",
+  "dose.today": "今天 {{n}}/{{goal}} 分钟",
+  "dose.todayDone": "今天 {{n}} 分钟——完成",
+  "dose.doneCaption": "今天已完成",
+  "dose.done": "今天听了 {{n}} 分钟。之后随意——休息和明天比多练一小时更有用。",
+  "set.loudness.title": "响度匹配",
+  "set.loudness.hint": "处理前后如何调成同样响。RMS：单纯能量。BS.1770：K 加权，与 LUFS 表相同——当改变涉及高频或极低频时更接近听感。"
 }

@@ -225,6 +225,28 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         addAndMakeVisible (languageChoice);
     }
 
+    // ---- loudness matching ---------------------------------------------
+    loudnessMatchChoice.setValue (properties.getIntValue (loudnessMatchKey, 0));
+    loudnessMatchChoice.onChange = [this] (int value)
+    {
+        properties.setValue (loudnessMatchKey, value);
+        properties.saveIfNeeded();
+        if (onLoudnessMatchChanged != nullptr)
+            onLoudnessMatchChanged (value);
+    };
+    addAndMakeVisible (loudnessMatchChoice);
+
+    // ---- the day's dose ------------------------------------------------
+    dailyMinutesChoice.setValue (properties.getIntValue (dailyMinutesKey, 15));
+    dailyMinutesChoice.onChange = [this] (int value)
+    {
+        properties.setValue (dailyMinutesKey, value);
+        properties.saveIfNeeded();
+        if (onDailyMinutesChanged != nullptr)
+            onDailyMinutesChanged();
+    };
+    addAndMakeVisible (dailyMinutesChoice);
+
     // ---- the app's own sounds ------------------------------------------
     uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
     uiSoundsChoice.onChange = [this] (int value)
@@ -480,6 +502,8 @@ void SettingsScreenComponent::buildRows()
         { "set.weekly.title",       "set.weekly.hint",       &weeklyLimit,    0, true,  Page::hearing },
         { "set.exposure.title",     "set.exposure.hint",     &exposureRow,    0, true,  Page::hearing },
 
+        { "set.loudness.title",     "set.loudness.hint",     &loudnessMatchChoice, 0, false, Page::training },
+        { "set.daily.title",        "set.daily.hint",        &dailyMinutesChoice, 0, false, Page::training },
         { "set.theme.title",        "set.theme.hint",        &themeChoice,         0,   false, Page::appearance },
         { "set.language.title",     "set.language.hint",     &languageChoice,      standardControlWidth, false, Page::appearance },
         { "ui.textSize",            "set.textSize.hint",     &textScaleSlider,     standardControlWidth,   false, Page::appearance },
@@ -635,6 +659,11 @@ void SettingsScreenComponent::refresh()
     autoUpdateChoice.setOptions ({ 0, 1 }, { t ("set.autoUpdate.manual"), t ("set.autoUpdate.auto") });
     checkNowButton.setButtonText (t ("set.checkNow.button"));
     liveTabChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
+    loudnessMatchChoice.setOptions ({ 0, 1 }, { "RMS", "BS.1770" });
+    loudnessMatchChoice.setValue (properties.getIntValue (loudnessMatchKey, 0));
+    dailyMinutesChoice.setOptions ({ 10, 15, 20, 30 }, { t ("set.daily.n").replace ("{{n}}", "10"), t ("set.daily.n").replace ("{{n}}", "15"),
+                                                         t ("set.daily.n").replace ("{{n}}", "20"), t ("set.daily.n").replace ("{{n}}", "30") });
+    dailyMinutesChoice.setValue (properties.getIntValue (dailyMinutesKey, 15));
     uiSoundsChoice.setOptions ({ 0, 1, 2 }, { t ("set.off"), t ("set.uiSounds.quiet"), t ("set.uiSounds.normal") });
     uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
     accountButton.setButtonText (t (accountSignedIn ? "set.account.signOut" : "set.account.signIn"));

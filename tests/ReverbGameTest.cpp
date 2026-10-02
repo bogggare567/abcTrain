@@ -39,8 +39,8 @@ public:
                 {
                     game.newRound();
 
-                    const auto a = game.getChoiceLabel (0);
-                    const auto b = game.getChoiceLabel (1);
+                    const auto a = game.getChoiceKey (0);
+                    const auto b = game.getChoiceKey (1);
 
                     expect (a.isNotEmpty() && b.isNotEmpty(), "empty label");
                     expect (a != b, "the same type offered twice: " + a);
@@ -65,8 +65,8 @@ public:
                 for (int i = 0; i < rounds; ++i)
                 {
                     game.newRound();
-                    total += ReverbGame::confusabilityForTest (game.getChoiceLabel (0),
-                                                                game.getChoiceLabel (1));
+                    total += ReverbGame::confusabilityForTest (game.getChoiceKey (0),
+                                                                game.getChoiceKey (1));
                 }
 
                 return total / (float) rounds;
@@ -99,7 +99,7 @@ public:
                 {
                     game.newRound();
 
-                    juce::StringArray both { game.getChoiceLabel (0), game.getChoiceLabel (1) };
+                    juce::StringArray both { game.getChoiceKey (0), game.getChoiceKey (1) };
                     both.sort (true);
                     seen.addIfNotAlreadyThere (both.joinIntoString ("/"));
                 }
@@ -155,7 +155,7 @@ public:
                 {
                     game.newRound();
 
-                    if (game.getChoiceLabel (0) == "Spring" || game.getChoiceLabel (1) == "Spring")
+                    if (game.getChoiceKey (0) == "Spring" || game.getChoiceKey (1) == "Spring")
                         return true;
                 }
 

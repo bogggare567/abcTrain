@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "Interface-Sounds",
   "set.uiSounds.hint": "Kurze Signale bei einer Antwort, einem Schritt nach oben, dem Ende eines Battles – jeweils mehrere Takes, nie zweimal derselbe hintereinander. Sie folgen dem Ausgangspegel.",
   "set.uiSounds.quiet": "Leise",
-  "set.uiSounds.normal": "Normal"
+  "set.uiSounds.normal": "Normal",
+  "set.daily.title": "Tagesdosis",
+  "set.daily.hint": "Wie lange du am Tag übst. Die obere Leiste zählt die heutigen Minuten mit laufendem Signal; die Dosis reicht – kurze tägliche Einheiten bringen mehr als eine lange.",
+  "set.daily.n": "{{n}} Min.",
+  "dose.today": "heute {{n}}/{{goal}} Min.",
+  "dose.todayDone": "heute {{n}} Min. – geschafft",
+  "dose.doneCaption": "Für heute geschafft",
+  "dose.done": "{{n}} [[Minute|Minuten]] Hören heute. Mehr ist freiwillig – eine Pause und morgen bringen mehr als eine Stunde extra.",
+  "set.loudness.title": "Lautheitsangleich",
+  "set.loudness.hint": "Wie bearbeitete und unbearbeitete Seite gleich laut gemacht werden. RMS: reine Energie. BS.1770: K-gewichtet wie ein LUFS-Meter – näher am Gehör, wenn sich die Höhen oder der tiefste Bass ändern."
 }

@@ -93,6 +93,12 @@ public:
     void addPracticeSecond();
     int getPracticeSeconds() const noexcept { return practiceSeconds; }
 
+    // The same seconds, today only (t02, the session dose): resets at the
+    // first practice second of a new local day.
+    int getPracticeSecondsToday() const;
+    // For tests: the clock addPracticeSecond reads its date from.
+    void setTodayForTest (const juce::String& iso) { todayOverride = iso; }
+
     // How many correct in a row on this exercise right now. Already
     // tracked (it is what completes the daily challenge); exposing it is
     // what lets the challenge be shown as progress toward something
@@ -346,6 +352,9 @@ private:
     std::vector<std::array<BucketStats, maxSkillBuckets>> bucketsPerGame;
 
     int practiceSeconds = 0;
+    int practiceSecondsToday = 0;
+    juce::String practiceDate, todayOverride;
+    juce::String todayIso() const;
     juce::uint64 changeCounter = 0;
     int unsavedPracticeSeconds = 0;
 

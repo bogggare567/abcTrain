@@ -423,9 +423,26 @@ int ProgressManager::getMaxLevelReached() const noexcept
     return highest;
 }
 
+juce::String ProgressManager::todayIso() const
+{
+    return todayOverride.isNotEmpty() ? todayOverride : juce::Time::getCurrentTime().formatted ("%Y-%m-%d");
+}
+
+int ProgressManager::getPracticeSecondsToday() const
+{
+    return practiceDate == todayIso() ? practiceSecondsToday : 0;
+}
+
 void ProgressManager::addPracticeSecond()
 {
     ++practiceSeconds;
+
+    if (const auto today = todayIso(); today != practiceDate)
+    {
+        practiceDate = today;
+        practiceSecondsToday = 0;
+    }
+    ++practiceSecondsToday;
 
     // Written to disk once a minute rather than once a second. A
     // PropertiesFile save is a real file write, and doing one per second
@@ -538,6 +555,8 @@ void ProgressManager::loadState()
 {
     streakDays = properties->getIntValue ("streakDays", 0);
     practiceSeconds = properties->getIntValue ("practiceSeconds", 0);
+    practiceSecondsToday = properties->getIntValue ("practiceSecondsToday", 0);
+    practiceDate = properties->getValue ("practiceDate");
     lastSessionDate = properties->getValue ("lastSessionDate");
     dailyChallengeDate = properties->getValue ("dailyChallengeDate");
     dailyChallengeGameIndex = juce::jlimit (0, juce::jmax (0, gameManager.getNumGames() - 1),
@@ -612,6 +631,8 @@ void ProgressManager::saveState()
 
     properties->setValue ("streakDays", streakDays);
     properties->setValue ("practiceSeconds", practiceSeconds);
+    properties->setValue ("practiceSecondsToday", practiceSecondsToday);
+    properties->setValue ("practiceDate", practiceDate);
     properties->setValue ("lastSessionDate", lastSessionDate);
     properties->setValue ("dailyChallengeDate", dailyChallengeDate);
     properties->setValue ("dailyChallengeGameIndex", dailyChallengeGameIndex);

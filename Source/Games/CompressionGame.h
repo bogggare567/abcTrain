@@ -60,7 +60,16 @@ public:
     // the two ends (easy) or two neighbours (hard) on top of the existing
     // spread that already pulls all three together as you climb.
     int getNumChoices() const override { return 2; }
+    // The choices are numbers (t01): the gain reduction each of the two
+    // settings measurably does to *this round's* material - "-3 dB" and
+    // "-9 dB" - which is what a GR meter would say, instead of "Weak" and
+    // "Strong", which mean nothing until someone tells you. The key stays
+    // the tier's name, so the descriptions and the statistics keep theirs.
     juce::String getChoiceLabel (int choiceIndex) const override;
+    juce::String getChoiceKey (int choiceIndex) const override
+    {
+        return presets[(size_t) pairLevels[(size_t) juce::jlimit (0, 1, choiceIndex)]].label;
+    }
 
     bool hasAnswered() const override { return answered; }
     int getCorrectChoiceIndex() const override { return correctLevelIndex; }
@@ -82,7 +91,7 @@ public:
     juce::String getAnswerDetail() const override
     {
         const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
-        return juce::String (preset.ratio, 0) + ":1 · "
+        return preset.label + juce::String (" · ") + juce::String (preset.ratio, 0) + ":1 · "
                  + juce::String (preset.thresholdDb, 0) + " dB";
     }
     int getChosenChoiceIndex() const override { return chosenLevelIndex; }
@@ -122,6 +131,12 @@ public:
     // Test seam: the level compensation measured for one voicing, so a
     // test can assert loudness never answers the question.
     float measureMakeupForTest (int level, const Variant& variant) const;
+
+    // The gain reduction a GR meter would show on the hits: the 95th
+    // percentile of the per-sample reduction, in dB (positive), on the
+    // material about to play.
+    float measureGainReductionDb (int level, const Variant& variant) const;
+    float choiceReductionDb (int choiceIndex) const noexcept { return pairReductionDb[(size_t) juce::jlimit (0, 1, choiceIndex)]; }
 
 private:
     struct Preset
@@ -170,6 +185,7 @@ private:
 
     // The two amounts on offer this round, as indices into `presets`.
     std::array<int, 2> pairLevels { { 0, 2 } };
+    std::array<float, 2> pairReductionDb { { 3.0f, 9.0f } };
     int difficultyLevel = 1;
 
     std::array<int, 2> drawPair();

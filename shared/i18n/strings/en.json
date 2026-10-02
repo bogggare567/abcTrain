@@ -1346,5 +1346,14 @@
   "set.uiSounds.title": "Interface sounds",
   "set.uiSounds.hint": "Short cues on an answer, a step up, a battle's end - several takes each, never the same twice in a row. They follow the output level.",
   "set.uiSounds.quiet": "Quiet",
-  "set.uiSounds.normal": "Normal"
+  "set.uiSounds.normal": "Normal",
+  "set.daily.title": "Daily dose",
+  "set.daily.hint": "How long a day of practice is. The top bar counts today's minutes with the signal running; reaching the dose is enough - short daily sessions teach more than one long one.",
+  "set.daily.n": "{{n}} min",
+  "dose.today": "today {{n}}/{{goal}} min",
+  "dose.todayDone": "today {{n}} min - done",
+  "dose.doneCaption": "Done for today",
+  "dose.done": "{{n}} minutes of listening today. More is up to you - a break and tomorrow teach more than an extra hour.",
+  "set.loudness.title": "Loudness match",
+  "set.loudness.hint": "How the treated and untreated sides are made equally loud. RMS: plain energy. BS.1770: K-weighted, as a LUFS meter - closer to the ear when a change moves the top or the very bottom."
 }

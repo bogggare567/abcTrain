@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_basics/juce_audio_basics.h>
+#include <atomic>
 #include <cmath>
 #include <utility>
 
@@ -44,6 +45,86 @@ namespace GainMatch
         }
 
         return (float) std::sqrt (sum / (double) (numChannels * numSamples));
+    }
+
+    // How "the same loudness" is measured (t03, ADR 055). Plain RMS, or
+    // ITU-R BS.1770 K-weighting: a +4 dB shelf above ~1.7 kHz and a
+    // high-pass at 38 Hz before the mean square - the weighting LUFS
+    // meters use, closer to how loud a change *sounds* when it moves the
+    // top or the very bottom. No gating: what is measured is a short loop
+    // that never falls silent, where the gate never closes.
+    enum class Mode { rms = 0, bs1770 = 1 };
+    inline std::atomic<int> mode { (int) Mode::rms };
+    inline std::atomic<double> sampleRate { 44100.0 };
+
+    // The two K-weighting stages for a sample rate (BS.1770-4, the
+    // analogue prototypes evaluated per rate, as libebur128 does).
+    struct Biquad
+    {
+        double b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
+        double z1 = 0, z2 = 0;
+        double process (double x) noexcept
+        {
+            const auto y = b0 * x + z1;
+            z1 = b1 * x - a1 * y + z2;
+            z2 = b2 * x - a2 * y;
+            return y;
+        }
+    };
+
+    inline std::pair<Biquad, Biquad> kWeighting (double fs) noexcept
+    {
+        Biquad shelf, hp;
+        {
+            const auto f0 = 1681.974450955533, g = 3.999843853973347, q = 0.7071752369554196;
+            const auto k = std::tan (juce::MathConstants<double>::pi * f0 / fs);
+            const auto vh = std::pow (10.0, g / 20.0);
+            const auto vb = std::pow (vh, 0.4996667741545416);
+            const auto a0 = 1.0 + k / q + k * k;
+            shelf.b0 = (vh + vb * k / q + k * k) / a0;
+            shelf.b1 = 2.0 * (k * k - vh) / a0;
+            shelf.b2 = (vh - vb * k / q + k * k) / a0;
+            shelf.a1 = 2.0 * (k * k - 1.0) / a0;
+            shelf.a2 = (1.0 - k / q + k * k) / a0;
+        }
+        {
+            const auto f0 = 38.13547087602444, q = 0.5003270373238773;
+            const auto k = std::tan (juce::MathConstants<double>::pi * f0 / fs);
+            const auto a0 = 1.0 + k / q + k * k;
+            hp.b0 = 1.0; hp.b1 = -2.0; hp.b2 = 1.0;
+            hp.a1 = 2.0 * (k * k - 1.0) / a0;
+            hp.a2 = (1.0 - k / q + k * k) / a0;
+        }
+        return { shelf, hp };
+    }
+
+    // Root of the K-weighted mean square, summed over channels the way
+    // BS.1770 sums them (each channel weighted 1 for L/R).
+    inline float kRms (const juce::AudioBuffer<float>& buffer, double fs) noexcept
+    {
+        const auto numChannels = buffer.getNumChannels();
+        const auto numSamples = buffer.getNumSamples();
+        if (numChannels <= 0 || numSamples <= 0)
+            return 0.0f;
+
+        auto sum = 0.0;
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            auto [shelf, hp] = kWeighting (fs);
+            const auto* data = buffer.getReadPointer (ch);
+            for (int i = 0; i < numSamples; ++i)
+            {
+                const auto y = hp.process (shelf.process ((double) data[i]));
+                sum += y * y;
+            }
+        }
+        return (float) std::sqrt (sum / (double) (numChannels * numSamples));
+    }
+
+    // The loudness the matching compares, in whichever mode is chosen.
+    inline float level (const juce::AudioBuffer<float>& buffer) noexcept
+    {
+        return mode.load() == (int) Mode::bs1770 ? kRms (buffer, sampleRate.load()) : rms (buffer);
     }
 
     // The gain that brings `wet` back to `dry`.
@@ -103,7 +184,7 @@ namespace GainMatch
             wetTail.copyFrom (ch, 0, wet, ch, skip, measured);
         }
 
-        return from (rms (dryTail), rms (wetTail));
+        return from (level (dryTail), level (wetTail));
     }
 
     template <typename RenderDry, typename ApplyWet>

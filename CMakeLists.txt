@@ -669,6 +669,7 @@ target_sources(EarTrainerTests
         tests/LessonFormatTest.cpp
         tests/BattleShareTest.cpp
         tests/UiSoundsTest.cpp
+        tests/LoudnessMatchTest.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
         Source/BattleShare.cpp
