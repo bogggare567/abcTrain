@@ -75,6 +75,14 @@ public:
     void setCompanionOpen (bool shouldBeOpen);
     bool isCompanionOpen() const noexcept { return companionOpen; }
 
+    // In the app the modules live in the lessons window, not in a window of
+    // their own (Bogdan: two windows on top of the Studio was one too
+    // many). The lessons window borrows the module screen and gives it
+    // back; the plugin's own "Modules" button is hidden in the app.
+    juce::Component* lendModulesToHost();
+    void takeBackModulesFromHost();
+    bool areModulesLentToHost() const noexcept { return modulesLentToHost; }
+
     // In the app's Studio the app knows the ears' week; a DAW does not.
     void setHearingProvider (std::function<CompanionHearing()> provider) { hearingProvider = std::move (provider); }
 
@@ -225,6 +233,7 @@ private:
     std::function<CompanionHearing()> hearingProvider;
     bool companionOpen = false;
     bool lessonLent = false;
+    bool modulesLentToHost = false;
     int tickCount = 0;
     double openedAtMs = 0.0;
     void lendToCompanion();

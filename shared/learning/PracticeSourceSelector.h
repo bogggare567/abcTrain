@@ -32,6 +32,10 @@ public:
     // Rescans and rebuilds the list, then re-applies the saved choice.
     // Called once on construction; call again if the library may have
     // changed underneath (a new import in another window).
+    // The category chosen when nothing was saved yet (the app's Studio:
+    // the live vocal; a plugin in a DAW: the host's audio, as before).
+    void setDefaultCategory (const juce::String& name) { defaultCategory = name; refresh(); }
+
     void refresh();
 
     // The three words it shows, in the plugin's language. Rebuilds the list.
@@ -53,7 +57,7 @@ public:
     void choose (int index)
     {
         selector.setSelectedId (index + 1, juce::dontSendNotification);
-        applySelection();
+        applySelection (true);
     }
 
     // Called after refresh() rebuilt the list, so a chip row can follow.
@@ -64,8 +68,9 @@ public:
     static constexpr const char* selectedCategoryKey = "practiceCategory";
 
 private:
+    juce::String defaultCategory;
     juce::String captionText { "source" }, hostText { "Host audio" }, hostShortText { "host" };
-    void applySelection();
+    void applySelection (bool remember);
 
     ReferenceAudioLibrary& library;
     PracticeAudioSource& source;

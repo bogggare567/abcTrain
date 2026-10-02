@@ -26,7 +26,7 @@ PracticeSourceSelector::PracticeSourceSelector (ReferenceAudioLibrary& libraryTo
       getSampleRate (std::move (sampleRateProvider))
 {
     selector.setCaption (captionText);
-    selector.onChange = [this] { applySelection(); };
+    selector.onChange = [this] { applySelection (true); };
     addAndMakeVisible (selector);
 
     refresh();
@@ -53,7 +53,8 @@ void PracticeSourceSelector::refresh()
     // Restore by *name*, not by index: the list is rebuilt from whatever
     // folders exist, so an index saved last week can point at a different
     // category this week - or at nothing.
-    const auto saved = properties.getValue (selectedCategoryKey);
+    const auto saved = properties.containsKey (selectedCategoryKey) ? properties.getValue (selectedCategoryKey)
+                                                                    : defaultCategory;
     auto restoredId = 1;
 
     if (saved.isNotEmpty())
@@ -62,13 +63,13 @@ void PracticeSourceSelector::refresh()
                 restoredId = i + 2;
 
     selector.setSelectedId (restoredId, juce::dontSendNotification);
-    applySelection();
+    applySelection (false);   // a restore is not a choice: nothing is saved
 
     if (onListChanged != nullptr)
         onListChanged();
 }
 
-void PracticeSourceSelector::applySelection()
+void PracticeSourceSelector::applySelection (bool remember)
 {
     const auto id = selector.getSelectedId();
     const auto& categories = library.getCategories();
@@ -77,8 +78,11 @@ void PracticeSourceSelector::applySelection()
     if (index < 0 || index >= categories.size())
     {
         source.setEnabled (false);
-        properties.setValue (selectedCategoryKey, juce::String());
-        properties.saveIfNeeded();
+        if (remember)
+        {
+            properties.setValue (selectedCategoryKey, juce::String());
+            properties.saveIfNeeded();
+        }
         return;
     }
 
@@ -91,8 +95,11 @@ void PracticeSourceSelector::applySelection()
     library.setActiveCategory (categories[index].name, sampleRate > 0.0 ? sampleRate : 44100.0);
     source.setEnabled (true);
 
-    properties.setValue (selectedCategoryKey, categories[index].name);
-    properties.saveIfNeeded();
+    if (remember)
+    {
+        properties.setValue (selectedCategoryKey, categories[index].name);
+        properties.saveIfNeeded();
+    }
 }
 
 void PracticeSourceSelector::resized()

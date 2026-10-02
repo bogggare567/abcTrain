@@ -171,6 +171,34 @@ void LearnerEditorBase::lendToCompanion()
     companion.attach (moduleScreen, lesson);
 }
 
+juce::Component* LearnerEditorBase::lendModulesToHost()
+{
+    if (companionOpen)
+        setCompanionOpen (false);
+
+    removeChildComponent (&moduleScreen);
+    moduleScreen.setFillsHost (true);
+    if (! moduleScreen.isRunning())
+        moduleScreen.openShelf();
+    moduleScreen.setVisible (true);
+    modulesLentToHost = true;
+    return &moduleScreen;
+}
+
+void LearnerEditorBase::takeBackModulesFromHost()
+{
+    if (! modulesLentToHost)
+        return;
+
+    modulesLentToHost = false;
+    if (auto* parent = moduleScreen.getParentComponent())
+        parent->removeChildComponent (&moduleScreen);
+    moduleScreen.setFillsHost (false);
+    moduleScreen.setVisible (false);
+    addChildComponent (moduleScreen);
+    updateWindow.toFront (false);
+}
+
 void LearnerEditorBase::takeBackFromCompanion()
 {
     auto* lesson = lessonLent ? companionLesson() : nullptr;
@@ -361,7 +389,9 @@ void LearnerEditorBase::setEmbedded (bool shouldBeEmbedded)
     themeButton.setVisible (! embedded);
     modulesButton.setVisible (! embedded);
     soundkorbLink.setVisible (! embedded);
-    lessonsButton.setVisible (embedded);
+    lessonsButton.setVisible (false);   // in the app the modules are in the lessons window
+    if (embedded)
+        practiceSelector.setDefaultCategory ("Built-in Voice");   // the live vocal, until a choice is saved
 
     // In the app the host is the audio interface's input.
     practiceSelector.setLabels (t ("lp.source", "source"), t ("lp.hostAudio", "Host audio"),

@@ -366,7 +366,7 @@
   "ui.yourAnswer": "Twoja odpowiedź",
   "ui.openFolder": "Otwórz folder",
   "ui.soundsClips": "Fragmenty",
-  "ui.soundsPickCategory": "Wybierz kategorię po lewej, aby zobaczyć jej fragmenty, a potem kliknij jeden, by ćwiczyć tylko na nim.",
+  "ui.soundsPickCategory": "Wybierz kategorię po lewej, aby zobaczyć jej fragmenty, a potem kliknij jeden, by ćwiczyć tylko na nim. Delay, pogłos i kompresję słychać na uderzeniach: przy dźwięku ciągłym grają własny materiał.",
   "ui.soundsOnPinkNoise": "Ćwiczenie na szumie różowym",
   "ui.soundsOnFile": "Ćwiczenie na „{{file}}”",
   "ui.soundsShuffling": "Losowo z {{category}} — teraz: {{file}}",
@@ -1368,5 +1368,7 @@
   "set.answerSound.title": "Dźwięk odpowiedzi",
   "set.answerSound.hint": "Jeden dźwięk, zawsze ten sam: rim przy złej odpowiedzi, krótki ton przy dobrej, jeśli chcesz.",
   "set.answerSound.wrong": "Tylko zła",
-  "set.answerSound.both": "Obie"
+  "set.answerSound.both": "Obie",
+  "lessons.fold": "Ukryj lub pokaż listę kursów",
+  "lessons.course.modules": "Moduły wtyczek"
 }

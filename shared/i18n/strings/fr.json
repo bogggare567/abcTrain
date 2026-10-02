@@ -366,7 +366,7 @@
   "ui.yourAnswer": "Ta réponse",
   "ui.openFolder": "Ouvrir le dossier",
   "ui.soundsClips": "Extraits",
-  "ui.soundsPickCategory": "Choisis une catégorie à gauche pour voir ses extraits, puis clique sur l'un d'eux pour t'entraîner uniquement dessus.",
+  "ui.soundsPickCategory": "Choisis une catégorie à gauche pour voir ses extraits, puis clique sur l'un d'eux pour t'entraîner uniquement dessus. Délai, réverb et compression s'entendent sur des frappes : avec un son tenu, ils jouent leur propre matériau.",
   "ui.soundsOnPinkNoise": "Entraînement sur bruit rose",
   "ui.soundsOnFile": "Entraînement sur « {{file}} »",
   "ui.soundsShuffling": "Aléatoire dans {{category}} — actuel : {{file}}",
@@ -1368,5 +1368,7 @@
   "set.answerSound.title": "Son de réponse",
   "set.answerSound.hint": "Un son, toujours le même : un rim sur une mauvaise réponse, un ton court sur une bonne si vous voulez.",
   "set.answerSound.wrong": "Mauvaise seule",
-  "set.answerSound.both": "Les deux"
+  "set.answerSound.both": "Les deux",
+  "lessons.fold": "Masquer ou afficher la liste des cours",
+  "lessons.course.modules": "Modules des plugins"
 }

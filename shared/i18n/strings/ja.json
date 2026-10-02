@@ -366,7 +366,7 @@
   "ui.yourAnswer": "あなたの回答",
   "ui.openFolder": "フォルダを開く",
   "ui.soundsClips": "クリップ",
-  "ui.soundsPickCategory": "左でカテゴリーを選ぶとクリップが表示されます。ひとつ選ぶと、それだけで練習します。",
+  "ui.soundsPickCategory": "左でカテゴリーを選ぶとクリップが表示されます。ひとつ選ぶと、それだけで練習します。 ディレイ・リバーブ・コンプは打音で聞き取ります。持続音のときは各練習の専用素材を使います。",
   "ui.soundsOnPinkNoise": "ピンクノイズで練習中",
   "ui.soundsOnFile": "「{{file}}」で練習中",
   "ui.soundsShuffling": "{{category}} からランダム — 現在: {{file}}",
@@ -1368,5 +1368,7 @@
   "set.answerSound.title": "回答音",
   "set.answerSound.hint": "いつも同じ1つの音：不正解でリム、正解で短い音（必要なら）。",
   "set.answerSound.wrong": "不正解のみ",
-  "set.answerSound.both": "両方"
+  "set.answerSound.both": "両方",
+  "lessons.fold": "コース一覧の表示・非表示",
+  "lessons.course.modules": "プラグインのモジュール"
 }

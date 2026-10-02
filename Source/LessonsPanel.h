@@ -42,6 +42,13 @@ public:
     void openLesson (const juce::String& id);   // also for snapshots
     void goToStep (int index);
     void closeLesson();
+
+    // A plugin's modules (watch -> try -> done, ADR 037) in the reading
+    // column: 0 EQ, 1 Comp, 2 Verb. The Studio's editor lends its module
+    // screen; it goes back when a lesson opens or the window closes.
+    void openModules (int effect);
+    void closeModules();
+    bool areModulesShown() const noexcept { return modulesShown >= 0; }
     void finishGlide() { runner.finish(); }
 
     void paint (juce::Graphics&) override;
@@ -51,6 +58,14 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
 
     static constexpr int railWidth = 330;
+
+    // The course list can be folded away, like a sidebar: the window then
+    // takes only the reading column, so it sits beside the Studio instead
+    // of on top of it. Remembered between sessions.
+    static constexpr const char* railShownKey = "lessonsRailShown";
+    bool isRailShown() const noexcept { return railShown || (lesson == nullptr && modulesShown < 0); }
+    void setRailShown (bool);
+    std::function<void (bool shown)> onRailToggled;   // the window resizes itself
     static constexpr const char* doneKey = "lessonsDone";
 
 private:
@@ -76,9 +91,15 @@ private:
     int hoveredStep = -1;
     juce::String playingMaterial;
 
+    int modulesShown = -1;
+    juce::Component::SafePointer<juce::Component> lentModules;
+    juce::Component::SafePointer<juce::AudioProcessorEditor> modulesEditor;
+
     std::unique_ptr<Rail> rail;
     juce::Viewport railView;
-    juce::TextButton backButton, nextButton, coursesButton;
+    juce::TextButton backButton, nextButton, coursesButton, railButton;
+    bool railShown = true;
+    int railNow() const noexcept { return isRailShown() ? railWidth : 0; }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LessonsPanel)
 };
@@ -88,9 +109,10 @@ class LessonsWindow : public juce::DocumentWindow
 {
 public:
     LessonsWindow (const juce::String& title, LessonsPanel::Host);
-    void closeButtonPressed() override { setVisible (false); if (onClose) onClose(); }
+    void closeButtonPressed() override { content->closeModules(); setVisible (false); if (onClose) onClose(); }
 
     LessonsPanel& panel() { return *content; }
+    void resizeForRail (bool shown);
     std::function<void()> onClose;
 
 private:

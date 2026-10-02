@@ -87,6 +87,33 @@ public:
     // teacher - and false when the player explicitly chose pink noise.
     void setPreferBed (bool shouldPrefer) noexcept { preferBed.store (shouldPrefer); }
 
+    // What material the exercise can be heard on. Delay, reverb and
+    // compression are heard on hits with space between them: an echo or a
+    // tail disappears inside a held guitar chord, and a compressor on a pad
+    // barely moves. Such an exercise skips a chosen clip that is not hits
+    // and plays its own sound instead (Bogdan: "задержку нельзя на гитаре").
+    enum class Need { any, hits };
+    void setNeed (Need n) noexcept { need = n; }
+    static constexpr float hitsSustainLimit = 0.35f;
+
+    // The chosen clip, if this exercise can use it.
+    const juce::AudioBuffer<float>* usableClip() const noexcept
+    {
+        if (library == nullptr)
+            return nullptr;
+        const auto* buffer = library->getActiveBuffer();
+        if (buffer != nullptr && need == Need::hits && library->getActiveSustain() > hitsSustainLimit)
+            return nullptr;
+        return buffer;
+    }
+
+    // True when a clip is chosen but this exercise plays its own sound
+    // because the clip does not suit it - for the screen to say so.
+    bool isSkippingChosenClip() const noexcept
+    {
+        return library != nullptr && library->getActiveBuffer() != nullptr && usableClip() == nullptr;
+    }
+
     bool hasBed() const noexcept { return ! beds.empty(); }
 
     // True when the next samples are pink noise. The burst exercises shape
@@ -94,17 +121,19 @@ public:
     // already has its rhythm and must not be chopped a second time.
     bool isPlayingNoise() const noexcept
     {
-        if (library != nullptr && library->getActiveBuffer() != nullptr)
+        if (usableClip() != nullptr)
             return false;
 
-        return ! (preferBed.load() && ! beds.empty());
+        // Otherwise the exercise's own sound - asked for, or standing in
+        // for a clip it cannot use - and pink noise only without one.
+        const auto bed = ! beds.empty() && (preferBed.load() || isSkippingChosenClip());
+        return ! bed;
     }
 
     float nextSample() noexcept
     {
-        if (library != nullptr)
         {
-            if (const auto* buffer = library->getActiveBuffer())
+            if (const auto* buffer = usableClip())
             {
                 if (const auto length = buffer->getNumSamples(); length > 0)
                 {
@@ -126,7 +155,7 @@ public:
 
         readPosition = 0;
 
-        if (preferBed.load (std::memory_order_relaxed) && ! beds.empty())
+        if ((preferBed.load (std::memory_order_relaxed) || isSkippingChosenClip()) && ! beds.empty())
         {
             const auto& bed = beds[(size_t) juce::jlimit (0, (int) beds.size() - 1, activeBed.load (std::memory_order_relaxed))];
             const auto length = bed.getNumSamples();
@@ -152,10 +181,9 @@ public:
     {
         const juce::AudioBuffer<float>* source = nullptr;
 
-        if (library != nullptr)
-            source = library->getActiveBuffer();
+        source = usableClip();
 
-        if (source == nullptr && preferBed.load() && ! beds.empty())
+        if (source == nullptr && (preferBed.load() || isSkippingChosenClip()) && ! beds.empty())
             source = &beds[(size_t) juce::jlimit (0, (int) beds.size() - 1, activeBed.load())];
 
         if (source != nullptr && source->getNumSamples() > 0)
@@ -193,6 +221,7 @@ private:
     std::vector<juce::AudioBuffer<float>> beds;
     std::atomic<int> activeBed { 0 };
     std::atomic<bool> preferBed { true };
+    Need need = Need::any;
     int bedPosition = 0;
     const ReferenceAudioLibrary* library = nullptr;
     int readPosition = 0;

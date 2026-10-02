@@ -5,6 +5,7 @@
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/audio/LessonAudioBed.h"
 #include "shared/audio/BuiltInSynth.h"
+#include "shared/learning/LearnerEditorBase.h"
 #include "../LearnerEQ/Source/PluginProcessor.h"
 #include "../LearnerEQ/Source/PluginEditor.h"
 #include "../LearnerComp/Source/PluginProcessor.h"
@@ -18,6 +19,7 @@ namespace
     constexpr int headerHeight = 64;
     constexpr int courseHeadHeight = 40;
     constexpr int lessonRowHeight = 46;
+    constexpr int moduleRowHeight = 36;
     constexpr int stepRowHeight = 30;
     constexpr int footerHeight = 72;
 
@@ -27,6 +29,12 @@ namespace
     juce::AudioBuffer<float> renderMaterial (const juce::String& name, double sampleRate)
     {
         using Bed = LessonAudioBed::Bed;
+
+        // The live recording first (ADR 058): the voice, the drums, the bass,
+        // the guitar and the mix of the same concert moment - you hear the
+        // vocal change in a real mix, not in a synthesized one.
+        if (auto live = LessonAudioBed::renderLive (name, sampleRate, 2); live.getNumSamples() > 1)
+            return live;
 
         const std::pair<const char*, Bed> beds[] {
             { "vocal", Bed::vocal }, { "drums", Bed::drumLoop }, { "hit", Bed::singleHit },
@@ -88,7 +96,7 @@ class LessonsPanel::Rail : public juce::Component
 public:
     explicit Rail (LessonsPanel& p) : owner (p) {}
 
-    struct Row { juce::Rectangle<int> bounds; const LessonFile::Lesson* lesson = nullptr; juce::String course; };
+    struct Row { juce::Rectangle<int> bounds; const LessonFile::Lesson* lesson = nullptr; juce::String course; int modules = -1; };
     std::vector<Row> rows;
     int hovered = -1;
 
@@ -96,6 +104,15 @@ public:
     {
         rows.clear();
         int y = 6;
+
+        // The plugins' own modules first: one row per plugin.
+        rows.push_back ({ { 0, y, width, courseHeadHeight }, nullptr, "modules" });
+        y += courseHeadHeight;
+        for (int fx = 0; fx < 3; ++fx)
+        {
+            rows.push_back ({ { 0, y, width, moduleRowHeight }, nullptr, "modules", fx });
+            y += moduleRowHeight;
+        }
 
         for (const auto& c : owner.courses)
         {
@@ -119,6 +136,36 @@ public:
         for (int i = 0; i < (int) rows.size(); ++i)
         {
             const auto& r = rows[(size_t) i];
+
+            if (r.modules >= 0)
+            {
+                const auto selected = owner.modulesShown == r.modules;
+                auto area = r.bounds.reduced (8, 1);
+                if (selected || hovered == i)
+                {
+                    g.setColour (selected ? theme.accent.withAlpha (0.18f) : theme.widgetBackground.withAlpha (0.6f));
+                    g.fillRect (area);
+                }
+                if (selected)
+                {
+                    g.setColour (theme.accent);
+                    g.fillRect (area.withWidth (3).reduced (0, 6));
+                }
+                area.removeFromLeft (32);
+                static const char* names[] { "Learner EQ", "Learner Comp", "Learner Verb" };
+                g.setColour (selected ? theme.textBright : theme.text);
+                g.setFont (LnF::bodyFont());
+                LnF::fitText (g, names[r.modules], area, juce::Justification::centredLeft, true);
+                continue;
+            }
+
+            if (r.course == "modules")
+            {
+                auto area = r.bounds.reduced (18, 0).withTrimmedTop (12);
+                LnF::drawTrackedText (g, LnF::toCaps (owner.host.text ("lessons.course.modules")),
+                                      area.toFloat(), LnF::microFont(), theme.textDim, 1.3f);
+                continue;
+            }
 
             if (r.lesson == nullptr)
             {
@@ -177,7 +224,7 @@ public:
     int rowAt (juce::Point<int> p) const
     {
         for (int i = 0; i < (int) rows.size(); ++i)
-            if (rows[(size_t) i].lesson != nullptr && rows[(size_t) i].bounds.contains (p))
+            if ((rows[(size_t) i].lesson != nullptr || rows[(size_t) i].modules >= 0) && rows[(size_t) i].bounds.contains (p))
                 return i;
         return -1;
     }
@@ -194,7 +241,11 @@ public:
     void mouseUp (const juce::MouseEvent& e) override
     {
         const auto r = rowAt (e.getPosition());
-        if (r >= 0)
+        if (r < 0)
+            return;
+        if (rows[(size_t) r].modules >= 0)
+            owner.openModules (rows[(size_t) r].modules);
+        else
             owner.openLesson (rows[(size_t) r].lesson->id);
     }
 
@@ -202,6 +253,21 @@ public:
 };
 
 // ---------------------------------------------------------------- panel
+
+void LessonsPanel::setRailShown (bool shown)
+{
+    const auto before = isRailShown();
+    railShown = shown;
+    if (host.properties != nullptr)
+    {
+        host.properties->setValue (railShownKey, shown);
+        host.properties->saveIfNeeded();
+    }
+    if (isRailShown() != before && onRailToggled != nullptr)
+        onRailToggled (isRailShown());
+    resized();
+    repaint();
+}
 
 LessonsPanel::LessonsPanel (Host h)
     : host (std::move (h)), courses (LessonLibrary::courses())
@@ -214,6 +280,13 @@ LessonsPanel::LessonsPanel (Host h)
     railView.setScrollBarsShown (true, false);
     railView.setScrollBarThickness (6);
     addAndMakeVisible (railView);
+
+    if (host.properties != nullptr)
+        railShown = host.properties->getBoolValue (railShownKey, true);
+    railButton.setComponentID ("lessons.fold");
+    railButton.setTooltip (host.text ("lessons.fold"));
+    railButton.onClick = [this] { setRailShown (! railShown); };
+    addChildComponent (railButton);
 
     backButton.setButtonText (host.text ("lessons.back"));
     nextButton.setButtonText (host.text ("lessons.next"));
@@ -243,6 +316,7 @@ LessonsPanel::LessonsPanel (Host h)
 
 LessonsPanel::~LessonsPanel()
 {
+    closeModules();   // the plugin gets its module screen back
     runner.finish();
     setLookAndFeel (nullptr);
 }
@@ -272,9 +346,13 @@ int LessonsPanel::effectIndex() const
 
 void LessonsPanel::openLesson (const juce::String& id)
 {
+    closeModules();
+    const auto railBefore = isRailShown();
     lesson = LessonLibrary::find (id);
     if (lesson == nullptr)
         return;
+    if (isRailShown() != railBefore && onRailToggled != nullptr)
+        onRailToggled (isRailShown());
 
     step = 0;
     playingMaterial = {};
@@ -283,11 +361,60 @@ void LessonsPanel::openLesson (const juce::String& id)
     repaint();
 }
 
+void LessonsPanel::openModules (int effect)
+{
+    if (lesson != nullptr)
+        closeLesson();
+    closeModules();
+
+    const auto railBefore = isRailShown();
+    if (host.showEffect)
+        host.showEffect (effect);
+
+    auto* editor = host.currentEditor ? dynamic_cast<LearnerEditorBase*> (host.currentEditor()) : nullptr;
+    if (editor == nullptr)
+        return;
+
+    modulesShown = effect;
+    modulesEditor = editor;
+    lentModules = editor->lendModulesToHost();
+    if (lentModules != nullptr)
+        addAndMakeVisible (*lentModules);
+
+    if (isRailShown() != railBefore && onRailToggled != nullptr)
+        onRailToggled (isRailShown());
+    resized();
+    repaint();
+}
+
+void LessonsPanel::closeModules()
+{
+    if (modulesShown < 0)
+        return;
+
+    const auto railBefore = isRailShown();
+    if (auto* editor = dynamic_cast<LearnerEditorBase*> (modulesEditor.getComponent()))
+        editor->takeBackModulesFromHost();
+    else if (lentModules != nullptr)
+        removeChildComponent (lentModules);
+
+    lentModules = nullptr;
+    modulesEditor = nullptr;
+    modulesShown = -1;
+    if (isRailShown() != railBefore && onRailToggled != nullptr)
+        onRailToggled (isRailShown());
+    resized();
+    repaint();
+}
+
 void LessonsPanel::closeLesson()
 {
     runner.finish();
     setHighlight ({});
+    const auto railBefore = isRailShown();
     lesson = nullptr;
+    if (isRailShown() != railBefore && onRailToggled != nullptr)
+        onRailToggled (isRailShown());
     resized();
     repaint();
 }
@@ -394,7 +521,7 @@ void LessonsPanel::applyStep()
 
 juce::Rectangle<int> LessonsPanel::readerBounds() const
 {
-    return getLocalBounds().withTrimmedLeft (railWidth).withTrimmedTop (headerHeight).reduced (pad + 8, pad);
+    return getLocalBounds().withTrimmedLeft (railNow()).withTrimmedTop (headerHeight).reduced (pad + 8, pad);
 }
 
 juce::Rectangle<int> LessonsPanel::stepListBounds() const
@@ -410,8 +537,16 @@ juce::Rectangle<int> LessonsPanel::stepListBounds() const
 
 void LessonsPanel::resized()
 {
-    railView.setBounds (getLocalBounds().withTrimmedTop (headerHeight).removeFromLeft (railWidth));
+    railView.setVisible (isRailShown());
+    railView.setBounds (getLocalBounds().withTrimmedTop (headerHeight).removeFromLeft (railNow()));
     rail->layout (railWidth - 8);
+
+    // The fold button at the header's left, always there in a lesson.
+    railButton.setVisible (lesson != nullptr || modulesShown >= 0);
+    if (lentModules != nullptr)
+        lentModules->setBounds (getLocalBounds().withTrimmedLeft (railNow()).withTrimmedTop (headerHeight));
+    railButton.setButtonText (juce::String (juce::CharPointer_UTF8 (isRailShown() ? "\xe2\x80\xb9" : "\xe2\x80\xba")));
+    railButton.setBounds (pad / 2, (headerHeight - 32) / 2, 32, 32);
 
     const auto inLesson = lesson != nullptr;
     for (auto* b : { &backButton, &nextButton, &coursesButton })
@@ -441,7 +576,11 @@ void LessonsPanel::paint (juce::Graphics& g)
         auto header = getLocalBounds().removeFromTop (headerHeight).reduced (pad, 0);
         g.setColour (theme.textBright);
         g.setFont (LnF::titleFont());
-        LnF::fitText (g, host.text ("lessons.window"), header.removeFromLeft (railWidth - pad), juce::Justification::centredLeft, false);
+        const auto folding = lesson != nullptr || modulesShown >= 0;
+        if (folding)
+            header.removeFromLeft (36);   // the fold button
+        LnF::fitText (g, host.text ("lessons.window"), header.removeFromLeft (juce::jmax (140, railNow() - pad - (folding ? 36 : 0))),
+                      juce::Justification::centredLeft, false);
         g.setColour (theme.textDim);
         g.setFont (LnF::labelFont());
         LnF::fitLines (g, host.text ("lessons.tagline"), header.withTrimmedLeft (8 + pad), juce::Justification::centredLeft, 2);
@@ -452,7 +591,7 @@ void LessonsPanel::paint (juce::Graphics& g)
 
     // Rail backing, as in Settings and Sounds.
     {
-        auto railArea = getLocalBounds().withTrimmedTop (headerHeight).removeFromLeft (railWidth);
+        auto railArea = getLocalBounds().withTrimmedTop (headerHeight).removeFromLeft (railNow());
         g.setColour (theme.windowBackground.darker (0.15f));
         g.fillRect (railArea);
         g.setColour (theme.divider);
@@ -460,6 +599,9 @@ void LessonsPanel::paint (juce::Graphics& g)
     }
 
     auto r = readerBounds();
+
+    if (modulesShown >= 0 && lentModules != nullptr)
+        return;   // the plugin's module screen fills the reading column
 
     if (lesson == nullptr)
     {
@@ -595,5 +737,16 @@ LessonsWindow::LessonsWindow (const juce::String& title, LessonsPanel::Host host
     setUsingNativeTitleBar (true);
     setContentOwned (content, true);
     setResizable (true, false);
-    setResizeLimits (820, 560, 1600, 1200);
+    setResizeLimits (480, 560, 1600, 1200);
+    content->onRailToggled = [this] (bool shown) { resizeForRail (shown); };
+}
+
+void LessonsWindow::resizeForRail (bool shown)
+{
+    // Keep the right edge (the reading column) where it is; the rail opens
+    // and folds to the left.
+    auto b = getBounds();
+    const auto delta = shown ? LessonsPanel::railWidth : -LessonsPanel::railWidth;
+    b.setLeft (b.getX() - delta);
+    setBounds (b.withWidth (juce::jmax (480, b.getWidth())));
 }

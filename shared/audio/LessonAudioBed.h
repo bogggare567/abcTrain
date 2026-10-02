@@ -56,6 +56,11 @@ namespace LessonAudioBed
     juce::AudioBuffer<float> render (Bed bed, double sampleRate,
                                      int variationSeed);
 
+    // A material cut from Bogdan's live multitrack at the vocal phrases'
+    // moments: "vocal", "kick", "snare", "drums", "bass", "guitar", "mix"
+    // (the mix has the voice in it). Empty when there is no such material.
+    juce::AudioBuffer<float> renderLive (const juce::String& material, double sampleRate, int seed);
+
     // How long each bed's loop is, in seconds. Beds meant for hearing a
     // tail (singleHit, brightHit) leave real silence after the hit, because
     // the silence is where the tail lives.

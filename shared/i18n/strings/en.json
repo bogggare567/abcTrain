@@ -366,7 +366,7 @@
   "ui.yourAnswer": "Your answer",
   "ui.openFolder": "Open folder",
   "ui.soundsClips": "Clips",
-  "ui.soundsPickCategory": "Pick a category on the left to see its clips, then click one to train on that clip alone.",
+  "ui.soundsPickCategory": "Pick a category on the left to see its clips, then click one to train on that clip alone. Delay, reverb and compression are heard on hits: with a held sound they play their own material.",
   "ui.soundsOnPinkNoise": "Training on pink noise",
   "ui.soundsOnFile": "Training on {{file}}",
   "ui.soundsShuffling": "Shuffling {{category}} — now: {{file}}",
@@ -1368,5 +1368,7 @@
   "set.answerSound.title": "Answer sound",
   "set.answerSound.hint": "One sound, always the same: a rim on a wrong answer, a short tone on a right one if you want it.",
   "set.answerSound.wrong": "Wrong only",
-  "set.answerSound.both": "Both"
+  "set.answerSound.both": "Both",
+  "lessons.fold": "Hide or show the course list",
+  "lessons.course.modules": "Plugin modules"
 }

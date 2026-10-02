@@ -7,6 +7,10 @@ const std::array<const char*, ReverbGame::numTypes> ReverbGame::typeLabels { "Ro
 
 void ReverbGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    // Heard on hits, not on a held sound: a sustained clip is skipped
+    // for this exercise's own material (TestSignalGenerator::Need).
+    noise.setNeed (TestSignalGenerator::Need::hits);
+
     sampleRate = spec.sampleRate;
 
     engine.prepare ({ sampleRate, spec.maximumBlockSize, 2 });

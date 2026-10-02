@@ -5,6 +5,10 @@
 
 void CompressionGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    // Heard on hits, not on a held sound: a sustained clip is skipped
+    // for this exercise's own material (TestSignalGenerator::Need).
+    noise.setNeed (TestSignalGenerator::Need::hits);
+
     sampleRate = spec.sampleRate;
     compressor.prepare (sampleRate);
     compressor.reset();

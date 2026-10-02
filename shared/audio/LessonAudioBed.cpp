@@ -183,11 +183,12 @@ namespace LessonAudioBed
         // The embedded vocal, decoded and resampled to `sampleRate`, into
         // both channels. Two phrases; the seed picks one, like the other
         // beds' variations.
-        juce::AudioBuffer<float> decodeVocal (double sampleRate, int seed)
+        // One embedded FLAC, decoded and resampled to `sampleRate`, into
+        // two channels (a mono file is copied to both).
+        juce::AudioBuffer<float> decodeFlac (const void* data, int size, double sampleRate)
         {
-            const auto first = (seed % 2) == 0;
-            const auto* data = first ? SampleBinaryData::vocallive01_flac : SampleBinaryData::vocallive02_flac;
-            const auto size = first ? SampleBinaryData::vocallive01_flacSize : SampleBinaryData::vocallive02_flacSize;
+            if (data == nullptr || size <= 0)
+                return {};
 
             juce::FlacAudioFormat flac;
             std::unique_ptr<juce::AudioFormatReader> reader (
@@ -196,17 +197,31 @@ namespace LessonAudioBed
             if (reader == nullptr || reader->lengthInSamples <= 0)
                 return {};
 
-            juce::AudioBuffer<float> source (1, (int) reader->lengthInSamples);
-            reader->read (&source, 0, source.getNumSamples(), 0, true, false);
+            const auto channels = (int) juce::jmin (2u, reader->numChannels);
+            juce::AudioBuffer<float> source (channels, (int) reader->lengthInSamples);
+            reader->read (&source, 0, source.getNumSamples(), 0, true, channels > 1);
 
             const auto ratio = reader->sampleRate / sampleRate;
             const auto outLength = juce::jmax (1, (int) ((double) source.getNumSamples() / ratio));
             juce::AudioBuffer<float> out (2, outLength);
 
-            juce::LagrangeInterpolator interpolator;
-            interpolator.process (ratio, source.getReadPointer (0), out.getWritePointer (0), outLength);
-            out.copyFrom (1, 0, out, 0, 0, outLength);
+            for (int ch = 0; ch < 2; ++ch)
+            {
+                juce::LagrangeInterpolator interpolator;
+                interpolator.process (ratio, source.getReadPointer (juce::jmin (ch, channels - 1)),
+                                      out.getWritePointer (ch), outLength);
+            }
             return out;
+        }
+
+        // The embedded vocal: two phrases; the seed picks one, like the
+        // other beds' variations.
+        juce::AudioBuffer<float> decodeVocal (double sampleRate, int seed)
+        {
+            const auto first = (seed % 2) == 0;
+            return decodeFlac (first ? SampleBinaryData::vocallive01_flac : SampleBinaryData::vocallive02_flac,
+                               first ? SampleBinaryData::vocallive01_flacSize : SampleBinaryData::vocallive02_flacSize,
+                               sampleRate);
         }
 
         void renderPinkNoise (juce::AudioBuffer<float>& buffer)
@@ -364,4 +379,30 @@ namespace LessonAudioBed
 
         return buffer;
     }
+
+    juce::AudioBuffer<float> renderLive (const juce::String& material, double sampleRate, int seed)
+    {
+        // "<material>-live-0N.flac" in SampleData: the same two moments of
+        // Bogdan's live multitrack as the vocal phrases (ADR 058).
+        const auto wanted = material.removeCharacters ("-") + "live0" + juce::String (seed % 2 == 0 ? 1 : 2) + "_flac";
+        if (material == "vocal")
+            return render (Bed::vocal, sampleRate, seed);
+
+        for (int i = 0; i < SampleBinaryData::namedResourceListSize; ++i)
+            if (juce::String (SampleBinaryData::namedResourceList[i]) == wanted)
+            {
+                int size = 0;
+                const auto* data = SampleBinaryData::getNamedResource (SampleBinaryData::namedResourceList[i], size);
+                auto out = decodeFlac (data, size, sampleRate);
+                if (out.getNumSamples() > 1)
+                {
+                    normalise (out);
+                    fadeEdges (out, sampleRate);
+                    return out;
+                }
+            }
+
+        return {};
+    }
 }
+

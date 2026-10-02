@@ -68,6 +68,10 @@ void DelayGame::submitNormalisedAnswer (float normalised)
 
 void DelayGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    // Heard on hits, not on a held sound: a sustained clip is skipped
+    // for this exercise's own material (TestSignalGenerator::Need).
+    noise.setNeed (TestSignalGenerator::Need::hits);
+
     sampleRate = spec.sampleRate;
 
     delayLine.setMaximumDelayInSamples ((int) (sampleRate * 0.6) + 16);

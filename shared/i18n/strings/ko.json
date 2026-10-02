@@ -366,7 +366,7 @@
   "ui.yourAnswer": "당신의 답",
   "ui.openFolder": "폴더 열기",
   "ui.soundsClips": "클립",
-  "ui.soundsPickCategory": "왼쪽에서 카테고리를 고르면 클립이 보입니다. 하나를 누르면 그 클립만으로 연습합니다.",
+  "ui.soundsPickCategory": "왼쪽에서 카테고리를 고르면 클립이 보입니다. 하나를 누르면 그 클립만으로 연습합니다. 딜레이·리버브·컴프레션은 타격음에서 들립니다. 지속음이면 각 연습의 전용 소리를 씁니다.",
   "ui.soundsOnPinkNoise": "핑크 노이즈로 연습 중",
   "ui.soundsOnFile": "「{{file}}」로 연습 중",
   "ui.soundsShuffling": "{{category}}에서 무작위 — 현재: {{file}}",
@@ -1368,5 +1368,7 @@
   "set.answerSound.title": "답 소리",
   "set.answerSound.hint": "항상 같은 한 소리: 오답에 림, 정답에 짧은 톤(원하면).",
   "set.answerSound.wrong": "오답만",
-  "set.answerSound.both": "둘 다"
+  "set.answerSound.both": "둘 다",
+  "lessons.fold": "코스 목록 숨기기/보이기",
+  "lessons.course.modules": "플러그인 모듈"
 }

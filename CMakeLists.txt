@@ -153,6 +153,19 @@ juce_add_binary_data(SampleData
         # vocal, CC BY 4.0 (assets/lesson-media/CREDITS.md).
         assets/lesson-media/vocal-live-01.flac
         assets/lesson-media/vocal-live-02.flac
+        # The same two moments of the same concert, every mic (ADR 058).
+        assets/lesson-media/kick-live-01.flac
+        assets/lesson-media/kick-live-02.flac
+        assets/lesson-media/snare-live-01.flac
+        assets/lesson-media/snare-live-02.flac
+        assets/lesson-media/drums-live-01.flac
+        assets/lesson-media/drums-live-02.flac
+        assets/lesson-media/bass-live-01.flac
+        assets/lesson-media/bass-live-02.flac
+        assets/lesson-media/guitar-live-01.flac
+        assets/lesson-media/guitar-live-02.flac
+        assets/lesson-media/mix-live-01.flac
+        assets/lesson-media/mix-live-02.flac
 )
 
 # The course lessons (lessons/<course>/*.lesson, ADR 052): text files a
@@ -680,6 +693,7 @@ target_sources(EarTrainerTests
         tests/LoudnessMatchTest.cpp
         tests/RoundOracleTest.cpp
         tests/PackCatalogTest.cpp
+        tests/LiveMaterialTest.cpp
         Source/LessonLibrary.cpp
         Source/LessonRunner.cpp
         Source/BattleShare.cpp

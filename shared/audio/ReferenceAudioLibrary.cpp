@@ -3,6 +3,7 @@
 #include "shared/audio/InstrumentLabel.h"
 #include "SampleBinaryData.h"
 #include "shared/audio/BuiltInSynth.h"
+#include <algorithm>
 #include <array>
 #include <map>
 
@@ -370,6 +371,39 @@ void ReferenceAudioLibrary::addBuiltInCategories()
         static const juce::StringArray instruments { "synth", "bass", "arp", "string", "brass", "sitar",
                                                      "guitar", "whistle", "main", "loops" };
 
+        // The live concert first (ADR 058): the voice alone and the full mix
+        // of the same moments - the default material in the app's Studio.
+        for (const auto* liveName : { "vocal-live-01.flac", "vocal-live-02.flac", "mix-live-01.flac", "mix-live-02.flac" })
+        {
+            for (int i = 0; i < SampleBinaryData::namedResourceListSize; ++i)
+            {
+                if (juce::String (SampleBinaryData::originalFilenames[i]) != liveName)
+                    continue;
+                int size = 0;
+                const auto* data = SampleBinaryData::getNamedResource (SampleBinaryData::namedResourceList[i], size);
+                if (data == nullptr || size <= 0)
+                    continue;
+                auto file = cacheDir.getChildFile (juce::String ("live-") + liveName);
+                if (! file.existsAsFile() || file.getSize() != (juce::int64) size)
+                    file.replaceWithData (data, (size_t) size);
+
+                Category* target = nullptr;
+                for (auto& c : builtInCategories)
+                    if (c.name == "Built-in Voice")
+                        target = &c;
+                if (target == nullptr)
+                {
+                    builtInCategories.add ({ "Built-in Voice", {} });
+                    target = &builtInCategories.getReference (builtInCategories.size() - 1);
+                }
+                target->files.add (file);
+                ClipInfo info;
+                info.credit = { juce::String (liveName).contains ("mix") ? "Live mix" : "Live vocal",
+                                "Bogdan Korablev", "https://soundkorb.ru", "CC-BY-4.0" };
+                target->clips.add (info);
+            }
+        }
+
         for (int i = 0; i < SampleBinaryData::namedResourceListSize; ++i)
         {
             const juce::String original (SampleBinaryData::originalFilenames[i]);
@@ -662,6 +696,24 @@ bool ReferenceAudioLibrary::getPreferExerciseSound() const
     return properties.getBoolValue ("referencePreferExerciseSound", true);
 }
 
+float ReferenceAudioLibrary::sustainOf (const juce::AudioBuffer<float>& buffer, double sampleRate)
+{
+    // 20 ms frames; the median frame against the loud ones. Hits that die
+    // away leave most frames quiet (a kick loop: ~0.1-0.3); a pad, a voice,
+    // a guitar chord keep them up (0.5 and more).
+    const auto frame = juce::jmax (1, (int) (sampleRate * 0.02));
+    std::vector<float> levels;
+    for (int start = 0; start + frame <= buffer.getNumSamples(); start += frame)
+        levels.push_back (buffer.getRMSLevel (0, start, frame));
+    if (levels.size() < 5)
+        return 1.0f;
+
+    std::sort (levels.begin(), levels.end());
+    const auto loud = levels[levels.size() * 95 / 100];
+    const auto median = levels[levels.size() / 2];
+    return loud > 1.0e-6f ? juce::jlimit (0.0f, 1.0f, median / loud) : 1.0f;
+}
+
 bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSampleRate)
 {
     std::unique_ptr<juce::AudioFormatReader> reader (formatManager.createReaderFor (file));
@@ -703,6 +755,7 @@ bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSam
     }
 
     auto* stored = loadedBuffers.add (resampled.release());
+    activeSustain.store (sustainOf (*stored, targetSampleRate));
     activeBuffer.store (stored);
 
     // Keep a short tail of previous clips rather than every clip ever

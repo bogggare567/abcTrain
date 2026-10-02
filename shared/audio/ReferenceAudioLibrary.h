@@ -225,6 +225,13 @@ public:
     // written there.
     const juce::AudioBuffer<float>* getActiveBuffer() const noexcept { return activeBuffer.load(); }
 
+    // How sustained the active clip is, 0..1: the median 20 ms level over
+    // the loud ones. Below ~0.35 it is hits with space between them -
+    // what delay, reverb and compression need to be heard (see
+    // TestSignalGenerator::Need). Measured once, when the clip is chosen.
+    float getActiveSustain() const noexcept { return activeSustain.load(); }
+    static float sustainOf (const juce::AudioBuffer<float>&, double sampleRate);
+
     static constexpr double maxBufferSeconds = 20.0;
 
 private:
@@ -263,6 +270,7 @@ private:
     static constexpr int maxRetainedBuffers = 4;
     juce::OwnedArray<juce::AudioBuffer<float>> loadedBuffers;
     std::atomic<const juce::AudioBuffer<float>*> activeBuffer { nullptr };
+    std::atomic<float> activeSustain { 1.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ReferenceAudioLibrary)
 };

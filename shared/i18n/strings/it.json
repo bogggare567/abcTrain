@@ -366,7 +366,7 @@
   "ui.yourAnswer": "La tua risposta",
   "ui.openFolder": "Apri cartella",
   "ui.soundsClips": "Clip",
-  "ui.soundsPickCategory": "Scegli una categoria a sinistra per vederne le clip, poi clicca su una per allenarti solo con quella.",
+  "ui.soundsPickCategory": "Scegli una categoria a sinistra per vederne le clip, poi clicca su una per allenarti solo con quella. Delay, riverbero e compressione si sentono sui colpi: con un suono tenuto usano il proprio materiale.",
   "ui.soundsOnPinkNoise": "Allenamento su rumore rosa",
   "ui.soundsOnFile": "Allenamento su «{{file}}»",
   "ui.soundsShuffling": "Casuale in {{category}} — ora: {{file}}",
@@ -1368,5 +1368,7 @@
   "set.answerSound.title": "Suono della risposta",
   "set.answerSound.hint": "Un suono, sempre lo stesso: un rim sulla risposta sbagliata, un tono breve su quella giusta se vuoi.",
   "set.answerSound.wrong": "Solo sbagliata",
-  "set.answerSound.both": "Entrambe"
+  "set.answerSound.both": "Entrambe",
+  "lessons.fold": "Nascondi o mostra l'elenco dei corsi",
+  "lessons.course.modules": "Moduli dei plugin"
 }
