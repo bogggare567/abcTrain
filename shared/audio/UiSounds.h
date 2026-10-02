@@ -45,6 +45,12 @@ public:
 
     // The folder name of each event under assets/ui-sounds/.
     static const char* idOf (Event);
+
+    // The answer cues are one sound each, always the same (Bogdan: a rim
+    // on a wrong answer, and either one sound or none on a right one) - a
+    // signal you learn, not a texture. No take choice, no pitch or level
+    // movement, no burst back-off. The rest keep their variety.
+    static bool isFixed (Event e) noexcept { return e == Event::correct || e == Event::wrong; }
     static int eventFromId (const juce::String&);   // -1 when unknown
 
     UiSounds();

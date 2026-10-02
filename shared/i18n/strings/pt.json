@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Fazer o teste",
   "set.hearingApply.title": "Aplicar a correção no Estúdio",
   "set.hearingApply.hint": "Só o som do Estúdio. Exercícios e plugins numa DAW não mudam.",
-  "hp.offer.text": "Verificar a audição com estes fones? Cerca de 8 minutos para os dois ouvidos.",
+  "hp.offer.text": "Verificar a audição com estes fones? Cerca de 4 minutos para os dois ouvidos.",
   "hp.offer.go": "Fazer",
   "hp.offer.later": "Agora não",
   "hp.setup.title": "Calibração auditiva",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Fones",
   "hp.setup.personHint": "Nome",
   "hp.setup.headphonesHint": "Modelo, ex. HD 600",
-  "hp.setup.time": "Cerca de 8 minutos para os dois ouvidos. Pode pausar a qualquer momento.",
+  "hp.setup.time": "Cerca de 4 minutos para os dois ouvidos. Pode pausar a qualquer momento.",
   "hp.setup.start": "Começar",
   "hp.setup.cancel": "Cancelar",
   "hp.test.title": "Calibração · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Baixando…",
   "ui.soundsBuiltInDrums": "Bateria (gravada)",
   "ui.soundsBuiltInInstruments": "Instrumentos (gravados)",
-  "ui.soundsBuiltInVoice": "Voz (gravada)"
+  "ui.soundsBuiltInVoice": "Voz (gravada)",
+  "hp.rel.goodShort": "Nenhum «Ouvi» no silêncio. O resultado é confiável.",
+  "set.answerSound.title": "Som da resposta",
+  "set.answerSound.hint": "Um som, sempre o mesmo: um rim na resposta errada, um tom curto na certa, se quiser.",
+  "set.answerSound.wrong": "Só errada",
+  "set.answerSound.both": "Ambas"
 }

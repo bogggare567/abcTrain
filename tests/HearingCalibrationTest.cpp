@@ -164,7 +164,7 @@ public:
             expect (bias > -2.0 && bias < 5.0, "mean error: " + juce::String (bias));
         }
 
-        beginTest ("the order is BSA's: 1, 2, 3, 4, 6, 8 kHz, 1 kHz again, 500, 250 Hz, left then right");
+        beginTest ("the short run: octaves 1, 2, 4, 8 kHz, 500, 250 Hz, left then right");
         {
             AudiometryProcedure::Config config;
             config.catchOneIn = 0;
@@ -189,11 +189,11 @@ public:
                 procedure.answer (listener.answer (p));
             }
 
-            const float expected[] { 1000, 2000, 3000, 4000, 6000, 8000, 1000, 500, 250,
-                                     1000, 2000, 3000, 4000, 6000, 8000, 1000, 500, 250 };
-            expectEquals (seen.size(), 18);
+            const float expected[] { 1000, 2000, 4000, 8000, 500, 250,
+                                     1000, 2000, 4000, 8000, 500, 250 };
+            expectEquals (seen.size(), 12);
 
-            for (int i = 0; i < juce::jmin (18, seen.size()); ++i)
+            for (int i = 0; i < juce::jmin (12, seen.size()); ++i)
                 expectEquals (seen[i], expected[i]);
         }
 
@@ -275,10 +275,9 @@ public:
             }
         }
 
-        beginTest ("a 1 kHz retest 15 dB off marks the result unreliable");
+        beginTest ("3 and 6 kHz come from their octave neighbours; no retest is not a disagreement");
         {
             auto listener = typicalListener (91);
-            listener.retestShift = 15.0f;
             AudiometryProcedure::Config config;
             config.catchOneIn = 0;
             AudiometryProcedure procedure (21, config);
@@ -286,12 +285,19 @@ public:
 
             HearingProfile p;
             procedure.fillProfile (p);
-            expect (p.left.retestDifference() > 5.0f, "difference " + juce::String (p.left.retestDifference()));
-            expect (! p.retestAgrees());
-            expect (! p.isReliable());
+            for (const auto* ear : { &p.left, &p.right })
+            {
+                expect (HearingProfile::isMeasured (ear->threshold[4]) && HearingProfile::isMeasured (ear->threshold[6]));
+                if (! HearingProfile::isNotHeard (ear->threshold[4]))
+                    expectWithinAbsoluteError (ear->threshold[4], 0.5f * (ear->threshold[3] + ear->threshold[5]), 0.01f);
+            }
+            expect (p.retestAgrees(), "nothing measured twice, nothing disagrees");
 
-            // The better of the two stands for 1 kHz.
-            expect (std::abs (p.left.threshold[2] - listener.truth[0][2]) <= 5.0f);
+            // A profile that does carry a retest 15 dB off is still flagged.
+            HearingProfile q;
+            q.left.first1k = -70.0f;  q.left.retest1k = -55.0f;
+            expect (! q.retestAgrees());
+            expect (! q.isReliable());
         }
 
         beginTest ("compensation: dead zone, amount, cap, the better ear as reference, never a cut");

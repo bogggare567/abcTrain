@@ -1030,7 +1030,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         ui.enabled = choice > 0;
         ui.levelDb = SettingsScreenComponent::uiSoundsDb (choice);
         if (choice > 0)
-            ui.trigger (UiSounds::Event::correct);   // so the level is heard
+            ui.trigger (UiSounds::Event::wrong);     // so the level is heard
     };
     {
         const auto choice = localisationProperties.getIntValue (SettingsScreenComponent::uiSoundsKey, 2);
@@ -2490,10 +2490,19 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
     // The app's own cue for the answer (ADR 054): a step up or a record
     // says more than "right", so it takes the place of it.
     {
+        // A record or a step up is its own moment; otherwise the answer cue,
+        // as chosen in Settings: none, only a wrong answer (the rim), both.
         using E = UiSounds::Event;
-        processor.getUiSounds().trigger (outcome.newBest ? E::newRecord
-                                       : outcome.leveledUp ? E::stepUp
-                                       : outcome.wasCorrect ? E::correct : E::wrong);
+        const auto answerSound = localisationProperties.getIntValue (SettingsScreenComponent::answerSoundKey,
+                                                                     SettingsScreenComponent::answerSoundDefault);
+        if (outcome.newBest)
+            processor.getUiSounds().trigger (E::newRecord);
+        else if (outcome.leveledUp)
+            processor.getUiSounds().trigger (E::stepUp);
+        else if (! outcome.wasCorrect && answerSound >= 1)
+            processor.getUiSounds().trigger (E::wrong);
+        else if (outcome.wasCorrect && answerSound >= 2)
+            processor.getUiSounds().trigger (E::correct);
     }
 
     promotionPips.setVisible (true);

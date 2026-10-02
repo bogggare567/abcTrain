@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "テストする",
   "set.hearingApply.title": "スタジオで補正を適用",
   "set.hearingApply.hint": "スタジオの音だけ。練習とDAWのプラグインは変わりません。",
-  "hp.offer.text": "このヘッドホンで聴力を確認しますか？両耳で約8分です。",
+  "hp.offer.text": "このヘッドホンで聴力を確認しますか？両耳で約4分です。",
   "hp.offer.go": "始める",
   "hp.offer.later": "今はしない",
   "hp.setup.title": "聴力キャリブレーション",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "ヘッドホン",
   "hp.setup.personHint": "名前",
   "hp.setup.headphonesHint": "機種（例: HD 600）",
-  "hp.setup.time": "両耳で約8分。いつでも一時停止できます。",
+  "hp.setup.time": "両耳で約4分。いつでも一時停止できます。",
   "hp.setup.start": "開始",
   "hp.setup.cancel": "キャンセル",
   "hp.test.title": "キャリブレーション · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "ダウンロード中…",
   "ui.soundsBuiltInDrums": "ドラム（録音）",
   "ui.soundsBuiltInInstruments": "楽器（録音）",
-  "ui.soundsBuiltInVoice": "声（録音）"
+  "ui.soundsBuiltInVoice": "声（録音）",
+  "hp.rel.goodShort": "無音で「聞こえた」はゼロ。結果は信頼できます。",
+  "set.answerSound.title": "回答音",
+  "set.answerSound.hint": "いつも同じ1つの音：不正解でリム、正解で短い音（必要なら）。",
+  "set.answerSound.wrong": "不正解のみ",
+  "set.answerSound.both": "両方"
 }

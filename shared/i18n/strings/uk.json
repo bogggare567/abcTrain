@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Пройти тест",
   "set.hearingApply.title": "Застосовувати корекцію в Студії",
   "set.hearingApply.hint": "Лише звук Студії. Вправи та плагіни в DAW не змінюються.",
-  "hp.offer.text": "Перевірити слух у цих навушниках? Близько 8 хвилин на обидва вуха.",
+  "hp.offer.text": "Перевірити слух у цих навушниках? Близько 4 хвилин на обидва вуха.",
   "hp.offer.go": "Пройти",
   "hp.offer.later": "Не зараз",
   "hp.setup.title": "Калібрування слуху",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Навушники",
   "hp.setup.personHint": "Ім'я",
   "hp.setup.headphonesHint": "Модель, наприклад HD 600",
-  "hp.setup.time": "Близько 8 хвилин на обидва вуха. Паузу можна зробити будь-коли.",
+  "hp.setup.time": "Близько 4 хвилин на обидва вуха. Паузу можна зробити будь-коли.",
   "hp.setup.start": "Почати",
   "hp.setup.cancel": "Скасувати",
   "hp.test.title": "Калібрування · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Завантажуємо…",
   "ui.soundsBuiltInDrums": "Барабани (записи)",
   "ui.soundsBuiltInInstruments": "Інструменти (записи)",
-  "ui.soundsBuiltInVoice": "Голос (записи)"
+  "ui.soundsBuiltInVoice": "Голос (записи)",
+  "hp.rel.goodShort": "На тишу — жодного «Чути». Результат надійний.",
+  "set.answerSound.title": "Звук відповіді",
+  "set.answerSound.hint": "Один звук, завжди однаковий: рим на хибній відповіді, короткий тон на правильній — якщо потрібен.",
+  "set.answerSound.wrong": "Лише хибна",
+  "set.answerSound.both": "Обидві"
 }

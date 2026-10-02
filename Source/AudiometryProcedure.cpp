@@ -203,4 +203,25 @@ void AudiometryProcedure::fillProfile (HearingProfile& profile) const
 {
     profile.left = ears[0];
     profile.right = ears[1];
+
+    // 3 and 6 kHz from their octave neighbours: the mean in dB, or "not
+    // heard" when either neighbour was not heard (the cautious side - the
+    // boost is capped anyway).
+    for (auto* ear : { &profile.left, &profile.right })
+    {
+        const auto fill = [ear] (float hz, float lowHz, float highHz)
+        {
+            const auto i = HearingProfile::indexOf (hz);
+            const auto a = ear->threshold[(size_t) HearingProfile::indexOf (lowHz)];
+            const auto b = ear->threshold[(size_t) HearingProfile::indexOf (highHz)];
+            if (i < 0 || HearingProfile::isMeasured (ear->threshold[(size_t) i]))
+                return;
+            if (! HearingProfile::isMeasured (a) || ! HearingProfile::isMeasured (b))
+                return;
+            ear->threshold[(size_t) i] = (HearingProfile::isNotHeard (a) || HearingProfile::isNotHeard (b))
+                                             ? HearingProfile::notHeard : 0.5f * (a + b);
+        };
+        fill (3000.0f, 2000.0f, 4000.0f);
+        fill (6000.0f, 4000.0f, 8000.0f);
+    }
 }

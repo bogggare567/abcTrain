@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "开始测试",
   "set.hearingApply.title": "在工作室中应用校正",
   "set.hearingApply.hint": "仅限工作室的声音。练习和 DAW 中的插件不会改变。",
-  "hp.offer.text": "用这副耳机测一下听力？双耳约 8 分钟。",
+  "hp.offer.text": "用这副耳机测一下听力？双耳约 4 分钟。",
   "hp.offer.go": "去测试",
   "hp.offer.later": "以后再说",
   "hp.setup.title": "听力校准",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "耳机",
   "hp.setup.personHint": "名字",
   "hp.setup.headphonesHint": "型号，例如 HD 600",
-  "hp.setup.time": "双耳约 8 分钟，随时可以暂停。",
+  "hp.setup.time": "双耳约 4 分钟，随时可以暂停。",
   "hp.setup.start": "开始",
   "hp.setup.cancel": "取消",
   "hp.test.title": "校准 · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "正在下载…",
   "ui.soundsBuiltInDrums": "鼓（录音）",
   "ui.soundsBuiltInInstruments": "乐器（录音）",
-  "ui.soundsBuiltInVoice": "人声（录音）"
+  "ui.soundsBuiltInVoice": "人声（录音）",
+  "hp.rel.goodShort": "静音时没有一次“听到”。结果可靠。",
+  "set.answerSound.title": "答题音效",
+  "set.answerSound.hint": "始终同一个音：答错时边击，答对时短音（可选）。",
+  "set.answerSound.wrong": "仅答错",
+  "set.answerSound.both": "两者"
 }

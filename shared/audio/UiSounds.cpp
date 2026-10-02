@@ -87,6 +87,16 @@ void UiSounds::trigger (Event e)
     if (! enabled.load() || takes[i].empty())
         return;
 
+    if (isFixed (e))
+    {
+        Shot shot { (int) e, 0, juce::Decibels::decibelsToGain (levelDb.load()), 1.0f };
+        last = shot;
+        const auto scope = fifo.write (1);
+        if (scope.blockSize1 > 0)
+            queue[(size_t) scope.startIndex1] = shot;
+        return;
+    }
+
     // A take, never the last one for this event (when there is a choice).
     const auto n = (int) takes[i].size();
     auto take = random.nextInt (n);

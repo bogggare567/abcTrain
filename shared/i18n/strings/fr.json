@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Passer le test",
   "set.hearingApply.title": "Appliquer la correction dans le Studio",
   "set.hearingApply.hint": "Le son du Studio seulement. Les exercices et les plugins dans une DAW ne changent pas.",
-  "hp.offer.text": "Vérifier votre audition avec ce casque ? Environ 8 minutes pour les deux oreilles.",
+  "hp.offer.text": "Vérifier votre audition avec ce casque ? Environ 4 minutes pour les deux oreilles.",
   "hp.offer.go": "Commencer",
   "hp.offer.later": "Plus tard",
   "hp.setup.title": "Calibration auditive",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Casque",
   "hp.setup.personHint": "Prénom",
   "hp.setup.headphonesHint": "Modèle, p. ex. HD 600",
-  "hp.setup.time": "Environ 8 minutes pour les deux oreilles. Pause possible à tout moment.",
+  "hp.setup.time": "Environ 4 minutes pour les deux oreilles. Pause possible à tout moment.",
   "hp.setup.start": "Commencer",
   "hp.setup.cancel": "Annuler",
   "hp.test.title": "Calibration · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Téléchargement…",
   "ui.soundsBuiltInDrums": "Batterie (enregistrée)",
   "ui.soundsBuiltInInstruments": "Instruments (enregistrés)",
-  "ui.soundsBuiltInVoice": "Voix (enregistrée)"
+  "ui.soundsBuiltInVoice": "Voix (enregistrée)",
+  "hp.rel.goodShort": "Aucun « Entendu » sur un silence. Le résultat est fiable.",
+  "set.answerSound.title": "Son de réponse",
+  "set.answerSound.hint": "Un son, toujours le même : un rim sur une mauvaise réponse, un ton court sur une bonne si vous voulez.",
+  "set.answerSound.wrong": "Mauvaise seule",
+  "set.answerSound.both": "Les deux"
 }

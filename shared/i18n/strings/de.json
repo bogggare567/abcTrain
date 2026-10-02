@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Test machen",
   "set.hearingApply.title": "Korrektur im Studio anwenden",
   "set.hearingApply.hint": "Nur der Klang im Studio. Übungen und die Plugins in einer DAW bleiben unverändert.",
-  "hp.offer.text": "Ihr Gehör mit diesem Kopfhörer prüfen? Etwa 8 Minuten für beide Ohren.",
+  "hp.offer.text": "Ihr Gehör mit diesem Kopfhörer prüfen? Etwa 4 Minuten für beide Ohren.",
   "hp.offer.go": "Starten",
   "hp.offer.later": "Nicht jetzt",
   "hp.setup.title": "Hörkalibrierung",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Kopfhörer",
   "hp.setup.personHint": "Name",
   "hp.setup.headphonesHint": "Modell, z. B. HD 600",
-  "hp.setup.time": "Etwa 8 Minuten für beide Ohren. Pausieren geht jederzeit.",
+  "hp.setup.time": "Etwa 4 Minuten für beide Ohren. Pausieren geht jederzeit.",
   "hp.setup.start": "Starten",
   "hp.setup.cancel": "Abbrechen",
   "hp.test.title": "Kalibrierung · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Lade…",
   "ui.soundsBuiltInDrums": "Drums (Aufnahmen)",
   "ui.soundsBuiltInInstruments": "Instrumente (Aufnahmen)",
-  "ui.soundsBuiltInVoice": "Stimme (Aufnahmen)"
+  "ui.soundsBuiltInVoice": "Stimme (Aufnahmen)",
+  "hp.rel.goodShort": "Kein „Gehört“ bei Stille. Das Ergebnis ist zuverlässig.",
+  "set.answerSound.title": "Antwort-Sound",
+  "set.answerSound.hint": "Ein Sound, immer derselbe: Rim bei falscher Antwort, ein kurzer Ton bei richtiger, wenn du willst.",
+  "set.answerSound.wrong": "Nur falsch",
+  "set.answerSound.both": "Beide"
 }

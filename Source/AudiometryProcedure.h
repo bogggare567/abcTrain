@@ -12,8 +12,12 @@
 // Procedure for pure-tone air-conduction audiometry (2018), which is the
 // modified Hughson-Westlake method of ISO 8253-1:
 //
-//   - each ear in turn; per ear 1, 2, 3, 4, 6, 8 kHz, then 1 kHz again
-//     (the retest), then 500 and 250 Hz;
+//   - each ear in turn; per ear 1, 2, 4, 8 kHz, then 500 and 250 Hz.
+//     The BSA order also has 3 and 6 kHz and a 1 kHz retest; Bogdan found
+//     the full run far too long for something done at home, so the short
+//     run measures the octaves and fills 3 and 6 kHz from their neighbours
+//     (fillProfile) - enough for a half-gain compensation, which is broad
+//     anyway;
 //   - every frequency starts at a comfortably audible level;
 //   - "heard": the next presentation is 10 dB quieter; "not heard": 5 dB
 //     louder ("down 10, up 5");
@@ -45,7 +49,7 @@ public:
         float minDb = HearingProfile::minLevelDb;
         float downDb = 10.0f;
         float upDb = 5.0f;
-        int catchOneIn = 6;                  // 0: no catch trials
+        int catchOneIn = 8;                  // 0: no catch trials
         int maxPresentationsPerFrequency = 30;
     };
 
@@ -59,11 +63,11 @@ public:
         int step = 0;               // 0..stepsPerEar-1 within the ear
     };
 
-    // The order of one ear's frequencies; index 6 is the 1 kHz retest.
-    static constexpr int stepsPerEar = 9;
-    static constexpr std::array<float, stepsPerEar> order { 1000.0f, 2000.0f, 3000.0f, 4000.0f, 6000.0f,
-                                                            8000.0f, 1000.0f, 500.0f, 250.0f };
-    static constexpr int retestStep = 6;
+    // The order of one ear's frequencies (octaves; 3 and 6 kHz are filled
+    // in by fillProfile). No retest step in the short run.
+    static constexpr int stepsPerEar = 6;
+    static constexpr std::array<float, stepsPerEar> order { 1000.0f, 2000.0f, 4000.0f, 8000.0f, 500.0f, 250.0f };
+    static constexpr int retestStep = -1;
     static constexpr int totalSteps = 2 * stepsPerEar;
 
     explicit AudiometryProcedure (juce::int64 seed);

@@ -90,6 +90,10 @@ public:
     static float uiSoundsDb (int choice) noexcept { return choice == 1 ? -28.0f : -20.0f; }
     std::function<void (int)> onUiSoundsChanged;
 
+    // The answer cue (ADR 054): 0 none, 1 only a wrong answer (a rim), 2 both.
+    static constexpr const char* answerSoundKey = "answerSound";
+    static constexpr int answerSoundDefault = 1;
+
     // The day's practice dose in minutes (t02).
     static constexpr const char* dailyMinutesKey = "dailyMinutes";
     std::function<void()> onDailyMinutesChanged;
@@ -225,7 +229,7 @@ private:
 
     // Live
     SegmentedChoice liveTabChoice;
-    SegmentedChoice uiSoundsChoice, dailyMinutesChoice, loudnessMatchChoice;
+    SegmentedChoice uiSoundsChoice, dailyMinutesChoice, loudnessMatchChoice, answerSoundChoice;
     juce::TextButton accountButton;
     SegmentedChoice syncChoice;
     juce::TextButton syncNowButton;

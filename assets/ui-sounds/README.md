@@ -10,8 +10,8 @@ quick repeat of the same event quieter (`shared/audio/UiSounds`).
 
 | event | when |
 |---|---|
-| correct | an answer inside the band |
-| wrong | an answer outside it |
+| correct | an answer inside the band — one take, always the same; off by default |
+| wrong | an answer outside it — one take (a rim), always the same |
 | step-up | the staircase took a step harder |
 | new-record | the personal best moved |
 | achievement | something earned (the toast) |

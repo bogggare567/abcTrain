@@ -148,10 +148,10 @@ void HearingTestScreen::presentCurrent()
 
     answering = false;
 
-    // 1 to 3 s of silence first, never the same twice in a row: a pulse
+    // 0.6 to 1.6 s of silence first, never the same twice in a row: a pulse
     // that always comes on the beat is one the person can answer without
-    // hearing it.
-    const auto delay = 1.0 + 2.0 * pauseRandom.nextDouble();
+    // hearing it. (1-3 s made the whole test feel endless.)
+    const auto delay = 0.6 + 1.0 * pauseRandom.nextDouble();
     const auto& p = procedure->current();
 
     if (host.present != nullptr)
@@ -401,10 +401,14 @@ juce::String HearingTestScreen::summaryOf (const HearingProfile& p, const Locali
 juce::String HearingTestScreen::reliabilityOf (const HearingProfile& p, const LocalisationManager& loc)
 {
     auto worst = 0.0f;
+    auto hasRetest = false;   // the short run (no 1 kHz retest) has none
 
     for (const auto* ear : { &p.left, &p.right })
         if (const auto d = ear->retestDifference(); HearingProfile::isMeasured (d))
+        {
             worst = juce::jmax (worst, d);
+            hasRetest = true;
+        }
 
     const auto falseAlarms = p.left.falseAlarms + p.right.falseAlarms;
     const auto remeasured = p.left.remeasured || p.right.remeasured;
@@ -412,10 +416,11 @@ juce::String HearingTestScreen::reliabilityOf (const HearingProfile& p, const Lo
     const auto db = n (juce::roundToInt (worst));
 
     if (p.retestAgrees() && falseAlarms == 0 && ! remeasured)
-        return loc.getText ("hp.rel.good", { { "db", db } });
+        return loc.getText (hasRetest ? "hp.rel.good" : "hp.rel.goodShort", { { "db", db } });
 
     juce::StringArray parts;
-    parts.add (loc.getText (p.retestAgrees() ? "hp.rel.retestOk" : "hp.rel.retestBad", { { "db", db } }));
+    if (hasRetest)
+        parts.add (loc.getText (p.retestAgrees() ? "hp.rel.retestOk" : "hp.rel.retestBad", { { "db", db } }));
 
     if (unreliable)
         parts.add (loc.getText ("hp.rel.falseAlarms"));

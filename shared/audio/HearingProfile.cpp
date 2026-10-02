@@ -100,7 +100,9 @@ bool HearingProfile::retestAgrees() const noexcept
     {
         const auto d = ear->retestDifference();
 
-        if (! isMeasured (d) || d > deadZoneDb)
+        // The short run has no retest: nothing measured, nothing that
+        // disagrees.
+        if (isMeasured (d) && d > deadZoneDb)
             return false;
     }
 

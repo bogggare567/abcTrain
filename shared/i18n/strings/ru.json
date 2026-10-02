@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Пройти тест",
   "set.hearingApply.title": "Применять коррекцию в Студии",
   "set.hearingApply.hint": "Только звук Студии. Упражнения и плагины в DAW не меняются.",
-  "hp.offer.text": "Проверить слух в этих наушниках? Около 8 минут на оба уха.",
+  "hp.offer.text": "Проверить слух в этих наушниках? Около 4 минут на оба уха.",
   "hp.offer.go": "Пройти",
   "hp.offer.later": "Не сейчас",
   "hp.setup.title": "Калибровка слуха",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Наушники",
   "hp.setup.personHint": "Имя",
   "hp.setup.headphonesHint": "Модель, например HD 600",
-  "hp.setup.time": "Около 8 минут на оба уха. Паузу можно сделать в любой момент.",
+  "hp.setup.time": "Около 4 минут на оба уха. Паузу можно сделать в любой момент.",
   "hp.setup.start": "Начать",
   "hp.setup.cancel": "Отмена",
   "hp.test.title": "Калибровка · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Скачиваем…",
   "ui.soundsBuiltInDrums": "Барабаны (записи)",
   "ui.soundsBuiltInInstruments": "Инструменты (записи)",
-  "ui.soundsBuiltInVoice": "Голос (записи)"
+  "ui.soundsBuiltInVoice": "Голос (записи)",
+  "hp.rel.goodShort": "На тишину — ни одного «Слышно». Результат надёжный.",
+  "set.answerSound.title": "Звук ответа",
+  "set.answerSound.hint": "Один звук, всегда одинаковый: рим на неверном ответе, короткий тон на верном — если нужен.",
+  "set.answerSound.wrong": "Только неверный",
+  "set.answerSound.both": "Оба"
 }

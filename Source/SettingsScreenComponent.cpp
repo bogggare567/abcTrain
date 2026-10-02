@@ -259,6 +259,14 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     };
     addAndMakeVisible (uiSoundsChoice);
 
+    answerSoundChoice.setValue (properties.getIntValue (answerSoundKey, answerSoundDefault));
+    answerSoundChoice.onChange = [this] (int value)
+    {
+        properties.setValue (answerSoundKey, value);
+        properties.saveIfNeeded();
+    };
+    addAndMakeVisible (answerSoundChoice);
+
     // ---- Live and the account ------------------------------------------
     liveTabChoice.setValue (properties.getBoolValue (liveTabKey, true) ? 1 : 0);
     liveTabChoice.onChange = [this] (int value)
@@ -494,6 +502,7 @@ void SettingsScreenComponent::buildRows()
         { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, standardControlWidth, false, Page::hearing },
         { "set.hearingProfile.title", "set.hearingProfile.hintNone", &profileRow, 0, false, Page::hearing },
         { "set.uiSounds.title",     "set.uiSounds.hint",     &uiSoundsChoice, 0, false, Page::hearing },
+        { "set.answerSound.title",  "set.answerSound.hint",  &answerSoundChoice, 0, false, Page::hearing },
         { "set.hearingApply.title", "set.hearingApply.hint",  &applyChoice,    0, false, Page::hearing },
         { "set.hearingOn.title",    "set.hearingOn.hint",    &hearingOn,      0, false, Page::hearing },
         { "set.break.title",        "set.break.hint",        &breakMinutes,   0, true,  Page::hearing },
@@ -664,6 +673,8 @@ void SettingsScreenComponent::refresh()
     dailyMinutesChoice.setOptions ({ 10, 15, 20, 30 }, { t ("set.daily.n").replace ("{{n}}", "10"), t ("set.daily.n").replace ("{{n}}", "15"),
                                                          t ("set.daily.n").replace ("{{n}}", "20"), t ("set.daily.n").replace ("{{n}}", "30") });
     dailyMinutesChoice.setValue (properties.getIntValue (dailyMinutesKey, 15));
+    answerSoundChoice.setOptions ({ 0, 1, 2 }, { t ("set.off"), t ("set.answerSound.wrong"), t ("set.answerSound.both") });
+    answerSoundChoice.setValue (properties.getIntValue (answerSoundKey, answerSoundDefault));
     uiSoundsChoice.setOptions ({ 0, 1, 2 }, { t ("set.off"), t ("set.uiSounds.quiet"), t ("set.uiSounds.normal") });
     uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
     accountButton.setButtonText (t (accountSignedIn ? "set.account.signOut" : "set.account.signIn"));

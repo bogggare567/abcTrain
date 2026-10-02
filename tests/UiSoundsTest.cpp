@@ -31,11 +31,11 @@ public:
         UiSounds ui;
         std::vector<juce::MemoryBlock> blocks { wavOf (440.0f), wavOf (660.0f), wavOf (880.0f) };
         for (auto& b : blocks)
-            ui.addTake (UiSounds::Event::correct, b.getData(), b.getSize());
+            ui.addTake (UiSounds::Event::achievement, b.getData(), b.getSize());
         ui.prepare (48000.0);
 
         beginTest ("every take decodes; names map both ways");
-        expectEquals (ui.takesFor (UiSounds::Event::correct), 3);
+        expectEquals (ui.takesFor (UiSounds::Event::achievement), 3);
         for (int i = 0; i < UiSounds::numEvents; ++i)
             expectEquals (UiSounds::eventFromId (UiSounds::idOf ((UiSounds::Event) i)), i);
         expectEquals (UiSounds::eventFromId ("nope"), -1);
@@ -46,7 +46,7 @@ public:
             std::set<int> seen;
             for (int n = 0; n < 60; ++n)
             {
-                ui.trigger (UiSounds::Event::correct);
+                ui.trigger (UiSounds::Event::achievement);
                 const auto shot = ui.lastShot();
                 expect (shot.take != previous, "repeated take " + juce::String (shot.take));
                 previous = shot.take;
@@ -61,15 +61,30 @@ public:
         beginTest ("a burst of the same event backs off; the floor holds");
         {
             UiSounds burst;
-            burst.addTake (UiSounds::Event::wrong, blocks[0].getData(), blocks[0].getSize());
+            burst.addTake (UiSounds::Event::runEnd, blocks[0].getData(), blocks[0].getSize());
             burst.prepare (44100.0);
-            burst.trigger (UiSounds::Event::wrong);
+            burst.trigger (UiSounds::Event::runEnd);
             const auto first = juce::Decibels::gainToDecibels (burst.lastShot().gain);
             for (int n = 0; n < 10; ++n)
-                burst.trigger (UiSounds::Event::wrong);
+                burst.trigger (UiSounds::Event::runEnd);
             const auto tenth = juce::Decibels::gainToDecibels (burst.lastShot().gain);
             expect (tenth < first - 4.0f, juce::String (first) + " -> " + juce::String (tenth));
             expect (tenth > -20.0f - 8.0f - 1.6f, juce::String (tenth));
+        }
+
+        beginTest ("the answer cues are one sound, always the same");
+        {
+            UiSounds fixed;
+            fixed.addTake (UiSounds::Event::wrong, blocks[0].getData(), blocks[0].getSize());
+            fixed.prepare (44100.0);
+            fixed.trigger (UiSounds::Event::wrong);
+            const auto first = fixed.lastShot();
+            for (int n = 0; n < 10; ++n)
+            {
+                fixed.trigger (UiSounds::Event::wrong);
+                expect (fixed.lastShot().take == first.take && fixed.lastShot().gain == first.gain
+                        && fixed.lastShot().rate == 1.0f);
+            }
         }
 
         beginTest ("render plays what was triggered, and nothing when switched off");

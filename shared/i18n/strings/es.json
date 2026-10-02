@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Hacer la prueba",
   "set.hearingApply.title": "Aplicar la corrección en el Estudio",
   "set.hearingApply.hint": "Solo el sonido del Estudio. Los ejercicios y los plugins en una DAW no cambian.",
-  "hp.offer.text": "¿Comprobar su audición con estos auriculares? Unos 8 minutos para ambos oídos.",
+  "hp.offer.text": "¿Comprobar su audición con estos auriculares? Unos 4 minutos para ambos oídos.",
   "hp.offer.go": "Hacerla",
   "hp.offer.later": "Ahora no",
   "hp.setup.title": "Calibración auditiva",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Auriculares",
   "hp.setup.personHint": "Nombre",
   "hp.setup.headphonesHint": "Modelo, p. ej. HD 600",
-  "hp.setup.time": "Unos 8 minutos para ambos oídos. Puede pausar en cualquier momento.",
+  "hp.setup.time": "Unos 4 minutos para ambos oídos. Puede pausar en cualquier momento.",
   "hp.setup.start": "Empezar",
   "hp.setup.cancel": "Cancelar",
   "hp.test.title": "Calibración · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Descargando…",
   "ui.soundsBuiltInDrums": "Batería (grabada)",
   "ui.soundsBuiltInInstruments": "Instrumentos (grabados)",
-  "ui.soundsBuiltInVoice": "Voz (grabada)"
+  "ui.soundsBuiltInVoice": "Voz (grabada)",
+  "hp.rel.goodShort": "Ningún «Lo oigo» en silencio. El resultado es fiable.",
+  "set.answerSound.title": "Sonido de respuesta",
+  "set.answerSound.hint": "Un sonido, siempre el mismo: un rim al fallar, un tono corto al acertar si lo quieres.",
+  "set.answerSound.wrong": "Solo fallo",
+  "set.answerSound.both": "Ambos"
 }

@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "테스트하기",
   "set.hearingApply.title": "스튜디오에서 보정 적용",
   "set.hearingApply.hint": "스튜디오 소리만. 연습과 DAW의 플러그인은 바뀌지 않습니다.",
-  "hp.offer.text": "이 헤드폰으로 청력을 확인할까요? 양쪽 귀에 약 8분입니다.",
+  "hp.offer.text": "이 헤드폰으로 청력을 확인할까요? 양쪽 귀에 약 4분입니다.",
   "hp.offer.go": "시작",
   "hp.offer.later": "나중에",
   "hp.setup.title": "청력 보정",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "헤드폰",
   "hp.setup.personHint": "이름",
   "hp.setup.headphonesHint": "모델, 예: HD 600",
-  "hp.setup.time": "양쪽 귀에 약 8분. 언제든 일시정지할 수 있습니다.",
+  "hp.setup.time": "양쪽 귀에 약 4분. 언제든 일시정지할 수 있습니다.",
   "hp.setup.start": "시작",
   "hp.setup.cancel": "취소",
   "hp.test.title": "보정 · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "다운로드 중…",
   "ui.soundsBuiltInDrums": "드럼(녹음)",
   "ui.soundsBuiltInInstruments": "악기(녹음)",
-  "ui.soundsBuiltInVoice": "목소리(녹음)"
+  "ui.soundsBuiltInVoice": "목소리(녹음)",
+  "hp.rel.goodShort": "무음에서 '들림'이 한 번도 없었습니다. 결과는 신뢰할 수 있습니다.",
+  "set.answerSound.title": "답 소리",
+  "set.answerSound.hint": "항상 같은 한 소리: 오답에 림, 정답에 짧은 톤(원하면).",
+  "set.answerSound.wrong": "오답만",
+  "set.answerSound.both": "둘 다"
 }

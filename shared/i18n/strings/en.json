@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Take the test",
   "set.hearingApply.title": "Apply the correction in the Studio",
   "set.hearingApply.hint": "Studio sound only. Exercises and the plugins in a DAW are never changed.",
-  "hp.offer.text": "Check your hearing in these headphones? About 8 minutes for both ears.",
+  "hp.offer.text": "Check your hearing in these headphones? About 4 minutes for both ears.",
   "hp.offer.go": "Take it",
   "hp.offer.later": "Not now",
   "hp.setup.title": "Hearing calibration",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Headphones",
   "hp.setup.personHint": "Name",
   "hp.setup.headphonesHint": "Model, e.g. HD 600",
-  "hp.setup.time": "About 8 minutes for both ears. You can pause at any time.",
+  "hp.setup.time": "About 4 minutes for both ears. You can pause at any time.",
   "hp.setup.start": "Start",
   "hp.setup.cancel": "Cancel",
   "hp.test.title": "Calibration · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Downloading...",
   "ui.soundsBuiltInDrums": "Drums (recorded)",
   "ui.soundsBuiltInInstruments": "Instruments (recorded)",
-  "ui.soundsBuiltInVoice": "Voice (recorded)"
+  "ui.soundsBuiltInVoice": "Voice (recorded)",
+  "hp.rel.goodShort": "Not one \"Heard\" on silence. The result is reliable.",
+  "set.answerSound.title": "Answer sound",
+  "set.answerSound.hint": "One sound, always the same: a rim on a wrong answer, a short tone on a right one if you want it.",
+  "set.answerSound.wrong": "Wrong only",
+  "set.answerSound.both": "Both"
 }

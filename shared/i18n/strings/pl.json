@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Zrób test",
   "set.hearingApply.title": "Stosuj korekcję w Studiu",
   "set.hearingApply.hint": "Tylko dźwięk Studia. Ćwiczenia i wtyczki w DAW się nie zmieniają.",
-  "hp.offer.text": "Sprawdzić słuch w tych słuchawkach? Około 8 minut na oba uszy.",
+  "hp.offer.text": "Sprawdzić słuch w tych słuchawkach? Około 4 minut na oba uszy.",
   "hp.offer.go": "Zrób",
   "hp.offer.later": "Nie teraz",
   "hp.setup.title": "Kalibracja słuchu",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Słuchawki",
   "hp.setup.personHint": "Imię",
   "hp.setup.headphonesHint": "Model, np. HD 600",
-  "hp.setup.time": "Około 8 minut na oba uszy. Pauzę można zrobić w każdej chwili.",
+  "hp.setup.time": "Około 4 minut na oba uszy. Pauzę można zrobić w każdej chwili.",
   "hp.setup.start": "Start",
   "hp.setup.cancel": "Anuluj",
   "hp.test.title": "Kalibracja · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Pobieranie…",
   "ui.soundsBuiltInDrums": "Perkusja (nagrania)",
   "ui.soundsBuiltInInstruments": "Instrumenty (nagrania)",
-  "ui.soundsBuiltInVoice": "Głos (nagrania)"
+  "ui.soundsBuiltInVoice": "Głos (nagrania)",
+  "hp.rel.goodShort": "Ani jednego „Słyszę” przy ciszy. Wynik jest wiarygodny.",
+  "set.answerSound.title": "Dźwięk odpowiedzi",
+  "set.answerSound.hint": "Jeden dźwięk, zawsze ten sam: rim przy złej odpowiedzi, krótki ton przy dobrej, jeśli chcesz.",
+  "set.answerSound.wrong": "Tylko zła",
+  "set.answerSound.both": "Obie"
 }

@@ -1261,7 +1261,7 @@
   "set.hearingProfile.test": "Fai il test",
   "set.hearingApply.title": "Applica la correzione nello Studio",
   "set.hearingApply.hint": "Solo il suono dello Studio. Esercizi e plugin in una DAW non cambiano.",
-  "hp.offer.text": "Controllare l'udito con queste cuffie? Circa 8 minuti per entrambe le orecchie.",
+  "hp.offer.text": "Controllare l'udito con queste cuffie? Circa 4 minuti per entrambe le orecchie.",
   "hp.offer.go": "Inizia",
   "hp.offer.later": "Non ora",
   "hp.setup.title": "Calibrazione dell'udito",
@@ -1270,7 +1270,7 @@
   "hp.setup.headphones": "Cuffie",
   "hp.setup.personHint": "Nome",
   "hp.setup.headphonesHint": "Modello, es. HD 600",
-  "hp.setup.time": "Circa 8 minuti per entrambe le orecchie. Potete fare pausa in ogni momento.",
+  "hp.setup.time": "Circa 4 minuti per entrambe le orecchie. Potete fare pausa in ogni momento.",
   "hp.setup.start": "Inizia",
   "hp.setup.cancel": "Annulla",
   "hp.test.title": "Calibrazione · {{pair}}",
@@ -1363,5 +1363,10 @@
   "sounds.packsDownloading": "Download in corso…",
   "ui.soundsBuiltInDrums": "Batteria (registrata)",
   "ui.soundsBuiltInInstruments": "Strumenti (registrati)",
-  "ui.soundsBuiltInVoice": "Voce (registrata)"
+  "ui.soundsBuiltInVoice": "Voce (registrata)",
+  "hp.rel.goodShort": "Nessun «Sentito» sul silenzio. Il risultato è affidabile.",
+  "set.answerSound.title": "Suono della risposta",
+  "set.answerSound.hint": "Un suono, sempre lo stesso: un rim sulla risposta sbagliata, un tono breve su quella giusta se vuoi.",
+  "set.answerSound.wrong": "Solo sbagliata",
+  "set.answerSound.both": "Entrambe"
 }
