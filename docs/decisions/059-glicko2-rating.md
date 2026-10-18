@@ -33,10 +33,19 @@ people) with Glicko-2.
 - **Migration** on first open of the database: rating kept, deviation = the
   one the table already showed by number of battles, volatility = start.
 
+## Guests and unrated battles (same day)
+
+Like anonymous play on lichess: `POST /api/abctrain/guest/start` gives a
+guest token (no e-mail, nick `guest-xxxx`). Every family has two queues,
+rated and unrated, that never mix. A guest always plays unrated; an account
+chooses (`casual: true` on `/battle/queue`; rated by default, so existing
+apps behave as before). An unrated battle plays the same and is written
+neither to Decibelo nor to the feed. **The app does not offer it yet** —
+"play as guest" and the rated/unrated switch are app work (board card).
+
 ## Not decided here
 
-Anonymous (no-email) battles as unrated "casual" games, like lichess's;
-fair-play marking with rating refunds — both on the board.
+Fair-play marking with rating refunds — on the board.
 
 ## Checked by
 
