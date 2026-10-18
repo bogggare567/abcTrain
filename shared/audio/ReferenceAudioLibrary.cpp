@@ -996,6 +996,23 @@ bool ReferenceAudioLibrary::looksLikePack (const juce::File& file)
     return false;
 }
 
+bool ReferenceAudioLibrary::isSafePackId (const juce::String& id)
+{
+    // ASCII letters and digits, then also '-', '_' and '.', at most 64
+    // characters, and never two dots in a row. The first character being
+    // a letter or a digit rules out ".", "..", ".hidden" and "-x"; no
+    // separator of any system can get in. Every id the project ever
+    // shipped ("bogdan-own", "bogdan-studio", slugs from build_pack.py)
+    // is of this shape.
+    static constexpr const char* alnum = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    return id.length() > 0
+        && id.length() <= 64
+        && juce::String (alnum).containsChar (id[0])
+        && id.containsOnly (juce::String (alnum) + "-_.")
+        && ! id.contains ("..");
+}
+
 juce::String ReferenceAudioLibrary::installPack (const juce::File& source)
 {
     lastInstalledPack = juce::File();
@@ -1020,6 +1037,23 @@ juce::String ReferenceAudioLibrary::installPack (const juce::File& source)
     else
     {
         juce::ZipFile zip (source);
+
+        // What the zip says it unpacks to, checked before a byte is
+        // written: a pack is a few hundred megabytes of FLAC, and a zip
+        // that claims gigabytes is broken or hostile either way.
+        juce::int64 unpackedBytes = 0;
+        for (int i = 0; i < zip.getNumEntries(); ++i)
+            if (const auto* entry = zip.getEntry (i))
+                unpackedBytes += juce::jmax ((juce::int64) 0, entry->uncompressedSize);
+
+        if (unpackedBytes > maxPackBytes)
+            return "the pack is too large";
+
+        // Unpacked, then copied: twice the size, for a moment. Zero means
+        // the system would not say - then there is nothing to check.
+        if (const auto freeBytes = rootFolder.getBytesFreeOnVolume(); freeBytes > 0 && freeBytes < 2 * unpackedBytes)
+            return "not enough free space for the pack";
+
         unpacked.dir = rootFolder.getChildFile (".installing").getNonexistentSibling();
         const auto target = unpacked.dir;
         target.createDirectory();
@@ -1047,11 +1081,26 @@ juce::String ReferenceAudioLibrary::installPack (const juce::File& source)
 
     // The folder name: the pack's id, so a newer version lands on top of
     // the older one instead of beside it.
-    auto name = juce::File::createLegalFileName (json.getProperty ("id", "").toString());
-    if (name.isEmpty())
-        name = source.getFileNameWithoutExtension();
+    //
+    // Installing *replaces* that folder, so the name is taken only if it
+    // is a plain folder name (isSafePackId). createLegalFileName used to
+    // be the only filter, and it keeps dots: an id of ".." made the
+    // destination the folder above the library, and the replacement
+    // deleted it - the app's data by default, the player's Music folder
+    // if that is where he put the library. A pack is something people
+    // pass around in a chat; its manifest is not ours to trust.
+    const auto id = json.getProperty ("id", "").toString();
+    const auto name = id.isNotEmpty() ? id : source.getFileNameWithoutExtension();
+
+    if (! isSafePackId (name))
+        return "the pack id is not a plain folder name";
 
     const auto destination = rootFolder.getChildFile (name);
+
+    // isSafePackId already guarantees this; it is checked again because
+    // the next lines delete whatever it points at.
+    if (destination.getParentDirectory() != rootFolder)
+        return "the pack would land outside the library";
 
     if (destination == packFolder)
     {
@@ -1059,8 +1108,24 @@ juce::String ReferenceAudioLibrary::installPack (const juce::File& source)
         return {};
     }
 
+    if (packFolder.isAChildOf (destination))
+        return "the pack is inside the folder it would replace";
+
     if (destination.exists())
-        destination.deleteRecursively();
+    {
+        // Only an earlier copy of the same pack is replaced. A folder of
+        // the player's own that happens to have the pack's name - his
+        // sliced recordings, say - is never touched.
+        const auto previous = juce::JSON::parse (destination.getChildFile ("pack.json"));
+
+        if (! previous.isObject()
+            || (int) previous.getProperty ("abcTrainPack", 0) != 1
+            || previous.getProperty ("id", "").toString() != id)
+            return "a folder with the pack's name is already in the library";
+
+        if (! destination.deleteRecursively())
+            return "the older copy of the pack could not be removed";
+    }
 
     if (! packFolder.copyDirectoryTo (destination))
         return "copying the pack failed";

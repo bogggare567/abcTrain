@@ -129,6 +129,13 @@ public:
     // plain English (the screen shows its own translated line).
     juce::String installPack (const juce::File& zipOrFolder);
 
+    // Can this pack id be the name of the pack's folder? installPack
+    // replaces that folder, so only a plain name is taken - see the .cpp.
+    static bool isSafePackId (const juce::String& id);
+
+    // A zip that unpacks to more than this is refused before unpacking.
+    static constexpr juce::int64 maxPackBytes = (juce::int64) 4 * 1024 * 1024 * 1024;
+
     // Is this a zip or folder installPack would take?
     static bool looksLikePack (const juce::File&);
 

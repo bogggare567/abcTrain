@@ -237,6 +237,12 @@ def main():
 
     csv_path = args.csv.resolve()
     pack_id = args.id or slug(csv_path.stem)
+
+    # The app takes an id only of this shape: it becomes the pack's folder
+    # name, and installing replaces that folder
+    # (ReferenceAudioLibrary::isSafePackId). Refused here, not in the app.
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", pack_id) or ".." in pack_id:
+        parser.error(f"--id {pack_id!r}: только латиница, цифры, '-', '_', '.'; начинается с буквы или цифры; без '..'; до 64 символов")
     build(csv_path, args.out.resolve(), pack_id,
           args.title_en or pack_id, args.title_ru or args.title_en or pack_id,
           args.version, args.max_clips)

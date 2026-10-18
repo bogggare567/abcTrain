@@ -307,6 +307,67 @@ public:
             expectEquals (packParts, 2);
         }
 
+        beginTest ("a pack id is a plain folder name: nothing outside the pack's own folder is replaced");
+        {
+            expect (ReferenceAudioLibrary::isSafePackId ("bogdan-own"));
+            expect (ReferenceAudioLibrary::isSafePackId ("bogdan-studio"));
+            expect (ReferenceAudioLibrary::isSafePackId ("Drums_v2.1"));
+
+            for (const auto* bad : { "", ".", "..", "../..", "a/..", "..\\x", ".hidden", "-x", "a..b",
+                                     "C:", "/abs", "x/y", "x\\y", "drums ", "\xd0\xb1\xd0\xb0\xd1\x80\xd0\xb0\xd0\xb1\xd0\xb0\xd0\xbd\xd1\x8b" })
+                expect (! ReferenceAudioLibrary::isSafePackId (juce::String::fromUTF8 (bad)), juce::String::fromUTF8 (bad));
+
+            expect (! ReferenceAudioLibrary::isSafePackId (juce::String::repeatedString ("a", 65)));
+
+            const auto libraryFolder = root.getChildFile ("library");
+            const auto sentinel = root.getChildFile ("beside the library.txt");
+            sentinel.replaceWithText ("must survive");
+            const auto ownTake = writeWav (libraryFolder.getChildFile ("my-takes/take 1.wav"), kicks (110.0, 4.0));
+            const auto installed = libraryFolder.getChildFile ("bogdan-own");
+            expect (installed.isDirectory(), "the pack from the test above is missing");
+
+            // One zip per id: <folder>/pack.json and one clip, as people zip a folder.
+            const auto zipWith = [&] (const juce::String& idJson, const juce::String& zipName)
+            {
+                const auto src = root.getChildFile ("build/evil").getNonexistentSibling();
+                writeWav (src.getChildFile ("kick/a.wav"), kicks (120.0, 4.0));
+                src.getChildFile ("pack.json").replaceWithText (
+                    "{\"abcTrainPack\":1," + idJson + "\"clips\":[{\"file\":\"kick/a.wav\","
+                    "\"source\":{\"author\":\"A\",\"license\":\"CC0-1.0\"}}]}");
+
+                const auto zipFile = root.getChildFile (zipName);
+                zipFile.deleteFile();
+                juce::ZipFile::Builder builder;
+                for (const auto& f : src.findChildFiles (juce::File::findFiles, true))
+                    builder.addFile (f, 0, "pack/" + f.getRelativePathFrom (src).replaceCharacter ('\\', '/'));
+                juce::FileOutputStream out (zipFile);
+                builder.writeToStream (out, nullptr);
+                return zipFile;
+            };
+
+            for (const auto* id : { "..", ".", "../..", "my-takes" })
+            {
+                const auto zip = zipWith ("\"id\":\"" + juce::String (id) + "\",", "evil.zip");
+                expect (library.installPack (zip).isNotEmpty(), juce::String ("installed with id ") + id);
+                expect (sentinel.existsAsFile(), juce::String ("the folder above the library was touched by id ") + id);
+                expect (installed.getChildFile ("pack.json").existsAsFile(), juce::String ("the library was emptied by id ") + id);
+                expect (ownTake.existsAsFile(), juce::String ("the player's own folder was replaced by id ") + id);
+            }
+
+            // No id: the zip's own name stands in, and it is held to the same rule.
+            expect (library.installPack (zipWith ({}, "..zip")).isNotEmpty(), "a zip named ..zip was installed");
+            expect (sentinel.existsAsFile() && ownTake.existsAsFile() && installed.isDirectory());
+
+            // Nothing half-done is left behind: no scratch folder.
+            for (const auto& d : libraryFolder.findChildFiles (juce::File::findDirectories, false, "*"))
+                expect (! d.getFileName().startsWith (".installing"), "scratch folder left: " + d.getFileName());
+
+            // And an honest pack still installs, and replaces its own older copy.
+            expectEquals (library.installPack (zipWith ("\"id\":\"honest-pack\",", "honest.zip")), juce::String());
+            expectEquals (library.installPack (zipWith ("\"id\":\"honest-pack\",", "honest.zip")), juce::String());
+            expect (libraryFolder.getChildFile ("honest-pack/pack.json").existsAsFile());
+        }
+
         root.deleteRecursively();
     }
 };
