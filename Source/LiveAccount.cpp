@@ -100,7 +100,12 @@ juce::String LiveAccount::appVersion (const juce::String& describe)
 
 juce::String LiveAccount::platform()
 {
-   #if JUCE_MAC
+   #if JUCE_IOS
+    // The device model: "iPad..." or "iPhone...".
+    return juce::SystemStats::getDeviceDescription().containsIgnoreCase ("iPad") ? "iPadOS" : "iOS";
+   #elif JUCE_ANDROID
+    return "Android";
+   #elif JUCE_MAC
     return "macOS";
    #elif JUCE_WINDOWS
     return "Windows";

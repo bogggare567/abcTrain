@@ -193,6 +193,14 @@ namespace UpdateChecker
     void checkForUpdatesAsync (const juce::String& currentVersion, Channel channel,
                                 std::function<void (bool, ReleaseInfo)> callback)
     {
+       #if JUCE_IOS || JUCE_ANDROID
+        // On a phone the store (or Xcode) updates the app, never the app
+        // itself: the App Store forbids downloading and installing own code.
+        // Silence is the same answer as "could not check" (ADR 007).
+        juce::ignoreUnused (currentVersion, channel, callback);
+        return;
+       #endif
+
         juce::Thread::launch ([currentVersion, channel, callback]
         {
             const juce::URL url (channel == Channel::beta ? releaseListApiUrl : latestReleaseApiUrl);

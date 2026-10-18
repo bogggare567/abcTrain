@@ -25,6 +25,19 @@ cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     CACHE STRING "MSVC runtime library (static, so no redistributable is needed)")
 
+# iPhone / iPad (board card "iOS: first local build"):
+#   cmake -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS
+# builds abcTrain only (EarTrainer as Standalone, the format JUCE builds for
+# iOS). VST3/AU Learner plugins and the console tools do not exist on iOS;
+# Learner EQ/Comp/Verb as AUv3 for iPad is its own card.
+# iOS 16: iPhone XS / XR and later, iPad 6th generation and later.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    set(ABCTRAIN_IOS ON)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "16.0" CACHE STRING "Minimum iOS version")
+else()
+    set(ABCTRAIN_IOS OFF)
+endif()
+
 project(EarTrainer VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -431,6 +444,19 @@ juce_add_plugin(EarTrainer
     VST3_CATEGORIES Tools
     AU_MAIN_TYPE kAudioUnitType_Effect
     NEEDS_CURL TRUE
+    # iOS only (JUCE ignores these elsewhere). No microphone: the trainer
+    # makes its own sound and its input is off on iOS (PluginProcessor.cpp).
+    # The Files app sees the app's folder - that is how own sounds and packs
+    # reach a phone. iPhone: portrait; iPad: any orientation and Split View.
+    MICROPHONE_PERMISSION_ENABLED FALSE
+    BACKGROUND_AUDIO_ENABLED FALSE
+    FILE_SHARING_ENABLED TRUE
+    DOCUMENT_BROWSER_ENABLED TRUE
+    REQUIRES_FULL_SCREEN FALSE
+    STATUS_BAR_HIDDEN FALSE
+    IPHONE_SCREEN_ORIENTATIONS UIInterfaceOrientationPortrait
+    IPAD_SCREEN_ORIENTATIONS UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
+                             UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
 )
 
 target_sources(EarTrainer
@@ -489,6 +515,24 @@ target_link_libraries(EarTrainer
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+if(ABCTRAIN_IOS)
+    # Signing for one's own iPhone without the Apple Developer Program: the
+    # Personal Team from Xcode (Settings > Accounts), given at configure time:
+    #   -DABCTRAIN_IOS_TEAM=XXXXXXXXXX
+    set(ABCTRAIN_IOS_TEAM "" CACHE STRING "Apple development team id for signing on a device")
+    set_target_properties(EarTrainer_Standalone PROPERTIES
+        XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
+        XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic")
+    if(ABCTRAIN_IOS_TEAM)
+        set_target_properties(EarTrainer_Standalone PROPERTIES
+            XCODE_ATTRIBUTE_DEVELOPMENT_TEAM "${ABCTRAIN_IOS_TEAM}")
+    endif()
+    # The foreach near the end gives this to every target; on iOS it is
+    # never reached, so EarTrainer gets the generated VersionInfo.h here.
+    target_include_directories(EarTrainer PRIVATE ${CMAKE_BINARY_DIR}/generated)
+    return()   # what follows is plugins and tools, none of which exist on iOS
+endif()
 
 juce_add_plugin(LearnerEQ
     COMPANY_NAME "soundkorb"

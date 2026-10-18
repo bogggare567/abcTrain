@@ -54,6 +54,9 @@ namespace UpdatePrompt
         }
 
         return false;
+       #elif JUCE_IOS || JUCE_ANDROID
+        // Never reached: the update check is off on phones (UpdateChecker).
+        return false;
        #elif JUCE_WINDOWS
         // Inno Setup handles its own elevation prompt, which is where that
         // question belongs - not in a plugin's UI.

@@ -127,6 +127,9 @@ LiveScreenComponent::LiveScreenComponent()
 
     openRoomButton.onClick = [this]
     {
+       #if JUCE_IOS || JUCE_ANDROID
+        return;   // see refreshVisibility: a phone does not open a room
+       #endif
         // A local room needs an address phones can reach; an online one
         // needs the server. Say which is missing instead of opening a room
         // nobody can enter.
@@ -725,7 +728,15 @@ void LiveScreenComponent::refreshVisibility()
     const auto onSeminar = tab == Tab::seminar;
     const auto battle = tab == Tab::battle;
     const auto rating = tab == Tab::rating;
-    const auto hosting = onSeminar && ! roomOpen;
+    // In a seminar a phone only takes part: it does not offer to open a room
+    // (a server on the venue's network, a projector window). Joining by
+    // address still works.
+   #if JUCE_IOS || JUCE_ANDROID
+    constexpr auto canHost = false;
+   #else
+    constexpr auto canHost = true;
+   #endif
+    const auto hosting = canHost && onSeminar && ! roomOpen;
 
     codeEditor.setVisible (onSeminar);
     joinButton.setVisible (onSeminar);

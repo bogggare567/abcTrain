@@ -8,7 +8,16 @@
 
 EarTrainerProcessor::EarTrainerProcessor()
     : AudioProcessor (BusesProperties()
+                          #if JUCE_IOS || JUCE_ANDROID
+                           // The trainer makes its own sound and never reads
+                           // its input. On a phone an enabled input means a
+                           // microphone prompt on first launch and the
+                           // play-and-record session, which on an iPhone
+                           // routes sound to the earpiece.
+                           .withInput ("Input", juce::AudioChannelSet::stereo(), false)
+                          #else
                            .withInput ("Input", juce::AudioChannelSet::stereo(), true)
+                          #endif
                            .withOutput ("Output", juce::AudioChannelSet::stereo(), true))
 {
     // The app's one-shots: <event>-<n>.flac in UiSoundData.
@@ -77,7 +86,9 @@ bool EarTrainerProcessor::isBusesLayoutSupported (const BusesLayout& layouts) co
     if (mainOut != juce::AudioChannelSet::mono() && mainOut != juce::AudioChannelSet::stereo())
         return false;
 
-    return layouts.getMainInputChannelSet() == mainOut;
+    // A disabled input (phones) is fine too: the trainer never reads it.
+    const auto mainIn = layouts.getMainInputChannelSet();
+    return mainIn == mainOut || mainIn.isDisabled();
 }
 
 void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -108,7 +119,11 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     // a pointer swap on the audio thread and never a prepare.
     for (auto& effect : studio)
     {
-        effect->setPlayConfigDetails (getTotalNumInputChannels(), getTotalNumOutputChannels(),
+        // As many inputs as outputs, not as many as the trainer has: a
+        // Learner clears every channel from its input count up, so with the
+        // input off (phones) the Studio would be silent. Its sound comes from
+        // the practice track inside the app, never from the input anyway.
+        effect->setPlayConfigDetails (getTotalNumOutputChannels(), getTotalNumOutputChannels(),
                                       sampleRate, samplesPerBlock);
         effect->prepareToPlay (sampleRate, samplesPerBlock);
     }
