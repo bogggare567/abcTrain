@@ -141,6 +141,17 @@ public:
             }
         }
 
+        beginTest ("Analysing a long clip is cheap enough for the message thread");
+        {
+            const auto v = pink (48000.0, 20.0);
+            const auto start = juce::Time::getMillisecondCounterHiRes();
+            const auto p = profileOf (v, 48000.0);
+            const auto ms = juce::Time::getMillisecondCounterHiRes() - start;
+            logMessage ("20 s at 48 kHz analysed in " + juce::String (ms, 1) + " ms");
+            expect (p.analysed);
+            expectLessThan (ms, 250.0, "a round change must not stall the screen");
+        }
+
         beginTest ("One sound, one profile");
         {
             const auto v = hiHats (sr, 2.0);

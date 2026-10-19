@@ -757,7 +757,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     {
         auto index = 1;
 
-        for (auto* button : { &practiceButton, &survivalButton, &blitzButton })
+        for (auto* button : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         {
             button->setClickingTogglesState (true);
             button->setRadioGroupId (modeRadioGroup);
@@ -1216,13 +1216,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // Dimmed until something is placed: a filled button that does
     // nothing reads as broken.
     answerButton.setEnabled (false);
-    answerButton.setAlpha (0.4f);
+    answerButton.setDimmed (0.4f);
     AbcTrainLookAndFeel::makePrimary (answerButton);
     addChildComponent (answerButton);
     choiceSlider.onPendingChanged = [this] (bool placed)
     {
         answerButton.setEnabled (placed);
-        answerButton.setAlpha (placed ? 1.0f : 0.4f);
+        answerButton.setDimmed (placed ? 1.0f : 0.4f);
     };
     choiceSlider.onStepCrossed = [this]
     {
@@ -2201,7 +2201,7 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         // "ВЫЖИВАНИЕ" - which is not a Russian problem, it is what a fixed
         // width does to any language that is not the one it was measured
         // in, and this app ships twelve.
-        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         {
             const auto width = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (
                                    AbcTrainLookAndFeel::toCaps (pill->getButtonText()),
@@ -3093,7 +3093,7 @@ void EarTrainerEditor::collapseModePills()
     // their state and give up their room.
     modeButton.setBounds (practiceButton.getBounds().getUnion (blitzButton.getBounds()));
 
-    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+    for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         pill->setBounds ({});
 }
 
@@ -3551,14 +3551,16 @@ void EarTrainerEditor::applyRunLock()
     // Disabling a parent disables what it contains, so the whole nav bar
     // is one call rather than four.
     //
-    // The dimming is Component::setAlpha, not an opacity set inside
-    // paint(): setOpacity only tints the colour that happens to be
+    // The dimming is the whole bar drawn at 40%, not an opacity set
+    // inside paint(): setOpacity only tints the colour that happens to be
     // current, and every subsequent setColour throws it away - so the
     // first version of this looked completely untouched while being
     // genuinely dead, which is the exact failure it was meant to prevent.
-    // Found by rendering it.
+    // Found by rendering it. Nor is it Component::setAlpha any more, which
+    // looked right and cost a window-sized layer every frame on a phone
+    // (shared/ui/Dimming.h).
     topNav.setEnabled (! locked);
-    topNav.setAlpha (locked ? 0.4f : 1.0f);
+    topNav.setDimmed (locked ? 0.4f : 1.0f);
 
     for (auto* c : { (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
                      (juce::Component*) &blitzButton,    (juce::Component*) &instructionsButton,
@@ -3616,7 +3618,7 @@ void EarTrainerEditor::refreshRunStatus()
         for (auto* pill : { &survivalButton, &blitzButton })
         {
             pill->setVisible (onTraining);
-            pill->setAlpha (unlocked ? 1.0f : 0.45f);
+            pill->setDimmed (unlocked ? 1.0f : 0.45f);
         }
 
         if (hudNow)
@@ -5140,7 +5142,7 @@ void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
         rebuildChoiceSlider();
     }
 
-    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+    for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         pill->setToggleState (false, juce::dontSendNotification);
 
     onlineOpponent.clear();
@@ -5341,7 +5343,7 @@ void EarTrainerEditor::startOnlineBattle()
     onlineOpponent = st.opponentNick + " (" + juce::String (st.opponentRating) + ")";
     onlineResultNote.clear();
 
-    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+    for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         pill->setToggleState (false, juce::dontSendNotification);
 
     session.setMode (SessionManager::Mode::duel);

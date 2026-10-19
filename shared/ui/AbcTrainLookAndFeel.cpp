@@ -1099,10 +1099,21 @@ void AbcTrainLookAndFeel::paintDisplayWell (juce::Graphics& g, juce::Rectangle<f
 
     // Inner shadow along the top edge, faked with a short gradient strip:
     // the cue that says "recessed" rather than "raised".
+    //
+    // Filled over the top strip only. The gradient is transparent below
+    // 10 px, but filling the whole well with it made the renderer shade
+    // every pixel of it - on a phone at 3x that was half of the training
+    // screen's frame, since the answer scale is the largest well there is.
     juce::ColourGradient inner (t.shadow.withAlpha (0.35f * t.shadowStrength), bounds.getX(), bounds.getY(),
                                  juce::Colours::transparentBlack, bounds.getX(), bounds.getY() + 10.0f, false);
-    g.setGradientFill (inner);
-    g.fillRoundedRectangle (bounds, Radius::well);
+    {
+        juce::Graphics::ScopedSaveState state (g);
+        juce::Path shape;
+        shape.addRoundedRectangle (bounds, Radius::well);
+        g.reduceClipRegion (shape);
+        g.setGradientFill (inner);
+        g.fillRect (bounds.withHeight (juce::jmin (bounds.getHeight(), 11.0f)));
+    }
 
     // A hairline, not a frame.
     //

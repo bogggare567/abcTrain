@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/AbcTrainLookAndFeel.h"
 
 #include "shared/ui/TouchScroll.h"
 
@@ -105,6 +106,11 @@ private:
     bool supportShown = false;
     float scroll = 0.0f;
     TouchScroll scroller;
+
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ProfileScreenComponent)
 };

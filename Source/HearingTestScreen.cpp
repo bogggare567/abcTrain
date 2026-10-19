@@ -593,7 +593,7 @@ void HearingTestScreen::resized()
 void HearingTestScreen::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
     g.setColour (theme.panelBackground);
     g.fillRect (getLocalBounds());
 

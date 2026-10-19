@@ -297,6 +297,7 @@ private:
     std::atomic<const juce::AudioBuffer<float>*> activeBuffer { nullptr };
     std::atomic<float> activeSustain { 1.0f };
     SpectralContent::Profile activeContent;
+    juce::HashMap<juce::String, SpectralContent::Profile> contentCache;
     std::atomic<float> activePresentOctaves { 10.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ReferenceAudioLibrary)

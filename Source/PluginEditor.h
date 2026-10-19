@@ -131,6 +131,9 @@ public:
         showScreen (Screen::home);
     }
 
+    // The safe area as the layout sees it, for tools/ClickMap.
+    juce::Rectangle<int> safeBoundsForTools() const { return safeBounds(); }
+
     void offerTourForSnapshot()
     {
         supportScreen.setTourOffer (localisation.getText ("tour.offer"),
@@ -468,7 +471,7 @@ public:
     // all played (the results screen says who won).
     void duelForSnapshot (bool finished)
     {
-        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
             pill->setToggleState (false, juce::dontSendNotification);
 
         session.setOpponent (BotListener::Bot::cat);
@@ -1636,7 +1639,7 @@ private:
         return std::getenv ("SNAP_SAFE") != nullptr;
        #endif
     }
-    juce::TextButton answerButton;
+    DimmableTextButton answerButton;
 
     // During a round on a phone the status bar - clock, battery - goes
     // (ADR 062), and the run's own status takes the strip beside the notch
@@ -1700,7 +1703,8 @@ private:
     // word in a well and the other two were behind a popup - so "what are
     // my options" cost a click, and the answer appeared as an OS menu that
     // belongs to no theme at all.
-    juce::TextButton practiceButton, survivalButton, blitzButton;
+    juce::TextButton practiceButton;
+    DimmableTextButton survivalButton, blitzButton;
 
     // The mode is asked at the door (ADR 061): one button on the training
     // screen says which it is and opens the start sheet to change it. The

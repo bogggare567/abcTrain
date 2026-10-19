@@ -248,5 +248,10 @@ private:
     juce::Point<int> designSize { 900, 830 };
     int familyLimit = 10000;
 
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LearnerEditorBase)
 };

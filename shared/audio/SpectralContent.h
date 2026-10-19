@@ -158,10 +158,24 @@ namespace SpectralContent
 
     namespace detail
     {
-        // Iterative radix-2 FFT, in place; size is a power of two.
+        // Iterative radix-2 FFT, in place; size is a power of two. The
+        // twiddles come from a table built once per size from cos/sin of
+        // exact angles - not by repeated multiplication, whose error would
+        // accumulate differently on different machines.
         inline void fft (std::vector<std::complex<double>>& a)
         {
             const auto n = a.size();
+
+            static std::vector<std::complex<double>> table;
+            if (table.size() != n / 2)
+            {
+                table.resize (n / 2);
+                for (size_t k = 0; k < n / 2; ++k)
+                {
+                    const auto angle = -2.0 * juce::MathConstants<double>::pi * (double) k / (double) n;
+                    table[k] = { std::cos (angle), std::sin (angle) };
+                }
+            }
 
             for (size_t i = 1, j = 0; i < n; ++i)
             {
@@ -176,19 +190,14 @@ namespace SpectralContent
             for (size_t len = 2; len <= n; len <<= 1)
             {
                 const auto half = len / 2;
+                const auto stride = n / len;
 
-                for (size_t k = 0; k < half; ++k)
+                for (size_t i = 0; i < n; i += len)
                 {
-                    // Each twiddle from its own cos/sin rather than by
-                    // repeated multiplication, so error does not accumulate
-                    // differently on different machines.
-                    const auto angle = -2.0 * juce::MathConstants<double>::pi * (double) k / (double) len;
-                    const std::complex<double> w (std::cos (angle), std::sin (angle));
-
-                    for (size_t i = 0; i < n; i += len)
+                    for (size_t k = 0; k < half; ++k)
                     {
                         const auto u = a[i + k];
-                        const auto v = a[i + k + half] * w;
+                        const auto v = a[i + k + half] * table[k * stride];
                         a[i + k] = u + v;
                         a[i + k + half] = u - v;
                     }
@@ -276,10 +285,11 @@ namespace SpectralContent
             window[(size_t) i] = 0.5 - 0.5 * std::cos (2.0 * juce::MathConstants<double>::pi * i / (fftSize - 1));
 
         // A clip shorter than one frame is zero-padded rather than ignored.
-        // At most 64 frames - about 6 s at 44.1 kHz - since a loop repeats
-        // and its first seconds already say what instrument is playing.
+        // At most 32 frames - about 3 s at 44.1 kHz - since a loop repeats
+        // and its first seconds already say what instrument is playing; it
+        // runs on the message thread every time a round changes the clip.
         auto frames = 0;
-        for (int start = 0; frames == 0 || (start + fftSize <= numSamples && frames < 64); start += fftSize / 2)
+        for (int start = 0; frames == 0 || (start + fftSize <= numSamples && frames < 32); start += fftSize / 2)
         {
             for (int i = 0; i < fftSize; ++i)
             {

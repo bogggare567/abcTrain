@@ -5,6 +5,7 @@
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AppIcons.h"
+#include "shared/ui/Dimming.h"
 
 #include <array>
 #include <functional>
@@ -98,6 +99,18 @@ public:
     static constexpr int railWidth = 76;
 
     void paint (juce::Graphics&) override;
+
+    // Shown dimmed while a run locks the bar - drawn through
+    // Dimming::paint rather than Component::setAlpha, which on iOS made
+    // CoreGraphics composite a layer the size of the window every frame.
+    void setDimmed (float alpha)
+    {
+        if (! juce::approximatelyEqual (dimmed, alpha))
+        {
+            dimmed = alpha;
+            repaint();
+        }
+    }
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -115,6 +128,8 @@ private:
     juce::String streakCaption() const;
     bool shownInBar (int index) const noexcept;
     void paintCompact (juce::Graphics&);
+    void paintContent (juce::Graphics&);
+    float dimmed = 1.0f;
 
     bool compact = false, column = false;
     int columnInset = 0;

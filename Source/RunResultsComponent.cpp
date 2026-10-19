@@ -204,7 +204,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
 
     const auto eased = AbcTrainTheme::Ease::out (appearAmount);
     const auto card = cardBounds().toFloat().translated (0.0f, (1.0f - eased) * 14.0f);

@@ -737,8 +737,18 @@ bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSam
     for (int ch = 0; ch < sourceBuffer.getNumChannels(); ++ch)
         mono.addFrom (0, 0, sourceBuffer, ch, 0, sourceLength, 1.0f / (float) sourceBuffer.getNumChannels());
 
-    // Before resampling, on purpose - see getActiveContent.
-    const auto content = SpectralContent::analyse (mono.getReadPointer (0), sourceLength, sourceSampleRate);
+    // Before resampling, on purpose - see getActiveContent. Kept per file,
+    // since a category of a few clips comes round again every few rounds
+    // and the analysis is not free on a phone.
+    const auto cacheKey = file.getFullPathName() + "|" + juce::String (file.getLastModificationTime().toMilliseconds());
+    if (! contentCache.contains (cacheKey))
+    {
+        if (contentCache.size() > 256)
+            contentCache.clear();
+
+        contentCache.set (cacheKey, SpectralContent::analyse (mono.getReadPointer (0), sourceLength, sourceSampleRate));
+    }
+    const auto content = contentCache[cacheKey];
 
     std::unique_ptr<juce::AudioBuffer<float>> resampled;
 

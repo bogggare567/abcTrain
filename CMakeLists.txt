@@ -39,6 +39,18 @@ else()
     set(ABCTRAIN_IOS OFF)
 endif()
 
+# Run from Xcode in Release on iOS. Xcode's Run button builds the scheme's
+# launch configuration, which defaults to Debug - and the phone build that
+# "terribly lags" (Bogdan, 2026-10-19) was exactly that: arm64 at -O0 with
+# every jassert and leak detector on. JUCE draws the whole UI on the CPU
+# through CoreGraphics on iOS, so an unoptimised build is several times
+# slower per frame there than the same Debug build is on a Mac. A Debug
+# build is still one menu away (Product > Scheme > Edit Scheme > Run).
+if(ABCTRAIN_IOS)
+    set(CMAKE_XCODE_GENERATE_SCHEME ON)
+    set(CMAKE_XCODE_SCHEME_LAUNCH_CONFIGURATION "Release")
+endif()
+
 project(EarTrainer VERSION 1.1.0)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -930,6 +942,8 @@ target_compile_definitions(ClickMap
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
+        # --frames runs the message loop for a while to let timers repaint.
+        JUCE_MODAL_LOOPS_PERMITTED=1
 )
 
 target_link_libraries(ClickMap

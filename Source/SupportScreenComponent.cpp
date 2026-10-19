@@ -2,12 +2,14 @@
 
 #include <cstdlib>
 #include "shared/audio/AmbientInstruments.h"
+#include "shared/ui/Dimming.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
 
 namespace
 {
     constexpr int tickHz = 60;
+    constexpr int idleTickHz = 30;
 
     // juce::String's plain const char* constructor does NOT assume UTF-8
     // (decisions/011). A raw "·" rendered as "Â·".
@@ -114,7 +116,17 @@ SupportScreenComponent::SupportScreenComponent (LocalisationManager& localisatio
     emailField.setJustification (juce::Justification::centredLeft);
     addChildComponent (emailField);
 
+    // The buttons keep their own image: the background under them redraws
+    // the whole screen thirty times a second, and a button's text is
+    // shaped again on every one of those frames unless it is cached.
+    for (juce::Component* c : { (juce::Component*) &tourButton, (juce::Component*) &nextButton,
+                                (juce::Component*) &backButton, (juce::Component*) &continueButton,
+                                (juce::Component*) &telegramButton, (juce::Component*) &sendCodeButton,
+                                (juce::Component*) &donateLink, (juce::Component*) &starLink })
+        c->setBufferedToImage (true);
+
     refresh();
+    currentTickHz = tickHz;
     startTimerHz (tickHz);
 }
 
@@ -141,6 +153,8 @@ void SupportScreenComponent::refresh()
         link->setFont (AbcTrainLookAndFeel::captionFont(), false, juce::Justification::centredRight);
     }
 
+    invalidateForeground();
+
     // Restart the reveal: a language switch changes the words, and new
     // text appearing already faded in reads as a glitch.
     elapsedMs = 0.0;
@@ -152,6 +166,7 @@ void SupportScreenComponent::refresh()
 
 void SupportScreenComponent::showStep (int newStep)
 {
+    invalidateForeground();
     step = juce::jlimit (0, 1, newStep);
     const auto inside = (step == 0);
 
@@ -183,6 +198,7 @@ void SupportScreenComponent::completeReveal()
     wordReveal = { { 1.0f, 1.0f, 1.0f } };
     sweepPhase = 2.0;
     ambientPhase = 3.2;
+    invalidateForeground();
     repaint();
 }
 
@@ -197,16 +213,28 @@ void SupportScreenComponent::timerCallback()
     if (! isVisible())
         return;
 
-    if (sweepPhase < 2.0)
-        sweepPhase += 1.0 / (double) tickHz;
+    // Sixty a second while things are arriving, thirty after: the
+    // background figures drift over seconds, and on a phone every frame of
+    // this screen is a full-window redraw.
+    const auto hz = currentTickHz > 0 ? currentTickHz : tickHz;
 
-    ambientPhase += 1.0 / (double) tickHz;
-    elapsedMs += 1000.0 / (double) tickHz;
+    if (sweepPhase < 2.0)
+        sweepPhase += 1.0 / (double) hz;
+
+    ambientPhase += 1.0 / (double) hz;
+    elapsedMs += 1000.0 / (double) hz;
 
     for (size_t i = 0; i < wordReveal.size(); ++i)
     {
         const auto start = staggerMs * (double) i;
         wordReveal[i] = (float) juce::jlimit (0.0, 1.0, (elapsedMs - start) / arriveMs);
+    }
+
+    const auto wanted = revealDone() ? idleTickHz : tickHz;
+    if (wanted != currentTickHz)
+    {
+        currentTickHz = wanted;
+        startTimerHz (wanted);
     }
 
     // The background is always moving: four thin figures at a few per
@@ -221,6 +249,7 @@ void SupportScreenComponent::setTourOffer (juce::String question, juce::String a
     // "Next" says the same thing without a sentence above it.
     juce::ignoreUnused (decline);
     tourOffered = question.isNotEmpty();
+    invalidateForeground();
     tourButton.setButtonText (accept);
     AbcTrainLookAndFeel::makePrimary (tourButton, true);
     showStep (step);
@@ -336,6 +365,7 @@ void SupportScreenComponent::layout()
 
 void SupportScreenComponent::resized()
 {
+    invalidateForeground();
     layout();
 
     // The links depend on the width (a phone has no room for them), so a
@@ -453,15 +483,48 @@ void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<f
     }
 }
 
-void SupportScreenComponent::paint (juce::Graphics& g)
+bool SupportScreenComponent::revealDone() const noexcept
 {
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
-    AmbientInstruments::paint (g, getLocalBounds().toFloat(), ambientPhase);
+    return sweepPhase >= 2.0 && wordReveal[0] >= 1.0f && wordReveal[1] >= 1.0f && wordReveal[2] >= 1.0f;
+}
 
+void SupportScreenComponent::paintForeground (juce::Graphics& g)
+{
     if (step == 0)
         paintInside (g);
     else
         paintAccount (g);
+}
+
+void SupportScreenComponent::paint (juce::Graphics& g)
+{
+    backgroundCache.paint (g, getLocalBounds().toFloat());
+    AmbientInstruments::paint (g, getLocalBounds().toFloat(), ambientPhase);
+
+    // While the words and cards are still arriving every frame differs.
+    if (! revealDone())
+    {
+        paintForeground (g);
+        return;
+    }
+
+    const auto scale = juce::jmax (1.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+    const auto width = juce::jmax (1, (int) std::ceil ((float) getWidth() * scale));
+    const auto height = juce::jmax (1, (int) std::ceil ((float) getHeight() * scale));
+    const auto key = localisation.getCurrentLanguage() + "|" + juce::String ((int) AbcTrainTheme::current().mode);
+
+    if (foregroundDirty || key != foregroundKey || ! foregroundCache.isValid()
+        || foregroundCache.getWidth() != width || foregroundCache.getHeight() != height)
+    {
+        foregroundCache = juce::Image (juce::Image::ARGB, width, height, true);
+        juce::Graphics inner (foregroundCache);
+        inner.addTransform (juce::AffineTransform::scale (scale));
+        paintForeground (inner);
+        foregroundKey = key;
+        foregroundDirty = false;
+    }
+
+    g.drawImage (foregroundCache, getLocalBounds().toFloat());
 }
 
 namespace
@@ -542,40 +605,43 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
         const auto soon = (i == 2);
         const auto colour = cardColour (i);
 
-        juce::Graphics::ScopedSaveState state (g);
-        g.beginTransparencyLayer (eased * (soon ? 0.7f : 1.0f));
-
-        g.setColour (theme.panelBackground.withAlpha (0.94f));
-        g.fillRect (card);
-        g.setColour (soon ? theme.outline : colour.withAlpha (0.85f));
-        g.drawRect (card, 1.0f);
-
-        auto inner = card.reduced (18.0f, 14.0f);
-        auto titleRow = inner.removeFromTop (28.0f);
-        g.setColour (colour);
-        g.fillRect (titleRow.removeFromLeft (10.0f).withSizeKeepingCentre (10.0f, 10.0f));
-        titleRow.removeFromLeft (8.0f);
-
-        const auto title = localisation.getText (titles[i]);
-        const auto titleFont = AbcTrainLookAndFeel::titleFont();
-        g.setColour (soon ? theme.textDim : theme.textBright);
-        g.setFont (titleFont);
-        AbcTrainLookAndFeel::fitText (g, title, titleRow, juce::Justification::centredLeft, false);
-
-        if (soon)
+        // Through Dimming::paint, not beginTransparencyLayer: that opened
+        // a layer the size of the window for every card on every frame
+        // of the background's animation, long after the cards had
+        // arrived - the bulk of what this screen cost on a phone.
+        Dimming::paint (g, card.getSmallestIntegerContainer().expanded (2), eased * (soon ? 0.7f : 1.0f),
+                        [&] (juce::Graphics& g)   // the card's own image, same name as the screen's
         {
-            const auto titleWidth = juce::GlyphArrangement::getStringWidth (titleFont, title);
-            paintTag (g, titleRow.withTrimmedLeft (titleWidth + 10.0f),
-                      localisation.getText ("welcome.soon"), theme.textDim);
-        }
+            g.setColour (theme.panelBackground.withAlpha (0.94f));
+            g.fillRect (card);
+            g.setColour (soon ? theme.outline : colour.withAlpha (0.85f));
+            g.drawRect (card, 1.0f);
 
-        inner.removeFromTop (6.0f);
-        g.setColour (soon ? theme.textDim : theme.text);
-        g.setFont (AbcTrainLookAndFeel::captionFont());
-        AbcTrainLookAndFeel::fitLines (g, localisation.getText (bodies[i]), inner.toNearestInt(),
-                          juce::Justification::topLeft, 3, 1.0f);
+            auto inner = card.reduced (18.0f, 14.0f);
+            auto titleRow = inner.removeFromTop (28.0f);
+            g.setColour (colour);
+            g.fillRect (titleRow.removeFromLeft (10.0f).withSizeKeepingCentre (10.0f, 10.0f));
+            titleRow.removeFromLeft (8.0f);
 
-        g.endTransparencyLayer();
+            const auto title = localisation.getText (titles[i]);
+            const auto titleFont = AbcTrainLookAndFeel::titleFont();
+            g.setColour (soon ? theme.textDim : theme.textBright);
+            g.setFont (titleFont);
+            AbcTrainLookAndFeel::fitText (g, title, titleRow, juce::Justification::centredLeft, false);
+
+            if (soon)
+            {
+                const auto titleWidth = juce::GlyphArrangement::getStringWidth (titleFont, title);
+                paintTag (g, titleRow.withTrimmedLeft (titleWidth + 10.0f),
+                          localisation.getText ("welcome.soon"), theme.textDim);
+            }
+
+            inner.removeFromTop (6.0f);
+            g.setColour (soon ? theme.textDim : theme.text);
+            g.setFont (AbcTrainLookAndFeel::captionFont());
+            AbcTrainLookAndFeel::fitLines (g, localisation.getText (bodies[i]), inner.toNearestInt(),
+                              juce::Justification::topLeft, 3, 1.0f);
+        });
     }
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/TouchScroll.h"
 #include "shared/i18n/LocalisationManager.h"
 #include "shared/ui/CompactSelector.h"
@@ -282,6 +283,11 @@ private:
 
     std::vector<Row> rows;
     std::unique_ptr<juce::FileChooser> fileChooser;
+
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SettingsScreenComponent)
 };

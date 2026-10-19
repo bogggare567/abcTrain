@@ -1365,7 +1365,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
 void TrainingSoundsComponent::paint (juce::Graphics& g)
 {
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
 
     paintRail (g);
     paintFilePane (g);

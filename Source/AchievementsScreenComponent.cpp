@@ -483,7 +483,7 @@ void AchievementsScreenComponent::paintStamp (juce::Graphics& g, const Entry& en
 void AchievementsScreenComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
 
     juce::Graphics::ScopedSaveState state (g);
     g.addTransform (juce::AffineTransform::translation (0.0f, -scrollOffset));
