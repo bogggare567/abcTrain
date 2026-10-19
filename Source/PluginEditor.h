@@ -1077,6 +1077,28 @@ private:
         // and the threshold column is dropped - each tile shows it anyway.
         bool compact() const { return getWidth() < 520; }
 
+        // What the task pays sits at the end of the progress row when it
+        // fits there, and on the kicker row when it does not (a phone, a
+        // phone on its side): measured, not guessed from the width.
+        bool rewardOnKickerRow() const
+        {
+            if (compact())
+                return true;
+
+            const auto font = AbcTrainLookAndFeel::labelFont();
+            const auto caption = state.progressCaption.isEmpty()
+                                     ? 0.0f
+                                     : juce::GlyphArrangement::getStringWidth (font, state.progressCaption) + 14.0f;
+            const auto showLevel = getWidth() >= 640;
+            const auto rightWidth = showLevel ? juce::jlimit ((float) getWidth() * 0.32f, (float) getWidth() * 0.46f,
+                                                              190.0f + 14.0f + 210.0f + 2.0f * AbcTrainTheme::Spacing::large)
+                                              : 190.0f + 2.0f * AbcTrainTheme::Spacing::large;
+            const auto row = (float) getWidth() - rightWidth - 2.0f * AbcTrainTheme::Spacing::large;
+            // The bar takes up to 200 of the row before anything else.
+            const auto bar = juce::jmax (60.0f, juce::jmin (200.0f, row - caption));
+            return bar + caption + 8.0f + juce::GlyphArrangement::getStringWidth (font, state.rewardLine) > row;
+        }
+
         juce::Rectangle<int> getActionSlot() const
         {
             if (compact())
@@ -1120,10 +1142,29 @@ private:
             auto left = area.withRight (splitX).reduced ((float) AbcTrainTheme::Spacing::large, compact() ? 14.0f : 18.0f);
 
             // --- the kicker ------------------------------------------------
-            AbcTrainLookAndFeel::drawTrackedText (
-                g, AbcTrainLookAndFeel::toCaps (state.kicker),
-                left.removeFromTop (16.0f), AbcTrainLookAndFeel::labelFont(),
-                theme.textDim, 2.6f, juce::Justification::centredLeft);
+            // On a phone what the task pays goes up here, right-aligned: on
+            // the progress row it got whatever the bar and the caption left,
+            // which at 393 points was 23 of the 184 it needs.
+            {
+                auto kickerRow = left.removeFromTop (16.0f);
+
+                if (rewardOnKickerRow() && state.rewardLine.isNotEmpty())
+                {
+                    const auto font = AbcTrainLookAndFeel::labelFont();
+                    const auto width = juce::jmin (kickerRow.getWidth() * 0.6f,
+                                                   juce::GlyphArrangement::getStringWidth (font, state.rewardLine) + 2.0f);
+                    g.setColour (state.challengeComplete ? theme.positive : theme.accentWarm);
+                    g.setFont (font);
+                    AbcTrainLookAndFeel::fitText (g, state.rewardLine, kickerRow.removeFromRight (width).toNearestInt(),
+                                                  juce::Justification::centredRight, false);
+                    kickerRow.removeFromRight (10.0f);
+                }
+
+                AbcTrainLookAndFeel::drawTrackedText (
+                    g, AbcTrainLookAndFeel::toCaps (state.kicker),
+                    kickerRow, AbcTrainLookAndFeel::labelFont(),
+                    theme.textDim, 2.6f, juce::Justification::centredLeft);
+            }
 
             left.removeFromTop (10.0f);
 
@@ -1175,7 +1216,7 @@ private:
                     row.removeFromLeft (captionWidth + 14.0f);
                 }
 
-                if (state.rewardLine.isNotEmpty())
+                if (state.rewardLine.isNotEmpty() && ! rewardOnKickerRow())
                 {
                     g.setColour (state.challengeComplete ? theme.positive : theme.accentWarm);
                     g.setFont (AbcTrainLookAndFeel::labelFont());
@@ -1656,6 +1697,7 @@ private:
     // that render screens, so a phone can be checked without a phone.
     juce::BorderSize<int> safeInsets() const;
     static bool isPhone();
+    void placeHelpButton (juce::Rectangle<int> slot);
     juce::Rectangle<int> safeBounds() const { return safeInsets().subtractedFrom (getLocalBounds()); }
 
     // Puts the session and the three pills into whatever mode this

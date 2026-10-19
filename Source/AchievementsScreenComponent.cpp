@@ -439,8 +439,13 @@ void AchievementsScreenComponent::paintMedal (juce::Graphics& g, const Entry& en
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::labelFont());
-    AbcTrainLookAndFeel::fitLines (g, entry.description, text.removeFromTop (40.0f).toNearestInt(),
-                       juce::Justification::centredTop, 2, 0.85f);
+    // A third line where the cell has it: two columns on a small phone are
+    // ~150 points, and "threshold Soft Clipping and Overdrive in ..." is
+    // two lines and a word.
+    const auto descriptionLines = text.getHeight() >= 3.0f * AbcTrainLookAndFeel::labelFont().getHeight() ? 3 : 2;
+    AbcTrainLookAndFeel::fitLines (g, entry.description,
+                                   text.removeFromTop (juce::jmax (40.0f, juce::jmin (text.getHeight(), 58.0f))).toNearestInt(),
+                                   juce::Justification::centredTop, descriptionLines, 0.85f);
 }
 
 void AchievementsScreenComponent::paintStamp (juce::Graphics& g, const Entry& entry,

@@ -236,6 +236,7 @@ void HearingTestScreen::finish()
 void HearingTestScreen::showView (View newView)
 {
     view = newView;
+    scroller.setOffset (0.0f);   // every page opens at its top
 
     for (auto* c : { (juce::Component*) &personEditor, (juce::Component*) &headphonesEditor,
                      (juce::Component*) &startButton, (juce::Component*) &cancelButton })
@@ -493,16 +494,51 @@ juce::Rectangle<int> HearingTestScreen::column (int width) const
     return area.withSizeKeepingCentre (juce::jmin (width, area.getWidth()), area.getHeight());
 }
 
+int HearingTestScreen::linesFor (const juce::String& text, const juce::Font& font, int width, int most)
+{
+    juce::GlyphArrangement layout;
+    layout.addJustifiedText (font, text, 0.0f, 0.0f, (float) juce::jmax (40, width), juce::Justification::left);
+    return juce::jlimit (1, most, juce::roundToInt (layout.getBoundingBox (0, -1, true).getHeight() / font.getHeight()));
+}
+
+juce::Rectangle<int> HearingTestScreen::scrolled (juce::Rectangle<int> area, int needed)
+{
+    const auto overflow = juce::jmax (0, needed - area.getHeight());
+    if (scroller.getLimit() != (float) overflow)
+        scroller.setLimit ((float) overflow);
+
+    scroll = juce::jlimit (0.0f, (float) overflow, scroller.getOffset());
+    return area.withHeight (juce::jmax (area.getHeight(), needed)).translated (0, -juce::roundToInt (scroll));
+}
+
+void HearingTestScreen::mouseDown (const juce::MouseEvent& e)  { scroller.mouseDown (e); }
+void HearingTestScreen::mouseDrag (const juce::MouseEvent& e)  { scroller.mouseDrag (e); }
+void HearingTestScreen::mouseUp (const juce::MouseEvent& e)    { scroller.mouseUp (e); }
+void HearingTestScreen::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
+{
+    scroller.mouseWheelMove (wheel, 220.0f);
+}
+
 void HearingTestScreen::resized()
 {
     constexpr int controlHeight = 34;
 
+    if (scroller.onChange == nullptr)
+        scroller.onChange = [this] (float) { resized(); repaint(); };
+
+    if (view == View::test)
+        scroller.setLimit (0.0f);
+
     if (view == View::setup)
     {
-        auto c = column (560).withTrimmedTop (24);
+        auto c = column (560);
+        introLines = linesFor (t ("hp.setup.intro"), AbcTrainLookAndFeel::bodyFont(), c.getWidth(), 5);
+        const auto introHeight = juce::jmax (66, juce::roundToInt ((float) introLines * AbcTrainLookAndFeel::bodyFont().getHeight()) + 6);
+        c = scrolled (c, 24 + 34 + 8 + introHeight + 16 + 22 + controlHeight + 12 + 22 + controlHeight + 10 + 22 + 16 + controlHeight + 2 + 8)
+                .withTrimmedTop (24);
         titleArea = c.removeFromTop (34);
         c.removeFromTop (8);
-        introArea = c.removeFromTop (66);
+        introArea = c.removeFromTop (introHeight);
         c.removeFromTop (16);
         personLabelArea = c.removeFromTop (22);
         personEditor.setBounds (c.removeFromTop (controlHeight));
@@ -552,40 +588,85 @@ void HearingTestScreen::resized()
         return;
     }
 
-    auto c = column (1000).withTrimmedTop (8);
+    auto c = column (1000);
+
+    // Narrow (a phone held upright): the two charts one above the other,
+    // each the whole width - side by side at 160 points each their axis
+    // labels ran into one another ("1225500k") and the two legends into
+    // their captions - and the buttons on a row of their own under the
+    // amount, which otherwise had no width left at all.
+    const auto narrow = c.getWidth() < 640;
+    const auto labelFont = AbcTrainLookAndFeel::labelFont();
+    noteLines = linesFor (t ("hp.note.halfGain"), labelFont, c.getWidth(), 6);
+    disclaimerLines = linesFor (t ("hp.note.disclaimer"), labelFont, c.getWidth(), 5);
+    const auto lineHeight = labelFont.getHeight() + 1.0f;
+    const auto noteHeight = juce::roundToInt ((float) noteLines * lineHeight) + 4;
+    const auto disclaimerHeight = juce::roundToInt ((float) disclaimerLines * lineHeight) + 4;
+    const auto summaryHeight = narrow ? 52 : 44;
+
+    const auto chartHeight = narrow ? 170 : juce::jlimit (150, 300, c.getHeight() - (8 + 34 + 4 + summaryHeight + 10 + 20 + 10 + 42 + 8
+                                                                                     + controlHeight + 12 + noteHeight + 4 + disclaimerHeight) - 20);
+    const auto curveHeight = narrow ? 110 : chartHeight;
+    const auto charts = narrow ? 20 + chartHeight + 10 + 20 + curveHeight : 20 + chartHeight;
+    const auto controls = narrow ? controlHeight + 8 + 44 : controlHeight;
+
+    c = scrolled (c, 8 + 34 + 4 + summaryHeight + 10 + charts + 10 + 42 + 8 + controls + 12 + noteHeight + 4 + disclaimerHeight + 8)
+            .withTrimmedTop (8);
     titleArea = c.removeFromTop (34);
     c.removeFromTop (4);
-    summaryArea = c.removeFromTop (44);
+    summaryArea = c.removeFromTop (summaryHeight);
     c.removeFromTop (10);
 
-    // What is left after the fixed rows below goes to the two charts.
-    const auto below = 10 + 42 + 8 + controlHeight + 12 + 36 + 4 + 36;
-    const auto chartHeight = juce::jlimit (150, 300, c.getHeight() - below - 20);
-    auto charts = c.removeFromTop (20 + chartHeight);
-    const auto half = (charts.getWidth() - AbcTrainTheme::Spacing::large) / 2;
-    auto leftChart = charts.removeFromLeft (half);
-    auto rightChart = charts.removeFromRight (half);
-    thresholdCaption = leftChart.removeFromTop (20);
-    thresholdArea = leftChart;
-    curveCaption = rightChart.removeFromTop (20);
-    compensationCurve.setBounds (rightChart);
+    if (narrow)
+    {
+        thresholdCaption = c.removeFromTop (20);
+        thresholdArea = c.removeFromTop (chartHeight);
+        c.removeFromTop (10);
+        curveCaption = c.removeFromTop (20);
+        compensationCurve.setBounds (c.removeFromTop (curveHeight));
+    }
+    else
+    {
+        auto chartsArea = c.removeFromTop (charts);
+        const auto half = (chartsArea.getWidth() - AbcTrainTheme::Spacing::large) / 2;
+        auto leftChart = chartsArea.removeFromLeft (half);
+        auto rightChart = chartsArea.removeFromRight (half);
+        thresholdCaption = leftChart.removeFromTop (20);
+        thresholdArea = leftChart;
+        curveCaption = rightChart.removeFromTop (20);
+        compensationCurve.setBounds (rightChart);
+    }
 
     c.removeFromTop (10);
     reliabilityArea = c.removeFromTop (42);
     c.removeFromTop (8);
 
-    auto row = c.removeFromTop (controlHeight);
-    retakeButton.setBounds (row.removeFromRight (170));
-    row.removeFromRight (AbcTrainTheme::Spacing::small);
-    saveButton.setBounds (row.removeFromRight (190));
-    row.removeFromRight (AbcTrainTheme::Spacing::large);
-    amountLabelArea = row.removeFromLeft (juce::jmin (260, row.getWidth() / 2));
-    amountSlider.setBounds (row.withSizeKeepingCentre (row.getWidth(), 24));
+    if (narrow)
+    {
+        auto row = c.removeFromTop (controlHeight);
+        amountLabelArea = row.removeFromLeft (juce::jmin (190, row.getWidth() / 2));
+        amountSlider.setBounds (row.withSizeKeepingCentre (row.getWidth(), 24));
+        c.removeFromTop (8);
+        auto buttons = c.removeFromTop (44);
+        const auto w = (buttons.getWidth() - AbcTrainTheme::Spacing::small) / 2;
+        saveButton.setBounds (buttons.removeFromLeft (w));
+        retakeButton.setBounds (buttons.removeFromRight (w));
+    }
+    else
+    {
+        auto row = c.removeFromTop (controlHeight);
+        retakeButton.setBounds (row.removeFromRight (170));
+        row.removeFromRight (AbcTrainTheme::Spacing::small);
+        saveButton.setBounds (row.removeFromRight (190));
+        row.removeFromRight (AbcTrainTheme::Spacing::large);
+        amountLabelArea = row.removeFromLeft (juce::jmin (260, row.getWidth() / 2));
+        amountSlider.setBounds (row.withSizeKeepingCentre (row.getWidth(), 24));
+    }
 
     c.removeFromTop (12);
-    halfGainArea = c.removeFromTop (36);
+    halfGainArea = c.removeFromTop (noteHeight);
     c.removeFromTop (4);
-    disclaimerArea = c.removeFromTop (36);
+    disclaimerArea = c.removeFromTop (disclaimerHeight);
 }
 
 // ---- painting -------------------------------------------------------------
@@ -615,7 +696,7 @@ void HearingTestScreen::paintSetup (juce::Graphics& g)
 
     g.setColour (theme.text);
     g.setFont (AbcTrainLookAndFeel::bodyFont());
-    AbcTrainLookAndFeel::fitLines (g, t ("hp.setup.intro"), introArea, juce::Justification::topLeft, 3, 0.9f);
+    AbcTrainLookAndFeel::fitLines (g, t ("hp.setup.intro"), introArea, juce::Justification::topLeft, juce::jmax (3, introLines), 0.9f);
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::labelFont());
@@ -829,6 +910,6 @@ void HearingTestScreen::paintResult (juce::Graphics& g)
 
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::labelFont());
-    AbcTrainLookAndFeel::fitLines (g, t ("hp.note.halfGain"), halfGainArea, juce::Justification::topLeft, 2, 0.9f);
-    AbcTrainLookAndFeel::fitLines (g, t ("hp.note.disclaimer"), disclaimerArea, juce::Justification::topLeft, 2, 0.9f);
+    AbcTrainLookAndFeel::fitLines (g, t ("hp.note.halfGain"), halfGainArea, juce::Justification::topLeft, noteLines, 0.9f);
+    AbcTrainLookAndFeel::fitLines (g, t ("hp.note.disclaimer"), disclaimerArea, juce::Justification::topLeft, disclaimerLines, 0.9f);
 }

@@ -111,6 +111,13 @@ public:
     void setIcon (AppIcons::Icon newIcon);
     AppIcons::Icon getIcon() const noexcept { return icon; }
 
+    // Draws the button as if it were `size` points square, centred, while
+    // the component itself - what a finger can hit - is as large as its
+    // bounds. On a touch screen a 22-point help glyph needs a 44-point
+    // target (Apple's minimum); scaling the glyph up with it would make it
+    // shout. Zero: the drawing follows the bounds, as before.
+    void setVisualSize (float size) { visualSize = size; repaint(); }
+
     void paintButton (juce::Graphics&, bool shouldDrawButtonAsHighlighted,
                       bool shouldDrawButtonAsDown) override;
 
@@ -120,6 +127,7 @@ private:
     AppIcons::Icon icon;
     AppIcons::Icon previousIcon;
     float morph = 1.0f;    // 0 = fully previous, 1 = fully current
+    float visualSize = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (IconButton)
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/TouchScroll.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/i18n/LocalisationManager.h"
 #include "shared/audio/HearingProfile.h"
@@ -120,6 +121,24 @@ private:
                          reliabilityArea, amountLabelArea, halfGainArea, disclaimerArea;
 
     juce::Rectangle<int> titleArea;
+
+    // Setup and result scroll when the page is shorter than they are (a
+    // phone, a phone on its side, a small window): laid out as one tall
+    // column moved up by `scroll`. Before, the fixed rows were taken off
+    // the top regardless and removeFrom* clamped what was left - on a
+    // phone on its side Save and Retake came out 2 points tall, and on a
+    // phone held upright the amount slider got no width at all
+    // (tools/ClickMap).
+    TouchScroll scroller;
+    float scroll = 0.0f;
+    juce::Rectangle<int> scrolled (juce::Rectangle<int> area, int needed);
+    int noteLines = 2, disclaimerLines = 2, introLines = 3;
+    static int linesFor (const juce::String& text, const juce::Font& font, int width, int most);
+
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
     // The page's gradient and grain, drawn once and kept as a picture -
     // redrawn from scratch it cost most of every frame on a phone

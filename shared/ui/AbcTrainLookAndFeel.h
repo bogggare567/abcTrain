@@ -297,7 +297,10 @@ public:
     static void setTextAuditContext (const juce::String& screen);
     static void enableTextAudit (bool);
     static juce::StringArray takeTextAudit();
-    static void noteTextOverflow (const juce::String& text, float needed, float available);
+    // `cut`: the text did not fit even at the smallest size allowed, so
+    // part of it is not on screen. Otherwise it fitted, squeezed hard -
+    // worth a look, not a fault. The audit line starts with "CUT" or "SQUEEZED".
+    static void noteTextOverflow (const juce::String& text, float needed, float available, bool cut);
 
     // Uppercase, for the tracked capitals this design uses as labels.
     //

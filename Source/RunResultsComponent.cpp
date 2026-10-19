@@ -299,7 +299,12 @@ void RunResultsComponent::paint (juce::Graphics& g)
         {
             g.setColour (theme.textDim);
             g.setFont (AbcTrainLookAndFeel::captionFont());
-            AbcTrainLookAndFeel::fitLines (g, text, column.withTrimmedTop (48), juce::Justification::topLeft, 1, 0.85f);
+            // Two lines where the cell has the height: four cells across a
+            // phone on its side are 122 points each, and "depth in the
+            // band, on average" is 160.
+            const auto area = column.withTrimmedTop (48);
+            const auto lines = area.getHeight() >= (int) (2.0f * AbcTrainLookAndFeel::captionFont().getHeight()) + 2 ? 2 : 1;
+            AbcTrainLookAndFeel::fitLines (g, text, area, juce::Justification::topLeft, lines, 0.85f);
         };
 
         auto column = cells[0];

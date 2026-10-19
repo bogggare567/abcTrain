@@ -607,6 +607,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // than holding Buttons, and an unnamed component that answers clicks
     // is invisible to a check that only knows about widgets.
     topNav.setComponentID ("topNav");
+    // Its background runs on under the home indicator (or the notch, on
+    // its side) so the two read as one strip; the tabs themselves stay in
+    // the safe area. tools/ClickMap checks everything else against it.
+    topNav.getProperties().set ("extendsUnderSystemBars", true);
     addAndMakeVisible (topNav);
 
     // Behind every other child. The rail is added late in this
@@ -1527,6 +1531,16 @@ void EarTrainerEditor::checkForUpdates (bool silent)
     });
 }
 
+void EarTrainerEditor::placeHelpButton (juce::Rectangle<int> slot)
+{
+    // Drawn 22 points square wherever it is; on a touch screen the part a
+    // finger can hit grows to 44 around the same centre (tools/ClickMap
+    // flagged the 22-point target on every phone size).
+    const auto target = touchFirst() ? 44 : 22;
+    instructionsButton.setVisualSize (22.0f);
+    instructionsButton.setBounds (slot.withSizeKeepingCentre (target, target));
+}
+
 bool EarTrainerEditor::isPhone()
 {
     // Pretending to be one: the snapshot tool's phone sizes.
@@ -2061,7 +2075,7 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         auto gameRow = inner.removeFromTop (30);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
-        instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
+        placeHelpButton (gameRow.removeFromRight (24));
         gameRow.removeFromRight (Spacing::tight);
 
         // Lives and the clock live up here during a run, in the slot the
@@ -2294,8 +2308,14 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         // The verdict, over the scale rather than above the heading: it is
         // about the answer, so it belongs with the answer.
         auto feedbackRow = inner.removeFromTop (24);
-        feedbackRow.removeFromRight (90);
-        feedbackRow.removeFromLeft (90);
+        // Up to 90 either side is the points flyup's corridor; on a narrow
+        // phone the verdict ("Не совсем. Подъём на 2,1k Гц.", ~210) gets
+        // 300 first. Not measured from the text: it changes after layout.
+        {
+            const auto side = juce::jlimit (0, 90, (feedbackRow.getWidth() - 300) / 2);
+            feedbackRow.removeFromRight (side);
+            feedbackRow.removeFromLeft (side);
+        }
         feedbackLabel.setBounds (feedbackRow);
         inner.removeFromTop (Spacing::tight);
 
@@ -2485,7 +2505,7 @@ void EarTrainerEditor::layoutTrainingSideways (juce::Rectangle<int> area)
         auto gameRow = left.removeFromTop (30);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
-        instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
+        placeHelpButton (gameRow.removeFromRight (24));
         gameRow.removeFromRight (Spacing::tight);
         currentGameLabel.setBounds (gameRow);
     }

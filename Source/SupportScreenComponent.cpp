@@ -271,7 +271,15 @@ void SupportScreenComponent::layout()
     // A frame of fixed proportions, centred: at 940x620 it fills the
     // window, and on a big screen it stays a readable block rather than
     // flying apart to the corners.
-    auto frame = getLocalBounds().reduced (60, 44);
+    //
+    // A phone on its side is the same two columns in under 400 points of
+    // height: the 44-point margins and a 24-point link row took the room
+    // the headphone note needed and left links a finger cannot hit
+    // (tools/ClickMap). Short windows get thin margins and finger-sized
+    // targets.
+    const auto shortWindow = getHeight() < 500;
+    const auto targetHeight = shortWindow ? 44 : 40;
+    auto frame = getLocalBounds().reduced (shortWindow ? 28 : 60, shortWindow ? 10 : 44);
     frame = frame.withSizeKeepingCentre (juce::jmin (frame.getWidth(), 1100),
                                          juce::jmin (frame.getHeight(), 640));
 
@@ -280,18 +288,18 @@ void SupportScreenComponent::layout()
     columns.removeFromLeft (Spacing::large * 2);
     auto right = columns;
 
-    auto buttons = left.removeFromBottom (40);
+    auto buttons = left.removeFromBottom (targetHeight);
 
     if (step == 0)
     {
-        left.removeFromTop (Spacing::large);
+        left.removeFromTop (shortWindow ? Spacing::small : Spacing::large);
         lay.wordmark = left.removeFromTop (64);
         lay.words = left.removeFromTop (28);
         left.removeFromTop (Spacing::medium);
         lay.tagline = left.removeFromTop (48);
         left.removeFromTop (Spacing::small);
         lay.stepLabel = left.removeFromTop (18);
-        left.removeFromBottom (Spacing::large);
+        left.removeFromBottom (shortWindow ? Spacing::small : Spacing::large);
         lay.note = left.removeFromBottom (40);
 
         if (tourOffered)
@@ -304,13 +312,16 @@ void SupportScreenComponent::layout()
 
         // Three cards stepping down and to the right, the way a staircase
         // does - it is the shape of every exercise in the app.
-        auto links = right.removeFromBottom (24);
+        auto links = right.removeFromBottom (shortWindow ? 44 : 24);
         starLink.setBounds (links.removeFromRight (130));
         links.removeFromRight (Spacing::medium);
         donateLink.setBounds (links.removeFromRight (160));
 
-        right.removeFromBottom (Spacing::large);
-        const auto cardHeight = juce::jmin (112, (right.getHeight() - 2 * 28) / 3);
+        right.removeFromBottom (shortWindow ? Spacing::small : Spacing::large);
+        // The staircase's steps close up in a short window: the cards'
+        // own text needs the height more than the gaps do.
+        const auto minGap = shortWindow ? 6 : 28;
+        const auto cardHeight = juce::jmin (112, (right.getHeight() - 2 * minGap) / 3);
         const auto step = juce::jmin (48, right.getWidth() / 8);
         const auto cardWidth = right.getWidth() - 2 * step;
         const auto gapY = (right.getHeight() - cardHeight * 3) / 2;

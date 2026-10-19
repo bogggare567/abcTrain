@@ -24,6 +24,7 @@
 #include "../Source/PluginEditor.h"
 #include "../Source/LiveLink.h"
 #include "shared/ui/AbcTrainTheme.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/i18n/LocalisationManager.h"
 
 #include <iostream>
@@ -129,8 +130,132 @@ namespace
         runLocked         // a run is being played: most of it must be dead
     };
 
+    // The window a screen is checked in. The layout changes shape at
+    // three widths and one height (EarTrainerEditor::compactLayout,
+    // sideways), and every one of those shapes has broken on its own while
+    // the design size kept passing - "each fix makes a new problem
+    // somewhere else" was exactly that: one size was checked, four were
+    // shipped. A phone is the snapshot tools' phone: SNAP_SAFE sets the
+    // insets (top, left, bottom, right) and switches the editor into touch
+    // mode, see EarTrainerEditor::isPhone.
+    struct Window
+    {
+        const char* name;
+        int width, height;
+        const char* safe;   // nullptr: a desktop window
+    };
+
+    const std::vector<Window>& windows()
+    {
+        static const std::vector<Window> all {
+            { "desktop",          1180, 880, nullptr },
+            { "desktop, smallest", 940, 620, nullptr },
+            { "iPhone",            393, 852, "59,0,34,0" },
+            { "iPhone sideways",   852, 393, "0,59,21,59" },
+            { "iPhone SE",         375, 667, "20,0,0,0" },
+        };
+        return all;
+    }
+
+    // Apple's minimum for something a finger presses. Slightly under is
+    // survivable and gets a note; under minimumTouch is a control people
+    // will miss, and is a fault.
+    constexpr int comfortableTouch = 44;
+    constexpr int minimumTouch = 30;
+
+    // The part of a component nothing above it has cut off - what is
+    // actually on screen - in the editor's coordinates.
+    juce::Rectangle<int> visiblePart (juce::Component& editor, juce::Component& c)
+    {
+        auto area = editor.getLocalArea (&c, c.getLocalBounds());
+
+        for (auto* p = c.getParentComponent(); p != nullptr && p != &editor; p = p->getParentComponent())
+            area = area.getIntersection (editor.getLocalArea (p, p->getLocalBounds()));
+
+        return area.getIntersection (editor.getLocalBounds());
+    }
+
+    // ---- what a screen costs when nobody touches it (--frames) ---------
+    //
+    // A phone that "terribly lags" is a phone repainting far more than it
+    // shows. Two numbers per screen: what one full frame costs to draw
+    // through the platform renderer at a phone's 3x (CoreGraphics on a Mac,
+    // the same engine JUCE uses on iOS), and how much of the window asks to
+    // be repainted per second while the screen sits idle. The product is
+    // the screen's idle bill.
+    //
+    // The second is counted without a window: JUCE hands every repaint()
+    // of a component or any of its children to the cached image of the
+    // nearest ancestor that has one, so a cache on the editor that only
+    // counts sees all of them.
+    struct CountingCache : public juce::CachedComponentImage
+    {
+        explicit CountingCache (juce::Component& c) : owner (c) {}
+        juce::Component& owner;
+        double area = 0.0;
+        int calls = 0;
+
+        void paint (juce::Graphics&) override {}
+        bool invalidateAll() override
+        {
+            ++calls;
+            area += (double) owner.getWidth() * (double) owner.getHeight();
+            return true;
+        }
+        bool invalidate (const juce::Rectangle<int>& r) override
+        {
+            ++calls;
+            area += (double) r.getWidth() * (double) r.getHeight();
+            return true;
+        }
+        void releaseResources() override {}
+    };
+
+    struct FrameCost
+    {
+        double frameMs = 0.0;     // one full frame at 3x
+        double repaintsPerSecond = 0.0;
+        double screensPerSecond = 0.0;   // repainted area / window area
+    };
+
+    FrameCost measureFrames (juce::Component& editor)
+    {
+        FrameCost cost;
+        constexpr float scale = 3.0f;
+        const auto w = editor.getWidth(), h = editor.getHeight();
+        juce::Image image (juce::Image::ARGB, (int) (w * scale), (int) (h * scale), true, juce::NativeImageType());
+
+        // FRAME_LOOP=n: paint n frames, for a profiler to attach to.
+        const auto loops = juce::jmax (6, juce::String (std::getenv ("FRAME_LOOP")).getIntValue());
+
+        // One untimed frame for the caches (fonts, the background image).
+        for (int i = 0; i < loops; ++i)
+        {
+            const auto start = juce::Time::getMillisecondCounterHiRes();
+            {
+                juce::Graphics g (image);
+                g.addTransform (juce::AffineTransform::scale (scale));
+                editor.paintEntireComponent (g, true);
+            }
+            if (i > 0)
+                cost.frameMs += (juce::Time::getMillisecondCounterHiRes() - start) / (loops - 1);
+        }
+
+        auto* counter = new CountingCache (editor);
+        editor.setCachedComponentImage (counter);
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (300);   // let entry animations settle
+        counter->area = 0.0;
+        counter->calls = 0;
+        constexpr int windowMs = 2000;
+        juce::MessageManager::getInstance()->runDispatchLoopUntil (windowMs);
+        cost.repaintsPerSecond = counter->calls * 1000.0 / windowMs;
+        cost.screensPerSecond = counter->area / ((double) w * h) * 1000.0 / windowMs;
+        editor.setCachedComponentImage (nullptr);
+        return cost;
+    }
+
     int report (const juce::String& state, juce::Component& editor, Expect expect,
-                 int allowedDead)
+                 int allowedDead, const Window& window, juce::Rectangle<int> safeArea)
     {
         std::vector<juce::Component*> controls;
         collect (editor, controls);
@@ -140,6 +265,7 @@ namespace
         std::vector<juce::Component*> live;   // reachable, for the overlap check below
         int reachable = 0;
         int covered = 0;
+        int parked = 0;
 
         for (auto* c : controls)
         {
@@ -149,13 +275,34 @@ namespace
             // controls are parked by giving them an empty rectangle
             // rather than by hiding them - so it is reported plainly
             // rather than treated as reachable or as a crash.
+            //
+            // Parked, then, not broken: nothing is drawn and nothing can be
+            // pressed. It used to count as a fault, and with the mode pills
+            // and Answer parked on purpose since ADR 061/062 every desktop
+            // screen "failed" - a check that always fails is a check nobody
+            // reads, which is how the phone sizes went unchecked. A control
+            // that ought to be on screen and is parked shows up in the
+            // snapshots, and as a missing control in the live counts below.
             if (bounds.isEmpty())
             {
-                faults.push_back ({ describe (*c), "visible but has empty bounds", {} });
+                ++parked;
                 continue;
             }
 
-            const auto centre = editor.getLocalPoint (c, c->getLocalBounds().getCentre());
+            // A page that scrolls clips its children to itself: what is
+            // checked is the part of the control actually showing. Nothing
+            // showing is scrolled out of view, which is neither reachable
+            // nor broken.
+            const auto shown = visiblePart (editor, *c);
+
+            if (shown.isEmpty() && c->getParentComponent() != &editor)
+            {
+                ++parked;
+                continue;
+            }
+
+            const auto centre = shown.isEmpty() ? editor.getLocalPoint (c, c->getLocalBounds().getCentre())
+                                                : shown.getCentre();
 
             if (! editor.getLocalBounds().contains (centre))
             {
@@ -176,6 +323,12 @@ namespace
                 // says so. Same for a control faded to nothing.
                 if (! c->isEnabled())
                 {
+                    // On a touch screen Answer is dead until a finger has
+                    // placed something on the scale (ADR 062) - by design,
+                    // and in every training state, so not counted.
+                    if (c->getComponentID() == "training.answer")
+                        continue;
+
                     dead.push_back ({ describe (*c), "disabled", {} });
                     continue;
                 }
@@ -197,9 +350,18 @@ namespace
             // than as a fault. Anything else taking a click meant for
             // something else is a fault.
             const auto blockerName = hit != nullptr ? describe (*hit) : juce::String ("nothing");
-            const auto blockerIsOverlay = hit != nullptr
-                                       && hit->getParentComponent() == &editor
-                                       && hit->getBounds() == editor.getLocalBounds();
+            // On a phone an overlay stops at the safe area rather than at
+            // the window's edge, and is just as much an overlay.
+            // The overlay is the editor's child the hit belongs to - the
+            // click often lands on one of the overlay's own buttons.
+            auto* top = hit;
+            while (top != nullptr && top->getParentComponent() != &editor)
+                top = top->getParentComponent();
+
+            const auto blockerIsOverlay = top != nullptr
+                                       && ! isSelfOrAncestorOf (top, c)
+                                       && (top->getBounds() == editor.getLocalBounds()
+                                           || top->getBounds().contains (safeArea));
 
             if (blockerIsOverlay)
             {
@@ -210,6 +372,42 @@ namespace
             faults.push_back ({ describe (*c),
                                 "on screen but a click at its centre goes elsewhere",
                                 blockerName });
+        }
+
+        // On a phone: inside the safe area, and big enough for a finger.
+        std::vector<Finding> notes;
+
+        if (window.safe != nullptr)
+        {
+            for (auto* c : live)
+            {
+                const auto shown = visiblePart (editor, *c);
+
+                if (shown.isEmpty())
+                    continue;
+
+                if (! safeArea.contains (shown) && ! (bool) c->getProperties()["extendsUnderSystemBars"])
+                {
+                    const auto under = shown.getIntersection (safeArea);
+                    faults.push_back ({ describe (*c),
+                                        "reaches under the notch, the rounded corner or the home bar: "
+                                            + shown.toString() + " against the safe area " + safeArea.toString(),
+                                        under.isEmpty() ? juce::String ("entirely outside it") : juce::String() });
+                }
+
+                // Sliders and the answer scale are measured along their
+                // length; a slider is a thin thing on purpose.
+                if (dynamic_cast<juce::Slider*> (c) != nullptr)
+                    continue;
+
+                const auto w = c->getWidth(), h = c->getHeight();
+
+                if (w < minimumTouch || h < minimumTouch)
+                    faults.push_back ({ describe (*c), "too small to press: " + juce::String (w) + "x" + juce::String (h)
+                                                        + " (a finger needs " + juce::String (comfortableTouch) + ")", {} });
+                else if (w < comfortableTouch || h < comfortableTouch)
+                    notes.push_back ({ describe (*c), juce::String (w) + "x" + juce::String (h), {} });
+            }
         }
 
         // Two live controls on top of each other. The centre hit test
@@ -225,8 +423,8 @@ namespace
                 if (isSelfOrAncestorOf (a, b) || isSelfOrAncestorOf (b, a))
                     continue;
 
-                const auto ra = editor.getLocalArea (a, a->getLocalBounds());
-                const auto rb = editor.getLocalArea (b, b->getLocalBounds());
+                const auto ra = visiblePart (editor, *a);
+                const auto rb = visiblePart (editor, *b);
                 const auto overlap = ra.getIntersection (rb);
 
                 if (overlap.getWidth() > 3 && overlap.getHeight() > 3)
@@ -245,7 +443,13 @@ namespace
         if (covered > 0)
             std::cout << ", " << covered << " under an overlay";
 
+        if (parked > 0)
+            std::cout << ", " << parked << " parked";
+
         std::cout << "  (of " << controls.size() << ")\n";
+
+        for (const auto& n : notes)
+            std::cout << "  small   " << n.control << "  " << n.reason << "\n";
 
         for (const auto& f : faults)
         {
@@ -308,7 +512,7 @@ int main (int argc, char* argv[])
 
     juce::ScopedJuceInitialiser_GUI juceInitialiser;
 
-    juce::ignoreUnused (argc, argv);
+    const auto framesOnly = argc > 1 && juce::String (argv[1]) == "--frames";
 
     // Same care EditorSnapshots takes: this constructs a real editor,
     // which reads and writes the player's own settings file. Put it aside
@@ -363,6 +567,8 @@ int main (int argc, char* argv[])
 
         const std::vector<Case> cases
         {
+            { "Welcome", Expect::everythingLive, 0,                   [] (auto& e) { e.offerTourForSnapshot(); } },
+            { "Welcome - account", Expect::everythingLive, 3,         [] (auto& e) { e.openWelcomeAccountForSnapshot(); } },
             { "Home", Expect::everythingLive, 0,                      [] (auto& e) { e.openHomeForSnapshot(); } },
             { "Training - Practice", Expect::everythingLive, 0,       [] (auto& e) { e.openTrainingForSnapshot (0); } },
             { "Training - answered", Expect::everythingLive, 0,       [] (auto& e) { e.openTrainingForSnapshot (0);
@@ -396,12 +602,27 @@ int main (int argc, char* argv[])
             { "Live - no internet", Expect::everythingLive, 0,        [] (auto& e) { e.openLiveForSnapshot (6); } },
         };
 
+        for (const auto& window : windows())
         for (const auto& c : cases)
         {
+            if (framesOnly)
+                if (const auto* only = std::getenv ("FRAME_CASE"); only != nullptr && juce::String (c.name) != only)
+                    continue;
+
+           #if JUCE_WINDOWS
+            _putenv_s ("SNAP_SAFE", window.safe != nullptr ? window.safe : "");
+           #else
+            if (window.safe != nullptr)
+                setenv ("SNAP_SAFE", window.safe, 1);
+            else
+                unsetenv ("SNAP_SAFE");
+           #endif
+
             EarTrainerProcessor processor;
             processor.prepareToPlay (44100.0, 512);
 
             EarTrainerEditor editor (processor);
+            editor.setSize (window.width, window.height);
 
             // getComponentAt() starts by asking whether the component
             // itself is visible, and a top-level editor that was never
@@ -416,10 +637,76 @@ int main (int argc, char* argv[])
 
             c.arrange (editor);
 
+            editor.setSize (window.width, window.height);
             editor.completeScreenFade();
+            editor.completeWelcomeReveal();
 
-            problems += report (c.name, editor, c.expect, c.allowedDead);
+            if (framesOnly)
+            {
+                if (juce::String (window.name) != "iPhone")
+                    continue;
+
+                if (const auto* only = std::getenv ("FRAME_CASE"); only != nullptr && juce::String (c.name) != only)
+                    continue;
+
+                // What forces a transparency layer or an effect pass: the
+                // usual reason one frame costs several.
+                std::function<void (juce::Component&)> layers = [&] (juce::Component& comp)
+                {
+                    for (auto* ch : comp.getChildren())
+                    {
+                        if (! ch->isVisible())
+                            continue;
+                        if (ch->getAlpha() < 1.0f || ch->getComponentEffect() != nullptr || ch->isPaintingUnclipped()
+                            || ch->getCachedComponentImage() != nullptr)
+                            std::cout << "    layer: " << describe (*ch) << " alpha " << ch->getAlpha()
+                                      << (ch->getComponentEffect() != nullptr ? " effect" : "")
+                                      << (ch->isPaintingUnclipped() ? " unclipped" : "")
+                                      << (ch->getCachedComponentImage() != nullptr ? " cached" : "")
+                                      << " " << editor.getLocalArea (ch, ch->getLocalBounds()).toString() << "\n";
+                        if (std::getenv ("FRAME_NOALPHA") != nullptr)
+                            ch->setAlpha (1.0f);
+                        layers (*ch);
+                    }
+                };
+                layers (editor);
+
+                const auto f = measureFrames (editor);
+                std::cout << juce::String (c.name).paddedRight (' ', 28)
+                          << juce::String (f.frameMs, 1).paddedLeft (' ', 7) << " ms/frame"
+                          << juce::String (f.repaintsPerSecond, 0).paddedLeft (' ', 6) << " repaints/s"
+                          << juce::String (f.screensPerSecond, 1).paddedLeft (' ', 7) << " screens/s"
+                          << juce::String (f.frameMs * juce::jmin (60.0, f.screensPerSecond) / 10.0, 1).paddedLeft (' ', 7)
+                          << " % of a core idle\n";
+                continue;
+            }
+
+            const auto state = juce::String (c.name) + "  @ " + window.name
+                             + " " + juce::String (window.width) + "x" + juce::String (window.height);
+            problems += report (state, editor, c.expect, c.allowedDead, window, editor.safeBoundsForTools());
+
+            // Text that did not fit even after the look-and-feel squeezed
+            // it as far as it allows (AbcTrainLookAndFeel::fitText) - a cut
+            // word is a layout fault like any other, and it is size-specific.
+            AbcTrainLookAndFeel::enableTextAudit (true);
+            AbcTrainLookAndFeel::setTextAuditContext (state);
+            juce::ignoreUnused (editor.createComponentSnapshot (editor.getLocalBounds(), true, 1.0f));
+            AbcTrainLookAndFeel::enableTextAudit (false);
+
+            for (const auto& line : AbcTrainLookAndFeel::takeTextAudit())
+            {
+                // kind, context, text, "needed > available"
+                const auto parts = juce::StringArray::fromTokens (line, "\t", "");
+                const auto cut = parts[0] == "CUT";
+                std::cout << (cut ? "  BROKEN  text cut: \"" : "  small   text squeezed: \"")
+                          << parts[juce::jmin (2, parts.size() - 1)] << "\"  " << parts[parts.size() - 1] << "\n";
+                problems += cut ? 1 : 0;
+            }
         }
+
+       #if ! JUCE_WINDOWS
+        unsetenv ("SNAP_SAFE");
+       #endif
     }
 
     // Behaviour the screens cannot show in one still frame.
