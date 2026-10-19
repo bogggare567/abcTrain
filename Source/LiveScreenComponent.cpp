@@ -448,6 +448,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
 void LiveScreenComponent::showTab (Tab newTab)
 {
     tab = newTab;
+    pageScroller.setOffset (0.0f);   // every tab opens at its top
     tabs.setValue ((int) tab);
     note.clear();
 
@@ -871,6 +872,7 @@ void LiveScreenComponent::resized()
     const auto problem = currentProblem();
     checkAgainButton.setVisible (problem.title.isNotEmpty() && overlay == Overlay::none);
 
+    auto bannerHeight = 0;
     if (problem.title.isNotEmpty())
     {
         const auto hints = juce::StringArray::fromLines (problem.hints);
@@ -880,7 +882,28 @@ void LiveScreenComponent::resized()
             lines += hintLines (hints[i], width);
 
         const auto below = bannerButtonBelow() ? controlHeight + Spacing::medium : 0;
-        bannerBox = area.removeFromTop (52 + 19 * lines + below);
+        bannerHeight = 52 + 19 * lines + below;
+    }
+
+    // Scrolling (see pageScroller): the column is at least as tall as the
+    // banner and this tab's cards need.
+    pageViewport = area;
+    {
+        if (pageScroller.onChange == nullptr)
+            pageScroller.onChange = [this] (float) { resized(); repaint(); };
+
+        const auto needed = (bannerHeight > 0 ? bannerHeight + Spacing::medium : 0) + minimumCardsHeight();
+        const auto overflow = juce::jmax (0, needed - area.getHeight());
+        if (pageScroller.getLimit() != (float) overflow)
+            pageScroller.setLimit ((float) overflow);
+
+        const auto offset = juce::roundToInt (juce::jlimit (0.0f, (float) overflow, pageScroller.getOffset()));
+        area = area.withHeight (juce::jmax (area.getHeight(), needed)).translated (0, -offset);
+    }
+
+    if (problem.title.isNotEmpty())
+    {
+        bannerBox = area.removeFromTop (bannerHeight);
         area.removeFromTop (Spacing::medium);
 
         if (bannerButtonBelow())
@@ -893,7 +916,38 @@ void LiveScreenComponent::resized()
     else if (tab == Tab::battle)   layoutBattle (area);
     else                           layoutRating (area);
 
+    // Whatever the scroll has moved out of the viewport is not on the page:
+    // hidden, so it can neither be drawn over the tabs nor take a tap
+    // meant for them.
+    if (pageScroller.getLimit() > 0.0f)
+        for (auto* child : getChildren())
+            if (child != &tabs && child != &accountButton && child != &overlayLayer && child->isVisible()
+                && ! child->getBounds().isEmpty() && ! pageViewport.contains (child->getBounds().getCentre()))
+                child->setVisible (false);
+
     layoutOverlay();
+}
+
+int LiveScreenComponent::minimumCardsHeight() const
+{
+    // What each tab's cards need to show everything without cutting -
+    // measured by rendering them (tools/ClickMap, EditorSnapshots) at the
+    // sizes where they used to be cut.
+    if (tab == Tab::seminar)
+        return compact() ? 320 : (roomOpen ? 470 : 440);
+
+    if (tab == Tab::battle)
+        return compact() ? (sideBySide() ? 340 : 600) : 600;
+
+    return 360;
+}
+
+void LiveScreenComponent::mouseDown (const juce::MouseEvent& e)  { pageScroller.mouseDown (e); }
+void LiveScreenComponent::mouseDrag (const juce::MouseEvent& e)  { pageScroller.mouseDrag (e); }
+void LiveScreenComponent::mouseUp (const juce::MouseEvent& e)    { pageScroller.mouseUp (e); }
+void LiveScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
+{
+    pageScroller.mouseWheelMove (wheel, 220.0f);
 }
 
 void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
@@ -1184,11 +1238,17 @@ void LiveScreenComponent::paint (juce::Graphics& g)
     if (! compact())
         paintLinkStatus (g, tabs.getBounds().withX (tabs.getRight() + AbcTrainTheme::Spacing::large)
                                 .withRight (accountButton.getX() - 230));
-    paintBanner (g);
+    {
+        // The scrolling part, clipped to its viewport (see pageScroller).
+        juce::Graphics::ScopedSaveState clipped (g);
+        g.reduceClipRegion (pageViewport);
 
-    if (tab == Tab::seminar)       paintSeminar (g);
-    else if (tab == Tab::battle)   paintBattle (g);
-    else                           paintRating (g);
+        paintBanner (g);
+
+        if (tab == Tab::seminar)       paintSeminar (g);
+        else if (tab == Tab::battle)   paintBattle (g);
+        else                           paintRating (g);
+    }
 
     if (note.isNotEmpty())
     {

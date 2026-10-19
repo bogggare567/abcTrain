@@ -628,8 +628,12 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
             g.setColour (soon ? theme.outline : colour.withAlpha (0.85f));
             g.drawRect (card, 1.0f);
 
-            auto inner = card.reduced (18.0f, 14.0f);
-            auto titleRow = inner.removeFromTop (28.0f);
+            // A short card (a phone on its side) gives its padding to the
+            // text: at the full 14 + 28 the body had 34 points for three
+            // lines and was drawn squeezed to a smudge.
+            const auto shortCard = card.getHeight() < 104.0f;
+            auto inner = card.reduced (shortCard ? 14.0f : 18.0f, shortCard ? 7.0f : 14.0f);
+            auto titleRow = inner.removeFromTop (shortCard ? 24.0f : 28.0f);
             g.setColour (colour);
             g.fillRect (titleRow.removeFromLeft (10.0f).withSizeKeepingCentre (10.0f, 10.0f));
             titleRow.removeFromLeft (8.0f);
@@ -647,7 +651,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
                           localisation.getText ("welcome.soon"), theme.textDim);
             }
 
-            inner.removeFromTop (6.0f);
+            inner.removeFromTop (shortCard ? 2.0f : 6.0f);
             g.setColour (soon ? theme.textDim : theme.text);
             g.setFont (AbcTrainLookAndFeel::captionFont());
             AbcTrainLookAndFeel::fitLines (g, localisation.getText (bodies[i]), inner.toNearestInt(),

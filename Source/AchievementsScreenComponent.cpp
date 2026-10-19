@@ -386,8 +386,12 @@ void AchievementsScreenComponent::paintMedal (juce::Graphics& g, const Entry& en
     const auto& theme = AbcTrainTheme::current();
     const auto lift = AbcTrainTheme::Ease::out (hover);
 
-    auto disc = juce::Rectangle<float> (medalDiameter, medalDiameter)
-                    .withCentre ({ cell.getCentreX(), cell.getY() + 8.0f + medalDiameter * 0.5f - 3.0f * lift });
+    // A cell narrower than the medal and its sentence need (two columns on
+    // a small phone) takes a smaller medal: the sentence under it needs the
+    // third line more than the disc needs its last 16 points.
+    const auto diameter = cell.getWidth() < 170.0f ? medalDiameter - 16.0f : medalDiameter;
+    auto disc = juce::Rectangle<float> (diameter, diameter)
+                    .withCentre ({ cell.getCentreX(), cell.getY() + 8.0f + diameter * 0.5f - 3.0f * lift });
 
     // The plate.
     g.setColour (entry.earned ? theme.displayBackground : theme.displayBackground.withAlpha (0.6f));
@@ -426,7 +430,7 @@ void AchievementsScreenComponent::paintMedal (juce::Graphics& g, const Entry& en
         }
     }
 
-    drawArt (g, entry.art, disc.reduced (medalDiameter * 0.27f),
+    drawArt (g, entry.art, disc.reduced (disc.getWidth() * 0.27f),
              entry.earned ? entry.tint : theme.textDim.withAlpha (0.55f));
 
     // Name and what it asks.
@@ -442,9 +446,9 @@ void AchievementsScreenComponent::paintMedal (juce::Graphics& g, const Entry& en
     // A third line where the cell has it: two columns on a small phone are
     // ~150 points, and "threshold Soft Clipping and Overdrive in ..." is
     // two lines and a word.
-    const auto descriptionLines = text.getHeight() >= 3.0f * AbcTrainLookAndFeel::labelFont().getHeight() ? 3 : 2;
-    AbcTrainLookAndFeel::fitLines (g, entry.description,
-                                   text.removeFromTop (juce::jmax (40.0f, juce::jmin (text.getHeight(), 58.0f))).toNearestInt(),
+    const auto descriptionHeight = juce::jmax (40.0f, juce::jmin (text.getHeight(), 64.0f));
+    const auto descriptionLines = descriptionHeight >= 3.0f * AbcTrainLookAndFeel::labelFont().getHeight() ? 3 : 2;
+    AbcTrainLookAndFeel::fitLines (g, entry.description, text.removeFromTop (descriptionHeight).toNearestInt(),
                                    juce::Justification::centredTop, descriptionLines, 0.85f);
 }
 

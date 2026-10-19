@@ -690,8 +690,19 @@ int main (int argc, char* argv[])
             // word is a layout fault like any other, and it is size-specific.
             AbcTrainLookAndFeel::enableTextAudit (true);
             AbcTrainLookAndFeel::setTextAuditContext (state);
-            juce::ignoreUnused (editor.createComponentSnapshot (editor.getLocalBounds(), true, 1.0f));
+            const auto picture = editor.createComponentSnapshot (editor.getLocalBounds(), true, 2.0f);
             AbcTrainLookAndFeel::enableTextAudit (false);
+
+            // CLICKMAP_PNG=folder: keep the picture of exactly what was
+            // checked, named after the screen and the window.
+            if (const auto* folder = std::getenv ("CLICKMAP_PNG"))
+            {
+                const auto file = juce::File (folder).getChildFile (juce::File::createLegalFileName (
+                                      juce::String (c.name) + " @ " + window.name) + ".png");
+                file.deleteFile();
+                if (auto out = file.createOutputStream())
+                    juce::PNGImageFormat().writeImageToStream (picture, *out);
+            }
 
             for (const auto& line : AbcTrainLookAndFeel::takeTextAudit())
             {

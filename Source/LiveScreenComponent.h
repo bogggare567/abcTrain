@@ -3,6 +3,7 @@
 #include <array>
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/TouchScroll.h"
 #include "shared/ui/SegmentedChoice.h"
 #include "LiveLink.h"
 #include "LiveAccount.h"
@@ -350,6 +351,23 @@ private:
     bool bannerButtonBelow() const noexcept { return getWidth() < 600; }
     int seminarIntroHeight = 70;   // see layoutSeminar
     int noteLines() const;
+
+    // The page under the tabs scrolls when its cards need more height than
+    // the window has - a small desktop window, a phone on its side, or a
+    // phone with the "no internet" banner on top. Before, the cards took
+    // whatever was left and their texts were cut to it (tools/ClickMap).
+    // Laid out as one taller column moved up by the offset; what has
+    // scrolled out of the viewport is hidden, the tabs stay on top.
+    TouchScroll pageScroller;
+    juce::Rectangle<int> pageViewport;
+    int minimumCardsHeight() const;
+
+public:
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    void mouseUp (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+private:
     int bannerTextWidth (juce::Rectangle<int> box) const;
     static int hintLines (const juce::String& hint, int width);
 

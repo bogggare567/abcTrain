@@ -164,7 +164,8 @@ juce::Rectangle<int> RunResultsComponent::cardBounds() const
 
     // Short: no by-range block, but the plot is 62 tall, not the 46 above,
     // and its round numbers need their line.
-    const auto height = contentHeight - (shortCard() ? 16 + 7 * 20 + Spacing::large - 16 - 12 : 0);
+    const auto height = contentHeight - (shortCard() ? 16 + 7 * 20 + Spacing::large - 16 - 12 : 0)
+                                      + (numbersRowHeight() - 64);
 
     return juce::Rectangle<int> (juce::jlimit (480, getWidth() - 60,
                                                 juce::roundToInt ((float) getWidth() * 0.72f)),
@@ -263,6 +264,10 @@ void RunResultsComponent::paint (juce::Graphics& g)
         // Four cells: one row of four, or (phone) two rows of two.
         std::array<juce::Rectangle<int>, 4> cells;
         {
+            // Two rows of two wherever a quarter would be narrower than
+            // its notes ("depth in the band, on average" is 160 points; a
+            // phone on its side gave each cell 122) - not only on a phone
+            // held upright.
             if (compact())
             {
                 auto first = inner.removeFromTop (64);
@@ -273,7 +278,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
             }
             else
             {
-                auto row = inner.removeFromTop (64);
+                auto row = inner.removeFromTop (numbersRowHeight());
                 const auto quarter = row.getWidth() / 4;
                 cells = { row.removeFromLeft (quarter), row.removeFromLeft (quarter), row.removeFromLeft (quarter), row };
             }
@@ -302,7 +307,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
             // Two lines where the cell has the height: four cells across a
             // phone on its side are 122 points each, and "depth in the
             // band, on average" is 160.
-            const auto area = column.withTrimmedTop (48);
+            const auto area = column.withTrimmedTop (48).withTrimmedRight (10);   // never touching the next cell's note
             const auto lines = area.getHeight() >= (int) (2.0f * AbcTrainLookAndFeel::captionFont().getHeight()) + 2 ? 2 : 1;
             AbcTrainLookAndFeel::fitLines (g, text, area, juce::Justification::topLeft, lines, 0.85f);
         };
