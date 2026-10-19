@@ -738,6 +738,7 @@ target_sources(EarTrainerTests
         tests/LocalRoomTest.cpp
         tests/PluralTest.cpp
         tests/TestSignalGeneratorTest.cpp
+        tests/SpectralContentTest.cpp
         tests/SharedEnginesTest.cpp
         tests/HintTest.cpp
         tests/SkillBucketTest.cpp

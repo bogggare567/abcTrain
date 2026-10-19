@@ -3265,12 +3265,15 @@ void EarTrainerEditor::startNewRun()
     processor.getGameManager().getActiveGame().setPlayProcessed (false);
     refreshBeforeAfter();
 
-    processor.getGameManager().getActiveGame().newRound();
-
     // A different clip from the chosen category each round, so a folder of
     // twenty loops is twenty loops rather than the one that came up first.
+    // Before newRound(), not after: the frequency exercises ask only about
+    // ranges the clip has sound in, so they must see the clip that will
+    // actually play.
     processor.getGameManager().getReferenceAudioLibrary()
         .advanceToRandomClip (processor.getSampleRate());
+
+    processor.getGameManager().getActiveGame().newRound();
     refreshRunStatus();
 }
 
@@ -5384,15 +5387,7 @@ void EarTrainerEditor::startOnlineRoundIfDue()
     auto& game = processor.getGameManager().getActiveGame();
     game.setPlayProcessed (false);
     refreshBeforeAfter();
-    game.setSeededRounds (true);
-    game.setDifficulty (st.round.level);
-    game.seedNextRound (st.round.seed);
-    game.newRound();
-
-    // Another number from the same seed for the clip, so the sound and the
-    // setting are not tied to each other round after round.
-    processor.getGameManager().getReferenceAudioLibrary()
-        .selectSeededBuiltIn (st.round.seed * 2654435761LL + 17, processor.getSampleRate());
+    processor.getGameManager().startSeededRound (game, st.round.level, st.round.seed, processor.getSampleRate());
     refreshRunStatus();
 }
 
@@ -5446,8 +5441,8 @@ void EarTrainerEditor::createSeminarHost()
         auto& game = processor.getGameManager().getActiveGame();
         game.setPlayProcessed (false);
         refreshBeforeAfter();
-        game.newRound();
         processor.getGameManager().getReferenceAudioLibrary().advanceToRandomClip (processor.getSampleRate());
+        game.newRound();
     };
 
     hooks.setSound = [this] (bool play, bool processed)

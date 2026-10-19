@@ -93,6 +93,8 @@ const std::array<float, EQGame::numBands> EQGame::bandFrequenciesHz {
 
 void EQGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    // A boost needs something to boost - see TestSignalGenerator::Need.
+    noise.setNeed (TestSignalGenerator::Need::spectrum);
     sampleRate = spec.sampleRate;
     peakFilter.prepare (spec);
     newRound();
@@ -128,7 +130,7 @@ void EQGame::process (juce::AudioBuffer<float>& buffer)
 
 void EQGame::updateMatchGain()
 {
-    // Pink noise through this round's filter, offline, on the message
+    // This round's filter over the round's own material, offline, on the message
     // thread. Its own filter instance so the live one's state is never
     // disturbed mid-round, and a fixed seed so the same round always
     // gets the same compensation.
@@ -138,13 +140,15 @@ void EQGame::updateMatchGain()
     measuring.coefficients = peakFilter.state;
     measuring.reset();
 
-    PinkNoiseGenerator measuringNoise { 0x5EED };
-
+    // Measured on the material the round will actually play - a clip, or
+    // the fallback noise - rather than always on pink noise. A boost at
+    // 8 kHz is a large loudness change on a hi-hat and a small one on pink
+    // noise; compensating for the noise left the hi-hat round answerable
+    // by level alone, which is the thing this gain exists to prevent.
     matchGain = GainMatch::measure (numSamples,
-        [&measuringNoise] (juce::AudioBuffer<float>& buffer)
+        [this] (juce::AudioBuffer<float>& buffer)
         {
-            for (int i = 0; i < buffer.getNumSamples(); ++i)
-                buffer.setSample (0, i, measuringNoise.nextSample());
+            noise.fillForMeasurement (buffer.getWritePointer (0), buffer.getNumSamples(), 0x5EED);
         },
         [&measuring] (juce::AudioBuffer<float>& buffer)
         {
@@ -181,25 +185,36 @@ void EQGame::newRound()
     // octaves times its weight, then a point log-uniformly inside it. With
     // every weight equal that is exactly the log-uniform draw across the
     // whole span; with weights it asks more often where the ear is weak.
+    //
+    // And only where the clip has something to boost: a target the clip
+    // has no energy at is redrawn (SpectralContent.h - a 40 Hz bell on a
+    // hi-hat loop changes nothing and was being scored anyway). Redrawing
+    // rather than reshaping the spans keeps the weighting above exactly as
+    // it was among the frequencies that remain. Pink noise has everything,
+    // so with no clip the first draw always stands and seeded rounds on
+    // noise are unchanged.
+    const auto& content = noise.activeContent();
+
+    struct Span { int bucket; float lowHz, highHz, octaves; };
+    std::vector<Span> spans;
+    auto total = 0.0f;
+
+    for (int i = 0; i < FrequencyRangeGame::numRanges; ++i)
     {
-        struct Span { int bucket; float lowHz, highHz, octaves; };
-        std::vector<Span> spans;
-        auto total = 0.0f;
+        const auto& r = FrequencyRangeGame::ranges[(size_t) i];
+        const auto low = juce::jmax (targetLowHz, r.lowHz);
+        const auto high = juce::jmin (targetHighHz, r.highHz);
 
-        for (int i = 0; i < FrequencyRangeGame::numRanges; ++i)
-        {
-            const auto& r = FrequencyRangeGame::ranges[(size_t) i];
-            const auto low = juce::jmax (targetLowHz, r.lowHz);
-            const auto high = juce::jmin (targetHighHz, r.highHz);
+        if (high <= low)
+            continue;
 
-            if (high <= low)
-                continue;
+        const auto octaves = std::log2 (high / low);
+        spans.push_back ({ i, low, high, octaves });
+        total += octaves * bucketWeight (i);
+    }
 
-            const auto octaves = std::log2 (high / low);
-            spans.push_back ({ i, low, high, octaves });
-            total += octaves * bucketWeight (i);
-        }
-
+    for (int attempt = 0; attempt < 32; ++attempt)
+    {
         auto roll = random.nextFloat() * total;
         auto chosen = spans.empty() ? Span { 0, targetLowHz, targetHighHz, 1.0f } : spans.back();
 
@@ -214,6 +229,9 @@ void EQGame::newRound()
         }
 
         targetHz = chosen.lowHz * std::pow (chosen.highHz / chosen.lowHz, random.nextFloat());
+
+        if (content.isPresentAt (targetHz))
+            break;
     }
 
     // Nearest grid mark, for the legacy discrete path only.

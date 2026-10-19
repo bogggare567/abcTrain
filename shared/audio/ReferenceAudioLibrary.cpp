@@ -737,6 +737,9 @@ bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSam
     for (int ch = 0; ch < sourceBuffer.getNumChannels(); ++ch)
         mono.addFrom (0, 0, sourceBuffer, ch, 0, sourceLength, 1.0f / (float) sourceBuffer.getNumChannels());
 
+    // Before resampling, on purpose - see getActiveContent.
+    const auto content = SpectralContent::analyse (mono.getReadPointer (0), sourceLength, sourceSampleRate);
+
     std::unique_ptr<juce::AudioBuffer<float>> resampled;
 
     if (targetSampleRate > 0.0 && ! juce::approximatelyEqual (sourceSampleRate, targetSampleRate))
@@ -756,6 +759,8 @@ bool ReferenceAudioLibrary::selectFile (const juce::File& file, double targetSam
 
     auto* stored = loadedBuffers.add (resampled.release());
     activeSustain.store (sustainOf (*stored, targetSampleRate));
+    activeContent = content;
+    activePresentOctaves.store (content.presentOctaves());
     activeBuffer.store (stored);
 
     // Keep a short tail of previous clips rather than every clip ever
