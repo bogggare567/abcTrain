@@ -1,6 +1,7 @@
 #include "RunResultsComponent.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
+#include <array>
 
 namespace
 {
@@ -149,6 +150,18 @@ juce::Rectangle<int> RunResultsComponent::cardBounds() const
                                     + 16 + 7 * 20 + Spacing::large  // ranges and the sentence
                                     + 38;                           // buttons
 
+    if (compact())
+    {
+        constexpr int compactHeight = contentHeight
+                                        + 64 + Spacing::small             // the second row of numbers
+                                        + 16 + 5 * 20                      // the sentence under the plot
+                                        + 38 + Spacing::small;             // "Play again" on its own row
+        return getLocalBounds().reduced (Spacing::small, 0)
+                   .withSizeKeepingCentre (getWidth() - Spacing::small * 2,
+                                           juce::jmin (getHeight() - Spacing::small * 2,
+                                                       compactHeight + Spacing::medium * 2));
+    }
+
     return juce::Rectangle<int> (juce::jlimit (480, getWidth() - 60,
                                                 juce::roundToInt ((float) getWidth() * 0.72f)),
                                   juce::jmin (getHeight() - 40, contentHeight + Spacing::large * 2))
@@ -202,7 +215,8 @@ void RunResultsComponent::paint (juce::Graphics& g)
     g.setColour (theme.outline);
     g.drawRect (card, 1.0f);
 
-    auto inner = card.reduced ((float) AbcTrainTheme::Spacing::large).toNearestInt();
+    auto inner = card.reduced ((float) (compact() ? AbcTrainTheme::Spacing::medium
+                                                  : AbcTrainTheme::Spacing::large)).toNearestInt();
     const auto counted = AbcTrainTheme::Ease::out (countAmount);
 
     // --- heading: which exercise, which mode, how it ended ---------------
@@ -242,8 +256,24 @@ void RunResultsComponent::paint (juce::Graphics& g)
     // that says what the number is measured against, because a bare "92%"
     // leaves the player to guess what 92 percent of.
     {
-        auto row = inner.removeFromTop (64);
-        const auto columnWidth = row.getWidth() / 4;
+        // Four cells: one row of four, or (phone) two rows of two.
+        std::array<juce::Rectangle<int>, 4> cells;
+        {
+            if (compact())
+            {
+                auto first = inner.removeFromTop (64);
+                inner.removeFromTop (AbcTrainTheme::Spacing::small);
+                auto second = inner.removeFromTop (64);
+                const auto half = first.getWidth() / 2;
+                cells = { first.removeFromLeft (half), first, second.removeFromLeft (half), second };
+            }
+            else
+            {
+                auto row = inner.removeFromTop (64);
+                const auto quarter = row.getWidth() / 4;
+                cells = { row.removeFromLeft (quarter), row.removeFromLeft (quarter), row.removeFromLeft (quarter), row };
+            }
+        }
 
         const auto total = (int) summary.marks.size();
         int inBand = 0;
@@ -268,7 +298,7 @@ void RunResultsComponent::paint (juce::Graphics& g)
             AbcTrainLookAndFeel::fitLines (g, text, column.withTrimmedTop (48), juce::Justification::topLeft, 1, 0.85f);
         };
 
-        auto column = row.removeFromLeft (columnWidth);
+        auto column = cells[0];
         if (summary.pointsText.isNotEmpty())
         {
             // Points first - precision counts - with the count and the
@@ -288,17 +318,17 @@ void RunResultsComponent::paint (juce::Graphics& g)
             note (column, bestCaption + " " + juce::String (juce::jmax (summary.previousBest, summary.score)));
         }
 
-        column = row.removeFromLeft (columnWidth);
+        column = cells[1];
         paintStat (g, column, accuracyCaption,
                    juce::String (juce::roundToInt (summary.runAccuracy * 100.0f * counted)) + "%", theme.text);
         note (column, fillIn (detail.ofInBand, { { "n", juce::String (inBand) }, { "m", juce::String (total) } }));
 
-        column = row.removeFromLeft (columnWidth);
+        column = cells[2];
         paintStat (g, column, detail.precision, juce::String (juce::roundToInt (median * 100.0f * counted)) + "%",
                    theme.text);
         note (column, detail.precisionNote);
 
-        column = row;
+        column = cells[3];
         const auto moved = summary.levelBefore != summary.levelAfter;
         paintStat (g, column, detail.threshold, moved ? summary.levelAfter : summary.levelBefore,
                    summary.levelDelta > 0 ? theme.positive : theme.text);
@@ -434,9 +464,14 @@ void RunResultsComponent::paint (juce::Graphics& g)
     // Counts, not a histogram: "Mids 2 / 3" says exactly what happened,
     // where a bar a few pixels tall made the reader estimate it.
     {
-        auto block = inner.removeFromTop (16 + 6 * 20);
-        auto left = block.removeFromLeft (juce::jmin (330, block.getWidth() / 2));
-        block.removeFromLeft (AbcTrainTheme::Spacing::large);
+        // On a phone the sentence goes under the plot; its 16-point top
+        // margin below is the gap between them.
+        auto block = inner.removeFromTop (16 + 6 * 20 + (compact() ? 16 + 5 * 20 : 0));
+        auto left = compact() ? block.removeFromTop (16 + 6 * 20)
+                              : block.removeFromLeft (juce::jmin (330, block.getWidth() / 2));
+
+        if (! compact())
+            block.removeFromLeft (AbcTrainTheme::Spacing::large);
 
         auto anyTried = false;
         for (const auto& bucket : summary.buckets)
@@ -539,13 +574,26 @@ void RunResultsComponent::resized()
 {
     using namespace AbcTrainTheme;
 
-    auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (38);
+    auto footer = cardBounds().reduced (compact() ? Spacing::medium : Spacing::large).removeFromBottom (38);
 
     // "Play again" is the one filled button, rightmost; Home beside it.
+    // On a phone it is the whole bottom row - the thumb's row - and the
+    // rest share the row above it.
     AbcTrainLookAndFeel::makePrimary (againButton, true);
-    againButton.setBounds (footer.removeFromRight (150));
-    footer.removeFromRight (Spacing::small);
-    homeButton.setBounds (footer.removeFromRight (110));
+
+    if (compact())
+    {
+        againButton.setBounds (footer);
+        footer = footer.translated (0, -(38 + Spacing::small));
+        homeButton.setBounds (footer.removeFromRight (juce::jmin (110, footer.getWidth() / 3)));
+        footer.removeFromRight (Spacing::small);
+    }
+    else
+    {
+        againButton.setBounds (footer.removeFromRight (150));
+        footer.removeFromRight (Spacing::small);
+        homeButton.setBounds (footer.removeFromRight (110));
+    }
 
     // The other modes sit on the left of the same row, so "again" and
     // "differently" are the same distance from the eye - a run ending is

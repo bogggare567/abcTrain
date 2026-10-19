@@ -569,6 +569,20 @@ void AchievementsScreenComponent::mouseExit (const juce::MouseEvent&)
     repaint();
 }
 
+void AchievementsScreenComponent::mouseDown (const juce::MouseEvent&)
+{
+    scrollAtDragStart = scrollOffset;
+}
+
+void AchievementsScreenComponent::mouseDrag (const juce::MouseEvent& e)
+{
+    if (maxScroll <= 0.0f || e.mouseWasClicked())
+        return;
+
+    scrollOffset = juce::jlimit (0.0f, maxScroll, scrollAtDragStart - (float) e.getDistanceFromDragStartY());
+    repaint();
+}
+
 void AchievementsScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
 {
     scrollOffset = juce::jlimit (0.0f, maxScroll, scrollOffset - wheel.deltaY * 120.0f);

@@ -135,9 +135,23 @@ void StudioScreenComponent::refreshSwitch()
     }
 }
 
-void StudioScreenComponent::setLabels (juce::String studioCaption, juce::String lessonsLabel)
+void StudioScreenComponent::setRotatePromptAllowed (bool allowed)
+{
+    rotatePromptAllowed = allowed;
+    resized();
+    repaint();
+}
+
+bool StudioScreenComponent::showsRotatePrompt() const
+{
+    return rotatePromptAllowed && getWidth() < 600 && getHeight() > getWidth();
+}
+
+void StudioScreenComponent::setLabels (juce::String studioCaption, juce::String lessonsLabel,
+                                       juce::String rotate)
 {
     caption = std::move (studioCaption);
+    rotateMessage = std::move (rotate);
     lessonsButton.setButtonText (lessonsLabel.isNotEmpty() ? lessonsLabel : juce::String ("Lessons"));
     resized();
     repaint();
@@ -147,6 +161,39 @@ void StudioScreenComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
     g.fillAll (theme.windowBackground);
+
+    if (showsRotatePrompt())
+    {
+        // A phone outline turning a quarter: the same picture games use,
+        // because it is the same request.
+        auto centre = getLocalBounds().toFloat().withSizeKeepingCentre (getWidth() - 48.0f, 220.0f);
+        auto icon = centre.removeFromTop (120.0f).withSizeKeepingCentre (110.0f, 110.0f);
+
+        g.setColour (theme.textDim.withAlpha (0.35f));
+        g.drawRoundedRectangle (icon.withSizeKeepingCentre (44.0f, 76.0f), 7.0f, 2.0f);
+        g.setColour (theme.accent);
+        g.drawRoundedRectangle (icon.withSizeKeepingCentre (76.0f, 44.0f), 7.0f, 2.0f);
+
+        juce::Path arc;
+        arc.addCentredArc (icon.getCentreX(), icon.getCentreY(), 50.0f, 50.0f, 0.0f,
+                           -0.35f * juce::MathConstants<float>::pi, -0.05f * juce::MathConstants<float>::pi, true);
+        g.strokePath (arc, juce::PathStrokeType (2.0f));
+
+        g.setColour (theme.text);
+        g.setFont (AbcTrainLookAndFeel::bodyFont());
+        AbcTrainLookAndFeel::fitLines (g, rotateMessage.isNotEmpty() ? rotateMessage
+                                                                     : juce::String ("Turn the phone sideways: the Studio needs the width."),
+                                       centre.toNearestInt(), juce::Justification::centredTop, 3, 1.0f);
+        return;
+    }
+
+    if (sideSwitch())
+    {
+        auto rail = getLocalBounds().removeFromLeft (sideSwitchWidth);
+        g.setColour (theme.divider);
+        g.fillRect (rail.removeFromRight (1));
+        return;
+    }
 
     auto bar = getLocalBounds().removeFromTop (switchHeight);
     g.setColour (theme.divider);
@@ -161,6 +208,35 @@ void StudioScreenComponent::paint (juce::Graphics& g)
 void StudioScreenComponent::resized()
 {
     auto area = getLocalBounds();
+    const auto prompt = showsRotatePrompt();
+
+    for (auto& button : switchButtons)
+        button.setVisible (! prompt);
+
+    lessonsButton.setVisible (! prompt);
+
+    if (editor != nullptr)
+        editor->setVisible (! prompt);
+
+    if (prompt)
+        return;
+
+    if (sideSwitch())
+    {
+        // Three effects and the lessons, one under the other.
+        auto rail = area.removeFromLeft (sideSwitchWidth).reduced (8, 10);
+
+        for (auto& button : switchButtons)
+        {
+            button.setBounds (rail.removeFromTop (44));
+            rail.removeFromTop (6);
+        }
+
+        lessonsButton.setBounds (rail.removeFromBottom (44));
+        placeEditor (area);
+        return;
+    }
+
     auto bar = area.removeFromTop (switchHeight).reduced (0, 9);
 
     // The switch sits where the caption ends, so the three names line up
@@ -181,6 +257,29 @@ void StudioScreenComponent::resized()
     // turn these plugins' knobs, so they open from where the plugins are.
     lessonsButton.setBounds (bar.removeFromRight (150).withTrimmedRight (20));
 
-    if (editor != nullptr)
+    placeEditor (area);
+}
+
+void StudioScreenComponent::placeEditor (juce::Rectangle<int> area)
+{
+    if (editor == nullptr)
+        return;
+
+    // The plugins are laid out for 820x600 and up. Below that they are
+    // given that much room and drawn smaller, rather than squeezed into a
+    // layout they were never built for.
+    constexpr float minWidth = 820.0f, minHeight = 600.0f;
+    const auto scale = juce::jmin (1.0f, (float) area.getWidth() / minWidth, (float) area.getHeight() / minHeight);
+
+    if (scale >= 1.0f)
+    {
+        editor->setTransform ({});
         editor->setBounds (area);
+        return;
+    }
+
+    editor->setBounds (0, 0, juce::roundToInt ((float) area.getWidth() / scale),
+                       juce::roundToInt ((float) area.getHeight() / scale));
+    editor->setTransform (juce::AffineTransform::scale (scale)
+                              .translated ((float) area.getX(), (float) area.getY()));
 }

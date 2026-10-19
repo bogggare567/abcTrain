@@ -21,6 +21,11 @@ namespace
     // read as patched together.
     constexpr int standardControlWidth = 280;
 
+    // Compact rows: the title and two lines of hint on top, the control
+    // under them at a thumb's height.
+    constexpr int compactTextHeight = 58;
+    constexpr int compactControlHeight = 40;
+
     juce::String n (int value) { return juce::String (value); }
 }
 
@@ -41,6 +46,16 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
             onTrainerSettingsChanged();
     };
     addAndMakeVisible (modeSwitch);
+
+    compactBackButton.setButtonText (juce::String::fromUTF8 ("\xe2\x80\xb9  ") + localisation.getText ("ui.settings"));
+    compactBackButton.onClick = [this]
+    {
+        compactShowingPage = false;
+        compactScroll = 0;
+        resized();
+        repaint();
+    };
+    addChildComponent (compactBackButton);
 
     // ---- training and hearing choices ----------------------------------
     //
@@ -902,6 +917,9 @@ void SettingsScreenComponent::visibilityChanged()
 
 juce::Rectangle<int> SettingsScreenComponent::sideMenuBounds() const
 {
+    if (compact())
+        return compactShowingPage ? juce::Rectangle<int>() : getLocalBounds();
+
     return getLocalBounds().removeFromLeft (railWidth);
 }
 
@@ -920,6 +938,17 @@ int SettingsScreenComponent::menuTop() const
 
 juce::Rectangle<int> SettingsScreenComponent::pageBounds() const
 {
+    if (compact())
+    {
+        if (! compactShowingPage)
+            return {};
+
+        // Under the back button; the heading and rows scroll beneath it.
+        return getLocalBounds().reduced (AbcTrainTheme::Spacing::large, AbcTrainTheme::Spacing::small)
+                               .withTrimmedTop (compactControlHeight + AbcTrainTheme::Spacing::small)
+                               .translated (0, -compactScroll);
+    }
+
     return getLocalBounds().withTrimmedLeft (railWidth).reduced (AbcTrainTheme::Spacing::large + 8,
                                                                  AbcTrainTheme::Spacing::large);
 }
@@ -931,7 +960,7 @@ int SettingsScreenComponent::menuRowAt (juce::Point<int> p) const
 
     for (int i = 0; i < numPages; ++i)
     {
-        if (area.removeFromTop (menuRowHeight).contains (p))
+        if (area.removeFromTop (compact() ? 48 : menuRowHeight).contains (p))
             return i;
 
         area.removeFromTop (2);
@@ -940,9 +969,23 @@ int SettingsScreenComponent::menuRowAt (juce::Point<int> p) const
     return -1;
 }
 
+juce::Rectangle<int> SettingsScreenComponent::compactViewport() const
+{
+    return getLocalBounds().withTrimmedTop (AbcTrainTheme::Spacing::small + compactControlHeight
+                                            + AbcTrainTheme::Spacing::small);
+}
+
 void SettingsScreenComponent::selectPage (Page page)
 {
     currentPage = page;
+    applyPageVisibility();
+    syncControlsFromSettings();
+    visibilityChanged();
+}
+
+void SettingsScreenComponent::applyPageVisibility()
+{
+    const auto page = currentPage;
 
     for (auto& row : rows)
         row.control->setVisible (row.page == page && rowIsOffered (row));
@@ -953,14 +996,23 @@ void SettingsScreenComponent::selectPage (Page page)
     feedbackButton.setVisible (page == Page::about);
     communityButton.setVisible (page == Page::about);
     betaToggle.setVisible (page == Page::about);
-
-    syncControlsFromSettings();
-    visibilityChanged();
 }
 
 void SettingsScreenComponent::resized()
 {
     modeSwitch.setBounds (modeSwitchBounds());
+
+    const auto isCompact = compact();
+    compactBackButton.setVisible (isCompact && compactShowingPage);
+    modeSwitch.setVisible (! isCompact || ! compactShowingPage);
+
+    if (isCompact)
+    {
+        applyPageVisibility();
+        compactBackButton.setBounds (getLocalBounds().reduced (AbcTrainTheme::Spacing::small, 0)
+                                         .withTrimmedTop (AbcTrainTheme::Spacing::small)
+                                         .removeFromTop (compactControlHeight).removeFromLeft (200));
+    }
 
     auto page = pageBounds();
     page.removeFromTop (30 + AbcTrainTheme::Spacing::small);   // heading
@@ -978,6 +1030,29 @@ void SettingsScreenComponent::resized()
 
         if (row.page != currentPage || ! rowIsOffered (row))
             continue;
+
+        if (isCompact)
+        {
+            if (row.control == &calibrationRow)
+            {
+                // Three lines: play, the fader, keep or forget.
+                row.bounds = page.removeFromTop (compactTextHeight + 3 * (compactControlHeight + 8) + 8);
+                calibrationRow.setBounds (row.bounds.withTrimmedTop (compactTextHeight).withTrimmedBottom (8));
+                continue;
+            }
+
+            row.bounds = page.removeFromTop (compactTextHeight + compactControlHeight + 14);
+            auto box = row.bounds.withTrimmedTop (compactTextHeight).removeFromTop (compactControlHeight);
+
+            if (row.controlWidth > 0)
+                box = box.withWidth (juce::jmin (box.getWidth(), juce::jmax (row.controlWidth, 120)));
+
+            if (auto* slider = dynamic_cast<juce::Slider*> (row.control))
+                slider->setTextBoxStyle (juce::Slider::TextBoxRight, false, 56, compactControlHeight - 10);
+
+            row.control->setBounds (box);
+            continue;
+        }
 
         // Calibration gets a second line and the whole width for its fader:
         // squeezed into the control column it was a thumb's width long,
@@ -1012,6 +1087,31 @@ void SettingsScreenComponent::resized()
         // "Play noise" on the title line, where the other rows keep their
         // control; the fader and what to do with it on the line under it.
         auto all = calibrationRow.getLocalBounds();
+
+        if (isCompact)
+        {
+            const auto line = [&all]
+            {
+                auto r = all.removeFromTop (compactControlHeight);
+                all.removeFromTop (8);
+                return r;
+            };
+
+            calibrationNoiseButton.setBounds (line().removeFromLeft (180));
+            auto r = line();
+            calibrationDown.setBounds (r.removeFromLeft (r.getHeight()));
+            r.removeFromLeft (6);
+            calibrationUp.setBounds (r.removeFromRight (r.getHeight()));
+            r.removeFromRight (6);
+            calibrationSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 88, r.getHeight());
+            calibrationSlider.setBounds (r);
+            auto keep = line();
+            calibrationSaveButton.setBounds (keep.removeFromLeft ((keep.getWidth() - 8) / 2));
+            keep.removeFromLeft (8);
+            calibrationClearButton.setBounds (keep);
+        }
+        else
+        {
         calibrationNoiseButton.setBounds (all.removeFromTop (controlHeight + 6).withTrimmedTop (6)
                                              .removeFromRight (160));
         auto r = all.removeFromBottom (controlHeight);
@@ -1025,12 +1125,13 @@ void SettingsScreenComponent::resized()
         r.removeFromRight (6);
         calibrationSlider.setTextBoxStyle (juce::Slider::TextBoxRight, false, 88, r.getHeight());
         calibrationSlider.setBounds (r);
+        }
     }
     {
         // The pair on the left, the test on the right - the same edge as
         // every other row's button.
         auto r = profileRow.getLocalBounds();
-        profileTestButton.setBounds (r.removeFromRight (180));
+        profileTestButton.setBounds (r.removeFromRight (juce::jmin (180, r.getWidth() * 2 / 5)));
         r.removeFromRight (AbcTrainTheme::Spacing::small);
         profileSelector.setBounds (r.removeFromLeft (juce::jmin (r.getWidth(), standardControlWidth)));
     }
@@ -1048,23 +1149,37 @@ void SettingsScreenComponent::resized()
     }
     {
         auto r = backgroundButtons.getLocalBounds();
-        chooseBackgroundButton.setBounds (r.removeFromLeft (200));
+        chooseBackgroundButton.setBounds (r.removeFromLeft (juce::jmin (200, (r.getWidth() - 8) * 3 / 5)));
         r.removeFromLeft (8);
-        clearBackgroundButton.setBounds (r.removeFromLeft (120));
+        clearBackgroundButton.setBounds (r.removeFromLeft (juce::jmin (120, r.getWidth())));
     }
 
     if (currentPage == Page::training)
         resetButton.setBounds (page.removeFromTop (12 + controlHeight).removeFromBottom (controlHeight)
-                                   .withX (page.getX() + titleColumn).withWidth (240));
+                                   .withX (page.getX() + (isCompact ? 0 : titleColumn))
+                                   .withWidth (juce::jmin (240, page.getWidth())));
 
     if (currentPage == Page::about)
     {
         page.removeFromTop (AbcTrainTheme::Spacing::medium);
-        auto body = page.removeFromTop (juce::jmin (page.getHeight() - 88, 420))
+        auto body = page.removeFromTop (isCompact ? 260 : juce::jmin (page.getHeight() - 88, 420))
                         .removeFromLeft (juce::jmin (page.getWidth(), 760));
         licenceView.setBounds (body);
         auto row = juce::Rectangle<int> (body.getX(), body.getBottom() + AbcTrainTheme::Spacing::small,
                                          body.getWidth(), controlHeight);
+        if (isCompact)
+        {
+            // One button per line, full width, under the licence.
+            for (auto* b : { &licenceToggle, &feedbackButton, &betaToggle, &communityButton })
+            {
+                b->setBounds (row.withHeight (compactControlHeight));
+                row = row.withY (row.getY() + compactControlHeight + AbcTrainTheme::Spacing::small);
+            }
+
+            page.setY (row.getY());
+        }
+        else
+        {
         licenceToggle.setBounds (row.removeFromLeft (juce::jmin (240, row.getWidth() / 3)));
         row.removeFromLeft (AbcTrainTheme::Spacing::small);
         feedbackButton.setBounds (row.removeFromLeft (juce::jmin (280, row.getWidth() / 2)));
@@ -1075,6 +1190,27 @@ void SettingsScreenComponent::resized()
         auto row2 = juce::Rectangle<int> (body.getX(), row.getBottom() + AbcTrainTheme::Spacing::small,
                                           body.getWidth(), controlHeight);
         communityButton.setBounds (row2.removeFromLeft (juce::jmin (280, row2.getWidth())));
+        }
+    }
+
+    if (isCompact)
+    {
+        // How far the column runs past the screen, and nothing that has
+        // scrolled up under the back button stays clickable there.
+        const auto view = compactViewport();
+        compactScrollMax = juce::jmax (0, page.getY() + compactScroll - view.getBottom());
+
+        if (compactScroll > compactScrollMax)
+        {
+            compactScroll = compactScrollMax;
+            resized();
+            return;
+        }
+
+        for (auto* child : getChildren())
+            if (child != &compactBackButton && child != &modeSwitch && child->isVisible()
+                && (! compactShowingPage || child->getY() < view.getY()))
+                child->setVisible (false);
     }
 
     closeButton.setBounds (pageBounds().removeFromBottom (32).removeFromRight (100));
@@ -1115,7 +1251,7 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
 
     for (int i = 0; i < numPages; ++i)
     {
-        const auto bounds = rowArea.removeFromTop (menuRowHeight);
+        const auto bounds = rowArea.removeFromTop (compact() ? 48 : menuRowHeight);
         rowArea.removeFromTop (2);
 
         const auto selected = (int) currentPage == i;
@@ -1146,9 +1282,18 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     g.setColour (theme.panelBackground);
     g.fillRect (getLocalBounds());
 
-    paintSideMenu (g, sideMenuBounds());
+    if (! sideMenuBounds().isEmpty())
+        paintSideMenu (g, sideMenuBounds());
 
     auto page = pageBounds();
+
+    if (page.isEmpty())
+        return;
+
+    juce::Graphics::ScopedSaveState clipToColumn (g);
+
+    if (compact())
+        g.reduceClipRegion (compactViewport());
 
     const juce::String heading = currentPage == Page::training   ? localisation.getText ("set.page.training")
                                : currentPage == Page::hearing    ? localisation.getText ("set.page.hearing")
@@ -1196,7 +1341,8 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
         const auto enabled = row.control->isEnabled();
         auto rowBounds = row.bounds;
-        auto text = rowBounds.removeFromLeft (titleColumn - 24);
+        auto text = compact() ? rowBounds.removeFromTop (compactTextHeight - 4)
+                              : rowBounds.removeFromLeft (titleColumn - 24);
 
         g.setColour (enabled ? theme.textBright : theme.textDim);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
@@ -1233,11 +1379,41 @@ void SettingsScreenComponent::mouseExit (const juce::MouseEvent&)
 
 void SettingsScreenComponent::mouseUp (const juce::MouseEvent& event)
 {
+    if (! event.mouseWasClicked())
+        return;   // the end of a drag-scroll, not a tap
+
     const auto found = menuRowAt (event.getPosition());
 
     if (found >= 0)
     {
+        if (compact())
+        {
+            compactShowingPage = true;
+            compactScroll = 0;
+        }
+
         selectPage ((Page) found);
+        resized();
+        repaint();
+    }
+}
+
+void SettingsScreenComponent::mouseDown (const juce::MouseEvent&)
+{
+    scrollAtDragStart = compactScroll;
+}
+
+void SettingsScreenComponent::mouseDrag (const juce::MouseEvent& event)
+{
+    if (! compact() || ! compactShowingPage)
+        return;
+
+    const auto target = juce::jlimit (0, compactScrollMax, scrollAtDragStart - event.getDistanceFromDragStartY());
+
+    if (target != compactScroll)
+    {
+        compactScroll = target;
+        resized();
         repaint();
     }
 }

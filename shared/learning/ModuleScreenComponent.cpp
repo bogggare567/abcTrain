@@ -760,7 +760,8 @@ void ModuleScreenComponent::mouseExit (const juce::MouseEvent&)
 
 void ModuleScreenComponent::mouseUp (const juce::MouseEvent& event)
 {
-    if (phase != Phase::shelf)
+    // A drag was a scroll (mouseDrag), not a choice.
+    if (phase != Phase::shelf || ! event.mouseWasClicked())
         return;
 
     if (! shelfListBounds().contains (event.getPosition()))
@@ -772,6 +773,21 @@ void ModuleScreenComponent::mouseUp (const juce::MouseEvent& event)
             openModule (i);
             return;
         }
+}
+
+void ModuleScreenComponent::mouseDown (const juce::MouseEvent&)
+{
+    scrollAtDragStart = shelfScroll;
+}
+
+void ModuleScreenComponent::mouseDrag (const juce::MouseEvent& e)
+{
+    if (phase != Phase::shelf || e.mouseWasClicked())
+        return;
+
+    const auto maxScroll = juce::jmax (0.0f, (float) (shelfContentHeight() - shelfListBounds().getHeight()));
+    shelfScroll = juce::jlimit (0.0f, maxScroll, scrollAtDragStart - (float) e.getDistanceFromDragStartY());
+    repaint();
 }
 
 void ModuleScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)

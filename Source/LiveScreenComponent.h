@@ -255,6 +255,13 @@ private:
     Tab tab = Tab::seminar;
 
     SegmentedChoice tabs;
+
+    // A phone held upright (ADR 060): one card at a time. The battle tab's
+    // two cards - people and the bot - are each taller than half a phone,
+    // so instead of side by side they take turns under this switch.
+    bool compact() const noexcept { return getWidth() < 600; }
+    SegmentedChoice sideChoice;
+    int compactSide = 0;   // 0 people, 1 bot
     juce::TextButton accountButton;
 
     // Seminar: join

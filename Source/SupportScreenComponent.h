@@ -76,6 +76,7 @@ public:
 private:
     void timerCallback() override;
     void layout();
+    void layoutCompact();   // a phone held upright (ADR 060)
     void paintInside (juce::Graphics&);
     void paintAccount (juce::Graphics&);
 

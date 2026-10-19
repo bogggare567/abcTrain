@@ -43,6 +43,15 @@ LiveScreenComponent::LiveScreenComponent()
     tabs.onChange = [this] (int value) { showTab ((Tab) value); };
     addAndMakeVisible (tabs);
 
+    sideChoice.onChange = [this] (int value)
+    {
+        compactSide = value;
+        refreshVisibility();
+        resized();
+        repaint();
+    };
+    addChildComponent (sideChoice);
+
     accountButton.onClick = [this]
     {
         // Signed in, the same button signs out: this computer forgets its
@@ -371,6 +380,8 @@ void LiveScreenComponent::setStrings (Strings newStrings)
 
     tabs.setOptions ({ 0, 1, 2 }, { text.seminar, text.battle, text.rating });
     tabs.setValue ((int) tab);
+    sideChoice.setOptions ({ 0, 1 }, { text.humansTitle, text.botTitle });
+    sideChoice.setValue (compactSide);
     accountButton.setButtonText (text.signIn);
     checkAgainButton.setButtonText (text.checkAgain);
     refreshAccountButton();
@@ -736,7 +747,8 @@ void LiveScreenComponent::refreshVisibility()
    #else
     constexpr auto canHost = true;
    #endif
-    const auto hosting = canHost && onSeminar && ! roomOpen;
+    // A phone-width window has no second card to put them in (ADR 060).
+    const auto hosting = canHost && onSeminar && ! roomOpen && ! compact();
 
     codeEditor.setVisible (onSeminar);
     joinButton.setVisible (onSeminar);
@@ -756,12 +768,20 @@ void LiveScreenComponent::refreshVisibility()
     for (auto* b : { &playAButton, &playBButton, &stopButton })
         b->setVisible (onSeminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
 
-    for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &searchButton,
-                     (juce::Component*) &battleSignInButton, (juce::Component*) &communityButton,
-                     (juce::Component*) &botChoice, (juce::Component*) &botStartButton })
-        c->setVisible (battle);
+    // On a phone only one of the battle's two cards is up (ADR 060).
+    const auto peopleShown = battle && (! compact() || compactSide == 0);
+    const auto botShown = battle && (! compact() || compactSide == 1);
 
-    challengeButton.setVisible (battle && readyForYou);
+    for (auto* c : { (juce::Component*) &searchButton, (juce::Component*) &battleSignInButton,
+                     (juce::Component*) &communityButton })
+        c->setVisible (peopleShown);
+
+    for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &botChoice,
+                     (juce::Component*) &botStartButton })
+        c->setVisible (botShown);
+
+    sideChoice.setVisible (battle && compact());
+    challengeButton.setVisible (peopleShown && readyForYou);
 
     for (auto* c : { (juce::Component*) &ratingFamily, (juce::Component*) &scopeChoice,
                      (juce::Component*) &periodChoice, (juce::Component*) &openSiteButton })
@@ -800,11 +820,26 @@ void LiveScreenComponent::refreshVisibility()
 void LiveScreenComponent::resized()
 {
     using namespace AbcTrainTheme;
-    auto area = getLocalBounds().reduced (Spacing::large, Spacing::medium);
+    auto area = getLocalBounds().reduced (compact() ? Spacing::medium : Spacing::large, Spacing::medium);
 
     auto top = area.removeFromTop (tabsRowHeight);
-    tabs.setBounds (top.removeFromLeft (juce::jmax (300, tabs.getPreferredWidth())));
-    accountButton.setBounds (top.removeFromRight (160));
+
+    if (compact())
+    {
+        // The three tabs take the row; signing in lives on the battle card
+        // and in Settings, where a phone has room for it.
+        tabs.setBounds (top);
+        accountButton.setBounds ({});
+    }
+    else
+    {
+        tabs.setBounds (top.removeFromLeft (juce::jmax (300, tabs.getPreferredWidth())));
+        accountButton.setBounds (top.removeFromRight (160));
+    }
+
+    // Visibility depends on the width (one card or two), so a rotation or a
+    // Split View resize has to re-decide it, not just move things.
+    refreshVisibility();
 
     area.removeFromTop (Spacing::large);
     area.removeFromBottom (28);   // the note line
@@ -833,9 +868,20 @@ void LiveScreenComponent::resized()
 void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
-    cardA = area.removeFromLeft (area.getWidth() * 38 / 100);
-    area.removeFromLeft (Spacing::large);
-    cardB = area;
+
+    if (compact())
+    {
+        // A phone joins a seminar; it does not host one (ADR 060).
+        cardA = area.removeFromTop (juce::jmin (area.getHeight(), cardTitleHeight + 70 + 22 + 48 + Spacing::medium
+                                                                    + controlHeight + 4 + Spacing::large * 2));
+        cardB = {};
+    }
+    else
+    {
+        cardA = area.removeFromLeft (area.getWidth() * 38 / 100);
+        area.removeFromLeft (Spacing::large);
+        cardB = area;
+    }
 
     {
         auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 70);
@@ -844,6 +890,9 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
         a.removeFromTop (Spacing::medium);
         joinButton.setBounds (a.removeFromTop (controlHeight + 4));
     }
+
+    if (cardB.isEmpty())
+        return;
 
     auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
 
@@ -915,9 +964,21 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
 void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
-    cardA = area.removeFromLeft (area.getWidth() * 38 / 100);
-    area.removeFromLeft (Spacing::large);
-    cardB = area;
+
+    if (compact())
+    {
+        sideChoice.setBounds (area.removeFromTop (controlHeight));
+        area.removeFromTop (Spacing::medium);
+        cardA = compactSide == 0 ? area : juce::Rectangle<int>();
+        cardB = compactSide == 1 ? area : juce::Rectangle<int>();
+    }
+    else
+    {
+        sideChoice.setBounds ({});
+        cardA = area.removeFromLeft (area.getWidth() * 38 / 100);
+        area.removeFromLeft (Spacing::large);
+        cardB = area;
+    }
 
     // Right: a bot - the battle that works today, offline.
     auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 26);
@@ -953,6 +1014,23 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
 void LiveScreenComponent::layoutRating (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
+    if (compact())
+    {
+        // Two rows: which family, then which slice of it. The site link
+        // goes: on a phone the site is the same screen, bigger.
+        ratingFamily.setBounds (area.removeFromTop (controlHeight));
+        area.removeFromTop (Spacing::small);
+        auto row = area.removeFromTop (controlHeight);
+        scopeChoice.setBounds (row.removeFromLeft ((row.getWidth() - Spacing::small) / 2));
+        row.removeFromLeft (Spacing::small);
+        periodChoice.setBounds (row);
+        openSiteButton.setBounds ({});
+        area.removeFromTop (Spacing::medium);
+        tableArea = area;
+        cardA = cardB = {};
+        return;
+    }
+
     auto filters = area.removeFromTop (controlHeight);
     ratingFamily.setBounds (filters.removeFromLeft (juce::jmax (420, ratingFamily.getPreferredWidth())));
     filters.removeFromLeft (Spacing::medium);
@@ -993,6 +1071,9 @@ void LiveScreenComponent::layoutOverlay()
 
 void LiveScreenComponent::paintCard (juce::Graphics& g, juce::Rectangle<int> card, const juce::String& title) const
 {
+    if (card.isEmpty())
+        return;   // the card a phone is not showing (ADR 060)
+
     const auto& theme = AbcTrainTheme::current();
     g.setColour (theme.panelBackground);
     g.fillRect (card);
@@ -1010,7 +1091,10 @@ void LiveScreenComponent::paint (juce::Graphics& g)
     const auto& theme = AbcTrainTheme::current();
     g.fillAll (theme.windowBackground);
 
-    // Account state beside the button.
+    // Account state beside the button - on a desktop. A phone's tab row is
+    // the three tabs and nothing else (ADR 060); who is signed in is said
+    // on the battle card and in Settings.
+    if (! compact())
     {
         auto top = getLocalBounds().reduced (AbcTrainTheme::Spacing::large, AbcTrainTheme::Spacing::medium)
                        .removeFromTop (tabsRowHeight);
@@ -1026,8 +1110,9 @@ void LiveScreenComponent::paint (juce::Graphics& g)
         LnF::fitText (g, who, top.removeFromRight (220), juce::Justification::centredRight, true);
     }
 
-    paintLinkStatus (g, tabs.getBounds().withX (tabs.getRight() + AbcTrainTheme::Spacing::large)
-                            .withRight (accountButton.getX() - 230));
+    if (! compact())
+        paintLinkStatus (g, tabs.getBounds().withX (tabs.getRight() + AbcTrainTheme::Spacing::large)
+                                .withRight (accountButton.getX() - 230));
     paintBanner (g);
 
     if (tab == Tab::seminar)       paintSeminar (g);
@@ -1138,6 +1223,9 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
 
         return;
     }
+
+    if (cardB.isEmpty())
+        return;   // a phone: no hosting card (ADR 060)
 
     paintCard (g, cardB, text.hostTitle);
     auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);

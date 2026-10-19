@@ -181,6 +181,11 @@ private:
     void timerCallback() override;
 
     juce::Rectangle<int> cardBounds() const;
+
+    // A phone held upright (ADR 060): the four numbers as two rows of two,
+    // the range plot over its sentence instead of beside it, and "Play
+    // again" a row of its own. Same content, one column.
+    bool compact() const noexcept { return getWidth() < 600; }
     void paintStat (juce::Graphics&, juce::Rectangle<int>, const juce::String& caption,
                     const juce::String& value, juce::Colour valueColour);
 

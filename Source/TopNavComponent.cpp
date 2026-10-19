@@ -114,6 +114,24 @@ int TopNavComponent::lastTabRight() const
     return tabsLeft;
 }
 
+void TopNavComponent::setCompact (bool shouldBeCompact)
+{
+    if (compact == shouldBeCompact)
+        return;
+
+    compact = shouldBeCompact;
+    hovered = -1;
+    repaint();
+}
+
+bool TopNavComponent::shownInBar (int index) const noexcept
+{
+    if (index < 0 || index >= numItems || hidden[(size_t) index])
+        return false;
+
+    return ! (compact && static_cast<Item> (index) == Item::achievements);
+}
+
 void TopNavComponent::setItemHidden (Item item, bool shouldBeHidden)
 {
     hidden[(size_t) item] = shouldBeHidden;
@@ -122,8 +140,28 @@ void TopNavComponent::setItemHidden (Item item, bool shouldBeHidden)
 
 juce::Rectangle<int> TopNavComponent::tabBounds (int index) const
 {
-    if (index < 0 || index >= numItems || hidden[(size_t) index])
+    if (! shownInBar (index))
         return {};
+
+    if (compact)
+    {
+        // Equal cells across the whole width: a thumb aims at a column,
+        // not at a word, and every cell is at least 64 points wide on the
+        // narrowest phone - well over the 44 a finger needs.
+        int count = 0, position = 0;
+
+        for (int i = 0; i < numItems; ++i)
+            if (shownInBar (i))
+            {
+                if (i == index)
+                    position = count;
+                ++count;
+            }
+
+        const auto cell = (float) getWidth() / (float) juce::jmax (1, count);
+        const auto x = juce::roundToInt (cell * (float) position);
+        return { x, 0, juce::roundToInt (cell * (float) (position + 1)) - x, compactHeight };
+    }
 
     const auto font = AbcTrainLookAndFeel::headingFont();
     auto x = tabsLeft;
@@ -247,8 +285,72 @@ void TopNavComponent::timerCallback()
         repaint();
 }
 
+void TopNavComponent::paintCompact (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+
+    // A surface of its own here, unlike the desktop bar: content scrolls
+    // under nothing on a phone, but the bar has to read as a bar against
+    // whatever the page ends with, and the home indicator below it needs
+    // the same colour so the two are one strip.
+    g.setColour (theme.windowBackground);
+    g.fillRect (getLocalBounds());
+    g.setColour (theme.divider);
+    g.fillRect (0, 0, getWidth(), 1);
+
+    auto iconFor = [] (Item item)
+    {
+        using AppIcons::Icon;
+        switch (item)
+        {
+            case Item::trainings:    return Icon::home;
+            case Item::studio:       return Icon::learnerEQ;
+            case Item::achievements: return Icon::award;
+            case Item::sounds:       return Icon::sound;
+            case Item::settings:     return Icon::settings;
+            case Item::live:         return Icon::scope;
+        }
+        return Icon::home;
+    };
+
+    for (int i = 0; i < numItems; ++i)
+    {
+        const auto cell = tabBounds (i);
+
+        if (cell.isEmpty())
+            continue;
+
+        const auto isActive = static_cast<int> (active) == i;
+        const auto colour = isActive ? theme.accent : theme.textDim;
+
+        // The selected tab: a short bar on the bar's top edge, the colour
+        // of the icon - the filled block of the desktop bar would be a
+        // 75-point slab of colour at the bottom of a phone.
+        if (isActive)
+        {
+            g.setColour (theme.accent);
+            g.fillRect (cell.withSizeKeepingCentre (28, 2).withY (0));
+        }
+
+        auto inner = cell.reduced (2, 6);
+        AppIcons::draw (g, iconFor (static_cast<Item> (i)),
+                        inner.removeFromTop (24).withSizeKeepingCentre (22, 22).toFloat(), colour);
+        inner.removeFromTop (3);
+
+        g.setColour (colour);
+        g.setFont (AbcTrainLookAndFeel::labelFont().withHeight (11.0f));
+        AbcTrainLookAndFeel::fitText (g, labels[i], inner, juce::Justification::centredTop);
+    }
+}
+
 void TopNavComponent::paint (juce::Graphics& g)
 {
+    if (compact)
+    {
+        paintCompact (g);
+        return;
+    }
+
     const auto& theme = AbcTrainTheme::current();
     const auto bounds = getLocalBounds();
 

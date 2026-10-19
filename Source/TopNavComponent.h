@@ -77,6 +77,18 @@ public:
 
     static constexpr int preferredHeight = 59;
 
+    // Phones (ADR 060): the same items as a tab bar along the bottom edge -
+    // an icon over a short word, equal widths, the way every phone app
+    // navigates. A row of words across the top does not fit 390 points
+    // and sits where a thumb does not reach. Achievements leave the bar
+    // here (five tabs is the most a phone bar holds); the home screen's
+    // badge strip still opens them. The bar's own height is compactHeight;
+    // anything below it in its bounds is the home indicator's area, kept
+    // clear and painted as background.
+    void setCompact (bool shouldBeCompact);
+    bool isCompact() const noexcept { return compact; }
+    static constexpr int compactHeight = 56;
+
     void paint (juce::Graphics&) override;
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
@@ -93,6 +105,10 @@ private:
     int lastTabRight() const;
     juce::Rectangle<int> rightCell (int slotFromRight) const;
     juce::String streakCaption() const;
+    bool shownInBar (int index) const noexcept;
+    void paintCompact (juce::Graphics&);
+
+    bool compact = false;
 
     juce::StringArray labels;
     juce::String streakTemplate;

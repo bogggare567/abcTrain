@@ -75,6 +75,15 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     statusLabel.setJustificationType (juce::Justification::centred);
     addAndMakeVisible (statusLabel);
 
+    compactBackButton.onClick = [this]
+    {
+        stopPreview();
+        compactShowingFiles = false;
+        resized();
+        repaint();
+    };
+    addChildComponent (compactBackButton);
+
     closeButton.onClick = [this]
     {
         setVisible (false);
@@ -452,11 +461,18 @@ namespace
 
 juce::Rectangle<int> TrainingSoundsComponent::railBounds() const
 {
+    if (compact())
+        return compactShowingFiles ? juce::Rectangle<int>() : cardBounds();
+
     return cardBounds().withWidth (railWidth);
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::filePaneBounds() const
 {
+    if (compact())
+        return compactShowingFiles ? cardBounds().withTrimmedTop (44).reduced (AbcTrainTheme::Spacing::medium, 0)
+                                   : juce::Rectangle<int>();
+
     return cardBounds().withTrimmedLeft (railWidth).reduced (AbcTrainTheme::Spacing::large);
 }
 
@@ -1419,7 +1435,16 @@ void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
         else if (i == pinkNoiseRow)
             selectPinkNoise();
         else
+        {
             selectCategory (i);
+
+            if (compact())
+            {
+                compactShowingFiles = true;
+                resized();
+                repaint();
+            }
+        }
 
         return;
     }
@@ -1565,6 +1590,15 @@ void TrainingSoundsComponent::resized()
 
     rootFolderLabel.setVisible (false);
     statusLabel.setVisible (false);
+
+    {
+        const auto showBack = compact() && compactShowingFiles;
+        compactBackButton.setButtonText (juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xb9  ")) + text.trainOnSection);
+        compactBackButton.setVisible (showBack);
+        compactBackButton.setBounds (showBack ? cardBounds().removeFromTop (44).reduced (AbcTrainTheme::Spacing::medium, 6)
+                                                  .withWidth (juce::jmin (260, getWidth() - 2 * AbcTrainTheme::Spacing::medium))
+                                              : juce::Rectangle<int>());
+    }
 
     auto footer = cardBounds().reduced (Spacing::large).removeFromBottom (footerHeight);
     closeButton.setBounds (footer.removeFromRight (110));

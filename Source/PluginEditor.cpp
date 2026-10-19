@@ -568,6 +568,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
             studioScreen.close();
         }
 
+        // A phone stays upright everywhere but the Studio, which asks to be
+        // turned sideways (ADR 060).
+        setPhoneOrientationsFor (onStudio);
+
         if (onAchievements)
             showAchievementsScreen();
 
@@ -999,6 +1003,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     settingsScreen.onHearingTest = [this] { openHearingTest(); };
     settingsScreen.onHearingProfileChanged = [this] { processor.applyHearingProfile(); };
     addChildComponent (studioScreen);
+    studioScreen.setRotatePromptAllowed (isPhone());
+    setPhoneOrientationsFor (false);
     studioScreen.onLessons = [this] { openLessons(); };
     addChildComponent (liveScreen);
     liveScreen.setAccount (&processor.getLiveAccount());
@@ -1135,7 +1141,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // built for; in screen points it is lower still, because the scale
     // follows the window down to 0.8.
     setResizable (true, false);
-    setResizeLimits (minLogicalWidth, minLogicalHeight, 16000, 16000);
+    setResizeLimits (floorWidth, floorHeight, 16000, 16000);
 
     // Open at the size it was closed at, or - the first time - at most of
     // the screen it appears on. No fixed pixel size: the scale is derived
@@ -1162,8 +1168,8 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
         const auto scale = scaleForWindow (w, h);
         setUiScale (scale);
-        setSize (juce::jmax (minLogicalWidth, juce::roundToInt ((float) w / scale)),
-                 juce::jmax (minLogicalHeight, juce::roundToInt ((float) h / scale)));
+        setSize (juce::jmax (floorWidth, juce::roundToInt ((float) w / scale)),
+                 juce::jmax (floorHeight, juce::roundToInt ((float) h / scale)));
     }
 
     // Updates on their own, when the player left that on (ADR 042) - a
@@ -1411,6 +1417,54 @@ void EarTrainerEditor::checkForUpdates (bool silent)
     });
 }
 
+bool EarTrainerEditor::isPhone()
+{
+    // Pretending to be one: the snapshot tool's phone sizes.
+    if (std::getenv ("SNAP_SAFE") != nullptr)
+        return true;
+
+   #if JUCE_IOS || JUCE_ANDROID
+    if (const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+        return juce::jmin (display->totalArea.getWidth(), display->totalArea.getHeight()) < 600;
+   #endif
+
+    return false;
+}
+
+void EarTrainerEditor::setPhoneOrientationsFor (bool studio)
+{
+    juce::ignoreUnused (studio);
+
+   #if JUCE_IOS || JUCE_ANDROID
+    if (isPhone())
+        juce::Desktop::getInstance().setOrientationsEnabled (
+            studio ? juce::Desktop::allOrientations : juce::Desktop::upright);
+   #endif
+}
+
+juce::BorderSize<int> EarTrainerEditor::safeInsets() const
+{
+    juce::BorderSize<int> physical;
+
+   #if JUCE_IOS || JUCE_ANDROID
+    if (const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+        physical = display->safeAreaInsets;
+   #endif
+
+    if (const auto* fake = std::getenv ("SNAP_SAFE"))
+    {
+        const auto v = juce::StringArray::fromTokens (fake, ",", "");
+
+        if (v.size() == 4)
+            physical = { v[0].getIntValue(), v[1].getIntValue(), v[2].getIntValue(), v[3].getIntValue() };
+    }
+
+    const auto scale = juce::jmax (0.1f, uiScale);
+    const auto logical = [scale] (int points) { return (int) std::ceil ((float) points / scale); };
+    return { logical (physical.getTop()), logical (physical.getLeft()),
+             logical (physical.getBottom()), logical (physical.getRight()) };
+}
+
 float EarTrainerEditor::scaleForWindow (int physicalWidth, int physicalHeight) noexcept
 {
     // The reference is a size between the layout's floor (940 x 620) and
@@ -1419,6 +1473,14 @@ float EarTrainerEditor::scaleForWindow (int physicalWidth, int physicalHeight) n
     // directions - the other one gets more room rather than stretched text.
     // So a wide window shows more, a big one shows everything bigger, and
     // nothing is ever squeezed below what the screens were built for.
+   #if JUCE_IOS || JUCE_ANDROID
+    // A phone's points are already sized for an eye at arm's length and a
+    // finger: drawn 1:1, laid out compact (ADR 060). Scaling the desktop
+    // design down to fit is what made every control too small to press.
+    if (juce::jmin (physicalWidth, physicalHeight) < 600)
+        return 1.0f;
+   #endif
+
     constexpr float referenceWidth = 1100.0f, referenceHeight = 780.0f;
     const auto s = juce::jmin ((float) physicalWidth / referenceWidth,
                                (float) physicalHeight / referenceHeight);
@@ -1447,8 +1509,8 @@ void EarTrainerEditor::adaptScaleToWindow()
 
     // Same size on screen, new scale: the logical size is what changes.
     setUiScale (wanted);
-    setSize (juce::jmax (minLogicalWidth, juce::roundToInt ((float) physicalWidth / wanted)),
-             juce::jmax (minLogicalHeight, juce::roundToInt ((float) physicalHeight / wanted)));
+    setSize (juce::jmax (floorWidth, juce::roundToInt ((float) physicalWidth / wanted)),
+             juce::jmax (floorHeight, juce::roundToInt ((float) physicalHeight / wanted)));
 }
 
 void EarTrainerEditor::parentHierarchyChanged()
@@ -1677,12 +1739,12 @@ void EarTrainerEditor::resized()
         });
     }
 
-    updateWindow.setBounds (getLocalBounds());
+    updateWindow.setBounds (safeBounds());
 
     // The welcome follows the window. It used to be sized only when shown,
     // so a window resized while it was up - or opened at one size and
     // fitted to the screen a moment later - drew it for the old size.
-    supportScreen.setBounds (getLocalBounds());
+    supportScreen.setBounds (safeBounds());
 
     using namespace AbcTrainTheme;
 
@@ -1698,10 +1760,14 @@ void EarTrainerEditor::resized()
     // One line of context above the grid - the streak and today's
     // challenge. The level lives on each tile now, because that is where
     // it is actually true.
+    // On a phone the page starts under the notch, not under a bar.
+    const auto homeTop = compactLayout() ? contentBounds().getY() + Spacing::medium
+                                         : Spacing::large + 32 + Spacing::small;
     {
+        const auto statusHeight = compactLayout() ? homeStatusHeightCompact : homeStatusHeight;
         auto statusRow = contentBounds().reduced (Spacing::large, 0)
-                             .withTop (Spacing::large + 32 + Spacing::small)
-                             .withHeight (homeStatusHeight);
+                             .withTop (homeTop)
+                             .withHeight (statusHeight);
 
         focusBand.setBounds (statusRow);
         continueButton.setBounds (focusBand.getActionSlot() + statusRow.getPosition());
@@ -1709,15 +1775,18 @@ void EarTrainerEditor::resized()
 
     homeScreen.setBounds (contentBounds()
                               .reduced (Spacing::large, 0)
-                              .withTop (Spacing::large + 32 + Spacing::small
-                                         + homeStatusHeight + Spacing::small)
-                              .withTrimmedBottom (Spacing::large + 30 + Spacing::small));
+                              .withTop (homeTop
+                                         + (compactLayout() ? homeStatusHeightCompact : homeStatusHeight)
+                                         + Spacing::small)
+                              .withTrimmedBottom (compactLayout() ? Spacing::small
+                                                                  : Spacing::large + 30 + Spacing::small));
 
     // No title row any more. The app's name is the wordmark in the bar
     // above, and the *exercise*'s name is the first thing in the row
     // below - so the 60px this used to reserve was reserving it for a
     // third copy of one of those two.
-    auto area = contentBounds().reduced (Spacing::large, Spacing::medium);
+    auto area = contentBounds().reduced (compactLayout() ? Spacing::medium : Spacing::large, Spacing::medium);
+    const auto phone = compactLayout();
 
     // --- the tool bar, bottom left ---------------------------------------
     {
@@ -1725,10 +1794,28 @@ void EarTrainerEditor::resized()
         // Training Sounds are tabs in it, so their buttons are gone rather
         // than hidden - two ways to reach one screen is two things to keep
         // in step.
-        const auto navHeight = railIsVisible() ? TopNavComponent::preferredHeight : 0;
-        topNav.setBounds (getLocalBounds().removeFromTop (navHeight));
-        hearingNotice.setBounds (getLocalBounds().withTrimmedTop (railIsVisible() ? navHeight : 0)
+        // On a phone the bar is the bottom edge, and its bounds run on
+        // down through the home indicator's strip so the two read as one.
+        const auto compact = compactLayout();
+        topNav.setCompact (compact);
+
+        if (compact)
+        {
+            const auto insets = safeInsets();
+            topNav.setBounds (getLocalBounds().withTrimmedLeft (insets.getLeft())
+                                              .withTrimmedRight (insets.getRight())
+                                              .removeFromBottom (railIsVisible() ? TopNavComponent::compactHeight
+                                                                                    + insets.getBottom()
+                                                                                 : 0));
+            hearingNotice.setBounds (safeBounds().removeFromTop (HearingNotice::height));
+        }
+        else
+        {
+            const auto navHeight = railIsVisible() ? TopNavComponent::preferredHeight : 0;
+            topNav.setBounds (safeBounds().removeFromTop (navHeight));
+            hearingNotice.setBounds (safeBounds().withTrimmedTop (railIsVisible() ? navHeight : 0)
                                                  .removeFromTop (HearingNotice::height));
+        }
 
         // Theme, updates and the output level live *on* the bar but stay
         // the editor's own widgets - see TopNavComponent for why moving
@@ -1744,9 +1831,27 @@ void EarTrainerEditor::resized()
         auto bar = contentBounds().reduced (Spacing::large)
                        .removeFromBottom (22);
 
-        soundkorbLink.setBounds (bar.removeFromRight (130).withSizeKeepingCentre (130, 18));
-        bar.removeFromRight (Spacing::medium);
-        donateLink.setBounds (bar.removeFromRight (150).withSizeKeepingCentre (150, 18));
+        // A phone has no footer: the strip goes to the content, and the
+        // site is one tap away in Settings > About (ADR 060). An iOS build
+        // never shows the donation link at all - App Store rule 3.1.1.
+       #if JUCE_IOS
+        constexpr auto donationAllowed = false;
+       #else
+        constexpr auto donationAllowed = true;
+       #endif
+
+        if (compactLayout())
+        {
+            soundkorbLink.setBounds ({});
+            donateLink.setBounds ({});
+        }
+        else
+        {
+            soundkorbLink.setBounds (bar.removeFromRight (130).withSizeKeepingCentre (130, 18));
+            bar.removeFromRight (Spacing::medium);
+            donateLink.setBounds (donationAllowed ? bar.removeFromRight (150).withSizeKeepingCentre (150, 18)
+                                                  : juce::Rectangle<int>());
+        }
     }
 
     // --- exercise section: which game, and what you're listening for ---
@@ -1754,8 +1859,11 @@ void EarTrainerEditor::resized()
     // shouldShowInstructions); the freed height flows to the answer
     // section below, which is the part that improves by being taller.
     const auto instructionsShown = shouldShowInstructions();
-    exerciseSection = area.removeFromTop (instructionsShown ? 104
-                                                            : Spacing::large + 30 + Spacing::small);
+    // A phone gives the level and the run's HUD a row of their own under
+    // the name, and the instruction three lines rather than two.
+    exerciseSection = area.removeFromTop ((instructionsShown ? (phone ? 132 : 104)
+                                                             : Spacing::large + 30 + Spacing::small)
+                                          + (phone ? 30 + Spacing::tight : 0));
     {
         auto inner = exerciseSection;
         inner.removeFromTop (Spacing::large);   // clear the section heading
@@ -1780,11 +1888,22 @@ void EarTrainerEditor::resized()
         // a run "how many lives are left" genuinely outranks "how far to
         // the next level".
         {
-            auto slot = gameRow.removeFromRight (360);
+            auto slot = phone ? juce::Rectangle<int>() : gameRow.removeFromRight (360);
+
+            if (phone)
+            {
+                currentGameLabel.setBounds (gameRow);
+                inner.removeFromTop (Spacing::tight);
+                gameRow = {};
+                slot = inner.removeFromTop (30);
+            }
+
             const auto running = isRunHudActive();
             // A battle shows two HP bars and a name: it takes the whole slot.
             const auto hudWidth = session.getMode() == SessionManager::Mode::duel ? 330 : 210;
-            runHud.setBounds (running ? slot.withSizeKeepingCentre (hudWidth, 30) : juce::Rectangle<int>());
+            runHud.setBounds (running ? (phone ? slot.withWidth (juce::jmin (hudWidth, slot.getWidth()))
+                                               : slot.withSizeKeepingCentre (hudWidth, 30))
+                                      : juce::Rectangle<int>());
 
             // The bar takes the right end of the slot and the sentence the
             // rest, so "100 / 200 to level 3" has a picture of itself
@@ -1799,7 +1918,8 @@ void EarTrainerEditor::resized()
             levelProgressLabel.setBounds (running ? juce::Rectangle<int>() : slot);
         }
 
-        currentGameLabel.setBounds (gameRow);
+        if (! phone)
+            currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
         instructionLabel.setBounds (inner);
@@ -1863,8 +1983,38 @@ void EarTrainerEditor::resized()
     // point of the rearrangement. Laying this out top-down with fixed
     // heights is what left a tall window with a strip of controls and a
     // field of nothing under it.
-    controlBar = area.removeFromBottom (controlBarHeight + toolBarReserve)
-                     .withTrimmedBottom (toolBarReserve);
+    // A phone has no footer under the bar, and the bar is two rows of
+    // thumb-sized buttons: the modes across the width, then the tally and
+    // the action.
+    const auto barReserve = phone ? 0 : toolBarReserve;
+    controlBar = area.removeFromBottom ((phone ? controlBarHeightCompact : controlBarHeight) + barReserve)
+                     .withTrimmedBottom (barReserve);
+
+    if (phone)
+    {
+        auto rows = controlBar.reduced (0, Spacing::small);
+        auto modes = rows.removeFromTop (44);
+        rows.removeFromTop (Spacing::small);
+        auto actions = rows.removeFromTop (44);
+
+        const auto pillWidth = (modes.getWidth() - 2 * Spacing::hairline) / 3;
+
+        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        {
+            pill->setBounds (pill == &blitzButton ? modes : modes.removeFromLeft (pillWidth));
+            modes.removeFromLeft (Spacing::hairline);
+        }
+
+        restartButton.setBounds (actions.removeFromRight (juce::jmin (180, actions.getWidth() / 2)));
+        actions.removeFromRight (Spacing::small);
+
+        const auto running = isRunHudActive();
+        endRunButton.setBounds (running ? actions.removeFromLeft (juce::jmin (120, actions.getWidth() / 2))
+                                        : juce::Rectangle<int>());
+        scoreLabel.setBounds (running ? juce::Rectangle<int>() : actions.removeFromLeft (110));
+        runStatusLabel.setBounds (runStatusLabel.getText().isNotEmpty() ? actions : juce::Rectangle<int>());
+    }
+    else
     {
         auto controlRow = controlBar.reduced (0, (controlBarHeight - 34) / 2);
 
@@ -1935,6 +2085,24 @@ void EarTrainerEditor::resized()
         // screen that should have four. Up here it is beside the sentence
         // that tells you what to do with the scale, which is when you
         // reach for it - and the row it vacated became scale.
+        if (phone)
+        {
+            // Two rows: the caption with the hint at its right, then A and
+            // B as two big halves - the pair is pressed every round.
+            auto headingRow = inner.removeFromTop (40);
+            hintButton.setBounds (headingRow.removeFromRight (juce::jmin (190, headingRow.getWidth() / 2))
+                                            .withSizeKeepingCentre (juce::jmin (190, headingRow.getWidth() / 2), 40));
+            headingRow.removeFromRight (Spacing::small);
+            answerHeadingRow = headingRow;
+
+            inner.removeFromTop (Spacing::small);
+            auto pair = inner.removeFromTop (46);
+            const auto half = (pair.getWidth() - Spacing::hairline) / 2;
+            beforeButton.setBounds (pair.removeFromLeft (half));
+            pair.removeFromLeft (Spacing::hairline);
+            afterButton.setBounds (pair);
+        }
+        else
         {
             auto headingRow = inner.removeFromTop (34);
 
@@ -2088,11 +2256,11 @@ void EarTrainerEditor::resized()
 
     // The run result still covers everything: it is not a destination, it
     // is what a finished run leaves on the screen.
-    runResults.setBounds (getLocalBounds());
-    tour.setBounds (getLocalBounds());
+    runResults.setBounds (safeBounds());
+    tour.setBounds (safeBounds());
     screensaver.setBounds (getLocalBounds());
 
-    achievementToast.setBounds (getLocalBounds().withTrimmedTop (Spacing::large + 34)
+    achievementToast.setBounds (safeBounds().withTrimmedTop (Spacing::large + 34)
                                                  .withHeight (52)
                                                  .withSizeKeepingCentre (
                                                      juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
@@ -2751,8 +2919,8 @@ void EarTrainerEditor::applyWindowSize()
     // The height a hint is showing and the height it is not are the same
     // height. Only the width floor and whatever the player has dragged to
     // are honoured here.
-    setSize (juce::jmax (minLogicalWidth, getWidth()),
-              juce::jmax (minLogicalHeight, getHeight()));
+    setSize (juce::jmax (floorWidth, getWidth()),
+              juce::jmax (floorHeight, getHeight()));
     resized();
     repaint();
 }
@@ -2908,7 +3076,7 @@ void EarTrainerEditor::openSettingsHearingPage()
     if (topNav.onItemChosen != nullptr)
         topNav.onItemChosen (TopNavComponent::Item::settings);
 
-    settingsScreen.selectPage (SettingsScreenComponent::Page::hearing);
+    settingsScreen.openPage (SettingsScreenComponent::Page::hearing);
 }
 
 void EarTrainerEditor::saveHearingProfile (const HearingProfile& profile)
@@ -3185,7 +3353,7 @@ void EarTrainerEditor::showScreen (Screen screen)
         rebuildHomeSections();
 
     supportScreen.setVisible (onSupport);
-    supportScreen.setBounds (getLocalBounds());
+    supportScreen.setBounds (safeBounds());
     homeScreen.setVisible (onHome);
 
     // Nothing to listen for outside a training.
@@ -3514,7 +3682,8 @@ void EarTrainerEditor::refreshLocalisedText()
     }
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
-    studioScreen.setLabels (localisation.getText ("ui.studio.caption"), localisation.getText ("lessons.open"));
+    studioScreen.setLabels (localisation.getText ("ui.studio.caption"), localisation.getText ("lessons.open"),
+                            localisation.getText ("studio.rotate"));
     lessonsWindow.reset();   // its words are in the old language; made again when asked
     refreshLiveStrings();
     topNav.setLabels ({ localisation.getText ("ui.trainings"),

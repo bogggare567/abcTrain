@@ -651,6 +651,12 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         }
     }
 
+    // Each row remembers where its last label ended: on a phone-width
+    // ruler the marks come closer than their labels are wide, and a label
+    // that would run into its neighbour is left out rather than drawn
+    // over it ("-90-80-70-60"). The line itself always stays.
+    float labelRowEnd[2] = { -1.0e9f, -1.0e9f };
+
     for (const auto& mark : gridMarks)
     {
         const auto x = xFor (mark.normalised);
@@ -680,7 +686,16 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         // the typeface choice reach these labels too - they were raw
         // literals, which is why they stayed put while every other string
         // in the window scaled.
-        g.setFont (markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f)));
+        const auto rowFont = markFont.withHeight (markFont.getHeight() * (mark.emphasised ? 1.05f : 0.95f));
+        const auto inkWidth = juce::jmin (labelWidth, juce::GlyphArrangement::getStringWidth (rowFont, mark.label) + 6.0f);
+        const auto inkLeft = labelX + (labelWidth - inkWidth) * 0.5f;
+        auto& rowEnd = labelRowEnd[mark.emphasised ? 1 : 0];
+
+        if (inkLeft < rowEnd)
+            continue;
+
+        rowEnd = inkLeft + inkWidth;
+        g.setFont (rowFont);
         g.setColour (theme.textDim.withAlpha (mark.emphasised ? 0.62f : 0.34f));
         AbcTrainLookAndFeel::fitText (g, mark.label, juce::Rectangle<float> (labelX, rowY, labelWidth, labelRowHeight),
                      juce::Justification::centred, false);

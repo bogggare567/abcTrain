@@ -1,4 +1,6 @@
 #include "SupportScreenComponent.h"
+
+#include <cstdlib>
 #include "shared/audio/AmbientInstruments.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
@@ -156,8 +158,15 @@ void SupportScreenComponent::showStep (int newStep)
     tourButton.setVisible (inside && tourOffered);
     nextButton.setVisible (inside);
     AbcTrainLookAndFeel::makePrimary (nextButton, ! tourOffered);
-    donateLink.setVisible (inside);
-    starLink.setVisible (inside);
+    // No donation link in an iOS build: App Store rule 3.1.1 allows money
+    // for an app only through the store. The GitHub star goes on a phone
+    // too - one more link where there is no room for the cards.
+   #if JUCE_IOS
+    donateLink.setVisible (false);
+   #else
+    donateLink.setVisible (inside && getWidth() >= 600);
+   #endif
+    starLink.setVisible (inside && getWidth() >= 600);
 
     for (juce::Component* c : { (juce::Component*) &backButton, (juce::Component*) &continueButton,
                                 (juce::Component*) &telegramButton, (juce::Component*) &sendCodeButton,
@@ -223,6 +232,12 @@ void SupportScreenComponent::layout()
     using namespace AbcTrainTheme;
 
     lay = {};
+
+    if (getWidth() < 600)
+    {
+        layoutCompact();
+        return;
+    }
 
     // A frame of fixed proportions, centred: at 940x620 it fills the
     // window, and on a big screen it stays a readable block rather than
@@ -322,6 +337,94 @@ void SupportScreenComponent::layout()
 void SupportScreenComponent::resized()
 {
     layout();
+
+    // The links depend on the width (a phone has no room for them), so a
+    // rotation re-decides them here as well as in showStep.
+    const auto wide = getWidth() >= 600;
+    starLink.setVisible (step == 0 && wide);
+   #if ! JUCE_IOS
+    donateLink.setVisible (step == 0 && wide);
+   #endif
+}
+
+// A phone held upright (ADR 060): the same two steps in one column - the
+// wordmark and the promise on top, the three cards one under another
+// instead of stepping down a staircase that needs a second column, the
+// buttons along the bottom where a thumb is.
+void SupportScreenComponent::layoutCompact()
+{
+    using namespace AbcTrainTheme;
+
+    auto column = getLocalBounds().reduced (Spacing::large, Spacing::large);
+    auto buttons = column.removeFromBottom (44);
+    column.removeFromBottom (Spacing::medium);
+
+    starLink.setBounds ({});
+    donateLink.setBounds ({});
+
+    if (step == 0)
+    {
+        lay.wordmark = column.removeFromTop (56);
+        lay.words = column.removeFromTop (26);
+        column.removeFromTop (Spacing::small);
+        lay.tagline = column.removeFromTop (48);
+        column.removeFromTop (Spacing::small);
+        lay.stepLabel = column.removeFromTop (18);
+        column.removeFromTop (Spacing::medium);
+
+        lay.note = column.removeFromBottom (36);
+        column.removeFromBottom (Spacing::small);
+
+        const auto cardHeight = juce::jlimit (60, 104, (column.getHeight() - 2 * Spacing::small) / 3);
+
+        for (int i = 0; i < 3; ++i)
+        {
+            lay.cards[(size_t) i] = column.removeFromTop (cardHeight);
+            column.removeFromTop (Spacing::small);
+        }
+
+        if (tourOffered)
+        {
+            tourButton.setBounds (buttons.removeFromLeft ((buttons.getWidth() - Spacing::small) / 2));
+            buttons.removeFromLeft (Spacing::small);
+        }
+
+        nextButton.setBounds (buttons);
+        return;
+    }
+
+    lay.stepLabel = column.removeFromTop (18);
+    column.removeFromTop (Spacing::small);
+    {
+        juce::AttributedString text;
+        text.append (localisation.getText ("welcome.account.title"), AbcTrainLookAndFeel::headingFont());
+        juce::TextLayout measured;
+        measured.createLayout (text, (float) column.getWidth());
+        lay.heading = column.removeFromTop (juce::jlimit (40, 110, (int) std::ceil (measured.getHeight()) + 4));
+    }
+    lay.body = column.removeFromTop (60);
+    column.removeFromTop (Spacing::small);
+    lay.offline = column.removeFromTop (40);
+    column.removeFromTop (Spacing::medium);
+
+    lay.panel = column;
+    auto inner = column.reduced (Spacing::medium);
+    lay.signIn = inner.removeFromTop (20);
+    inner.removeFromTop (Spacing::small);
+    telegramButton.setBounds (inner.removeFromTop (44));
+    inner.removeFromTop (Spacing::small);
+    lay.orLabel = inner.removeFromTop (22);
+    lay.emailNote = inner.removeFromTop (22);
+    emailField.setBounds (inner.removeFromTop (44));
+    inner.removeFromTop (Spacing::small);
+    sendCodeButton.setBounds (inner.removeFromTop (44));
+    inner.removeFromTop (Spacing::small);
+    lay.privacy = inner.removeFromTop (40);
+    lay.panel.setBottom (lay.privacy.getBottom() + Spacing::medium);
+
+    backButton.setBounds (buttons.removeFromLeft (juce::jmin (110, buttons.getWidth() / 3)));
+    buttons.removeFromLeft (Spacing::small);
+    continueButton.setBounds (buttons);
 }
 
 void SupportScreenComponent::paintWordmark (juce::Graphics& g, juce::Rectangle<float> area)
@@ -359,6 +462,20 @@ void SupportScreenComponent::paint (juce::Graphics& g)
         paintInside (g);
     else
         paintAccount (g);
+}
+
+namespace
+{
+    // A phone has no laptop speakers to warn about - its own speaker is
+    // the thing to warn about.
+    const char* headphoneNoteKey()
+    {
+       #if JUCE_IOS || JUCE_ANDROID
+        return "ui.headphoneNotePhone";
+       #else
+        return std::getenv ("SNAP_SAFE") != nullptr ? "ui.headphoneNotePhone" : "ui.headphoneNote";
+       #endif
+    }
 }
 
 void SupportScreenComponent::paintInside (juce::Graphics& g)
@@ -412,7 +529,7 @@ void SupportScreenComponent::paintInside (juce::Graphics& g)
     // so than to let somebody conclude their ears are the problem.
     g.setColour (theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
-    AbcTrainLookAndFeel::fitLines (g, localisation.getText ("ui.headphoneNote"), lay.note,
+    AbcTrainLookAndFeel::fitLines (g, localisation.getText (headphoneNoteKey()), lay.note,
                       juce::Justification::bottomLeft, 2, 1.0f);
 
     const char* const titles[] = { "ui.trainings", "ui.studio", "welcome.live" };

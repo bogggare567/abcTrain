@@ -114,6 +114,17 @@ public:
     enum class Page { training, hearing, appearance, background, live, about };
     static constexpr int numPages = 6;
     void selectPage (Page);
+
+    // From elsewhere in the app ("open hearing settings"): on a phone this
+    // goes straight to the section rather than to the menu.
+    void openPage (Page page)
+    {
+        compactShowingPage = true;
+        compactScroll = 0;
+        selectPage (page);
+        resized();
+        repaint();
+    }
     Page getPage() const noexcept { return currentPage; }
 
     void paint (juce::Graphics&) override;
@@ -121,6 +132,8 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
     void visibilityChanged() override;
 
     static void applyStoredBackground (juce::PropertiesFile&);
@@ -156,6 +169,16 @@ private:
     int menuTop() const;
     void paintSideMenu (juce::Graphics&, juce::Rectangle<int>);
     int menuRowAt (juce::Point<int>) const;
+
+    // A phone (ADR 060): the menu is a page of its own, a tap opens the
+    // section full width with a back button, and rows stack - title and
+    // hint over the control - in a column that scrolls by dragging.
+    bool compact() const { return getWidth() < 600; }
+    bool compactShowingPage = false;
+    int compactScroll = 0, compactScrollMax = 0, scrollAtDragStart = 0;
+    juce::TextButton compactBackButton;
+    void applyPageVisibility();
+    juce::Rectangle<int> compactViewport() const;
 
     void chooseBackground();
     void clearBackground();

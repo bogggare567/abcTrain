@@ -243,7 +243,7 @@ public:
 
         applyTrainerSettings();
         openSettingsForSnapshot();
-        settingsScreen.selectPage (page);
+        settingsScreen.openPage (page);
         refreshHearingIndicator();
     }
 
@@ -1033,8 +1033,16 @@ private:
         // Where the editor puts the button that starts today's exercise.
         // Same division of labour as the nav bar: this paints, the editor
         // owns the widget - see TopNavComponent for why.
+        // A phone's width: the button goes under the headline, full width,
+        // and the threshold column is dropped - each tile shows it anyway.
+        bool compact() const { return getWidth() < 520; }
+
         juce::Rectangle<int> getActionSlot() const
         {
+            if (compact())
+                return { AbcTrainTheme::Spacing::large, getHeight() - 44 - 14,
+                         getWidth() - 2 * AbcTrainTheme::Spacing::large, 44 };
+
             return juce::Rectangle<int> (getWidth() - 190 - AbcTrainTheme::Spacing::large,
                                           (getHeight() - 44) / 2, 190, 44);
         }
@@ -1056,11 +1064,15 @@ private:
             // threshold 86px and cut "Low-mids vs Presence" to "Low-m...".
             const auto rightWidth = juce::jlimit (area.getWidth() * 0.32f, area.getWidth() * 0.46f,
                                                   190.0f + 14.0f + 210.0f + 2.0f * AbcTrainTheme::Spacing::large);
-            const auto splitX = area.getRight() - rightWidth;
-            g.setColour (theme.divider);
-            g.fillRect (splitX, area.getY() + 14.0f, 1.0f, area.getHeight() - 28.0f);
+            const auto splitX = compact() ? area.getRight() : area.getRight() - rightWidth;
 
-            auto left = area.withRight (splitX).reduced ((float) AbcTrainTheme::Spacing::large, 18.0f);
+            if (! compact())
+            {
+                g.setColour (theme.divider);
+                g.fillRect (splitX, area.getY() + 14.0f, 1.0f, area.getHeight() - 28.0f);
+            }
+
+            auto left = area.withRight (splitX).reduced ((float) AbcTrainTheme::Spacing::large, compact() ? 14.0f : 18.0f);
 
             // --- the kicker ------------------------------------------------
             AbcTrainLookAndFeel::drawTrackedText (
@@ -1128,6 +1140,7 @@ private:
             }
 
             // --- the standing total -----------------------------------------
+            if (! compact())
             {
                 auto right = area.withLeft (splitX + 1.0f)
                                  .reduced ((float) AbcTrainTheme::Spacing::large, 0.0f);
@@ -1434,6 +1447,15 @@ private:
     static constexpr int minLogicalWidth = 940;
     static constexpr int minLogicalHeight = 620;
 
+    // The size the window may not go below. On a desktop the floor of the
+    // desktop layout; on a phone or tablet the screen is the window, and
+    // the layout adapts to it (ADR 060) instead of hanging off its edge.
+   #if JUCE_IOS || JUCE_ANDROID
+    static constexpr int floorWidth = 300, floorHeight = 300;
+   #else
+    static constexpr int floorWidth = minLogicalWidth, floorHeight = minLogicalHeight;
+   #endif
+
     // Wider than it was, because the rail takes 156 from the left and the
     // training screen's control row genuinely needs about 640: pills,
     // session tally, the A/B pair and the hint button, side by side. 840
@@ -1526,11 +1548,38 @@ private:
     // would look like it had failed to load.
     juce::Rectangle<int> contentBounds() const
     {
-        // The hearing strip, when showing, pushes the page down rather than
-        // covering its top row - it is information, not an overlay.
-        return getLocalBounds().withTrimmedTop ((railIsVisible() ? TopNavComponent::preferredHeight : 0)
-                                                + (hearingNotice.isVisible() ? HearingNotice::height : 0));
+        // A phone has the bar along the bottom (ADR 060), everything else
+        // along the top. The hearing strip, when showing, pushes the page
+        // down rather than covering its top row - it is information, not
+        // an overlay.
+        auto b = safeBounds();
+
+        if (railIsVisible())
+        {
+            if (compactLayout())
+                b.removeFromBottom (TopNavComponent::compactHeight);
+            else
+                b.removeFromTop (TopNavComponent::preferredHeight);
+        }
+
+        return b.withTrimmedTop (hearingNotice.isVisible() ? HearingNotice::height : 0);
     }
+
+    // Phones (ADR 060): below this width the screens lay themselves out
+    // in one column and the bar moves to the bottom. 600 is wider than any
+    // phone held upright and narrower than any iPad, Split View aside.
+    static constexpr int compactWidth = 600;
+    bool compactLayout() const noexcept { return getWidth() < compactWidth; }
+
+    // The window minus what the system draws over it on a phone: the
+    // status bar and the Dynamic Island, the home indicator, the rounded
+    // corners in landscape. In this component's own (scaled) units. Zero on
+    // a desktop - and set by SNAP_SAFE=top,left,bottom,right in the tools
+    // that render screens, so a phone can be checked without a phone.
+    juce::BorderSize<int> safeInsets() const;
+    static bool isPhone();
+    void setPhoneOrientationsFor (bool studio);
+    juce::Rectangle<int> safeBounds() const { return safeInsets().subtractedFrom (getLocalBounds()); }
 
     // Puts the session and the three pills into whatever mode this
     // exercise was last left in, falling back to Practice when the timed
@@ -1612,6 +1661,7 @@ private:
     // of day/progress dots, with card padding around both. It was 20 - one
     // line of small text - when the streak and the challenge were labels.
     static constexpr int homeStatusHeight = 120;
+    static constexpr int homeStatusHeightCompact = 166;
 
     void showAchievementToast (const juce::String& achievementId);
 
@@ -1634,6 +1684,7 @@ private:
     juce::Rectangle<int> controlBar;
     juce::Rectangle<int> levelProgressBarArea;
     static constexpr int controlBarHeight = 70;
+    static constexpr int controlBarHeightCompact = 44 * 2 + 8 * 3;
     juce::Rectangle<int> progressSection;
     juce::Rectangle<int> hintSection;
 

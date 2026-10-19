@@ -30,10 +30,11 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 # builds abcTrain only (EarTrainer as Standalone, the format JUCE builds for
 # iOS). VST3/AU Learner plugins and the console tools do not exist on iOS;
 # Learner EQ/Comp/Verb as AUv3 for iPad is its own card.
-# iOS 16: iPhone XS / XR and later, iPad 6th generation and later.
+# iOS 18 (Bogdan, 2026-10-19): iPhone XS / XR and later, iPad 7th generation
+# and later - every iPhone and iPad that still gets system updates.
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(ABCTRAIN_IOS ON)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "16.0" CACHE STRING "Minimum iOS version")
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "18.0" CACHE STRING "Minimum iOS version" FORCE)
 else()
     set(ABCTRAIN_IOS OFF)
 endif()
@@ -447,7 +448,9 @@ juce_add_plugin(EarTrainer
     # iOS only (JUCE ignores these elsewhere). No microphone: the trainer
     # makes its own sound and its input is off on iOS (PluginProcessor.cpp).
     # The Files app sees the app's folder - that is how own sounds and packs
-    # reach a phone. iPhone: portrait; iPad: any orientation and Split View.
+    # reach a phone. Every orientation is allowed here; which ones a screen
+    # accepts is decided at run time (Desktop::setOrientationsEnabled) - the
+    # trainer is portrait on a phone, the Studio asks for landscape.
     MICROPHONE_PERMISSION_ENABLED FALSE
     BACKGROUND_AUDIO_ENABLED FALSE
     FILE_SHARING_ENABLED TRUE
@@ -455,6 +458,7 @@ juce_add_plugin(EarTrainer
     REQUIRES_FULL_SCREEN FALSE
     STATUS_BAR_HIDDEN FALSE
     IPHONE_SCREEN_ORIENTATIONS UIInterfaceOrientationPortrait
+                               UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
     IPAD_SCREEN_ORIENTATIONS UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown
                              UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
 )

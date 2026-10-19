@@ -446,7 +446,10 @@ namespace
             }
 
             if constexpr (std::is_same_v<EditorType, EarTrainerEditor>)
+            {
                 editor.completeScreenFade();   // after every screen change above
+                editor.completeWelcomeReveal(); // a resize may restart the reveal
+            }
 
             const auto suffix = mode == AbcTrainTheme::Mode::light ? "-light" : "-dark";
             const auto file = outputDir.getChildFile (name + suffix + ".png");

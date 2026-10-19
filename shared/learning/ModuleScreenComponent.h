@@ -109,6 +109,10 @@ public:
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    // A finger scrolls by dragging (ADR 060), the way the wheel does.
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    float scrollAtDragStart = 0.0f;
 
 private:
     enum class Phase { shelf, demo, tryIt, check, result };

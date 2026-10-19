@@ -58,7 +58,8 @@ void HomeScreenComponent::rebuildLayout()
             ++numSections;
 
     const auto chrome = numSections * headerHeight + (numSections - 1) * sectionGap;
-    const auto rowHeight = juce::jlimit (minRowHeight, maxRowHeight,
+    // Two lines a row on a phone, so never shorter than two lines need.
+    const auto rowHeight = juce::jlimit (compact() ? 54 : minRowHeight, compact() ? 60 : maxRowHeight,
                                          (area.getHeight() - chrome) / juce::jmax (1, (int) cards.size()));
 
     // The whole list's height at this row height; anything past the
@@ -216,6 +217,31 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
         inner.removeFromLeft (14.0f);
     }
 
+    if (compact())
+    {
+        // The name on the top line, the whole width; under it the record in
+        // words on the left and the threshold on the right. No ruler: at
+        // this width it would be a 40-point smear.
+        auto top = inner.withTrimmedBottom (inner.getHeight() * 0.46f);
+        auto bottom = inner.withTop (top.getBottom() + 2.0f);
+
+        g.setColour (card.isCurrent || eased > 0.5f ? theme.textBright : theme.text);
+        g.setFont (AbcTrainLookAndFeel::titleFont());
+        AbcTrainLookAndFeel::fitLines (g, card.name, top.toNearestInt(), juce::Justification::bottomLeft, 1, 0.8f);
+
+        auto number = bottom.removeFromRight (juce::jmin (130.0f, bottom.getWidth() * 0.45f));
+        g.setColour (theme.textBright);
+        g.setFont (card.levelIsNumber ? AbcTrainLookAndFeel::monoFont().withHeight (15.0f * AbcTrainLookAndFeel::getTextScale())
+                                      : AbcTrainLookAndFeel::labelFont());
+        AbcTrainLookAndFeel::fitLines (g, card.levelText, number.toNearestInt(), juce::Justification::topRight, 1, 0.75f);
+
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::labelFont());
+        AbcTrainLookAndFeel::fitLines (g, card.statsLine, bottom.withTrimmedRight (8.0f).toNearestInt(),
+                                       juce::Justification::topLeft, 1, 0.85f);
+        return;
+    }
+
     // --- the number, on the right, as on a meter ---
     auto right = inner.removeFromRight (juce::jlimit (170.0f, 230.0f, inner.getWidth() * 0.2f));
     {
@@ -344,6 +370,21 @@ void HomeScreenComponent::mouseExit (const juce::MouseEvent&)
 {
     hoveredRow = -1;
     hoveredStar = false;
+    repaint();
+}
+
+void HomeScreenComponent::mouseDown (const juce::MouseEvent&)
+{
+    scrollAtDragStart = scroll;
+}
+
+void HomeScreenComponent::mouseDrag (const juce::MouseEvent& e)
+{
+    if (maxScroll <= 0.0f || e.mouseWasClicked())
+        return;
+
+    scroll = juce::jlimit (0.0f, maxScroll, scrollAtDragStart - (float) e.getDistanceFromDragStartY());
+    rebuildLayout();
     repaint();
 }
 

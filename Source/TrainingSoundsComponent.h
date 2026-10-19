@@ -240,6 +240,13 @@ private:
 
     juce::Label statusLabel;
     juce::TextButton closeButton;
+
+    // A phone (ADR 060): the categories fill the screen, a tap opens that
+    // category's clips, and this goes back - the list-then-detail every
+    // phone app uses. The rail beside the clips needs 600 points.
+    bool compact() const noexcept { return getWidth() < 600; }
+    bool compactShowingFiles = false;
+    juce::TextButton compactBackButton;
     juce::TextButton revealButton;
 
     // Rail rows: the exercise's own sound, pink noise, then 0.. the

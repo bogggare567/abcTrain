@@ -53,7 +53,14 @@ public:
     void select (Effect);
     Effect getSelected() const noexcept { return selected; }
 
-    void setLabels (juce::String studioCaption, juce::String lessonsLabel = {});
+    void setLabels (juce::String studioCaption, juce::String lessonsLabel = {},
+                    juce::String rotateMessage = {});
+
+    // On a phone held upright the plugins do not fit: the page asks for
+    // the phone to be turned instead of showing them at a third of their
+    // size (ADR 060). Off on a desktop, where a narrow window just scales.
+    void setRotatePromptAllowed (bool allowed);
+    bool showsRotatePrompt() const;
 
     // The course lessons window (ADR 052), opened from the right end of
     // the switch bar.
@@ -70,12 +77,19 @@ public:
 
 private:
     void showEditorFor (Effect);
+    void placeEditor (juce::Rectangle<int>);
     void dropEditor();
     void refreshSwitch();
 
     Host host;
     Effect selected = Effect::eq;
-    juce::String caption;
+    juce::String caption, rotateMessage;
+    bool rotatePromptAllowed = false;
+
+    // A landscape phone is short: the switch goes down the left edge as a
+    // column and the plugin is scaled to the rest.
+    bool sideSwitch() const { return getHeight() < 500 && getWidth() > getHeight(); }
+    static constexpr int sideSwitchWidth = 112;
 
     std::array<juce::TextButton, numEffects> switchButtons;
     juce::TextButton lessonsButton;

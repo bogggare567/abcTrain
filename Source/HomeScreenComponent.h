@@ -98,6 +98,17 @@ public:
     void mouseMove (const juce::MouseEvent&) override;
     void mouseExit (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
+
+    // A finger scrolls the list by dragging it (ADR 060); the wheel is a
+    // mouse's way. A drag past the click threshold is a scroll, not a tap,
+    // which mouseUp already tells apart through mouseWasClicked().
+    void mouseDown (const juce::MouseEvent&) override;
+    void mouseDrag (const juce::MouseEvent&) override;
+    float scrollAtDragStart = 0.0f;
+
+    // Narrower than a desktop row can be (a phone): the name gets the
+    // whole top line, the threshold and the record share the line under it.
+    bool compact() const noexcept { return getWidth() < 520; }
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:
