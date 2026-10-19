@@ -29,7 +29,13 @@ class WaveformDisplay : public juce::Component,
                          private juce::Timer
 {
 public:
+    // Thirty frames on a phone, which draws in software (see
+    // SpectrumAnalyzerComponent).
+   #if JUCE_IOS || JUCE_ANDROID
+    WaveformDisplay() { startTimerHz (30); }
+   #else
     WaveformDisplay() { startTimerHz (60); }
+   #endif
 
     static constexpr int numColumns = 400;
     static constexpr int samplesPerColumn = 256;

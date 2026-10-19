@@ -34,8 +34,10 @@ class TopNavComponent : public juce::Component,
 public:
     // Order is the order they appear. Kept as an enum rather than indices
     // so a caller cannot quietly mean the wrong tab.
-    enum class Item { trainings, studio, achievements, sounds, settings, live };
-    static constexpr int numItems = 6;
+    // Profile is last: on a desktop it is one more tab, on a phone one of
+    // the four left in the bar (ADR 061).
+    enum class Item { trainings, studio, achievements, sounds, settings, live, profile };
+    static constexpr int numItems = 7;
 
     // Live can be switched off in Settings; a hidden tab takes no room.
     void setItemHidden (Item, bool shouldBeHidden);
@@ -85,9 +87,15 @@ public:
     // badge strip still opens them. The bar's own height is compactHeight;
     // anything below it in its bounds is the home indicator's area, kept
     // clear and painted as background.
-    void setCompact (bool shouldBeCompact);
+    //
+    // A phone on its side has height to spare at neither edge: the same
+    // tabs stand in a column down the left side instead (railWidth wide,
+    // after `leadingInset`, the notch's side of the screen).
+    void setCompact (bool shouldBeCompact, bool asColumn = false, int leadingInset = 0);
     bool isCompact() const noexcept { return compact; }
+    bool isColumn() const noexcept { return compact && column; }
     static constexpr int compactHeight = 56;
+    static constexpr int railWidth = 76;
 
     void paint (juce::Graphics&) override;
     void mouseMove (const juce::MouseEvent&) override;
@@ -108,7 +116,8 @@ private:
     bool shownInBar (int index) const noexcept;
     void paintCompact (juce::Graphics&);
 
-    bool compact = false;
+    bool compact = false, column = false;
+    int columnInset = 0;
 
     juce::StringArray labels;
     juce::String streakTemplate;

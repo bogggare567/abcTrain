@@ -980,6 +980,31 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
         cardB = area;
     }
 
+    if (sideBySide())
+    {
+        // Bot: the choice and its profile on the left, the exercises and
+        // the start on the right.
+        auto left = cardHalf (cardB, false).withTrimmedTop (26);
+        botChoice.setBounds (left.removeFromTop (controlHeight));
+        auto right = cardHalf (cardB, true).withTrimmedTop (22);
+        battleFamily.setBounds (right.removeFromTop (controlHeight));
+        botStartButton.setBounds (right.removeFromBottom (controlHeight + 4));
+
+        // People: Decibelo on the left, finding an opponent on the right.
+        auto people = cardHalf (cardA, true).withTrimmedTop (30 + Spacing::small);
+        auto row = people.removeFromTop (controlHeight + 4);
+        challengeButton.setBounds (readyForYou ? row.removeFromRight (row.getWidth() / 3) : juce::Rectangle<int>());
+        if (readyForYou)
+            row.removeFromRight (Spacing::small);
+        searchButton.setBounds (row);
+
+        auto bottom = people.removeFromBottom (controlHeight + 4);
+        battleSignInButton.setBounds (bottom.removeFromLeft (juce::jmin (160, bottom.getWidth() / 2)));
+        bottom.removeFromLeft (Spacing::small);
+        communityButton.setBounds (bottom);
+        return;
+    }
+
     // Right: a bot - the battle that works today, offline.
     auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 26);
     botChoice.setBounds (b.removeFromTop (controlHeight).withWidth (juce::jmin (b.getWidth(), juce::jmax (480, botChoice.getPreferredWidth()))));
@@ -1009,6 +1034,13 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
         bottom.removeFromLeft (Spacing::small);
         communityButton.setBounds (bottom.removeFromRight (juce::jmin (240, bottom.getWidth())));
     }
+}
+
+juce::Rectangle<int> LiveScreenComponent::cardHalf (juce::Rectangle<int> card, bool right) const
+{
+    auto inner = card.reduced (AbcTrainTheme::Spacing::large).withTrimmedTop (cardTitleHeight);
+    const auto half = (inner.getWidth() - AbcTrainTheme::Spacing::large) / 2;
+    return right ? inner.removeFromRight (half) : inner.removeFromLeft (half);
 }
 
 void LiveScreenComponent::layoutRating (juce::Rectangle<int> area)
@@ -1259,6 +1291,48 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
     const juce::String fams[] { text.freq, text.dyn, text.space, text.character };
 
     paintCard (g, cardA, text.decibelo);
+
+    if (sideBySide() && ! cardA.isEmpty())
+    {
+        auto a = cardHalf (cardA, false);
+        const auto rowHeight = juce::jmin (40, (a.getHeight() - 40) / 4);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            auto row = a.removeFromTop (rowHeight);
+            g.setColour (accentFor (families[i]));
+            g.fillRect (row.removeFromLeft (8).withSizeKeepingCentre (8, 8));
+            row.removeFromLeft (12);
+            g.setColour (theme.text);
+            g.setFont (LnF::bodyFont());
+            LnF::fitText (g, fams[i], row.removeFromLeft (row.getWidth() - 60), juce::Justification::centredLeft, true);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::monoFont().withHeight (18.0f));
+            LnF::fitText (g, myRatings[(size_t) i] > 0 ? juce::String (myRatings[(size_t) i]) : juce::String::fromUTF8 ("\xe2\x80\x94"),
+                          row, juce::Justification::centredRight, true);
+            g.setColour (theme.divider);
+            g.fillRect (a.getX(), row.getBottom(), a.getWidth(), 1);
+        }
+
+        a.removeFromTop (Spacing::small);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.decibeloHint, a, juce::Justification::topLeft, 2, 0.9f);
+
+        auto p = cardHalf (cardA, true);
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (18.0f));
+        LnF::fitText (g, text.humansTitle, p.removeFromTop (30), juce::Justification::centredLeft, true);
+        p.removeFromTop (Spacing::small + controlHeight + 4 + Spacing::small);
+        p.removeFromBottom (controlHeight + 4 + Spacing::small);
+
+        const auto signedIn = account != nullptr && account->isSignedIn();
+        g.setColour (onlineLine.isNotEmpty() && searchingOnline ? theme.accent : theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, onlineLine.isNotEmpty() ? onlineLine : (signedIn ? text.battleOnline : text.battleNeedsAccount),
+                       p, juce::Justification::topLeft, 4, 0.85f);
+    }
+    else
     {
         auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
 
@@ -1312,8 +1386,10 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
     }
 
     paintCard (g, cardB, text.botTitle);
+    if (! cardB.isEmpty())
     {
-        auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
+        const auto split = sideBySide();
+        auto b = split ? cardHalf (cardB, false) : cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
         LnF::fitText (g, text.botHint, b.removeFromTop (22), juce::Justification::topLeft, true);
@@ -1323,7 +1399,7 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
         // family, from its psychometric thresholds - and how it answers.
         const auto bot = (BotListener::Bot) juce::jlimit (0, BotListener::numBots - 1, botChoice.getValue());
         const auto& profile = BotListener::profileOf (bot);
-        auto profileBox = b.removeFromTop (150);
+        auto profileBox = b.removeFromTop (split ? juce::jmin (150, b.getHeight()) : 150);
 
         g.setColour (theme.text);
         g.setFont (LnF::bodyFont());
@@ -1333,7 +1409,7 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
 
         for (int f = 0; f < 4; ++f)
         {
-            auto row = profileBox.removeFromTop (22);
+            auto row = profileBox.removeFromTop (split ? 20 : 22);
             float sum = 0.0f;
             for (auto gi : gamesOf[f])
                 sum += profile.threshold[(size_t) gi];
@@ -1341,7 +1417,7 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
 
             g.setColour (theme.textDim);
             g.setFont (LnF::labelFont());
-            LnF::fitText (g, fams[f], row.removeFromLeft (150), juce::Justification::centredLeft, true);
+            LnF::fitText (g, fams[f], row.removeFromLeft (split ? 100 : 150), juce::Justification::centredLeft, true);
             auto bar = row.removeFromLeft (juce::jmin (320, row.getWidth() - 20)).withSizeKeepingCentre (juce::jmin (320, row.getWidth() - 20), 8).toFloat();
             g.setColour (theme.displayBackground);
             g.fillRect (bar);
@@ -1360,12 +1436,18 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
                            + (speed.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 ("  \xc2\xb7  ")) + speed : juce::String()),
                       profileBox.removeFromTop (20), juce::Justification::centredLeft, true);
 
+        if (split)
+            b = cardHalf (cardB, true);
+
         g.setColour (theme.text);
         g.setFont (LnF::labelFont());
         LnF::fitText (g, text.botFamily, b.removeFromTop (22), juce::Justification::centredLeft, true);
 
-        auto foot = cardB.reduced (Spacing::large).removeFromBottom (controlHeight + 4);
-        foot.removeFromRight (260 + Spacing::large);
+        auto foot = split ? b.withTrimmedTop (controlHeight + Spacing::small).withTrimmedBottom (controlHeight + 4 + Spacing::small)
+                          : cardB.reduced (Spacing::large).removeFromBottom (controlHeight + 4);
+
+        if (! split)
+            foot.removeFromRight (260 + Spacing::large);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
         LnF::fitLines (g, text.botDisclaimer, foot, juce::Justification::centredLeft, 2, 0.85f);

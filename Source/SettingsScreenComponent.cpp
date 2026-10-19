@@ -1,4 +1,6 @@
 #include "SettingsScreenComponent.h"
+
+#include <cstdlib>
 #include "shared/ui/CommunityLink.h"
 #include "shared/ui/IdleScreensaver.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
@@ -52,10 +54,18 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     {
         compactShowingPage = false;
         compactScroll = 0;
+        scroller.setOffset (0.0f);
         resized();
         repaint();
     };
     addChildComponent (compactBackButton);
+
+    scroller.onChange = [this] (float offset)
+    {
+        compactScroll = juce::roundToInt (offset);
+        resized();
+        repaint();
+    };
 
     // ---- training and hearing choices ----------------------------------
     //
@@ -261,6 +271,15 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
             onDailyMinutesChanged();
     };
     addAndMakeVisible (dailyMinutesChoice);
+
+    // ---- the click on the scales (ADR 062) --------------------------------
+    hapticsChoice.setValue (properties.getIntValue (hapticsKey, hapticsDefault));
+    hapticsChoice.onChange = [this] (int value)
+    {
+        properties.setValue (hapticsKey, value);
+        properties.saveIfNeeded();
+    };
+    addAndMakeVisible (hapticsChoice);
 
     // ---- the app's own sounds ------------------------------------------
     uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
@@ -506,6 +525,7 @@ void SettingsScreenComponent::buildRows()
 {
     // Order here is order on the page.
     rows = {
+        { "set.haptics.title",      "set.haptics.hint",      &hapticsChoice,  0, false, Page::training },
         { "set.stepRule.title",     "set.stepRule.hint",     &stepRule,       0, true,  Page::training },
         { "set.answerPause.title",  "set.answerPause.hint",  &answerPause,    0, true,  Page::training },
         { "set.hints.title",        "set.hints.hint",        &hints,          0, true,  Page::training },
@@ -601,6 +621,15 @@ bool SettingsScreenComponent::rowIsOffered (const Row& row) const
     if (row.control == &syncChoice || row.control == &syncNowButton)
         return accountSignedIn;   // sync is a question only a signed-in computer has
 
+    if (row.control == &hapticsChoice)
+    {
+       #if JUCE_IOS || JUCE_ANDROID
+        return true;
+       #else
+        return std::getenv ("SNAP_SAFE") != nullptr;   // the snapshot tool's phone
+       #endif
+    }
+
     return row.control != &audioDeviceButton || onAudioDevice != nullptr;
 }
 
@@ -692,6 +721,8 @@ void SettingsScreenComponent::refresh()
     answerSoundChoice.setValue (properties.getIntValue (answerSoundKey, answerSoundDefault));
     uiSoundsChoice.setOptions ({ 0, 1, 2 }, { t ("set.off"), t ("set.uiSounds.quiet"), t ("set.uiSounds.normal") });
     uiSoundsChoice.setValue (properties.getIntValue (uiSoundsKey, 2));
+    hapticsChoice.setOptions ({ 0, 1, 2 }, { t ("set.off"), t ("set.haptics.light"), t ("set.haptics.strong") });
+    hapticsChoice.setValue (properties.getIntValue (hapticsKey, hapticsDefault));
     accountButton.setButtonText (t (accountSignedIn ? "set.account.signOut" : "set.account.signIn"));
     syncChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
     syncNowButton.setButtonText (t ("set.syncNow.button"));
@@ -1200,11 +1231,14 @@ void SettingsScreenComponent::resized()
         const auto view = compactViewport();
         compactScrollMax = juce::jmax (0, page.getY() + compactScroll - view.getBottom());
 
-        if (compactScroll > compactScrollMax)
+        // Clamps only when nothing is moving: mid-fling and mid-stretch
+        // the column is allowed past its ends.
+        if (scroller.getLimit() != (float) compactScrollMax)
         {
-            compactScroll = compactScrollMax;
-            resized();
-            return;
+            scroller.setLimit ((float) compactScrollMax);
+
+            if (compactScroll != juce::roundToInt (scroller.getOffset()))
+                return;   // setLimit moved it and laid the page out again
         }
 
         for (auto* child : getChildren())
@@ -1379,6 +1413,8 @@ void SettingsScreenComponent::mouseExit (const juce::MouseEvent&)
 
 void SettingsScreenComponent::mouseUp (const juce::MouseEvent& event)
 {
+    scroller.mouseUp (event);
+
     if (! event.mouseWasClicked())
         return;   // the end of a drag-scroll, not a tap
 
@@ -1390,6 +1426,7 @@ void SettingsScreenComponent::mouseUp (const juce::MouseEvent& event)
         {
             compactShowingPage = true;
             compactScroll = 0;
+            scroller.setOffset (0.0f);
         }
 
         selectPage ((Page) found);
@@ -1398,9 +1435,9 @@ void SettingsScreenComponent::mouseUp (const juce::MouseEvent& event)
     }
 }
 
-void SettingsScreenComponent::mouseDown (const juce::MouseEvent&)
+void SettingsScreenComponent::mouseDown (const juce::MouseEvent& event)
 {
-    scrollAtDragStart = compactScroll;
+    scroller.mouseDown (event);
 }
 
 void SettingsScreenComponent::mouseDrag (const juce::MouseEvent& event)
@@ -1408,14 +1445,7 @@ void SettingsScreenComponent::mouseDrag (const juce::MouseEvent& event)
     if (! compact() || ! compactShowingPage)
         return;
 
-    const auto target = juce::jlimit (0, compactScrollMax, scrollAtDragStart - event.getDistanceFromDragStartY());
-
-    if (target != compactScroll)
-    {
-        compactScroll = target;
-        resized();
-        repaint();
-    }
+    scroller.mouseDrag (event);
 }
 
 void SettingsScreenComponent::setAccountState (bool signedIn, const juce::String& nick, bool syncOn,

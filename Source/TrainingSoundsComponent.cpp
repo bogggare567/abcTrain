@@ -1,4 +1,6 @@
 #include "TrainingSoundsComponent.h"
+
+#include <utility>
 #include "shared/audio/PackCatalog.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
@@ -8,6 +10,8 @@ TrainingSoundsComponent::TrainingSoundsComponent (EarTrainerProcessor& processor
     : processor (processorToControl)
 {
     setOpaque (true);
+    railScroller.onChange = [this] (float o) { railScroll = o; repaint(); };
+    fileScroller.onChange = [this] (float o) { fileScroll = o; repaint(); };
 
     // Drawn by paint() with letter-spacing, like every other heading here.
     titleLabel.setVisible (false);
@@ -275,6 +279,7 @@ void TrainingSoundsComponent::refresh()
             if (categories.getReference (i).files.contains (library.getSelectedFile()))
                 selectedCategory = i;
 
+    fileScroller.setOffset (0.0f);
     fileScroll = 0.0f;
     focusedFile = -1;
     pendingDelete = -1;
@@ -327,6 +332,7 @@ void TrainingSoundsComponent::selectExerciseSound()
     processor.getGameManager().setPreferExerciseSound (true);
     selectedCategory = -1;
     focusedFile = -1;
+    fileScroller.setOffset (0.0f);
     fileScroll = 0.0f;
     updateModeButtons();
     updateStatusLabel();
@@ -343,6 +349,7 @@ void TrainingSoundsComponent::selectPinkNoise()
     processor.getGameManager().setPreferExerciseSound (false);
     selectedCategory = -1;
     focusedFile = -1;
+    fileScroller.setOffset (0.0f);
     fileScroll = 0.0f;
     updateModeButtons();
     updateStatusLabel();
@@ -391,6 +398,7 @@ void TrainingSoundsComponent::selectCategory (int categoryIndex)
     if (changed)
     {
         selectionStart = selectionEnd = -1.0f;
+        fileScroller.setOffset (0.0f);
         fileScroll = 0.0f;
         focusedFile = categories.getReference (categoryIndex).files.isEmpty() ? -1 : 0;
     }
@@ -398,6 +406,19 @@ void TrainingSoundsComponent::selectCategory (int categoryIndex)
     updateModeButtons();
     updateStatusLabel();
     repaint();
+}
+
+juce::String TrainingSoundsComponent::sourceName() const
+{
+    auto& library = processor.getGameManager().getReferenceAudioLibrary();
+    const auto selected = library.getSelectedFile();
+
+    if (! selected.existsAsFile())
+        return library.getPreferExerciseSound() ? text.exerciseSound : text.pinkNoise;
+
+    const auto category = library.getActiveCategory();
+    return library.isPinned() || category.isEmpty() ? selected.getFileNameWithoutExtension()
+                                                    : displayNameForCategory (category);
 }
 
 void TrainingSoundsComponent::updateStatusLabel()
@@ -552,7 +573,25 @@ void TrainingSoundsComponent::rebuildRail()
     for (const auto& e : railEntries)
         content += e.category == noRow ? railHeadingHeight : railRowHeight;
 
-    railScroll = juce::jlimit (0.0f, juce::jmax (0.0f, (float) (content - railListBounds().getHeight())), railScroll);
+    juce::ignoreUnused (content);
+    railScroller.setLimit (railMaxScroll());
+    railScroll = railScroller.getOffset();
+}
+
+float TrainingSoundsComponent::railMaxScroll() const
+{
+    auto content = 0;
+    for (const auto& e : railEntries)
+        content += e.category == noRow ? railHeadingHeight : railRowHeight;
+
+    return juce::jmax (0.0f, (float) (content - railListBounds().getHeight()));
+}
+
+float TrainingSoundsComponent::fileMaxScroll() const
+{
+    const auto* files = filesForSelection();
+    const auto contentHeight = files != nullptr ? (float) (files->size() * (fileRowHeight + fileRowGap)) : 0.0f;
+    return juce::jmax (0.0f, contentHeight - (float) listBounds().getHeight());
 }
 
 juce::Rectangle<int> TrainingSoundsComponent::previewBounds() const
@@ -1375,10 +1414,33 @@ void TrainingSoundsComponent::mouseDown (const juce::MouseEvent& event)
 {
     selecting = false;
     dragStartX = event.getPosition().x;
+
+    activeScroller = nullptr;
+
+    if (railListBounds().contains (event.getPosition()))
+    {
+        railScroller.setLimit (railMaxScroll());
+        activeScroller = &railScroller;
+    }
+    else if (listBounds().contains (event.getPosition()))
+    {
+        maxFileScroll = fileMaxScroll();
+        fileScroller.setLimit (maxFileScroll);
+        activeScroller = &fileScroller;
+    }
+
+    if (activeScroller != nullptr)
+        activeScroller->mouseDown (event);
 }
 
 void TrainingSoundsComponent::mouseDrag (const juce::MouseEvent& event)
 {
+    if (activeScroller != nullptr)
+    {
+        activeScroller->mouseDrag (event);
+        return;
+    }
+
     // Dragging across the big waveform selects; a click without a drag is
     // still the scrub it always was.
     const auto* files = filesForSelection();
@@ -1409,6 +1471,14 @@ void TrainingSoundsComponent::mouseDrag (const juce::MouseEvent& event)
 
 void TrainingSoundsComponent::mouseUp (const juce::MouseEvent& event)
 {
+    if (auto* scroller = std::exchange (activeScroller, nullptr))
+    {
+        scroller->mouseUp (event);
+
+        if (! event.mouseWasClicked())
+            return;   // that was a scroll, not a tap on a row
+    }
+
     const auto position = event.getPosition();
 
     if (selecting)
@@ -1538,25 +1608,17 @@ void TrainingSoundsComponent::mouseWheelMove (const juce::MouseEvent& event,
 {
     if (railListBounds().contains (event.getPosition()))
     {
-        auto content = 0;
-        for (const auto& e : railEntries)
-            content += e.category == noRow ? railHeadingHeight : railRowHeight;
-
-        railScroll = juce::jlimit (0.0f, juce::jmax (0.0f, (float) (content - railListBounds().getHeight())),
-                                   railScroll - wheel.deltaY * 220.0f);
-        repaint (railBounds());
+        railScroller.setLimit (railMaxScroll());
+        railScroller.mouseWheelMove (wheel, 220.0f);
         return;
     }
 
     if (! listBounds().contains (event.getPosition()))
         return;
 
-    const auto* files = filesForSelection();
-    const auto contentHeight = files != nullptr ? (float) (files->size() * (fileRowHeight + fileRowGap)) : 0.0f;
-
-    maxFileScroll = juce::jmax (0.0f, contentHeight - (float) listBounds().getHeight());
-    fileScroll = juce::jlimit (0.0f, maxFileScroll, fileScroll - wheel.deltaY * 220.0f);
-    repaint();
+    maxFileScroll = fileMaxScroll();
+    fileScroller.setLimit (maxFileScroll);
+    fileScroller.mouseWheelMove (wheel, 220.0f);
 }
 
 void TrainingSoundsComponent::resized()
@@ -1875,6 +1937,7 @@ void TrainingSoundsComponent::openTrack (const juce::File& file)
     trackFiles.add (file);
     selectedCategory = -1;
     focusedFile = 0;
+    fileScroller.setOffset (0.0f);
     fileScroll = 0.0f;
     pendingDelete = -1;
     selectionStart = selectionEnd = -1.0f;

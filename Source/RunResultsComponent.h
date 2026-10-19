@@ -186,6 +186,7 @@ private:
     // the range plot over its sentence instead of beside it, and "Play
     // again" a row of its own. Same content, one column.
     bool compact() const noexcept { return getWidth() < 600; }
+    bool shortCard() const noexcept { return ! compact() && getHeight() < 520; }
     void paintStat (juce::Graphics&, juce::Rectangle<int>, const juce::String& caption,
                     const juce::String& value, juce::Colour valueColour);
 

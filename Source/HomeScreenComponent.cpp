@@ -11,6 +11,7 @@ namespace
 HomeScreenComponent::HomeScreenComponent()
 {
     setInterceptsMouseClicks (true, false);
+    scroller.onChange = [this] (float) { rebuildLayout(); repaint(); };
     startTimerHz (tickHz);
 }
 
@@ -65,7 +66,8 @@ void HomeScreenComponent::rebuildLayout()
     // The whole list's height at this row height; anything past the
     // bottom is reached by scrolling rather than cut off.
     maxScroll = juce::jmax (0.0f, (float) (chrome + rowHeight * (int) cards.size() - area.getHeight()));
-    scroll = juce::jlimit (0.0f, maxScroll, scroll);
+    scroller.setLimit (maxScroll);
+    scroll = scroller.getOffset();
 
     auto y = area.getY() - juce::roundToInt (scroll);
 
@@ -332,9 +334,7 @@ void HomeScreenComponent::mouseWheelMove (const juce::MouseEvent& e, const juce:
         return;
     }
 
-    scroll = juce::jlimit (0.0f, maxScroll, scroll - wheel.deltaY * 140.0f);
-    rebuildLayout();
-    repaint();
+    scroller.mouseWheelMove (wheel, 140.0f);
 }
 
 juce::Rectangle<int> HomeScreenComponent::starHitBox (juce::Rectangle<int> row) const
@@ -373,23 +373,23 @@ void HomeScreenComponent::mouseExit (const juce::MouseEvent&)
     repaint();
 }
 
-void HomeScreenComponent::mouseDown (const juce::MouseEvent&)
+void HomeScreenComponent::mouseDown (const juce::MouseEvent& e)
 {
-    scrollAtDragStart = scroll;
+    scroller.mouseDown (e);
 }
 
 void HomeScreenComponent::mouseDrag (const juce::MouseEvent& e)
 {
-    if (maxScroll <= 0.0f || e.mouseWasClicked())
+    if (maxScroll <= 0.0f)
         return;
 
-    scroll = juce::jlimit (0.0f, maxScroll, scrollAtDragStart - (float) e.getDistanceFromDragStartY());
-    rebuildLayout();
-    repaint();
+    scroller.mouseDrag (e);
 }
 
 void HomeScreenComponent::mouseUp (const juce::MouseEvent& e)
 {
+    scroller.mouseUp (e);
+
     const auto index = rowIndexAt (e.getPosition());
     if (index < 0 || ! e.mouseWasClicked())
         return;

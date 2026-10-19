@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/TouchScroll.h"
 #include "shared/i18n/LocalisationManager.h"
 #include "shared/ui/CompactSelector.h"
 #include "shared/ui/SegmentedChoice.h"
@@ -87,6 +88,11 @@ public:
 
     // The app's own one-shots (ADR 054): 0 off, 1 quiet, 2 normal.
     static constexpr const char* uiSoundsKey = "uiSounds";
+
+    // The click under the finger on the scales (ADR 062): 0 off, 1 light,
+    // 2 strong. Offered only where there is something to click.
+    static constexpr const char* hapticsKey = "hapticStrength";
+    static constexpr int hapticsDefault = 1;
     static float uiSoundsDb (int choice) noexcept { return choice == 1 ? -28.0f : -20.0f; }
     std::function<void (int)> onUiSoundsChanged;
 
@@ -121,6 +127,7 @@ public:
     {
         compactShowingPage = true;
         compactScroll = 0;
+        scroller.setOffset (0.0f);
         selectPage (page);
         resized();
         repaint();
@@ -173,9 +180,11 @@ private:
     // A phone (ADR 060): the menu is a page of its own, a tap opens the
     // section full width with a back button, and rows stack - title and
     // hint over the control - in a column that scrolls by dragging.
-    bool compact() const { return getWidth() < 600; }
+    // ...and a phone on its side, where the rows do not fit the height.
+    bool compact() const { return getWidth() < 600 || getHeight() < 500; }
     bool compactShowingPage = false;
-    int compactScroll = 0, compactScrollMax = 0, scrollAtDragStart = 0;
+    int compactScroll = 0, compactScrollMax = 0;
+    TouchScroll scroller;
     juce::TextButton compactBackButton;
     void applyPageVisibility();
     juce::Rectangle<int> compactViewport() const;
@@ -252,7 +261,7 @@ private:
 
     // Live
     SegmentedChoice liveTabChoice;
-    SegmentedChoice uiSoundsChoice, dailyMinutesChoice, loudnessMatchChoice, answerSoundChoice;
+    SegmentedChoice uiSoundsChoice, dailyMinutesChoice, loudnessMatchChoice, answerSoundChoice, hapticsChoice;
     juce::TextButton accountButton;
     SegmentedChoice syncChoice;
     juce::TextButton syncNowButton;

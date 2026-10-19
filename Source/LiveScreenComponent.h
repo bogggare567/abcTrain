@@ -259,7 +259,13 @@ private:
     // A phone held upright (ADR 060): one card at a time. The battle tab's
     // two cards - people and the bot - are each taller than half a phone,
     // so instead of side by side they take turns under this switch.
-    bool compact() const noexcept { return getWidth() < 600; }
+    // A phone either way up: one card at a time (ADR 060).
+    bool compact() const noexcept { return getWidth() < 600 || getHeight() < 500; }
+
+    // A phone on its side: one card, but wide and short - its content in
+    // two columns side by side instead of one under the other.
+    bool sideBySide() const noexcept { return compact() && getWidth() > getHeight(); }
+    juce::Rectangle<int> cardHalf (juce::Rectangle<int> card, bool right) const;
     SegmentedChoice sideChoice;
     int compactSide = 0;   // 0 people, 1 bot
     juce::TextButton accountButton;

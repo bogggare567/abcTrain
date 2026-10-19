@@ -93,6 +93,8 @@ void ChoiceSliderComponent::resetForNewRound()
         feedbackAnimator.complete();
 
     previewIndex = -1;
+    setPending (false);
+    lastStep = -1;
     answered = false;
     correctIndex = -1;
     chosenIndex = -1;
@@ -235,12 +237,52 @@ void ChoiceSliderComponent::updatePreviewFromMouse (const juce::MouseEvent& e)
                                           (e.position.x - scaleArea.getX())
                                               / juce::jmax (1.0f, scaleArea.getWidth()));
         cursorEngaged = true;
+
+        // Thirty steps across the ruler: a third of an octave on the
+        // frequency scale, small enough to count, large enough to feel.
+        const auto step = juce::roundToInt (cursorNormalised * 30.0f);
+        if (e.mouseWasDraggedSinceMouseDown() && step != lastStep && lastStep >= 0 && onStepCrossed != nullptr)
+            onStepCrossed();
+        lastStep = step;
+
         repaint();
         return;
     }
 
-    previewIndex = indexForX (e.position.x, scaleArea);
+    const auto index = indexForX (e.position.x, scaleArea);
+    if (index != previewIndex && previewIndex >= 0 && onStepCrossed != nullptr)
+        onStepCrossed();
+    previewIndex = index;
     repaint();
+}
+
+void ChoiceSliderComponent::setPending (bool shouldBePending)
+{
+    if (pending == shouldBePending)
+        return;
+
+    pending = shouldBePending;
+
+    if (onPendingChanged != nullptr)
+        onPendingChanged (pending);
+}
+
+void ChoiceSliderComponent::commitPendingAnswer()
+{
+    if (! hasPendingAnswer())
+        return;
+
+    setPending (false);
+
+    if (continuousMode)
+    {
+        if (onContinuousChoice != nullptr)
+            onContinuousChoice (cursorNormalised);
+    }
+    else if (previewIndex >= 0 && onChoiceSelected != nullptr)
+    {
+        onChoiceSelected (previewIndex);
+    }
 }
 
 void ChoiceSliderComponent::mouseDown (const juce::MouseEvent& e) { updatePreviewFromMouse (e); }
@@ -252,7 +294,9 @@ void ChoiceSliderComponent::mouseMove (const juce::MouseEvent& e)
     // readout is meant to follow the mouse the moment it's over the ruler,
     // which is what makes the scale feel like an instrument you sweep
     // rather than a control you have to grab first.
-    if (continuousMode)
+    // A placed answer stays put under a hovering pointer (an iPad with a
+    // trackpad); only a touch or a drag moves it.
+    if (continuousMode && ! (confirmMode && pending))
         updatePreviewFromMouse (e);
 }
 
@@ -265,6 +309,14 @@ void ChoiceSliderComponent::mouseUp (const juce::MouseEvent&)
 
     if (answered)
         return;
+
+    if (confirmMode)
+    {
+        // Placed, not sent: the Answer button sends it.
+        setPending (continuousMode ? cursorEngaged : previewIndex >= 0);
+        repaint();
+        return;
+    }
 
     if (continuousMode)
     {

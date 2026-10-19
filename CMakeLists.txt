@@ -448,9 +448,11 @@ juce_add_plugin(EarTrainer
     # iOS only (JUCE ignores these elsewhere). No microphone: the trainer
     # makes its own sound and its input is off on iOS (PluginProcessor.cpp).
     # The Files app sees the app's folder - that is how own sounds and packs
-    # reach a phone. Every orientation is allowed here; which ones a screen
-    # accepts is decided at run time (Desktop::setOrientationsEnabled) - the
-    # trainer is portrait on a phone, the Studio asks for landscape.
+    # reach a phone. Every orientation, on every screen: a phone on its side
+    # gets the two-column layout (ADR 060). The launch screen is the app's
+    # own dark background, not JUCE's black, and the wordmark animates in
+    # over it (Source/SplashOverlay.h).
+    LAUNCH_STORYBOARD_FILE "${CMAKE_CURRENT_SOURCE_DIR}/assets/ios/LaunchScreen.storyboard"
     MICROPHONE_PERMISSION_ENABLED FALSE
     BACKGROUND_AUDIO_ENABLED FALSE
     FILE_SHARING_ENABLED TRUE
@@ -474,6 +476,9 @@ target_sources(EarTrainer
         Source/SettingsScreenComponent.cpp
         Source/HearingTestScreen.cpp
         Source/RunResultsComponent.cpp
+        Source/StartSheetComponent.cpp
+        Source/Haptics.cpp
+        Source/ProfileScreenComponent.cpp
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/StudioScreenComponent.cpp
@@ -525,6 +530,9 @@ if(ABCTRAIN_IOS)
     # Personal Team from Xcode (Settings > Accounts), given at configure time:
     #   -DABCTRAIN_IOS_TEAM=XXXXXXXXXX
     set(ABCTRAIN_IOS_TEAM "" CACHE STRING "Apple development team id for signing on a device")
+    # The haptic click on the scales (ADR 062) is UIKit, so Objective-C++;
+    # Haptics.cpp is the no-op everywhere else.
+    target_sources(EarTrainer PRIVATE Source/Haptics_ios.mm)
     set_target_properties(EarTrainer_Standalone PROPERTIES
         XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
         XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic")
@@ -802,6 +810,9 @@ set(abcTrainEditorToolSources
         Source/SettingsScreenComponent.cpp
         Source/HearingTestScreen.cpp
         Source/RunResultsComponent.cpp
+        Source/StartSheetComponent.cpp
+        Source/Haptics.cpp
+        Source/ProfileScreenComponent.cpp
         Source/TopNavComponent.cpp
         Source/AchievementsScreenComponent.cpp
         Source/TrainingSoundsComponent.cpp

@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "Haptics.h"
 #include "BattleShare.h"
 #include "shared/ui/CommunityLink.h"
 #include "shared/audio/GainMatch.h"
@@ -540,6 +541,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         const auto onSounds       = (item == TopNavComponent::Item::sounds);
         const auto onSettings     = (item == TopNavComponent::Item::settings);
         const auto onLive         = (item == TopNavComponent::Item::live);
+        const auto onProfile      = (item == TopNavComponent::Item::profile);
 
         // The hearing test is a page of Settings: any tab leaves it, and
         // leaving stops the tone.
@@ -547,6 +549,15 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         hearingTestScreen.setVisible (false);
 
         liveScreen.setVisible (onLive);
+        profileScreen.setVisible (onProfile);
+
+        if (onProfile)
+        {
+            refreshProfile();
+            profileScreen.showSupportPage (false);
+            profileScreen.toFront (false);
+            refreshMyRatings();
+        }
 
         if (onLive)
             liveScreen.toFront (false);
@@ -567,10 +578,6 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         {
             studioScreen.close();
         }
-
-        // A phone stays upright everywhere but the Studio, which asks to be
-        // turned sideways (ADR 060).
-        setPhoneOrientationsFor (onStudio);
 
         if (onAchievements)
             showAchievementsScreen();
@@ -640,16 +647,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
         // 3-2-1 into a timed run on a skill you have only ever practised.
         applyStoredModeForGame (index);
 
-        // Picking a training starts it - the home screen's job is to get
-        // out of the way, not to make you confirm twice. Through the
-        // countdown path, so arriving with Survival or Blitz still armed
-        // gets its 3-2-1 rather than an ambush.
-        showScreen (Screen::training);
-        beginRunWithCountdown();
-
-        // No hearing profile yet: offer the test, on a strip that leaves
-        // the round alone (ADR 051).
-        offerHearingTestIfDue();
+        // Picking a training asks one thing first: which mode, this time
+        // (ADR 061) - with last time's already chosen, so it is one tap
+        // when nothing changes. Start goes through the countdown path.
+        openStartSheet (index);
     };
 
     homeScreen.onFavouriteToggled = [this] (int index, bool shouldBeFavourite)
@@ -842,6 +843,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     AbcTrainLookAndFeel::makePrimary (continueButton);
     addChildComponent (continueButton);
     donateLink.setJustificationType (juce::Justification::centredRight);
+    // The footer link opens the support page now (ADR 061), which says
+    // what the money is for before asking for any.
+    donateLink.setURL ({});
+    donateLink.onClick = [this] { openSupportPage(); };
     addChildComponent (donateLink);
 
     dailyChallengeLabel.setJustificationType (juce::Justification::centredLeft);
@@ -1004,9 +1009,42 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     settingsScreen.onHearingProfileChanged = [this] { processor.applyHearingProfile(); };
     addChildComponent (studioScreen);
     studioScreen.setRotatePromptAllowed (isPhone());
-    setPhoneOrientationsFor (false);
     studioScreen.onLessons = [this] { openLessons(); };
     addChildComponent (liveScreen);
+
+    addChildComponent (profileScreen);
+    profileScreen.onPeriodChosen = [this] (int period)
+    {
+        profilePeriod = period;
+        refreshProfile();
+    };
+    profileScreen.onAchievements = [this]
+    {
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::achievements);
+    };
+    profileScreen.onSettings = [this]
+    {
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::settings);
+    };
+    profileScreen.onDonate = [] { juce::URL ("https://www.donationalerts.com/r/bogdankorablev").launchInDefaultBrowser(); };
+    profileScreen.onFreeItem = [this] (int index)
+    {
+        // Star on GitHub, tell a friend (the site's address, copied),
+        // write what to improve.
+        if (index == 0)
+            juce::URL ("https://github.com/bogggare567/abcTrain").launchInDefaultBrowser();
+        else if (index == 1)
+        {
+            juce::SystemClipboard::copyTextToClipboard ("https://soundkorb.ru");
+            achievementToast.show (localisation.getText ("support.copied"), "soundkorb.ru");
+            achievementToast.toFront (false);
+        }
+        else
+            SettingsScreenComponent::feedbackUrl (CurrentVersion::string,
+                                                  juce::SystemStats::getOperatingSystemName()).launchInDefaultBrowser();
+    };
     liveScreen.setAccount (&processor.getLiveAccount());
     createSeminarHost();
     liveScreen.onStartBotBattle = [this] (BotListener::Bot bot, int family) { startBotBattle (bot, family); };
@@ -1131,6 +1169,71 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     addChildComponent (screensaver);
 
+    // A phone opens on the wordmark rather than on black (ADR 060); the
+    // tools that render screens never see it.
+    addChildComponent (splash);
+    splash.setTexts ({ localisation.getText ("brand.a"), localisation.getText ("brand.b"), localisation.getText ("brand.c") },
+                     localisation.getText ("splash.preparing"), localisation.getText ("ui.headphoneNotePhone"));
+   #if JUCE_IOS || JUCE_ANDROID
+    if (! WindowFit::fittingDisabled())
+        splash.start();
+   #endif
+
+    // The start sheet, over everything but the splash (ADR 061).
+    addChildComponent (startSheet);
+    startSheet.onStart = [this] (int mode)
+    {
+        const auto index = processor.getGameManager().getActiveGameIndex();
+        processor.getProgressManager().setPreferredModeForGame (index, mode);
+        applyStoredModeForGame (index);
+
+        showScreen (Screen::training);
+        beginRunWithCountdown();
+
+        // No hearing profile yet: offer the test, on a strip that leaves
+        // the round alone (ADR 051).
+        offerHearingTestIfDue();
+    };
+    startSheet.onLockedPressed = [this] (int)
+    {
+        achievementToast.show (
+            localisation.getText ("ui.modesLockedCaption",
+                                   { { "count", juce::String (ProgressManager::streakToUnlockModes) } }),
+            localisation.getText ("ui.modesLockedTitle"));
+        achievementToast.toFront (false);
+    };
+    startSheet.onSound = [this]
+    {
+        // The sound is chosen on its own page; the exercise stays the
+        // active one, and the sheet comes back with the next tap on it.
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::sounds);
+    };
+
+    // Answer (ADR 062): sends what the finger placed on the scale.
+    answerButton.setComponentID ("training.answer");
+    answerButton.onClick = [this] { choiceSlider.commitPendingAnswer(); };
+    // Dimmed until something is placed: a filled button that does
+    // nothing reads as broken.
+    answerButton.setEnabled (false);
+    answerButton.setAlpha (0.4f);
+    AbcTrainLookAndFeel::makePrimary (answerButton);
+    addChildComponent (answerButton);
+    choiceSlider.onPendingChanged = [this] (bool placed)
+    {
+        answerButton.setEnabled (placed);
+        answerButton.setAlpha (placed ? 1.0f : 0.4f);
+    };
+    choiceSlider.onStepCrossed = [this]
+    {
+        Haptics::tick (localisationProperties.getIntValue (SettingsScreenComponent::hapticsKey,
+                                                           SettingsScreenComponent::hapticsDefault));
+    };
+
+    modeButton.setComponentID ("training.mode");
+    modeButton.onClick = [this] { openStartSheet (processor.getGameManager().getActiveGameIndex()); };
+    addChildComponent (modeButton);
+
     homeScreen.onBadgeStripClicked = [this] { showAchievementsScreen(); };
 
     addChildComponent (achievementToast);
@@ -1162,6 +1265,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
             h = juce::roundToInt (area.getHeight() * 0.88);
             w = juce::jmin (juce::roundToInt (area.getWidth() * 0.88), juce::roundToInt (h * 1.5));
         }
+
+       #if JUCE_IOS || JUCE_ANDROID
+        // Always the whole screen: there is no window to remember the size
+        // of, and 88% of a phone left black bars round the app.
+        w = area.getWidth();
+        h = area.getHeight();
+       #endif
 
         w = juce::jlimit (juce::jmin (minLogicalWidth, area.getWidth()), juce::jmax (minLogicalWidth, area.getWidth()), w);
         h = juce::jlimit (juce::jmin (minLogicalHeight, area.getHeight()), juce::jmax (minLogicalHeight, area.getHeight()), h);
@@ -1431,17 +1541,6 @@ bool EarTrainerEditor::isPhone()
     return false;
 }
 
-void EarTrainerEditor::setPhoneOrientationsFor (bool studio)
-{
-    juce::ignoreUnused (studio);
-
-   #if JUCE_IOS || JUCE_ANDROID
-    if (isPhone())
-        juce::Desktop::getInstance().setOrientationsEnabled (
-            studio ? juce::Desktop::allOrientations : juce::Desktop::upright);
-   #endif
-}
-
 juce::BorderSize<int> EarTrainerEditor::safeInsets() const
 {
     juce::BorderSize<int> physical;
@@ -1601,7 +1700,7 @@ void EarTrainerEditor::paint (juce::Graphics& g)
     // Each exercise gets its own room: the backdrop carries a hint of that
     // training's category colour while you're in it, and goes neutral on
     // the home screen where nine tints at once would be noise.
-    AbcTrainLookAndFeel::paintPanelBackground (
+    backgroundCache.paint (
         g, getLocalBounds().toFloat(),
         currentScreen == Screen::training
             ? tintForGame (processor.getGameManager().getActiveGame().getName())
@@ -1761,7 +1860,7 @@ void EarTrainerEditor::resized()
     // challenge. The level lives on each tile now, because that is where
     // it is actually true.
     // On a phone the page starts under the notch, not under a bar.
-    const auto homeTop = compactLayout() ? contentBounds().getY() + Spacing::medium
+    const auto homeTop = (compactLayout() || sideways()) ? contentBounds().getY() + Spacing::medium
                                          : Spacing::large + 32 + Spacing::small;
     {
         const auto statusHeight = compactLayout() ? homeStatusHeightCompact : homeStatusHeight;
@@ -1778,7 +1877,7 @@ void EarTrainerEditor::resized()
                               .withTop (homeTop
                                          + (compactLayout() ? homeStatusHeightCompact : homeStatusHeight)
                                          + Spacing::small)
-                              .withTrimmedBottom (compactLayout() ? Spacing::small
+                              .withTrimmedBottom ((compactLayout() || sideways()) ? Spacing::small
                                                                   : Spacing::large + 30 + Spacing::small));
 
     // No title row any more. The app's name is the wordmark in the bar
@@ -1797,9 +1896,20 @@ void EarTrainerEditor::resized()
         // On a phone the bar is the bottom edge, and its bounds run on
         // down through the home indicator's strip so the two read as one.
         const auto compact = compactLayout();
-        topNav.setCompact (compact);
+        const auto onItsSide = sideways();
+        topNav.setCompact (compact || onItsSide, onItsSide, onItsSide ? safeInsets().getLeft() : 0);
 
-        if (compact)
+        if (onItsSide)
+        {
+            // A phone on its side: the tabs as a column down the left edge,
+            // running through the notch's strip so the two read as one.
+            const auto insets = safeInsets();
+            topNav.setBounds (getLocalBounds().removeFromLeft (railIsVisible() ? insets.getLeft() + TopNavComponent::railWidth
+                                                                               : 0));
+            hearingNotice.setBounds (safeBounds().withTrimmedLeft (railIsVisible() ? TopNavComponent::railWidth : 0)
+                                                 .removeFromTop (HearingNotice::height));
+        }
+        else if (compact)
         {
             const auto insets = safeInsets();
             topNav.setBounds (getLocalBounds().withTrimmedLeft (insets.getLeft())
@@ -1840,7 +1950,7 @@ void EarTrainerEditor::resized()
         constexpr auto donationAllowed = true;
        #endif
 
-        if (compactLayout())
+        if (compactLayout() || sideways())
         {
             soundkorbLink.setBounds ({});
             donateLink.setBounds ({});
@@ -1853,6 +1963,83 @@ void EarTrainerEditor::resized()
                                                   : juce::Rectangle<int>());
         }
     }
+
+    if (sideways())
+        layoutTrainingSideways (area);
+    else
+        layoutTraining (area);
+    collapseModePills();
+    choiceSlider.setConfirmMode (touchFirst() && (compactLayout() || sideways()));
+
+    // The strip beside the notch: only a phone held upright that has one
+    // (an SE's 20-point status bar is no room for a clock).
+    islandLeft = islandRight = {};
+    if (compactLayout() && currentScreen == Screen::training && safeInsets().getTop() >= 40)
+    {
+        auto strip = getLocalBounds().removeFromTop (safeInsets().getTop()).reduced (Spacing::large, 6);
+        const auto island = juce::jmin (130, strip.getWidth() / 3);
+        islandLeft = strip.removeFromLeft ((strip.getWidth() - island) / 2);
+        islandRight = strip.removeFromRight (islandLeft.getWidth());
+
+        if (isRunHudActive())
+            runHud.setBounds (islandLeft.withSizeKeepingCentre (islandLeft.getWidth(), 30));
+        promotionPips.setBounds (islandRight.removeFromRight (52).withSizeKeepingCentre (52, 30));
+    }
+
+    updateStatusBar();
+    area.removeFromTop (Spacing::large);
+
+    // The progress section used to live here - level, a bar, streak and
+    // the daily challenge, on screen through every round. It has moved to
+    // the home screen. A bar answers "how far to the next level", which is
+    // a question about the app rather than about hearing, and a training
+    // screen should hold the thing you are answering with and nothing
+    // else. What replaces it *during* a run is a toast: nothing until you
+    // earn something, then a moment of it. See decisions/024.
+    progressSection = {};
+
+    // Unconditional, same as shared/LessonController's integration in the
+    // Learner editors - whether or not they're currently visible.
+    //
+    // The three reached from a tab get the area *under* the bar, and fill
+    // it: they are places you navigate to, and the bar you navigated with
+    // has to stay visible and clickable above them. Covering the whole
+    // window made each one a dialogue with its own way out - which is why
+    // every one of them used to need a "Close" button to undo a click on a
+    // tab.
+    trainingSounds.setBounds (contentBounds());
+    profileScreen.setBounds (contentBounds());
+    settingsScreen.setBounds (contentBounds());
+    hearingTestScreen.setBounds (contentBounds());
+    achievementsScreen.setBounds (contentBounds());
+    studioScreen.setBounds (contentBounds());
+    liveScreen.setBounds (contentBounds());
+
+    // The run result still covers everything: it is not a destination, it
+    // is what a finished run leaves on the screen.
+    runResults.setBounds (safeBounds());
+    tour.setBounds (safeBounds());
+    screensaver.setBounds (getLocalBounds());
+    splash.setBounds (getLocalBounds());
+    startSheet.setBounds (safeBounds());
+
+    if (startSheet.isVisible())
+        startSheet.toFront (true);
+
+    if (splash.isVisible())
+        splash.toFront (false);
+
+    achievementToast.setBounds (safeBounds().withTrimmedTop (Spacing::large + 34)
+                                                 .withHeight (52)
+                                                 .withSizeKeepingCentre (
+                                                     juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
+                                                 .withY (Spacing::large + 34));
+}
+
+void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+    const auto phone = compactLayout();
 
     // --- exercise section: which game, and what you're listening for ---
     // Collapses to just the name row once the exercise is familiar (see
@@ -1987,32 +2174,19 @@ void EarTrainerEditor::resized()
     // thumb-sized buttons: the modes across the width, then the tally and
     // the action.
     const auto barReserve = phone ? 0 : toolBarReserve;
-    controlBar = area.removeFromBottom ((phone ? controlBarHeightCompact : controlBarHeight) + barReserve)
+    const auto confirm = touchFirst();
+
+    // On a phone the whole bottom is the thumb's (ADR 062), the same three
+    // rows in every exercise: A | B | the exercise's own action, then
+    // Answer, then the mode, the tally and "again".
+    const auto phoneBarHeight = 46 + 44 + (confirm ? 50 + Spacing::small : 0) + Spacing::small * 3;
+    controlBar = area.removeFromBottom ((phone ? phoneBarHeight : controlBarHeight) + barReserve)
                      .withTrimmedBottom (barReserve);
 
     if (phone)
     {
         auto rows = controlBar.reduced (0, Spacing::small);
-        auto modes = rows.removeFromTop (44);
-        rows.removeFromTop (Spacing::small);
-        auto actions = rows.removeFromTop (44);
-
-        const auto pillWidth = (modes.getWidth() - 2 * Spacing::hairline) / 3;
-
-        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
-        {
-            pill->setBounds (pill == &blitzButton ? modes : modes.removeFromLeft (pillWidth));
-            modes.removeFromLeft (Spacing::hairline);
-        }
-
-        restartButton.setBounds (actions.removeFromRight (juce::jmin (180, actions.getWidth() / 2)));
-        actions.removeFromRight (Spacing::small);
-
-        const auto running = isRunHudActive();
-        endRunButton.setBounds (running ? actions.removeFromLeft (juce::jmin (120, actions.getWidth() / 2))
-                                        : juce::Rectangle<int>());
-        scoreLabel.setBounds (running ? juce::Rectangle<int>() : actions.removeFromLeft (110));
-        runStatusLabel.setBounds (runStatusLabel.getText().isNotEmpty() ? actions : juce::Rectangle<int>());
+        layoutThumbRows (rows, 46, confirm ? 50 : 0, 44);
     }
     else
     {
@@ -2087,20 +2261,9 @@ void EarTrainerEditor::resized()
         // reach for it - and the row it vacated became scale.
         if (phone)
         {
-            // Two rows: the caption with the hint at its right, then A and
-            // B as two big halves - the pair is pressed every round.
-            auto headingRow = inner.removeFromTop (40);
-            hintButton.setBounds (headingRow.removeFromRight (juce::jmin (190, headingRow.getWidth() / 2))
-                                            .withSizeKeepingCentre (juce::jmin (190, headingRow.getWidth() / 2), 40));
-            headingRow.removeFromRight (Spacing::small);
-            answerHeadingRow = headingRow;
-
-            inner.removeFromTop (Spacing::small);
-            auto pair = inner.removeFromTop (46);
-            const auto half = (pair.getWidth() - Spacing::hairline) / 2;
-            beforeButton.setBounds (pair.removeFromLeft (half));
-            pair.removeFromLeft (Spacing::hairline);
-            afterButton.setBounds (pair);
+            // Only the caption up here; A, B and the hint are in the
+            // thumb's rows at the bottom.
+            answerHeadingRow = inner.removeFromTop (22);
         }
         else
         {
@@ -2201,70 +2364,197 @@ void EarTrainerEditor::resized()
         {
             inner.removeFromTop (Spacing::medium);
             hintSection = inner.withHeight (juce::jmin (inner.getHeight(), 240));
-            auto hintRow = hintSection;
-
-            switch (activeHintView())
-            {
-                case Game::HintView::stereo:
-                    // Only the vectorscope: width *is* the shape of the
-                    // cloud, and a spectrum beside it said nothing about it.
-                    vectorscope.setBounds (hintRow.withSizeKeepingCentre (hintRow.getHeight(), hintRow.getHeight()));
-                    break;
-
-                case Game::HintView::envelope:
-                    hintWaveform.setBounds (hintRow);
-                    break;
-
-                case Game::HintView::reflections:
-                    hintEcho.setBounds (hintRow);
-                    break;
-
-                case Game::HintView::spectrum:
-                default:
-                    hintSpectrum.setBounds (hintRow);
-                    break;
-            }
+            placeHintPicture (hintSection);
         }
     }
 
-    area.removeFromTop (Spacing::large);
+}
 
-    // The progress section used to live here - level, a bar, streak and
-    // the daily challenge, on screen through every round. It has moved to
-    // the home screen. A bar answers "how far to the next level", which is
-    // a question about the app rather than about hearing, and a training
-    // screen should hold the thing you are answering with and nothing
-    // else. What replaces it *during* a run is a toast: nothing until you
-    // earn something, then a moment of it. See decisions/024.
-    progressSection = {};
+void EarTrainerEditor::updateStatusBar()
+{
+   #if JUCE_IOS
+    const auto hide = compactLayout() && currentScreen == Screen::training && isVisible();
 
-    // Unconditional, same as shared/LessonController's integration in the
-    // Learner editors - whether or not they're currently visible.
-    //
-    // The three reached from a tab get the area *under* the bar, and fill
-    // it: they are places you navigate to, and the bar you navigated with
-    // has to stay visible and clickable above them. Covering the whole
-    // window made each one a dialogue with its own way out - which is why
-    // every one of them used to need a "Close" button to undo a click on a
-    // tab.
-    trainingSounds.setBounds (contentBounds());
-    settingsScreen.setBounds (contentBounds());
-    hearingTestScreen.setBounds (contentBounds());
-    achievementsScreen.setBounds (contentBounds());
-    studioScreen.setBounds (contentBounds());
-    liveScreen.setBounds (contentBounds());
+    if (hide == statusBarHidden)
+        return;
 
-    // The run result still covers everything: it is not a destination, it
-    // is what a finished run leaves on the screen.
-    runResults.setBounds (safeBounds());
-    tour.setBounds (safeBounds());
-    screensaver.setBounds (getLocalBounds());
+    statusBarHidden = hide;
+    auto* top = getTopLevelComponent();
 
-    achievementToast.setBounds (safeBounds().withTrimmedTop (Spacing::large + 34)
-                                                 .withHeight (52)
-                                                 .withSizeKeepingCentre (
-                                                     juce::jmin (getWidth() - Spacing::large * 2, 360), 52)
-                                                 .withY (Spacing::large + 34));
+    if (top == nullptr)
+        return;
+
+    // Kiosk mode is what hides the status bar on iOS; leaving it makes the
+    // window un-full-screen itself, so it is put back.
+    juce::Desktop::getInstance().setKioskModeComponent (hide ? top : nullptr, false);
+
+    if (! hide)
+        if (auto* peer = top->getPeer())
+            peer->setFullScreen (true);
+   #endif
+}
+
+void EarTrainerEditor::layoutThumbRows (juce::Rectangle<int> rows, int pairHeight, int answerHeight, int actionsHeight)
+{
+    using namespace AbcTrainTheme;
+
+    // A | B | the exercise's action: "narrow the scale", "show the sound".
+    {
+        auto row = rows.removeFromTop (pairHeight);
+        const auto third = (row.getWidth() - 2 * Spacing::hairline) / 3;
+        beforeButton.setBounds (row.removeFromLeft (third));
+        row.removeFromLeft (Spacing::hairline);
+        afterButton.setBounds (row.removeFromLeft (third));
+        row.removeFromLeft (Spacing::hairline);
+        hintButton.setBounds (row);
+        rows.removeFromTop (Spacing::small);
+    }
+
+    // Answer: what a finger lifting off the scale no longer does by itself.
+    if (answerHeight > 0)
+    {
+        answerButton.setBounds (rows.removeFromTop (answerHeight));
+        rows.removeFromTop (Spacing::small);
+    }
+    else
+    {
+        answerButton.setBounds ({});
+    }
+
+    // The mode, the tally or the way out, and "again".
+    auto actions = rows.removeFromTop (actionsHeight);
+    const auto modeRect = actions.removeFromLeft (actions.getWidth() * 2 / 5);
+    practiceButton.setBounds (modeRect);
+    survivalButton.setBounds ({});
+    blitzButton.setBounds (modeRect);   // collapseModePills() puts the one button here
+    actions.removeFromLeft (Spacing::small);
+
+    restartButton.setBounds (actions.removeFromRight (juce::jmin (150, actions.getWidth() / 2)));
+    actions.removeFromRight (Spacing::small);
+
+    const auto running = isRunHudActive();
+    endRunButton.setBounds (running ? actions : juce::Rectangle<int>());
+    scoreLabel.setBounds (running ? juce::Rectangle<int>() : actions);
+    runStatusLabel.setBounds ({});
+}
+
+void EarTrainerEditor::placeHintPicture (juce::Rectangle<int> hintRow)
+{
+    switch (activeHintView())
+    {
+        case Game::HintView::stereo:
+            // Only the vectorscope: width *is* the shape of the
+            // cloud, and a spectrum beside it said nothing about it.
+            vectorscope.setBounds (hintRow.withSizeKeepingCentre (hintRow.getHeight(), hintRow.getHeight()));
+            break;
+
+        case Game::HintView::envelope:
+            hintWaveform.setBounds (hintRow);
+            break;
+
+        case Game::HintView::reflections:
+            hintEcho.setBounds (hintRow);
+            break;
+
+        case Game::HintView::spectrum:
+        default:
+            hintSpectrum.setBounds (hintRow);
+            break;
+    }
+}
+
+void EarTrainerEditor::layoutTrainingSideways (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+
+    // A phone held sideways (ADR 060): the controls in a column on the
+    // left, in the order a round is played from top to bottom - what the
+    // exercise is, A and B, how this run is played - and the scale with
+    // every pixel of height there is on the right. Nothing appears or
+    // goes as a round moves on, so nothing jumps.
+    const auto column = area.removeFromLeft (juce::jlimit (260, 340, area.getWidth() * 40 / 100));
+    area.removeFromLeft (Spacing::large);
+
+    exerciseSection = column;
+    controlBar = {};
+    levelProgressBarArea = {};
+
+    auto left = column;
+
+    {
+        auto gameRow = left.removeFromTop (30);
+        gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
+        gameRow.removeFromLeft (Spacing::small);
+        instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
+        gameRow.removeFromRight (Spacing::tight);
+        currentGameLabel.setBounds (gameRow);
+    }
+
+    left.removeFromTop (Spacing::tight);
+
+    {
+        auto slot = left.removeFromTop (28);
+        const auto running = isRunHudActive();
+        const auto hudWidth = session.getMode() == SessionManager::Mode::duel ? 330 : 210;
+        runHud.setBounds (running ? slot.withWidth (juce::jmin (hudWidth, slot.getWidth())) : juce::Rectangle<int>());
+        promotionPips.setBounds (slot.removeFromRight (52));
+        slot.removeFromRight (Spacing::small);
+        levelProgressLabel.setBounds (running ? juce::Rectangle<int>() : slot);
+    }
+
+    // The bottom of the column first, so whatever height the phone has
+    // left over goes to the instruction.
+    {
+        // The same thumb rows as upright (ADR 062), at the foot of the
+        // column. The caption "drag along the scale" is left out: the
+        // scale beside the column says it.
+        const auto confirm = touchFirst();
+        const auto rowsHeight = 46 + 40 + (confirm ? 44 + Spacing::small : 0) + Spacing::small;
+        layoutThumbRows (left.removeFromBottom (rowsHeight), 46, confirm ? 44 : 0, 40);
+        left.removeFromBottom (Spacing::small);
+        answerHeadingRow = {};
+    }
+
+    // The instruction takes what is left - on a short phone, possibly
+    // nothing; the "?" still opens it.
+    instructionLabel.setBounds (shouldShowInstructions() && left.getHeight() >= 36 ? left.withTrimmedTop (Spacing::small)
+                                                                                   : juce::Rectangle<int>());
+
+    // --- the right: verdict, scale, and a bought hint's picture ---------
+    hintSection = {};
+    {
+        const auto showing = hintRevealed && ! hintNarrowsTheScale() && currentScreen == Screen::training;
+        const auto view = activeHintView();
+        vectorscope.setVisible (showing && view == Game::HintView::stereo);
+        hintSpectrum.setVisible (showing && view == Game::HintView::spectrum);
+        hintWaveform.setVisible (showing && view == Game::HintView::envelope);
+        hintEcho.setVisible (showing && view == Game::HintView::reflections);
+    }
+
+    answerSection = area;
+    auto inner = area;
+    feedbackLabel.setBounds (inner.removeFromTop (24));
+    inner.removeFromTop (Spacing::tight);
+
+    pointsFlyup.setBounds (juce::Rectangle<int> (answerSection.getCentreX() - 70, answerSection.getY(), 140, 88));
+    runCountdown.setBounds (answerSection);
+
+    // The hint's room is kept whether or not it is bought, as in the
+    // upright layout, so buying it moves nothing.
+    const auto reserveHint = ! hintNarrowsTheScale() && session.areHintsAllowed();
+    auto sliderHeight = inner.getHeight();
+
+    if (reserveHint)
+        sliderHeight = juce::jmax (150, inner.getHeight() * 62 / 100);
+
+    choiceSlider.setBounds (inner.removeFromTop (sliderHeight));
+
+    if (hintRevealed && ! hintNarrowsTheScale())
+    {
+        inner.removeFromTop (Spacing::small);
+        hintSection = inner;
+        placeHintPicture (hintSection);
+    }
 }
 
 void EarTrainerEditor::startTour()
@@ -2377,6 +2667,17 @@ void EarTrainerEditor::showRunResults (int finalScore)
     summary.bestStreakThisRun = session.getBestStreakThisRun();
     summary.previousBest = pendingPreviousBest;
     summary.isNewBest = ! duel && finalScore > pendingPreviousBest;
+
+    // The profile's activity feed (ADR 062): what this run was, kept as
+    // facts, worded when shown so a language change rewords it.
+    {
+        const auto kind = ! duel ? (session.getMode() == SessionManager::Mode::survival ? "survival" : "blitz")
+                        : session.getDuelOutcome() == SessionManager::Outcome::won  ? "won"
+                        : session.getDuelOutcome() == SessionManager::Outcome::lost ? "lost" : "draw";
+        recordActivity (juce::String (gameIndex) + "|" + kind + "|" + juce::String (finalScore) + "|"
+                        + (duel ? opponentName().replaceCharacter ('|', '/').replaceCharacter (';', ',')
+                                : juce::String (summary.isNewBest ? "best" : "")));
+    }
     if (duel)
         summary.pointsNote = localisation.getText ("bots.score")
                                  .replace ("{{you}}", juce::String (finalScore))
@@ -2773,6 +3074,83 @@ void EarTrainerEditor::applyStoredModeForGame (int gameIndex)
     blitzButton.setToggleState (wanted == SessionManager::Mode::blitz, juce::dontSendNotification);
 
     session.setMode (wanted);
+    refreshModeButton();
+}
+
+void EarTrainerEditor::refreshModeButton()
+{
+    const auto mode = session.getMode();
+    modeButton.setButtonText (localisation.getText (mode == SessionManager::Mode::survival ? "ui.modeSurvival"
+                                                  : mode == SessionManager::Mode::blitz    ? "ui.modeBlitz"
+                                                                                           : "ui.modePractice")
+                              + juce::String::fromUTF8 ("  \xe2\x96\xbe"));
+    modeButton.setTooltip (localisation.getText ("start.changeMode"));
+}
+
+void EarTrainerEditor::collapseModePills()
+{
+    // Where the three pills were laid out, one button; the pills keep
+    // their state and give up their room.
+    modeButton.setBounds (practiceButton.getBounds().getUnion (blitzButton.getBounds()));
+
+    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        pill->setBounds ({});
+}
+
+void EarTrainerEditor::openStartSheet (int gameIndex)
+{
+    auto& gameManager = processor.getGameManager();
+    auto& progress = processor.getProgressManager();
+    auto& game = gameManager.getGame (gameIndex);
+    const auto englishName = game.getName();
+    const auto stats = progress.getStatsForGame (gameIndex);
+    const auto unlocked = progress.areModesUnlockedForGame (gameIndex);
+
+    StartSheetComponent::Content c;
+    c.title = translateGameName (englishName, localisation);
+    c.family = localisation.getText (categoryForGame (englishName));
+    c.description = translateGameInstructions (englishName, game.getInstructions(), localisation);
+    c.icon = AppIcons::iconForGameName (englishName);
+    c.accent = tintForGame (englishName);
+
+    const auto shownLevel = progress.hasThresholdForGame (gameIndex)
+                                ? juce::jlimit (1, ProgressManager::maxLevel,
+                                                juce::roundToInt (progress.getThresholdLevelForGame (gameIndex)))
+                                : progress.getBestLevelForGame (gameIndex);
+    c.levelCaption = localisation.getText ("start.level");
+    c.levelText = formatLevel (game, shownLevel, localisation);
+    c.levelSteps = progress.getLevelForGame (gameIndex);
+    c.levelOf = ProgressManager::maxLevel;
+
+    c.chooseCaption = localisation.getText ("start.choose");
+    const auto locked = localisation.getText ("ui.modesLockedCaption",
+                                              { { "count", juce::String (ProgressManager::streakToUnlockModes) } });
+
+    c.modes[0] = { localisation.getText ("ui.modePractice"),
+                   stats.roundsPlayed > 0 ? localisation.getText ("start.practiceDetail", { { "rounds", juce::String (stats.roundsPlayed) } })
+                                          : localisation.getText ("start.practiceNew"),
+                   false };
+    c.modes[1] = { localisation.getText ("ui.modeSurvival"),
+                   unlocked ? localisation.getText ("start.survivalDetail",
+                                                    { { "lives", juce::String (session.getRules().survivalLives) },
+                                                      { "best", juce::String (stats.bestSurvivalScore) } })
+                            : locked,
+                   ! unlocked };
+    c.modes[2] = { localisation.getText ("ui.modeBlitz"),
+                   unlocked ? localisation.getText ("start.blitzDetail",
+                                                    { { "seconds", juce::String (session.getRules().blitzSeconds) },
+                                                      { "best", juce::String (stats.bestBlitzScore) } })
+                            : locked,
+                   ! unlocked };
+
+    c.soundCaption = localisation.getText ("start.sound");
+    c.soundValue = trainingSounds.sourceName();
+    c.startText = localisation.getText ("start.go");
+
+    const auto mode = juce::jlimit (0, 2, progress.getPreferredModeForGame (gameIndex));
+    startSheet.setBounds (safeBounds());
+    startSheet.show (std::move (c), mode);
+    startSheet.grabKeyboardFocus();
 }
 
 void EarTrainerEditor::modeSelected()
@@ -3181,7 +3559,7 @@ void EarTrainerEditor::applyRunLock()
 
     for (auto* c : { (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
                      (juce::Component*) &blitzButton,    (juce::Component*) &instructionsButton,
-                     (juce::Component*) &soundkorbLink })
+                     (juce::Component*) &soundkorbLink,  (juce::Component*) &modeButton })
     {
         c->setEnabled (! locked);
     }
@@ -3214,6 +3592,8 @@ void EarTrainerEditor::refreshRunStatus()
         // is what made a timed mode feel like something you were stuck in.
         // Visible is not the same as live, though - see applyRunLock().
         practiceButton.setVisible (onTraining);
+        modeButton.setVisible (onTraining && session.getMode() != SessionManager::Mode::duel);
+        refreshModeButton();
         // Practice has no run, so "Score 0 / 0" there counted nothing.
         scoreLabel.setVisible (onTraining && ! hudNow
                                && session.getMode() != SessionManager::Mode::practice);
@@ -3369,7 +3749,8 @@ void EarTrainerEditor::showScreen (Screen screen)
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
-                     (juce::Component*) &blitzButton,
+                     (juce::Component*) &blitzButton,   (juce::Component*) &modeButton,
+                     (juce::Component*) &answerButton,
                      (juce::Component*) &hintButton,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
@@ -3426,6 +3807,257 @@ void EarTrainerEditor::showScreen (Screen screen)
     repaint();
 }
 
+void EarTrainerEditor::recordRatingSnapshot (const std::array<int, 4>& ratings)
+{
+    lastRatings = ratings;
+
+    if (ratings == std::array<int, 4> {})
+        return;
+
+    // "2026-10-19:1580,1524,1503,1515;..." - today's entry replaced, the
+    // oldest dropped past a year.
+    const auto today = juce::Time::getCurrentTime().formatted ("%Y-%m-%d");
+    auto entries = juce::StringArray::fromTokens (localisationProperties.getValue (ratingHistoryKey), ";", "");
+    entries.removeEmptyStrings();
+
+    if (! entries.isEmpty() && entries[entries.size() - 1].startsWith (today))
+        entries.remove (entries.size() - 1);
+
+    entries.add (today + ":" + juce::String (ratings[0]) + "," + juce::String (ratings[1]) + ","
+                 + juce::String (ratings[2]) + "," + juce::String (ratings[3]));
+
+    while (entries.size() > 365)
+        entries.remove (0);
+
+    localisationProperties.setValue (ratingHistoryKey, entries.joinIntoString (";"));
+    localisationProperties.saveIfNeeded();
+}
+
+std::vector<std::array<int, 4>> EarTrainerEditor::ratingHistory (int lastDays) const
+{
+    if (! snapshotHistory.empty())
+        return { snapshotHistory.end() - juce::jmin ((int) snapshotHistory.size(), lastDays), snapshotHistory.end() };
+
+    std::vector<std::array<int, 4>> days;
+
+    for (const auto& entry : juce::StringArray::fromTokens (localisationProperties.getValue (ratingHistoryKey), ";", ""))
+    {
+        const auto values = juce::StringArray::fromTokens (entry.fromFirstOccurrenceOf (":", false, false), ",", "");
+        if (values.size() != 4)
+            continue;
+
+        std::array<int, 4> day {};
+        for (int i = 0; i < 4; ++i)
+            day[(size_t) i] = values[i].getIntValue();
+        days.push_back (day);
+    }
+
+    if ((int) days.size() > lastDays)
+        days.erase (days.begin(), days.end() - lastDays);
+
+    return days;
+}
+
+void EarTrainerEditor::recordActivity (const juce::String& entry)
+{
+    auto entries = juce::StringArray::fromTokens (localisationProperties.getValue (activityKey), ";", "");
+    entries.removeEmptyStrings();
+    entries.add (juce::Time::getCurrentTime().formatted ("%Y-%m-%d") + "|" + entry);
+
+    while (entries.size() > 40)
+        entries.remove (0);
+
+    localisationProperties.setValue (activityKey, entries.joinIntoString (";"));
+    localisationProperties.saveIfNeeded();
+}
+
+juce::StringArray EarTrainerEditor::activityLines (int count) const
+{
+    juce::StringArray lines;
+    auto entries = juce::StringArray::fromTokens (localisationProperties.getValue (activityKey), ";", "");
+    entries.removeEmptyStrings();
+
+    const auto today = juce::Time::getCurrentTime();
+    const auto todayIso = today.formatted ("%Y-%m-%d");
+    const auto yesterdayIso = (today - juce::RelativeTime::days (1)).formatted ("%Y-%m-%d");
+
+    for (int i = entries.size() - 1; i >= 0 && lines.size() < count; --i)
+    {
+        const auto f = juce::StringArray::fromTokens (entries[i], "|", "");
+        if (f.size() < 5)
+            continue;
+
+        const auto day = f[0] == todayIso ? localisation.getText ("profile.dayToday")
+                       : f[0] == yesterdayIso ? localisation.getText ("profile.dayYesterday")
+                       : f[0].substring (8, 10) + "." + f[0].substring (5, 7);
+        auto& gm = processor.getGameManager();
+        const auto gameIndex = f[1].getIntValue();
+        const auto game = gameIndex >= 0 && gameIndex < gm.getNumGames() ? translateGameName (gm.getGame (gameIndex).getName(), localisation)
+                                                                         : juce::String();
+        const auto kind = f[2];
+        juce::String what;
+
+        if (kind == "survival" || kind == "blitz")
+            what = localisation.getText (kind == "survival" ? "profile.feedSurvival" : "profile.feedBlitz",
+                                         { { "game", game }, { "score", f[3] } })
+                 + (f[4] == "best" ? localisation.getText ("profile.feedRecord") : juce::String());
+        else
+            what = localisation.getText (kind == "won" ? "profile.feedWon" : kind == "lost" ? "profile.feedLost" : "profile.feedDraw",
+                                         { { "who", f[4] }, { "game", game } });
+
+        lines.add (day + juce::String::fromUTF8 (" \xc2\xb7 ") + what);
+    }
+
+    return lines;
+}
+
+void EarTrainerEditor::openSupportPage()
+{
+    if (topNav.onItemChosen != nullptr)
+        topNav.onItemChosen (TopNavComponent::Item::profile);
+
+    topNav.setActiveItem (TopNavComponent::Item::profile);
+    profileScreen.showSupportPage (true);
+}
+
+void EarTrainerEditor::refreshProfile()
+{
+    auto& progress = processor.getProgressManager();
+    auto& gameManager = processor.getGameManager();
+    auto& account = processor.getLiveAccount();
+    const auto& theme = AbcTrainTheme::current();
+
+    ProfileScreenComponent::Content c;
+    c.name = account.isSignedIn() && account.getNick().isNotEmpty() ? account.getNick()
+                                                                    : localisation.getText ("profile.you");
+    c.subtitle = account.isSignedIn() ? localisation.getText ("profile.signedIn")
+                                      : localisation.getText ("profile.offline");
+
+    // --- the three totals --------------------------------------------------
+    int rounds = 0, correct = 0;
+    std::array<int, 4> familyRounds {}, familyGames {};
+    static const std::array<const char*, 4> familyKeys {{ "home.category.frequency", "home.category.dynamics",
+                                                          "home.category.space", "home.category.character" }};
+    int bestIndex = -1, weakIndex = -1;
+    float bestAccuracy = -1.0f, weakAccuracy = 2.0f;
+
+    for (int i = 0; i < gameManager.getNumGames(); ++i)
+    {
+        const auto stats = progress.getStatsForGame (i);
+        rounds += stats.roundsPlayed;
+        correct += stats.correctAnswers;
+
+        const juce::String key (categoryForGame (gameManager.getGame (i).getName()));
+        for (size_t f = 0; f < 4; ++f)
+            if (key == familyKeys[f])
+            {
+                familyRounds[f] += stats.roundsPlayed;
+                ++familyGames[f];
+            }
+
+        if (stats.roundsPlayed >= 20)
+        {
+            if (stats.getAccuracy() > bestAccuracy) { bestAccuracy = stats.getAccuracy(); bestIndex = i; }
+            if (stats.getAccuracy() < weakAccuracy) { weakAccuracy = stats.getAccuracy(); weakIndex = i; }
+        }
+    }
+
+    const auto seconds = progress.getPracticeSeconds();
+    c.totals[0] = { juce::String (rounds), localisation.getText ("profile.rounds"), {} };
+    c.totals[1] = { localisation.getText ("profile.daysValue", { { "n", juce::String (progress.getStreakDays()) } }),
+                    localisation.getText ("profile.streak"), theme.accentWarm };
+    c.totals[2] = { seconds >= 3600 ? localisation.getText ("profile.hoursValue", { { "h", juce::String (seconds / 3600) },
+                                                                                    { "m", juce::String ((seconds % 3600) / 60) } })
+                                    : localisation.getText ("profile.minutesValue", { { "m", juce::String (seconds / 60) } }),
+                    localisation.getText ("profile.time"), {} };
+
+    // --- Decibelo ------------------------------------------------------------
+    c.periods = { localisation.getText ("profile.week"), localisation.getText ("profile.month"),
+                  localisation.getText ("profile.all") };
+    c.period = profilePeriod;
+    c.history = ratingHistory (profilePeriod == 0 ? 7 : profilePeriod == 1 ? 30 : 365);
+    c.historyCaption = localisation.getText ("profile.history");
+    c.historyEmpty = account.isSignedIn() ? localisation.getText ("profile.historyStarts")
+                                          : localisation.getText ("profile.historyNeedsAccount");
+
+    const std::array<AbcTrainTheme::Family, 4> families {{ AbcTrainTheme::Family::frequency, AbcTrainTheme::Family::dynamics,
+                                                           AbcTrainTheme::Family::space, AbcTrainTheme::Family::character }};
+    c.familiesCaption = localisation.getText ("profile.families");
+
+    for (size_t f = 0; f < 4; ++f)
+    {
+        c.familyColours[f] = AbcTrainTheme::accentFor (families[f]);
+
+        ProfileScreenComponent::FamilyRow row;
+        row.name = localisation.getText (familyKeys[f]);
+        row.colour = c.familyColours[f];
+        row.detail = localisation.getText ("profile.familyDetail", { { "rounds", juce::String (familyRounds[f]) },
+                                                                    { "games", juce::String (familyGames[f]) } });
+        const auto now = lastRatings[f];
+        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("â");
+
+        // How far it moved over the days the chart shows.
+        if (now > 0 && c.history.size() >= 2)
+            for (const auto& day : c.history)
+                if (day[f] > 0)
+                {
+                    const auto delta = now - day[f];
+                    if (delta != 0)
+                    {
+                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("â")) + juce::String (std::abs (delta));
+                        row.deltaUp = delta > 0;
+                    }
+                    break;
+                }
+
+        c.families.push_back (row);
+    }
+
+    // --- today and what to work on ------------------------------------------
+    c.activityCaption = localisation.getText ("profile.activity");
+    c.activity.add (localisation.getText ("profile.today", { { "m", juce::String (progress.getPracticeSecondsToday() / 60) } }));
+
+    if (rounds > 0)
+        c.activity.add (localisation.getText ("profile.accuracy", { { "p", juce::String (juce::roundToInt (100.0f * (float) correct / (float) rounds)) } }));
+
+    if (bestIndex >= 0)
+        c.activity.add (localisation.getText ("profile.strongest", { { "name", translateGameName (gameManager.getGame (bestIndex).getName(), localisation) } }));
+
+    if (weakIndex >= 0 && weakIndex != bestIndex)
+        c.activity.add (localisation.getText ("profile.weakest", { { "name", translateGameName (gameManager.getGame (weakIndex).getName(), localisation) } }));
+
+    c.activity.addArray (activityLines (5));
+
+    // --- the ways on ------------------------------------------------------------
+    c.showPageLinks = compactLayout() || sideways();
+    c.achievementsTitle = localisation.getText ("ui.achievements");
+    c.achievementsDetail = localisation.getText ("profile.achievementsDetail",
+                                                 { { "n", juce::String (progress.getNumAchievementsEarned()) } });
+    c.settingsTitle = localisation.getText ("ui.settings");
+    c.settingsDetail = localisation.getText ("profile.settingsDetail");
+    c.supportTitle = localisation.getText ("support.title");
+    c.supportDetail = localisation.getText ("support.detail");
+
+    c.backLabel = localisation.getText ("ui.profile");
+    c.supportPageTitle = localisation.getText ("support.title");
+    c.supportBody = localisation.getText ("support.body");
+
+    // No money in an iOS build: App Store rule 3.1.1 allows it only
+    // through the store's own purchases, which come later.
+   #if JUCE_IOS
+    c.donationAllowed = false;
+   #endif
+    c.donateCaption = localisation.getText ("support.donateCaption");
+    c.donateButton = localisation.getText ("support.donate");
+    c.donateNote = localisation.getText ("support.donateNote");
+    c.freeCaption = localisation.getText ("support.freeCaption");
+    c.freeItems.add (localisation.getText ("support.star"));
+    c.freeItems.add (localisation.getText ("support.share"));
+    c.freeItems.add (localisation.getText ("support.feedback"));
+
+    profileScreen.setContent (std::move (c));
+}
+
 void EarTrainerEditor::hideContentUnderNavPage()
 {
     // A page under the bar covers the content but does not replace it, so
@@ -3453,7 +4085,8 @@ void EarTrainerEditor::hideContentUnderNavPage()
                      (juce::Component*) &currentGameLabel, (juce::Component*) &instructionLabel,
                      (juce::Component*) &feedbackLabel, (juce::Component*) &choiceSlider,
                      (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
-                     (juce::Component*) &blitzButton,
+                     (juce::Component*) &blitzButton,   (juce::Component*) &modeButton,
+                     (juce::Component*) &answerButton,
                      (juce::Component*) &hintButton,
                      (juce::Component*) &beforeButton, (juce::Component*) &afterButton,
                      (juce::Component*) &runStatusLabel, (juce::Component*) &scoreLabel,
@@ -3691,7 +4324,8 @@ void EarTrainerEditor::refreshLocalisedText()
                         localisation.getText ("ui.achievements"),
                         localisation.getText ("ui.trainingSounds"),
                         localisation.getText ("ui.settings"),
-                        localisation.getText ("ui.live") },
+                        localisation.getText ("ui.live"),
+                        localisation.getText ("ui.profile") },
                       localisation.getText ("ui.streak"));
 
 
@@ -3700,6 +4334,7 @@ void EarTrainerEditor::refreshLocalisedText()
         practiceButton.setButtonText (localisation.getText ("ui.modePractice"));
         survivalButton.setButtonText (localisation.getText ("ui.modeSurvival"));
         blitzButton.setButtonText (localisation.getText ("ui.modeBlitz"));
+        answerButton.setButtonText (localisation.getText ("training.answer"));
     }
 
     // Three strings that a language change was leaving in the old
@@ -4541,6 +5176,10 @@ void EarTrainerEditor::refreshMyRatings()
             ratings[(size_t) i] = (int) r["games"] > 0 ? (int) r["rating"] : 0;
         }
         safe->liveScreen.setMyRatings (ratings);
+        safe->recordRatingSnapshot (ratings);
+
+        if (safe->profileScreen.isVisible())
+            safe->refreshProfile();
     });
 }
 

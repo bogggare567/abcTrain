@@ -162,9 +162,13 @@ juce::Rectangle<int> RunResultsComponent::cardBounds() const
                                                        compactHeight + Spacing::medium * 2));
     }
 
+    // Short: no by-range block, but the plot is 62 tall, not the 46 above,
+    // and its round numbers need their line.
+    const auto height = contentHeight - (shortCard() ? 16 + 7 * 20 + Spacing::large - 16 - 12 : 0);
+
     return juce::Rectangle<int> (juce::jlimit (480, getWidth() - 60,
                                                 juce::roundToInt ((float) getWidth() * 0.72f)),
-                                  juce::jmin (getHeight() - 40, contentHeight + Spacing::large * 2))
+                                  juce::jmin (getHeight() - Spacing::medium * 2, height + Spacing::large * 2))
                .withCentre (getLocalBounds().getCentre());
 }
 
@@ -463,6 +467,9 @@ void RunResultsComponent::paint (juce::Graphics& g)
     //
     // Counts, not a histogram: "Mids 2 / 3" says exactly what happened,
     // where a bar a few pixels tall made the reader estimate it.
+    // A phone on its side has no height for it: the plot and the four
+    // numbers say most of it, and the buttons must stay reachable.
+    if (! shortCard())
     {
         // On a phone the sentence goes under the plot; its 16-point top
         // margin below is the gap between them.

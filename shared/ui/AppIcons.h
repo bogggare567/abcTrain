@@ -38,7 +38,10 @@ namespace AppIcons
         // A question mark, for re-opening an exercise's instructions once
         // they have collapsed. Bare, not circled: at 16px a ring around a
         // glyph this detailed eats the glyph.
-        help
+        help,
+
+        // A head and shoulders, for the player's own page.
+        profile
     };
 
     // Normalised to a 24x24 box - callers scale via Path::scaleToFit().

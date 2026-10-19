@@ -114,12 +114,14 @@ int TopNavComponent::lastTabRight() const
     return tabsLeft;
 }
 
-void TopNavComponent::setCompact (bool shouldBeCompact)
+void TopNavComponent::setCompact (bool shouldBeCompact, bool asColumn, int leadingInset)
 {
-    if (compact == shouldBeCompact)
+    if (compact == shouldBeCompact && column == asColumn && columnInset == leadingInset)
         return;
 
     compact = shouldBeCompact;
+    column = asColumn;
+    columnInset = leadingInset;
     hovered = -1;
     repaint();
 }
@@ -129,7 +131,10 @@ bool TopNavComponent::shownInBar (int index) const noexcept
     if (index < 0 || index >= numItems || hidden[(size_t) index])
         return false;
 
-    return ! (compact && static_cast<Item> (index) == Item::achievements);
+    // A phone's bar holds four (ADR 061): Achievements and Settings are
+    // reached from Profile, the training sound from the start sheet.
+    const auto item = static_cast<Item> (index);
+    return ! (compact && (item == Item::achievements || item == Item::sounds || item == Item::settings));
 }
 
 void TopNavComponent::setItemHidden (Item item, bool shouldBeHidden)
@@ -157,6 +162,15 @@ juce::Rectangle<int> TopNavComponent::tabBounds (int index) const
                     position = count;
                 ++count;
             }
+
+        if (column)
+        {
+            // A column of cells of at most 64 points, centred top to
+            // bottom: the thumb's reach on a phone held sideways.
+            const auto cellHeight = juce::jmin (64, getHeight() / juce::jmax (1, count));
+            const auto top = (getHeight() - cellHeight * count) / 2;
+            return { columnInset, top + cellHeight * position, getWidth() - columnInset, cellHeight };
+        }
 
         const auto cell = (float) getWidth() / (float) juce::jmax (1, count);
         const auto x = juce::roundToInt (cell * (float) position);
@@ -296,7 +310,11 @@ void TopNavComponent::paintCompact (juce::Graphics& g)
     g.setColour (theme.windowBackground);
     g.fillRect (getLocalBounds());
     g.setColour (theme.divider);
-    g.fillRect (0, 0, getWidth(), 1);
+
+    if (column)
+        g.fillRect (getWidth() - 1, 0, 1, getHeight());
+    else
+        g.fillRect (0, 0, getWidth(), 1);
 
     auto iconFor = [] (Item item)
     {
@@ -309,6 +327,7 @@ void TopNavComponent::paintCompact (juce::Graphics& g)
             case Item::sounds:       return Icon::sound;
             case Item::settings:     return Icon::settings;
             case Item::live:         return Icon::scope;
+            case Item::profile:      return Icon::profile;
         }
         return Icon::home;
     };
@@ -329,10 +348,15 @@ void TopNavComponent::paintCompact (juce::Graphics& g)
         if (isActive)
         {
             g.setColour (theme.accent);
-            g.fillRect (cell.withSizeKeepingCentre (28, 2).withY (0));
+
+            if (column)
+                g.fillRect (cell.withSizeKeepingCentre (2, 28).withX (getWidth() - 2));
+            else
+                g.fillRect (cell.withSizeKeepingCentre (28, 2).withY (0));
         }
 
-        auto inner = cell.reduced (2, 6);
+        auto inner = column ? cell.withSizeKeepingCentre (cell.getWidth(), 50).reduced (2, 2)
+                            : cell.reduced (2, 6);
         AppIcons::draw (g, iconFor (static_cast<Item> (i)),
                         inner.removeFromTop (24).withSizeKeepingCentre (22, 22).toFloat(), colour);
         inner.removeFromTop (3);

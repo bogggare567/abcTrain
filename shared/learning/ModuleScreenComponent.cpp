@@ -36,6 +36,8 @@ ModuleScreenComponent::ModuleScreenComponent (juce::AudioProcessorValueTreeState
     : apvts (state), progress (progressToUse), practiceSource (source),
       setOverride (std::move (set)), clearOverride (std::move (clear))
 {
+    scroller.onChange = [this] (float o) { shelfScroll = o; repaint(); };
+
     for (auto* button : { &backButton, &nextButton, &readyButton, &referenceButton,
                           &mineButton, &submitButton, &againButton, &doneButton, &closeButton })
         addChildComponent (*button);
@@ -758,8 +760,15 @@ void ModuleScreenComponent::mouseExit (const juce::MouseEvent&)
     }
 }
 
+float ModuleScreenComponent::shelfMaxScroll() const
+{
+    return juce::jmax (0.0f, (float) (shelfContentHeight() - shelfListBounds().getHeight()));
+}
+
 void ModuleScreenComponent::mouseUp (const juce::MouseEvent& event)
 {
+    scroller.mouseUp (event);
+
     // A drag was a scroll (mouseDrag), not a choice.
     if (phase != Phase::shelf || ! event.mouseWasClicked())
         return;
@@ -775,19 +784,18 @@ void ModuleScreenComponent::mouseUp (const juce::MouseEvent& event)
         }
 }
 
-void ModuleScreenComponent::mouseDown (const juce::MouseEvent&)
+void ModuleScreenComponent::mouseDown (const juce::MouseEvent& e)
 {
-    scrollAtDragStart = shelfScroll;
+    scroller.setLimit (shelfMaxScroll());
+    scroller.mouseDown (e);
 }
 
 void ModuleScreenComponent::mouseDrag (const juce::MouseEvent& e)
 {
-    if (phase != Phase::shelf || e.mouseWasClicked())
+    if (phase != Phase::shelf)
         return;
 
-    const auto maxScroll = juce::jmax (0.0f, (float) (shelfContentHeight() - shelfListBounds().getHeight()));
-    shelfScroll = juce::jlimit (0.0f, maxScroll, scrollAtDragStart - (float) e.getDistanceFromDragStartY());
-    repaint();
+    scroller.mouseDrag (e);
 }
 
 void ModuleScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
@@ -795,10 +803,8 @@ void ModuleScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce:
     if (phase != Phase::shelf)
         return;
 
-    const auto maxScroll = juce::jmax (0.0f, (float) (shelfContentHeight() - shelfListBounds().getHeight()));
-
-    shelfScroll = juce::jlimit (0.0f, maxScroll, shelfScroll - wheel.deltaY * 160.0f);
-    repaint();
+    scroller.setLimit (shelfMaxScroll());
+    scroller.mouseWheelMove (wheel, 160.0f);
 }
 
 // ---- painting -----------------------------------------------------------

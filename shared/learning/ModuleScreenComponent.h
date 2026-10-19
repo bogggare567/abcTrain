@@ -5,6 +5,7 @@
 #include "shared/learning/ModuleProgress.h"
 #include "shared/audio/LessonAudioBed.h"
 #include "shared/learning/PracticeAudioSource.h"
+#include "shared/ui/TouchScroll.h"
 #include <functional>
 #include <vector>
 
@@ -112,7 +113,8 @@ public:
     // A finger scrolls by dragging (ADR 060), the way the wheel does.
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
-    float scrollAtDragStart = 0.0f;
+    TouchScroll scroller;
+    float shelfMaxScroll() const;
 
 private:
     enum class Phase { shelf, demo, tryIt, check, result };

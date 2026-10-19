@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "shared/ui/AppIcons.h"
+#include "shared/ui/TouchScroll.h"
 #include <functional>
 #include <vector>
 
@@ -104,7 +105,7 @@ public:
     // which mouseUp already tells apart through mouseWasClicked().
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
-    float scrollAtDragStart = 0.0f;
+    TouchScroll scroller;
 
     // Narrower than a desktop row can be (a phone): the name gets the
     // whole top line, the threshold and the record share the line under it.

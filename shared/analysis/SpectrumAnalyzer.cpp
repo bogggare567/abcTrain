@@ -8,7 +8,15 @@ SpectrumAnalyzerComponent::SpectrumAnalyzerComponent()
 {
     setOpaque (true);
     lastTick = juce::Time::getMillisecondCounterHiRes();
+
+    // A phone draws in software at retina density: thirty frames of a
+    // smooth curve beat sixty that stutter. The ballistics run in time,
+    // not frames, so the curve moves the same either way.
+   #if JUCE_IOS || JUCE_ANDROID
+    startTimerHz (30);
+   #else
     startTimerHz (60);
+   #endif
 }
 
 void SpectrumAnalyzerComponent::pushNextSampleIntoFifo (float sample) noexcept
@@ -202,10 +210,15 @@ juce::Path SpectrumAnalyzerComponent::buildSpectrumPath (const std::array<float,
     // the near-vertical jumps a spectrum is full of. With 512 points over a
     // few hundred pixels the visible effect is a smooth analogue-looking
     // trace rather than a polyline with visible corners.
+    // About one point per two pixels of width: past that the extra points
+    // are invisible and only cost - 512 quadratic segments over a 350-point
+    // phone screen were a third of the frame on an iPhone 11.
+    const auto stride = juce::jmax (1, (int) std::floor ((float) scopeSize / juce::jmax (32.0f, bounds.getWidth() * 0.5f)));
+
     path.startNewSubPath (pointAt (0));
-    for (int i = 1; i < scopeSize; ++i)
+    for (int i = stride; i < scopeSize; i += stride)
     {
-        const auto previous = pointAt (i - 1);
+        const auto previous = pointAt (i - stride);
         const auto point = pointAt (i);
         path.quadraticTo (previous, AbcTrainTheme::midpoint (previous, point));
     }
@@ -310,8 +323,12 @@ void SpectrumAnalyzerComponent::paint (juce::Graphics& g)
 
     // A soft bloom under the outline, then the crisp line on top - the
     // curve reads as lit rather than drawn.
+    // (Not on a phone: a wide curved stroke is the most expensive thing
+    // in the frame there, and at phone size the bloom is barely seen.)
+   #if ! (JUCE_IOS || JUCE_ANDROID)
     g.setColour (accent.withAlpha (0.18f));
     g.strokePath (curve, juce::PathStrokeType (3.5f, juce::PathStrokeType::curved));
+   #endif
     g.setColour (accent.brighter (0.15f));
     g.strokePath (curve, juce::PathStrokeType (1.4f, juce::PathStrokeType::curved));
 

@@ -908,6 +908,36 @@ namespace
     // thread only.
     juce::Image sharedCustomBackground;
     float sharedCustomScrim = 0.55f;
+    int customBackgroundGeneration = 0;
+}
+
+void AbcTrainLookAndFeel::PanelBackgroundCache::paint (juce::Graphics& g, juce::Rectangle<float> bounds,
+                                                       juce::Colour tint)
+{
+    const auto scale = juce::jlimit (0.5f, 4.0f, g.getInternalContext().getPhysicalPixelScaleFactor());
+    const auto width = juce::roundToInt (bounds.getWidth() * scale);
+    const auto height = juce::roundToInt (bounds.getHeight() * scale);
+
+    if (width <= 0 || height <= 0)
+        return;
+
+    const auto& t = current();
+    const auto wanted = juce::String (width) + "x" + juce::String (height)
+                      + "|" + juce::String::toHexString ((juce::int64) tint.getARGB())
+                      + "|" + juce::String::toHexString ((juce::int64) t.windowBackground.getARGB())
+                      + "|" + juce::String ((int) t.mode) + "|" + juce::String (t.textureStrength)
+                      + "|" + juce::String (customBackgroundGeneration) + "|" + juce::String (sharedCustomScrim);
+
+    if (wanted != key || ! image.isValid())
+    {
+        key = wanted;
+        image = juce::Image (juce::Image::RGB, width, height, false);
+        juce::Graphics ig (image);
+        ig.addTransform (juce::AffineTransform::scale (scale));
+        paintPanelBackground (ig, bounds.withZeroOrigin(), tint);
+    }
+
+    g.drawImage (image, bounds);
 }
 
 const juce::Image& AbcTrainLookAndFeel::customBackground()
@@ -923,6 +953,7 @@ float AbcTrainLookAndFeel::customBackgroundScrim()
 void AbcTrainLookAndFeel::setCustomBackground (juce::Image image, float scrim)
 {
     sharedCustomBackground = std::move (image);
+    ++customBackgroundGeneration;
     sharedCustomScrim = juce::jlimit (0.0f, 0.95f, scrim);
 }
 

@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "shared/ui/AppIcons.h"
+#include "shared/ui/TouchScroll.h"
 #include <functional>
 #include <vector>
 
@@ -64,7 +65,8 @@ public:
     // A finger scrolls by dragging (ADR 060), the way the wheel does.
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
-    float scrollAtDragStart = 0.0f;
+    TouchScroll scroller;
+    void mouseUp (const juce::MouseEvent&) override;
 
     // The drawing inside a medal, exposed so the earned-toast and the
     // snapshot tool can use the same one.

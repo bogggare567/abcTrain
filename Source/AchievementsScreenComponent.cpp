@@ -19,6 +19,7 @@ namespace
 AchievementsScreenComponent::AchievementsScreenComponent()
 {
     setOpaque (true);
+    scroller.onChange = [this] (float o) { scrollOffset = o; repaint(); };
 
     closeButton.onClick = [this]
     {
@@ -61,6 +62,7 @@ void AchievementsScreenComponent::setEntries (std::vector<Entry> newEntries)
     entries = std::move (newEntries);
     hoverAmounts.assign (entries.size(), 0.0f);
     hovered = -1;
+    scroller.setOffset (0.0f);
     scrollOffset = 0.0f;
 
     layout();
@@ -140,7 +142,8 @@ void AchievementsScreenComponent::layout()
 
     contentHeight = y - (float) cardBounds().getY() + (float) AbcTrainTheme::Spacing::large;
     maxScroll = juce::jmax (0.0f, contentHeight - (float) getHeight());
-    scrollOffset = juce::jlimit (0.0f, maxScroll, scrollOffset);
+    scroller.setLimit (maxScroll);
+    scrollOffset = scroller.getOffset();
 }
 
 void AchievementsScreenComponent::resized()
@@ -569,24 +572,27 @@ void AchievementsScreenComponent::mouseExit (const juce::MouseEvent&)
     repaint();
 }
 
-void AchievementsScreenComponent::mouseDown (const juce::MouseEvent&)
+void AchievementsScreenComponent::mouseDown (const juce::MouseEvent& e)
 {
-    scrollAtDragStart = scrollOffset;
+    scroller.mouseDown (e);
+}
+
+void AchievementsScreenComponent::mouseUp (const juce::MouseEvent& e)
+{
+    scroller.mouseUp (e);
 }
 
 void AchievementsScreenComponent::mouseDrag (const juce::MouseEvent& e)
 {
-    if (maxScroll <= 0.0f || e.mouseWasClicked())
+    if (maxScroll <= 0.0f)
         return;
 
-    scrollOffset = juce::jlimit (0.0f, maxScroll, scrollAtDragStart - (float) e.getDistanceFromDragStartY());
-    repaint();
+    scroller.mouseDrag (e);
 }
 
 void AchievementsScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
 {
-    scrollOffset = juce::jlimit (0.0f, maxScroll, scrollOffset - wheel.deltaY * 120.0f);
-    repaint();
+    scroller.mouseWheelMove (wheel, 120.0f);
 }
 
 void AchievementsScreenComponent::timerCallback()

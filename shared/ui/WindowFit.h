@@ -29,7 +29,14 @@ namespace WindowFit
         if (display == nullptr)
             return { 0, 0, 1440, 900 };
 
+       #if JUCE_IOS || JUCE_ANDROID
+        // A phone or tablet app owns the whole screen, edge to edge; the
+        // notch and the home indicator are the layout's business (safe
+        // area insets), not the window's.
+        return display->totalArea;
+       #else
         return display->userArea.withTrimmedTop (36).reduced (12, 12);
+       #endif
     }
 
     // The tools that render a window to a picture (tools/EditorSnapshots,

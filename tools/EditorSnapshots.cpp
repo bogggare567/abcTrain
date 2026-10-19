@@ -173,7 +173,7 @@ namespace
                        liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack,
                        liveRoundOpen, liveRoundAnswer, soundsChecked,
                        hearingSetup, hearingTest, hearingResult, hearingOffer, eqHearing, studioEQHearing,
-                       lessons, lessonEq, lessonComp };
+                       lessons, lessonEq, lessonComp, profile, supportPage, startSheet, splash };
 
     // The hearing profiles file (ADR 051), fresh for every shot: the offer
     // before training already declined - so it does not appear on every
@@ -346,6 +346,15 @@ namespace
 
                 if (extra == Extra::achievements)
                     editor.openAchievementsForSnapshot();
+
+                if (extra == Extra::profile || extra == Extra::supportPage)
+                    editor.openProfileForSnapshot (extra == Extra::supportPage);
+
+                if (extra == Extra::startSheet)
+                    editor.openStartSheetForSnapshot (0);
+
+                if (extra == Extra::splash)
+                    editor.showSplashForSnapshot();
 
                 if (extra == Extra::tourOffer)
                     editor.offerTourForSnapshot();
@@ -584,7 +593,25 @@ int main (int argc, char* argv[])
         const auto backup = settings.getSiblingFile ("abcTrain.settings.snapshot-backup");
 
         const auto hadSettings = settings.existsAsFile();
-        const auto backedUp = ! hadSettings || settings.copyFileTo (backup);
+
+        // The progress itself - rounds, levels, records - lives in a file
+        // of its own (ProgressManager's, "EarTrainer"), and the shots that
+        // answer rounds write to it. It was not backed up, and every run of
+        // this tool added its rounds to the player's real statistics.
+        const auto progressFile = []
+        {
+            juce::PropertiesFile::Options options;
+            options.applicationName = "EarTrainer";
+            options.filenameSuffix = "settings";
+            options.folderName = "EarTrainer";
+            options.osxLibrarySubFolder = "Application Support";
+            return options.getDefaultFile();
+        }();
+        const auto progressBackup = progressFile.getSiblingFile ("EarTrainer.settings.snapshot-backup");
+        const auto hadProgress = progressFile.existsAsFile();
+
+        const auto backedUp = (! hadSettings || settings.copyFileTo (backup))
+                           && (! hadProgress || progressFile.copyFileTo (progressBackup));
 
         if (! backedUp)
         {
@@ -665,6 +692,10 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveBattleSignedIn", -1, Extra::liveBattleSignedIn);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Profile", -1, Extra::profile);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SupportProject", -1, Extra::supportPage);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StartSheet", -1, Extra::startSheet);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Splash", -1, Extra::splash);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Welcome", -1, Extra::tourOffer);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-WelcomeAccount", -1, Extra::welcomeAccount);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Tour", -1, Extra::tour);
@@ -687,6 +718,15 @@ int main (int argc, char* argv[])
             else
             {
                 settings.deleteFile();
+            }
+            if (hadProgress)
+            {
+                progressBackup.copyFileTo (progressFile);
+                progressBackup.deleteFile();
+            }
+            else
+            {
+                progressFile.deleteFile();
             }
         }
     }

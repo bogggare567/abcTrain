@@ -1,4 +1,6 @@
 #include "shared/analysis/Vectorscope.h"
+
+#include <array>
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include <cmath>
@@ -133,6 +135,41 @@ void Vectorscope::paint (juce::Graphics& g)
     // Drawn oldest-to-newest with rising alpha, so the trail reads as
     // motion rather than a static smear.
     const auto newest = writeIndex.load (std::memory_order_relaxed);
+
+   #if JUCE_IOS || JUCE_ANDROID
+    // On a phone: the same dots as small squares, gathered into eight
+    // bands of freshness and filled once per band. One fill call per dot
+    // with its own colour was what made the stereo hint stutter there.
+    {
+        constexpr int bands = 8;
+        std::array<juce::RectangleList<float>, bands> dots;
+
+        for (int age = numPoints - 1; age >= 0; --age)
+        {
+            const auto index = ((newest - 1 - age) % numPoints + numPoints) % numPoints;
+            const auto x = pointsX[(size_t) index].load (std::memory_order_relaxed);
+            const auto y = pointsY[(size_t) index].load (std::memory_order_relaxed);
+
+            if (std::abs (x) < 1.0e-5f && std::abs (y) < 1.0e-5f)
+                continue;
+
+            const auto freshness = 1.0f - (float) age / (float) numPoints;
+            const auto band = juce::jlimit (0, bands - 1, (int) (freshness * (float) bands));
+            const auto px = centre.x + juce::jlimit (-1.2f, 1.2f, x) * radius;
+            const auto py = centre.y - juce::jlimit (-1.2f, 1.2f, y) * radius;
+            dots[(size_t) band].addWithoutMerging ({ px - 1.0f, py - 1.0f, 2.0f, 2.0f });
+        }
+
+        for (int band = 0; band < bands; ++band)
+        {
+            const auto freshness = ((float) band + 0.5f) / (float) bands;
+            g.setColour (theme.accent.withAlpha (0.05f + 0.55f * freshness * freshness));
+            g.fillRectList (dots[(size_t) band]);
+        }
+
+        return;
+    }
+   #endif
 
     for (int age = numPoints - 1; age >= 0; --age)
     {

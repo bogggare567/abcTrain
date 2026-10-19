@@ -360,6 +360,16 @@ namespace AppIcons
             return p;
         }
 
+        juce::Path profilePath()
+        {
+            juce::Path p;
+            p.addEllipse (8.0f, 3.5f, 8.0f, 8.0f);
+            p.startNewSubPath (4.0f, 21.0f);
+            p.cubicTo (4.0f, 16.0f, 7.5f, 14.0f, 12.0f, 14.0f);
+            p.cubicTo (16.5f, 14.0f, 20.0f, 16.0f, 20.0f, 21.0f);
+            return p;
+        }
+
         juce::Path helpPath()
         {
             // A question mark: the hook drawn as an arc that opens
@@ -403,6 +413,7 @@ namespace AppIcons
             case Icon::settings:       return settingsPath();
             case Icon::modules:        return modulesPath();
             case Icon::help:           return helpPath();
+            case Icon::profile:        return profilePath();
         }
 
         return eqPath (a);

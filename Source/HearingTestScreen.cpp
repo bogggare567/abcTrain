@@ -524,23 +524,30 @@ void HearingTestScreen::resized()
         // The column is about 430 px tall; centred in the page rather than
         // hung from its top edge, where it left half the window empty.
         auto c = column (640);
-        c = c.withTrimmedTop (juce::jmax (24, (c.getHeight() - 430) / 2 - 20));
+
+        // A phone on its side has about 350 points: the same column with
+        // the gaps closed up and the note about the pauses left out (it is
+        // on the setup page and in the result too).
+        const auto tight = c.getHeight() < 470;
+        const auto gap = [tight] (int normal) { return tight ? normal / 3 : normal; };
+
+        c = c.withTrimmedTop (tight ? 4 : juce::jmax (24, (c.getHeight() - 430) / 2 - 20));
         titleArea = c.removeFromTop (34);
-        c.removeFromTop (12);
+        c.removeFromTop (gap (12));
         progressArea = c.removeFromTop (6);
-        c.removeFromTop (34);
+        c.removeFromTop (gap (34));
         earArea = c.removeFromTop (48);
         frequencyArea = c.removeFromTop (24);
-        c.removeFromTop (26);
+        c.removeFromTop (gap (26));
         promptArea = c.removeFromTop (30);
-        c.removeFromTop (18);
-        auto row = c.removeFromTop (60);
+        c.removeFromTop (gap (18));
+        auto row = c.removeFromTop (tight ? 52 : 60);
         const auto w = (row.getWidth() - AbcTrainTheme::Spacing::medium) / 2;
         heardButton.setBounds (row.removeFromLeft (w));
         notHeardButton.setBounds (row.removeFromRight (w));
-        c.removeFromTop (22);
-        noteArea = c.removeFromTop (66);
-        c.removeFromTop (12);
+        c.removeFromTop (gap (22));
+        noteArea = tight ? juce::Rectangle<int>() : c.removeFromTop (66);
+        c.removeFromTop (gap (12));
         pauseButton.setBounds (c.removeFromTop (controlHeight).withSizeKeepingCentre (180, controlHeight));
         return;
     }

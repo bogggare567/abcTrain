@@ -116,6 +116,18 @@ public:
     }
 
     void paint (juce::Graphics&) override;
+    // Touch (ADR 062): lifting the finger only places the answer, and the
+    // Answer button sends it - a thumb that slips off the glass must not
+    // answer for you. With a mouse the release still answers.
+    void setConfirmMode (bool shouldConfirm) { confirmMode = shouldConfirm; }
+    bool hasPendingAnswer() const noexcept { return pending && ! answered; }
+    void commitPendingAnswer();
+    std::function<void (bool)> onPendingChanged;
+
+    // Every step the finger crosses on the scale - a third of an octave's
+    // worth of the ruler, or the next named choice - for a haptic click.
+    std::function<void()> onStepCrossed;
+
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
     void mouseUp (const juce::MouseEvent&) override;
@@ -157,6 +169,9 @@ private:
     // was; it is the *answer in progress*, so it survives until the round
     // is reset rather than snapping back when the pointer leaves.
     bool continuousMode = false;
+    bool confirmMode = false, pending = false;
+    int lastStep = -1;
+    void setPending (bool);
     bool cursorEngaged = false;
     float cursorNormalised = 0.5f;
     float toleranceNormalised = 0.0f;

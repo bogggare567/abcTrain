@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "PluginProcessor.h"
+#include "shared/ui/TouchScroll.h"
 #include <functional>
 #include <map>
 
@@ -127,6 +128,10 @@ public:
         repaint();
     }
 
+    // What the next round will be played on, in a few words: a folder, a
+    // clip, the exercise's own sound or pink noise. For the start sheet.
+    juce::String sourceName() const;
+
 private:
     juce::Rectangle<int> cardBounds() const;
 
@@ -143,6 +148,7 @@ private:
     // is a folder somebody made, and renaming a person's folder on screen
     // is how you make them unable to find it on disk.
     juce::String displayNameForCategory (const juce::String& rawName) const;
+
 
     void importAndSort();
     juce::TextButton importButton;
@@ -203,6 +209,13 @@ private:
     void rebuildRail();
     juce::Rectangle<int> railListBounds() const;
     float railScroll = 0.0f;
+
+    // Both lists scroll under a finger (ADR 060); the one the touch began
+    // in is the one that moves.
+    TouchScroll railScroller, fileScroller;
+    TouchScroll* activeScroller = nullptr;
+    float railMaxScroll() const;
+    float fileMaxScroll() const;
 
     void chooseFilesToImport();
 

@@ -175,6 +175,23 @@ public:
     static const juce::Image& customBackground();
     static float customBackgroundScrim();
 
+    // paintPanelBackground once, kept as a picture at the screen's pixel
+    // size and redrawn only when the size, the tint, the theme or the
+    // wallpaper changes. A gradient and a tiled noise fill over the whole
+    // window are cheap once and expensive sixty times a second - which is
+    // what every live meter on top of the page asked for, and what made the
+    // hints stutter on a phone.
+    class PanelBackgroundCache
+    {
+    public:
+        void paint (juce::Graphics&, juce::Rectangle<float> bounds,
+                    juce::Colour tint = juce::Colours::transparentBlack);
+
+    private:
+        juce::Image image;
+        juce::String key;
+    };
+
     // A grouped-section container: subtly raised surface, hairline border,
     // optional caption in the top-left. This is what gives related controls
     // a visual home instead of floating loose on the backdrop.

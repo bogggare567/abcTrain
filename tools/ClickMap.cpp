@@ -323,6 +323,20 @@ int main (int argc, char* argv[])
         return 1;
     }
 
+    // The progress file (rounds, levels, records) is ProgressManager's own,
+    // apart from the settings above: clicking through a round answers it.
+    const auto progressFile = []
+    {
+        juce::PropertiesFile::Options options;
+        options.applicationName = "EarTrainer";
+        options.filenameSuffix = "settings";
+        options.folderName = "EarTrainer";
+        options.osxLibrarySubFolder = "Application Support";
+        return options.getDefaultFile();
+    }();
+    const auto progressExisted = progressFile.existsAsFile();
+    const auto progressBefore = progressExisted ? progressFile.loadFileAsString() : juce::String();
+
     // The hearing profiles (ADR 051): put aside, and an empty store with the
     // offer declined, so the training cases see no strip.
     const auto hearingFile = HearingProfileStore::makeDefaultOptions().getDefaultFile();
@@ -463,6 +477,11 @@ int main (int argc, char* argv[])
         hearingFile.replaceWithText (hearingBefore);
     else
         hearingFile.deleteFile();
+
+    if (progressExisted)
+        progressFile.replaceWithText (progressBefore);
+    else
+        progressFile.deleteFile();
 
     if (hadSettings)
         backup.moveFileTo (settings);

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "SplashOverlay.h"
+#include "StartSheetComponent.h"
+#include "ProfileScreenComponent.h"
 #include "LearnerVerb/Source/EchogramView.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -211,6 +214,40 @@ public:
         hideContentUnderNavPage();
         refreshRailStatus();
         resized();
+    }
+
+    // The profile, its support page and the start sheet, for the
+    // snapshot tool (ADR 061). Ratings and a fortnight of history are
+    // made up here - a fresh profile has none, and an empty chart is not
+    // a picture of the page.
+    void openProfileForSnapshot (bool support)
+    {
+        if (topNav.onItemChosen != nullptr)
+            topNav.onItemChosen (TopNavComponent::Item::profile);
+        topNav.setActiveItem (TopNavComponent::Item::profile);
+
+        // Never written to the settings file: the tool runs on the
+        // player's own, and a made-up history would stay in it.
+        snapshotHistory.clear();
+        for (int d = 0; d < 14; ++d)
+            snapshotHistory.push_back ({ 1500 + d * 6, 1500 + (d % 5) * 4, 1490 + d, 1500 + (d % 3) * 5 });
+        lastRatings = { 1584, 1516, 1503, 1510 };
+
+        refreshProfile();
+        profileScreen.showSupportPage (support);
+        resized();
+    }
+
+    void showSplashForSnapshot()
+    {
+        splash.setBounds (getLocalBounds());
+        splash.showFrame (900.0);
+    }
+
+    void openStartSheetForSnapshot (int gameIndex)
+    {
+        showScreen (Screen::home);
+        openStartSheet (gameIndex);
     }
 
     void openSettingsForSnapshot()
@@ -1062,8 +1099,13 @@ private:
             // The right side holds the threshold and the 190px button, and
             // needs room for both: a fixed 32% of a 940px window left the
             // threshold 86px and cut "Low-mids vs Presence" to "Low-m...".
-            const auto rightWidth = juce::jlimit (area.getWidth() * 0.32f, area.getWidth() * 0.46f,
-                                                  190.0f + 14.0f + 210.0f + 2.0f * AbcTrainTheme::Spacing::large);
+            // Too narrow for both (a small phone on its side): the button
+            // alone - each tile shows its threshold anyway.
+            const auto showLevel = getWidth() >= 640;
+            const auto rightWidth = showLevel
+                ? juce::jlimit (area.getWidth() * 0.32f, area.getWidth() * 0.46f,
+                                190.0f + 14.0f + 210.0f + 2.0f * AbcTrainTheme::Spacing::large)
+                : 190.0f + 2.0f * AbcTrainTheme::Spacing::large;
             const auto splitX = compact() ? area.getRight() : area.getRight() - rightWidth;
 
             if (! compact())
@@ -1140,7 +1182,7 @@ private:
             }
 
             // --- the standing total -----------------------------------------
-            if (! compact())
+            if (! compact() && showLevel)
             {
                 auto right = area.withLeft (splitX + 1.0f)
                                  .reduced ((float) AbcTrainTheme::Spacing::large, 0.0f);
@@ -1556,7 +1598,9 @@ private:
 
         if (railIsVisible())
         {
-            if (compactLayout())
+            if (sideways())
+                b.removeFromLeft (TopNavComponent::railWidth);
+            else if (compactLayout())
                 b.removeFromBottom (TopNavComponent::compactHeight);
             else
                 b.removeFromTop (TopNavComponent::preferredHeight);
@@ -1571,6 +1615,37 @@ private:
     static constexpr int compactWidth = 600;
     bool compactLayout() const noexcept { return getWidth() < compactWidth; }
 
+    // A phone held sideways: wide enough for the desktop screens but too
+    // short for a bar across the top. The tabs go down the left edge and
+    // the training screen lays out in two columns (ADR 060).
+    static constexpr int sidewaysHeight = 500;
+    bool sideways() const noexcept { return ! compactLayout() && getHeight() < sidewaysHeight; }
+    void layoutTraining (juce::Rectangle<int> area);
+    void layoutTrainingSideways (juce::Rectangle<int> area);
+    void placeHintPicture (juce::Rectangle<int> row);
+    void layoutThumbRows (juce::Rectangle<int> rows, int pairHeight, int answerHeight, int actionsHeight);
+
+    // Touch first (ADR 062): a phone or a tablet - or the snapshot tool
+    // pretending to be one. The scale then places the answer and the
+    // Answer button sends it.
+    static bool touchFirst()
+    {
+       #if JUCE_IOS || JUCE_ANDROID
+        return true;
+       #else
+        return std::getenv ("SNAP_SAFE") != nullptr;
+       #endif
+    }
+    juce::TextButton answerButton;
+
+    // During a round on a phone the status bar - clock, battery - goes
+    // (ADR 062), and the run's own status takes the strip beside the notch
+    // or the Dynamic Island: the mode and the clock on the left, the
+    // staircase's squares on the right.
+    void updateStatusBar();
+    bool statusBarHidden = false;
+    juce::Rectangle<int> islandLeft, islandRight;   // empty unless in use
+
     // The window minus what the system draws over it on a phone: the
     // status bar and the Dynamic Island, the home indicator, the rounded
     // corners in landscape. In this component's own (scaled) units. Zero on
@@ -1578,7 +1653,6 @@ private:
     // that render screens, so a phone can be checked without a phone.
     juce::BorderSize<int> safeInsets() const;
     static bool isPhone();
-    void setPhoneOrientationsFor (bool studio);
     juce::Rectangle<int> safeBounds() const { return safeInsets().subtractedFrom (getLocalBounds()); }
 
     // Puts the session and the three pills into whatever mode this
@@ -1627,6 +1701,16 @@ private:
     // my options" cost a click, and the answer appeared as an OS menu that
     // belongs to no theme at all.
     juce::TextButton practiceButton, survivalButton, blitzButton;
+
+    // The mode is asked at the door (ADR 061): one button on the training
+    // screen says which it is and opens the start sheet to change it. The
+    // three pills above still carry the state - every path that set the
+    // mode keeps working - but take no room and are never seen.
+    juce::TextButton modeButton;
+    StartSheetComponent startSheet;
+    void openStartSheet (int gameIndex);
+    void refreshModeButton();
+    void collapseModePills();
     juce::Label runStatusLabel;
 
     // Kept so an auto-advance already in flight can be cancelled if the
@@ -1711,6 +1795,8 @@ private:
     // The DVD screensaver. Last child of all, and the only thing allowed
     // to cover the tour.
     IdleScreensaver screensaver;
+    SplashOverlay splash;
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     // A screen change fades rather than cuts. 180ms of eased alpha on the
     // arriving screen: long enough that the eye registers a transition and
@@ -1771,6 +1857,25 @@ private:
     // that runs it, so it outlives the page's projector window.
     std::unique_ptr<SeminarHost> seminarHost;
     LiveScreenComponent liveScreen;
+
+    // The player's own page and "support the project" (ADR 061).
+    ProfileScreenComponent profileScreen;
+    void refreshProfile();
+    void openSupportPage();
+
+    // Decibelo per family, one entry a day, kept on this computer so the
+    // profile can draw how it moved - the server keeps only today's.
+    void recordRatingSnapshot (const std::array<int, 4>&);
+    std::vector<std::array<int, 4>> ratingHistory (int lastDays) const;
+    int profilePeriod = 1;   // 0 week, 1 month, 2 all
+
+    // The activity feed: one entry per finished run or battle.
+    void recordActivity (const juce::String& entry);
+    juce::StringArray activityLines (int count) const;
+    static constexpr const char* activityKey = "activityLog";
+    std::array<int, 4> lastRatings {};
+    std::vector<std::array<int, 4>> snapshotHistory;   // the snapshot tool's, see openProfileForSnapshot
+    static constexpr const char* ratingHistoryKey = "ratingHistory";
     void refreshLiveStrings();
     void createSeminarHost();
     void refreshAccountState();
