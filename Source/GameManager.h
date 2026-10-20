@@ -40,6 +40,33 @@ public:
     // Training Sounds screen is the only thing that ever calls into this.
     ReferenceAudioLibrary& getReferenceAudioLibrary() noexcept { return referenceAudioLibrary; }
 
+    // A battle round, built from what the server sent: the seed's built-in
+    // clip first, then the round. That order matters since the frequency
+    // exercises draw only where the clip has sound (SpectralContent.h) -
+    // drawing first and loading the clip after asked about a sound that
+    // was not yet the one playing. One function for the app, the server's
+    // judge (tools/RoundOracle) and tools/BattleSmoke, so the three cannot
+    // build the same seed two ways. Message thread.
+    void startSeededRound (Game& game, int level, juce::int64 seed, double sampleRate)
+    {
+        startSeededRound (referenceAudioLibrary, game, level, seed, sampleRate);
+    }
+
+    // The same, against any library - the tests use one with throwaway
+    // settings rather than the player's own.
+    static void startSeededRound (ReferenceAudioLibrary& library, Game& game, int level,
+                                  juce::int64 seed, double sampleRate)
+    {
+        // Another number from the same seed for the clip, so the sound and
+        // the setting are not tied to each other round after round.
+        library.selectSeededBuiltIn (seed * 2654435761LL + 17, sampleRate);
+
+        game.setSeededRounds (true);
+        game.setDifficulty (level);
+        game.seedNextRound (seed);
+        game.newRound();
+    }
+
     // When no sound is selected: each exercise's own synthesized material
     // (true) or pink noise (false). Persisted by the library, applied to
     // every game. See Game::setPreferExerciseSound and ADR 040.

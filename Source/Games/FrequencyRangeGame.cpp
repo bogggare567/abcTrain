@@ -5,11 +5,15 @@
 
 namespace
 {
+    // With its unit, whole: "425 Hz", "5.2 kHz". It used to return "5.2k"
+    // for callers to append " Hz" to, and "5.2k Hz" is a token the unit
+    // localiser cannot see - the player read "5,2k Гц" beside a scale
+    // labelled "5 кГц".
     juce::String formatFrequency (float hz)
     {
         if (hz >= 1000.0f)
-            return juce::String (hz / 1000.0f, 1) + "k";
-        return juce::String ((int) hz);
+            return juce::String (hz / 1000.0f, 1) + " kHz";
+        return juce::String ((int) hz) + " Hz";
     }
 }
 
@@ -25,6 +29,8 @@ const std::array<FrequencyRangeGame::Range, FrequencyRangeGame::numRanges> Frequ
 
 void FrequencyRangeGame::prepare (const juce::dsp::ProcessSpec& spec)
 {
+    // A boost needs something to boost - see TestSignalGenerator::Need.
+    noise.setNeed (TestSignalGenerator::Need::spectrum);
     sampleRate = spec.sampleRate;
     peakFilter.prepare (spec);
     scratch.setSize ((int) spec.numChannels, (int) spec.maximumBlockSize);
@@ -95,8 +101,52 @@ void FrequencyRangeGame::setDifficulty (int level)
 
 void FrequencyRangeGame::newRound()
 {
-    pairIndices = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
-    correctRangeIndex = drawCorrectOfPair (random, pairIndices[0], pairIndices[1]);
+    // Only ranges the clip has sound in can be the answer (SpectralContent.h:
+    // a hi-hat loop was asking "Sub-bass or Low-mids?"). The pair is redrawn
+    // until both names are ranges the clip has energy in, so the question
+    // is "which of two things that are both there" - and failing that,
+    // until at least one is, which then is the answer. Pink noise has
+    // every range, so with no clip the first draw stands and seeded rounds
+    // on noise are what they always were.
+    const auto& content = noise.activeContent();
+    const auto present = [&content] (int range)
+    {
+        return content.hasEnergyBetween (ranges[(size_t) range].lowHz, ranges[(size_t) range].highHz);
+    };
+
+    auto best = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
+    for (int attempt = 0; attempt < 24 && ! (present (best[0]) && present (best[1])); ++attempt)
+    {
+        const auto candidate = PresetFamily::drawPair (axisPositions(), difficultyLevel, random);
+        const auto score = [&present] (const std::array<int, 2>& p) { return (present (p[0]) ? 1 : 0) + (present (p[1]) ? 1 : 0); };
+        if (score (candidate) > score (best))
+            best = candidate;
+    }
+
+    // At a hard level the window offers only neighbours, and a clip with
+    // three present ranges may have no present *pair* in it. Then any pair
+    // with both present at all, closest first - the level is a preference
+    // about distance, the clip is a fact about what can be heard.
+    if (! (present (best[0]) && present (best[1])))
+    {
+        const auto all = PresetFamily::rankPairs (axisPositions());
+        for (auto it = all.rbegin(); it != all.rend(); ++it)
+        {
+            if (present (it->a) && present (it->b))
+            {
+                best = random.nextBool() ? std::array<int, 2> { { it->a, it->b } }
+                                         : std::array<int, 2> { { it->b, it->a } };
+                break;
+            }
+        }
+    }
+
+    pairIndices = best;
+
+    if (present (pairIndices[0]) && present (pairIndices[1]))
+        correctRangeIndex = drawCorrectOfPair (random, pairIndices[0], pairIndices[1]);
+    else
+        correctRangeIndex = present (pairIndices[0]) ? 0 : 1;
     const auto& range = ranges[(size_t) pairIndices[(size_t) correctRangeIndex]];
     // Log-uniform pick within the range, matching how frequency is
     // perceived - a linear random pick would bias heavily toward the
@@ -117,6 +167,15 @@ void FrequencyRangeGame::newRound()
     const auto halfSpan = 0.5f * (logHigh - logLow) * breadth;
 
     correctFreqHz = std::exp (logCentre + (random.nextFloat() * 2.0f - 1.0f) * halfSpan);
+
+    // The frequency, too, where the clip has something: a kick's "Bass"
+    // has energy at 60 Hz and none at 220. Inside the level's span first,
+    // then anywhere in the range rather than on silence.
+    for (int attempt = 0; attempt < 16 && ! content.isPresentAt (correctFreqHz); ++attempt)
+        correctFreqHz = std::exp (logCentre + (random.nextFloat() * 2.0f - 1.0f) * halfSpan);
+
+    for (int attempt = 0; attempt < 16 && ! content.isPresentAt (correctFreqHz); ++attempt)
+        correctFreqHz = std::exp (logLow + random.nextFloat() * (logHigh - logLow));
 
     // Q is the second family axis. A broad bump lifts the whole range and
     // is what "Bass" sounds like; a narrow one is a single tone that
@@ -160,27 +219,30 @@ juce::String FrequencyRangeGame::getFeedbackText() const
 
     const juce::String direction = isBoost ? "boosted" : "cut";
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-           + "It was " + direction + " at " + formatFrequency (correctFreqHz) + " Hz ("
+           + "It was " + direction + " at " + formatFrequency (correctFreqHz) + " ("
            + ranges[(size_t) pairIndices[(size_t) correctRangeIndex]].label + ").";
 }
 
 void FrequencyRangeGame::updateMatchGain()
 {
     // Same approach as EQGame's: this round's filter run offline over
-    // pink noise, on its own instance so the live one is untouched.
+    // the round's own material, on its own instance so the live one is
+    // untouched.
     const auto numSamples = (int) (sampleRate > 0.0 ? sampleRate : 44100.0);
 
     juce::dsp::IIR::Filter<float> measuring;
     measuring.coefficients = peakFilter.state;
     measuring.reset();
 
-    PinkNoiseGenerator measuringNoise { 0x5EED };
-
+    // Measured on the material the round will actually play - a clip, or
+    // the fallback noise - rather than always on pink noise. A boost at
+    // 8 kHz is a large loudness change on a hi-hat and a small one on pink
+    // noise; compensating for the noise left the hi-hat round answerable
+    // by level alone, which is the thing this gain exists to prevent.
     matchGain = GainMatch::measure (numSamples,
-        [&measuringNoise] (juce::AudioBuffer<float>& buffer)
+        [this] (juce::AudioBuffer<float>& buffer)
         {
-            for (int i = 0; i < buffer.getNumSamples(); ++i)
-                buffer.setSample (0, i, measuringNoise.nextSample());
+            noise.fillForMeasurement (buffer.getWritePointer (0), buffer.getNumSamples(), 0x5EED);
         },
         [&measuring] (juce::AudioBuffer<float>& buffer)
         {

@@ -157,10 +157,7 @@ namespace
 
         c.answeredRound = st.round.n;
         auto& game = c.games.getGame (st.game);
-        game.setSeededRounds (true);
-        game.setDifficulty (st.round.level);
-        game.seedNextRound (st.round.seed);
-        game.newRound();
+        c.games.startSeededRound (game, st.round.level, st.round.seed, 48000.0);
 
         juce::String fp;
         fp << st.round.n << ":" << game.getCorrectChoiceIndex() << ":" << juce::String (game.getCorrectNormalised(), 5);

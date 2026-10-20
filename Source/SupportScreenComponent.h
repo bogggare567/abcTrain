@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/i18n/LocalisationManager.h"
 #include <array>
 #include <functional>
@@ -79,6 +80,20 @@ private:
     void layoutCompact();   // a phone held upright (ADR 060)
     void paintInside (juce::Graphics&);
     void paintAccount (juce::Graphics&);
+    void paintForeground (juce::Graphics&);
+
+    // Everything but the moving background, drawn once into an image and
+    // reused every frame (ADR 060, performance). The background animates
+    // for as long as the screen is open, and redrawing every line of text
+    // and every card under it on each frame cost ~13 ms a frame at a
+    // phone's 3x - sixty times a second. Rebuilt when anything it shows
+    // could have changed: layout, step, language, theme, the tour offer.
+    juce::Image foregroundCache;
+    juce::String foregroundKey;
+    bool foregroundDirty = true;
+    bool revealDone() const noexcept;
+    void invalidateForeground() noexcept { foregroundDirty = true; }
+    int currentTickHz = 0;
 
     // "abcTrain" with a, b and c in their family colours, left-aligned.
     void paintWordmark (juce::Graphics&, juce::Rectangle<float>);
@@ -115,6 +130,11 @@ private:
         std::array<juce::Rectangle<int>, 3> cards;
         juce::Rectangle<int> heading, body, offline, panel, signIn, orLabel, emailNote, privacy;
     } lay;
+
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SupportScreenComponent)
 };

@@ -1387,7 +1387,7 @@
   "profile.historyStarts": "Lo storico inizia oggi: un punto al giorno finché giochi le sfide.",
   "profile.historyNeedsAccount": "Accedi a Live (Impostazioni) per avere un Decibelo e il suo storico.",
   "profile.families": "Decibelo per famiglia",
-  "profile.familyDetail": "{{rounds}} round · {{games}} esercizi",
+  "profile.familyDetail": "{{rounds}} round · {{games}} [[esercizio|esercizi]]",
   "profile.activity": "Attività",
   "profile.today": "Oggi: {{m}} min di pratica",
   "profile.accuracy": "Risposte giuste in tutto: {{p}}%",

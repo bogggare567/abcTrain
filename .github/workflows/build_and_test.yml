@@ -130,6 +130,17 @@ jobs:
         shell: pwsh
         run: ./build/EarTrainerTests_artefacts/Release/EarTrainerTests.exe
 
+      # Every EarTrainer screen at five window sizes (desktop, small
+      # desktop, iPhone upright, on its side, iPhone SE): unreachable or
+      # overlapping controls, targets under 30 pt on a phone, controls under
+      # the notch or the home bar, text the look-and-feel had to cut. Layout
+      # fixes kept breaking a size nobody looked at; this looks at all of
+      # them on every push. macOS only - one platform is enough for layout,
+      # and its fonts are the ones the screenshots are taken with.
+      - name: Layout check (ClickMap, macOS)
+        if: runner.os == 'macOS'
+        run: ./build/ClickMap_artefacts/Release/ClickMap
+
       # Real, per-OS installers - one component pkg/.dmg for macOS
       # (component-selection + system/user choice via productbuild's
       # native domains toggle), one Inno Setup .exe for Windows (adds a

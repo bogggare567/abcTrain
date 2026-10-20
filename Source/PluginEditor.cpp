@@ -1,4 +1,35 @@
 #include "PluginEditor.h"
+#include <cstdio>
+#include <typeinfo>
+
+namespace
+{
+    // ABC_TOUCH_LOG=1: every press and release the app receives, with what
+    // was under it - to find where a tap went (debugging only).
+    struct TouchLog : public juce::MouseListener
+    {
+        void mouseDown (const juce::MouseEvent& e) override { log ("down", e); }
+        void mouseUp (const juce::MouseEvent& e) override   { log ("up", e); }
+        static void log (const char* what, const juce::MouseEvent& e)
+        {
+            juce::String chain;
+            for (auto* c = e.eventComponent; c != nullptr; c = c->getParentComponent())
+                chain << typeid (*c).name() << (c->isVisible() ? "" : "(hidden)") << " " << c->getBounds().toString() << " < ";
+
+            juce::String top;
+            if (auto* editor = e.eventComponent->getTopLevelComponent())
+                for (int i = 0; i < editor->getNumChildComponents(); ++i)
+                    if (auto* child = editor->getChildComponent (i); child->isVisible()
+                        && child->getScreenBounds().contains (e.getScreenPosition()))
+                        top << i << ":" << typeid (*child).name() << child->getBounds().toString() << " ";
+
+            std::fprintf (stderr, "TOUCH %s %.3f at %d,%d\n   chain %s\n   under %s\n", what,
+                          juce::Time::getMillisecondCounterHiRes() / 1000.0,
+                          e.getScreenX(), e.getScreenY(), chain.toRawUTF8(), top.toRawUTF8());
+        }
+    };
+}
+
 #include "Haptics.h"
 #include "BattleShare.h"
 #include "shared/ui/CommunityLink.h"
@@ -607,6 +638,10 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // than holding Buttons, and an unnamed component that answers clicks
     // is invisible to a check that only knows about widgets.
     topNav.setComponentID ("topNav");
+    // Its background runs on under the home indicator (or the notch, on
+    // its side) so the two read as one strip; the tabs themselves stay in
+    // the safe area. tools/ClickMap checks everything else against it.
+    topNav.getProperties().set ("extendsUnderSystemBars", true);
     addAndMakeVisible (topNav);
 
     // Behind every other child. The rail is added late in this
@@ -757,7 +792,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     {
         auto index = 1;
 
-        for (auto* button : { &practiceButton, &survivalButton, &blitzButton })
+        for (auto* button : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         {
             button->setClickingTogglesState (true);
             button->setRadioGroupId (modeRadioGroup);
@@ -805,6 +840,21 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     updateWindow.onClosed = [this] { resized(); repaint(); };
 
     startTimerHz (1);
+
+    if (std::getenv ("ABC_TOUCH_LOG") != nullptr)
+    {
+        static TouchLog touchLog;
+        juce::Desktop::getInstance().addGlobalMouseListener (&touchLog);
+    }
+
+    // And soon after the window appears, not a whole second later: see
+    // relayoutIfSafeAreaChanged.
+    for (const auto delayMs : { 100, 600 })
+        juce::Timer::callAfterDelay (delayMs, [safe = juce::Component::SafePointer<EarTrainerEditor> (this)]
+        {
+            if (safe != nullptr)
+                safe->relayoutIfSafeAreaChanged();
+        });
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
     scoreLabel.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
@@ -1216,13 +1266,13 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // Dimmed until something is placed: a filled button that does
     // nothing reads as broken.
     answerButton.setEnabled (false);
-    answerButton.setAlpha (0.4f);
+    answerButton.setDimmed (0.4f);
     AbcTrainLookAndFeel::makePrimary (answerButton);
     addChildComponent (answerButton);
     choiceSlider.onPendingChanged = [this] (bool placed)
     {
         answerButton.setEnabled (placed);
-        answerButton.setAlpha (placed ? 1.0f : 0.4f);
+        answerButton.setDimmed (placed ? 1.0f : 0.4f);
     };
     choiceSlider.onStepCrossed = [this]
     {
@@ -1525,6 +1575,16 @@ void EarTrainerEditor::checkForUpdates (bool silent)
         if (! silent)
             safeThis->showUpdateOutcome (checkFailedText);
     });
+}
+
+void EarTrainerEditor::placeHelpButton (juce::Rectangle<int> slot)
+{
+    // Drawn 22 points square wherever it is; on a touch screen the part a
+    // finger can hit grows to 44 around the same centre (tools/ClickMap
+    // flagged the 22-point target on every phone size).
+    const auto target = touchFirst() ? 44 : 22;
+    instructionsButton.setVisualSize (22.0f);
+    instructionsButton.setBounds (slot.withSizeKeepingCentre (target, target));
 }
 
 bool EarTrainerEditor::isPhone()
@@ -1974,7 +2034,9 @@ void EarTrainerEditor::resized()
     // The strip beside the notch: only a phone held upright that has one
     // (an SE's 20-point status bar is no room for a clock).
     islandLeft = islandRight = {};
-    if (compactLayout() && currentScreen == Screen::training && safeInsets().getTop() >= 40)
+    if (compactLayout() && navPageOpen())
+        promotionPips.setBounds ({});   // the round's squares stay with the round, not on the page over it
+    else if (compactLayout() && currentScreen == Screen::training && safeInsets().getTop() >= 40)
     {
         auto strip = getLocalBounds().removeFromTop (safeInsets().getTop()).reduced (Spacing::large, 6);
         const auto island = juce::jmin (130, strip.getWidth() / 3);
@@ -2061,7 +2123,7 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         auto gameRow = inner.removeFromTop (30);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
-        instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
+        placeHelpButton (gameRow.removeFromRight (24));
         gameRow.removeFromRight (Spacing::tight);
 
         // Lives and the clock live up here during a run, in the slot the
@@ -2201,7 +2263,7 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         // "ВЫЖИВАНИЕ" - which is not a Russian problem, it is what a fixed
         // width does to any language that is not the one it was measured
         // in, and this app ships twelve.
-        for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+        for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         {
             const auto width = (int) std::ceil (AbcTrainLookAndFeel::trackedTextWidth (
                                    AbcTrainLookAndFeel::toCaps (pill->getButtonText()),
@@ -2294,8 +2356,14 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         // The verdict, over the scale rather than above the heading: it is
         // about the answer, so it belongs with the answer.
         auto feedbackRow = inner.removeFromTop (24);
-        feedbackRow.removeFromRight (90);
-        feedbackRow.removeFromLeft (90);
+        // Up to 90 either side is the points flyup's corridor; on a narrow
+        // phone the verdict ("Не совсем. Подъём на 2,1k Гц.", ~210) gets
+        // 300 first. Not measured from the text: it changes after layout.
+        {
+            const auto side = juce::jlimit (0, 90, (feedbackRow.getWidth() - 300) / 2);
+            feedbackRow.removeFromRight (side);
+            feedbackRow.removeFromLeft (side);
+        }
         feedbackLabel.setBounds (feedbackRow);
         inner.removeFromTop (Spacing::tight);
 
@@ -2373,7 +2441,10 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
 void EarTrainerEditor::updateStatusBar()
 {
    #if JUCE_IOS
-    const auto hide = compactLayout() && currentScreen == Screen::training && isVisible();
+    // Not under a page from the bar: Profile or Live over a paused round
+    // is not a round, and kept the status bar hidden and the round's
+    // squares beside the island.
+    const auto hide = compactLayout() && currentScreen == Screen::training && isVisible() && ! navPageOpen();
 
     if (hide == statusBarHidden)
         return;
@@ -2388,9 +2459,25 @@ void EarTrainerEditor::updateStatusBar()
     // window un-full-screen itself, so it is put back.
     juce::Desktop::getInstance().setKioskModeComponent (hide ? top : nullptr, false);
 
+    // JUCE's standalone window starts in kiosk mode on iOS, where it has no
+    // border. Out of kiosk mode a ResizableWindow without a native title bar
+    // keeps a 1-point border even full-screen, so after the first round the
+    // whole app sat at (1, 1) inside a thin frame (found in the simulator).
+    // A "native title bar" draws nothing on iOS and removes that border.
     if (! hide)
-        if (auto* peer = top->getPeer())
+    {
+        if (auto* window = dynamic_cast<juce::ResizableWindow*> (top))
+        {
+            if (! window->isUsingNativeTitleBar())
+                window->setUsingNativeTitleBar (true);
+
+            window->setFullScreen (true);
+        }
+        else if (auto* peer = top->getPeer())
+        {
             peer->setFullScreen (true);
+        }
+    }
    #endif
 }
 
@@ -2485,7 +2572,7 @@ void EarTrainerEditor::layoutTrainingSideways (juce::Rectangle<int> area)
         auto gameRow = left.removeFromTop (30);
         gameIcon.setBounds (gameRow.removeFromLeft (26).withSizeKeepingCentre (26, 26));
         gameRow.removeFromLeft (Spacing::small);
-        instructionsButton.setBounds (gameRow.removeFromRight (24).withSizeKeepingCentre (22, 22));
+        placeHelpButton (gameRow.removeFromRight (24));
         gameRow.removeFromRight (Spacing::tight);
         currentGameLabel.setBounds (gameRow);
     }
@@ -3030,8 +3117,26 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 
 }
 
+void EarTrainerEditor::relayoutIfSafeAreaChanged()
+{
+    // iOS reports the notch / Dynamic Island / home-bar insets only once
+    // the window is on screen, after the first layout - and again on every
+    // rotation. Nothing laid the screens out again when they arrived, so
+    // the welcome's "abcTrain" sat under the Dynamic Island on an iPhone 17
+    // (found in the simulator, not by any tool: the tools fake the insets
+    // from the start).
+    const auto now = safeInsets();
+    if (now != lastSafeInsets)
+    {
+        lastSafeInsets = now;
+        resized();
+        repaint();
+    }
+}
+
 void EarTrainerEditor::timerCallback()
 {
+    relayoutIfSafeAreaChanged();
     countPracticeSecond();
 
     // The ears' clock. Runs on every screen: time on the menus is quiet
@@ -3093,7 +3198,7 @@ void EarTrainerEditor::collapseModePills()
     // their state and give up their room.
     modeButton.setBounds (practiceButton.getBounds().getUnion (blitzButton.getBounds()));
 
-    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+    for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         pill->setBounds ({});
 }
 
@@ -3265,12 +3370,15 @@ void EarTrainerEditor::startNewRun()
     processor.getGameManager().getActiveGame().setPlayProcessed (false);
     refreshBeforeAfter();
 
-    processor.getGameManager().getActiveGame().newRound();
-
     // A different clip from the chosen category each round, so a folder of
     // twenty loops is twenty loops rather than the one that came up first.
+    // Before newRound(), not after: the frequency exercises ask only about
+    // ranges the clip has sound in, so they must see the clip that will
+    // actually play.
     processor.getGameManager().getReferenceAudioLibrary()
         .advanceToRandomClip (processor.getSampleRate());
+
+    processor.getGameManager().getActiveGame().newRound();
     refreshRunStatus();
 }
 
@@ -3508,6 +3616,19 @@ void EarTrainerEditor::refreshRailStatus()
     else if (settingsScreen.isVisible()
              || hearingTestScreen.isVisible()) active = TopNavComponent::Item::settings;
     else if (liveScreen.isVisible())      active = TopNavComponent::Item::live;
+    else if (profileScreen.isVisible())   active = TopNavComponent::Item::profile;   // was missing: Profile lit "Trainings"
+
+    // A phone's bar has four tabs. Achievements and Settings are reached
+    // from Profile there, and Sounds from an exercise: light the tab they
+    // belong to rather than none at all.
+    if (compactLayout() || sideways())
+    {
+        if (active == TopNavComponent::Item::achievements || active == TopNavComponent::Item::settings)
+            active = TopNavComponent::Item::profile;
+        else if (active == TopNavComponent::Item::sounds)
+            active = TopNavComponent::Item::trainings;
+    }
+
     topNav.setActiveItem (active);
     topNav.setVisible (railIsVisible());
 }
@@ -3548,14 +3669,16 @@ void EarTrainerEditor::applyRunLock()
     // Disabling a parent disables what it contains, so the whole nav bar
     // is one call rather than four.
     //
-    // The dimming is Component::setAlpha, not an opacity set inside
-    // paint(): setOpacity only tints the colour that happens to be
+    // The dimming is the whole bar drawn at 40%, not an opacity set
+    // inside paint(): setOpacity only tints the colour that happens to be
     // current, and every subsequent setColour throws it away - so the
     // first version of this looked completely untouched while being
     // genuinely dead, which is the exact failure it was meant to prevent.
-    // Found by rendering it.
+    // Found by rendering it. Nor is it Component::setAlpha any more, which
+    // looked right and cost a window-sized layer every frame on a phone
+    // (shared/ui/Dimming.h).
     topNav.setEnabled (! locked);
-    topNav.setAlpha (locked ? 0.4f : 1.0f);
+    topNav.setDimmed (locked ? 0.4f : 1.0f);
 
     for (auto* c : { (juce::Component*) &practiceButton, (juce::Component*) &survivalButton,
                      (juce::Component*) &blitzButton,    (juce::Component*) &instructionsButton,
@@ -3613,7 +3736,7 @@ void EarTrainerEditor::refreshRunStatus()
         for (auto* pill : { &survivalButton, &blitzButton })
         {
             pill->setVisible (onTraining);
-            pill->setAlpha (unlocked ? 1.0f : 0.45f);
+            pill->setDimmed (unlocked ? 1.0f : 0.45f);
         }
 
         if (hudNow)
@@ -3994,7 +4117,7 @@ void EarTrainerEditor::refreshProfile()
         row.detail = localisation.getText ("profile.familyDetail", { { "rounds", juce::String (familyRounds[f]) },
                                                                     { "games", juce::String (familyGames[f]) } });
         const auto now = lastRatings[f];
-        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("â");
+        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("\xe2\x80\x94");
 
         // How far it moved over the days the chart shows.
         if (now > 0 && c.history.size() >= 2)
@@ -4004,7 +4127,7 @@ void EarTrainerEditor::refreshProfile()
                     const auto delta = now - day[f];
                     if (delta != 0)
                     {
-                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("â")) + juce::String (std::abs (delta));
+                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("\xe2\x88\x92")) + juce::String (std::abs (delta));
                         row.deltaUp = delta > 0;
                     }
                     break;
@@ -4721,7 +4844,20 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
         safeThis->processor.getGameManager().getActiveGame().setPlayProcessed (false);
         safeThis->refreshBeforeAfter();
         safeThis->processor.getGameManager().getActiveGame().newRound();
+
+        // The player may have left for a page from the bar while the
+        // advance was pending: the new round is dealt, but the page stays
+        // on top and silent - nothing of the round may come back under it.
+        if (safeThis->navPageOpen())
+            safeThis->hideContentUnderNavPage();
     });
+}
+
+bool EarTrainerEditor::navPageOpen() const
+{
+    return studioScreen.isVisible() || achievementsScreen.isVisible() || trainingSounds.isVisible()
+        || settingsScreen.isVisible() || liveScreen.isVisible() || profileScreen.isVisible()
+        || hearingTestScreen.isVisible();
 }
 
 void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster* source)
@@ -5137,7 +5273,7 @@ void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
         rebuildChoiceSlider();
     }
 
-    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+    for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         pill->setToggleState (false, juce::dontSendNotification);
 
     onlineOpponent.clear();
@@ -5338,7 +5474,7 @@ void EarTrainerEditor::startOnlineBattle()
     onlineOpponent = st.opponentNick + " (" + juce::String (st.opponentRating) + ")";
     onlineResultNote.clear();
 
-    for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
+    for (auto* pill : { &practiceButton, (juce::TextButton*) &survivalButton, (juce::TextButton*) &blitzButton })
         pill->setToggleState (false, juce::dontSendNotification);
 
     session.setMode (SessionManager::Mode::duel);
@@ -5384,15 +5520,7 @@ void EarTrainerEditor::startOnlineRoundIfDue()
     auto& game = processor.getGameManager().getActiveGame();
     game.setPlayProcessed (false);
     refreshBeforeAfter();
-    game.setSeededRounds (true);
-    game.setDifficulty (st.round.level);
-    game.seedNextRound (st.round.seed);
-    game.newRound();
-
-    // Another number from the same seed for the clip, so the sound and the
-    // setting are not tied to each other round after round.
-    processor.getGameManager().getReferenceAudioLibrary()
-        .selectSeededBuiltIn (st.round.seed * 2654435761LL + 17, processor.getSampleRate());
+    processor.getGameManager().startSeededRound (game, st.round.level, st.round.seed, processor.getSampleRate());
     refreshRunStatus();
 }
 
@@ -5446,8 +5574,8 @@ void EarTrainerEditor::createSeminarHost()
         auto& game = processor.getGameManager().getActiveGame();
         game.setPlayProcessed (false);
         refreshBeforeAfter();
-        game.newRound();
         processor.getGameManager().getReferenceAudioLibrary().advanceToRandomClip (processor.getSampleRate());
+        game.newRound();
     };
 
     hooks.setSound = [this] (bool play, bool processed)

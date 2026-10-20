@@ -448,6 +448,7 @@ void LiveScreenComponent::setStrings (Strings newStrings)
 void LiveScreenComponent::showTab (Tab newTab)
 {
     tab = newTab;
+    pageScroller.setOffset (0.0f);   // every tab opens at its top
     tabs.setValue ((int) tab);
     note.clear();
 
@@ -717,9 +718,30 @@ void LiveScreenComponent::refreshHostButtons()
     repaint();
 }
 
+int LiveScreenComponent::noteLines() const
+{
+    if (note.isEmpty())
+        return 1;
+
+    // How many lines the note wraps to across the page. On a desktop it is
+    // one; on a phone "Rooms over the internet will arrive with..." is
+    // three, and a single 22-point strip showed its first few words.
+    juce::GlyphArrangement layout;
+    layout.addJustifiedText (LnF::labelFont(), note, 0.0f, 0.0f,
+                             (float) juce::jmax (40, getWidth() - 2 * AbcTrainTheme::Spacing::large),
+                             juce::Justification::left);
+    const auto height = layout.getBoundingBox (0, -1, true).getHeight();
+    return juce::jlimit (1, 3, juce::roundToInt (height / LnF::labelFont().getHeight()));
+}
+
 void LiveScreenComponent::setNote (const juce::String& newNote)
 {
+    const auto before = noteLines();
     note = newNote;
+
+    if (noteLines() != before)
+        resized();
+
     repaint();
 }
 
@@ -842,7 +864,7 @@ void LiveScreenComponent::resized()
     refreshVisibility();
 
     area.removeFromTop (Spacing::large);
-    area.removeFromBottom (28);   // the note line
+    area.removeFromBottom (6 + 22 * noteLines());   // the note, one line or a wrapped few
 
     // The banner takes the top of the page when something is in the way of
     // what it shows - above the cards, not over them.
@@ -850,30 +872,99 @@ void LiveScreenComponent::resized()
     const auto problem = currentProblem();
     checkAgainButton.setVisible (problem.title.isNotEmpty() && overlay == Overlay::none);
 
+    auto bannerHeight = 0;
     if (problem.title.isNotEmpty())
     {
-        const auto lines = juce::StringArray::fromLines (problem.hints).size();
-        bannerBox = area.removeFromTop (52 + 19 * juce::jmin (4, lines));
+        const auto hints = juce::StringArray::fromLines (problem.hints);
+        const auto width = bannerTextWidth (area);
+        auto lines = 0;
+        for (int i = 0; i < juce::jmin (4, hints.size()); ++i)
+            lines += hintLines (hints[i], width);
+
+        const auto below = bannerButtonBelow() ? controlHeight + Spacing::medium : 0;
+        bannerHeight = 52 + 19 * lines + below;
+    }
+
+    // Scrolling (see pageScroller): the column is at least as tall as the
+    // banner and this tab's cards need.
+    pageViewport = area;
+    {
+        if (pageScroller.onChange == nullptr)
+            pageScroller.onChange = [this] (float) { resized(); repaint(); };
+
+        const auto needed = (bannerHeight > 0 ? bannerHeight + Spacing::medium : 0) + minimumCardsHeight();
+        const auto overflow = juce::jmax (0, needed - area.getHeight());
+        if (pageScroller.getLimit() != (float) overflow)
+            pageScroller.setLimit ((float) overflow);
+
+        const auto offset = juce::roundToInt (juce::jlimit (0.0f, (float) overflow, pageScroller.getOffset()));
+        area = area.withHeight (juce::jmax (area.getHeight(), needed)).translated (0, -offset);
+    }
+
+    if (problem.title.isNotEmpty())
+    {
+        bannerBox = area.removeFromTop (bannerHeight);
         area.removeFromTop (Spacing::medium);
-        checkAgainButton.setBounds (bannerBox.reduced (Spacing::medium).removeFromTop (controlHeight).removeFromRight (170));
+
+        if (bannerButtonBelow())
+            checkAgainButton.setBounds (bannerBox.reduced (Spacing::medium).removeFromBottom (controlHeight));
+        else
+            checkAgainButton.setBounds (bannerBox.reduced (Spacing::medium).removeFromTop (controlHeight).removeFromRight (170));
     }
 
     if (tab == Tab::seminar)       layoutSeminar (area);
     else if (tab == Tab::battle)   layoutBattle (area);
     else                           layoutRating (area);
 
+    // Whatever the scroll has moved out of the viewport is not on the page:
+    // hidden, so it can neither be drawn over the tabs nor take a tap
+    // meant for them.
+    if (pageScroller.getLimit() > 0.0f)
+        for (auto* child : getChildren())
+            if (child != &tabs && child != &accountButton && child != &overlayLayer && child->isVisible()
+                && ! child->getBounds().isEmpty() && ! pageViewport.contains (child->getBounds().getCentre()))
+                child->setVisible (false);
+
     layoutOverlay();
+}
+
+int LiveScreenComponent::minimumCardsHeight() const
+{
+    // What each tab's cards need to show everything without cutting -
+    // measured by rendering them (tools/ClickMap, EditorSnapshots) at the
+    // sizes where they used to be cut.
+    if (tab == Tab::seminar)
+        return compact() ? 320 : (roomOpen ? 470 : 440);
+
+    if (tab == Tab::battle)
+        return compact() ? (sideBySide() ? 340 : 600) : 600;
+
+    return 360;
+}
+
+void LiveScreenComponent::mouseDown (const juce::MouseEvent& e)  { pageScroller.mouseDown (e); }
+void LiveScreenComponent::mouseDrag (const juce::MouseEvent& e)  { pageScroller.mouseDrag (e); }
+void LiveScreenComponent::mouseUp (const juce::MouseEvent& e)    { pageScroller.mouseUp (e); }
+void LiveScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
+{
+    pageScroller.mouseWheelMove (wheel, 220.0f);
 }
 
 void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
 
+    // On a phone the join button is a finger's height, and when the page
+    // is short (a phone on its side) it is the explanation above the code
+    // that gives way, not the button: a fixed 70 for the text left "Join"
+    // 28 points tall there (tools/ClickMap).
+    const auto joinHeight = compact() ? 44 : controlHeight + 4;
+    const auto fixed = cardTitleHeight + 22 + 48 + Spacing::medium + joinHeight + Spacing::large * 2;
+
     if (compact())
     {
         // A phone joins a seminar; it does not host one (ADR 060).
-        cardA = area.removeFromTop (juce::jmin (area.getHeight(), cardTitleHeight + 70 + 22 + 48 + Spacing::medium
-                                                                    + controlHeight + 4 + Spacing::large * 2));
+        cardA = area.removeFromTop (juce::jmin (area.getHeight(), fixed + 70));
         cardB = {};
     }
     else
@@ -883,12 +974,14 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
         cardB = area;
     }
 
+    seminarIntroHeight = juce::jlimit (0, 70, cardA.getHeight() - fixed);
+
     {
-        auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + 70);
+        auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + seminarIntroHeight);
         a.removeFromTop (22);   // "Room code" caption
         codeEditor.setBounds (a.removeFromTop (48));
         a.removeFromTop (Spacing::medium);
-        joinButton.setBounds (a.removeFromTop (controlHeight + 4));
+        joinButton.setBounds (a.removeFromTop (joinHeight));
     }
 
     if (cardB.isEmpty())
@@ -1145,18 +1238,26 @@ void LiveScreenComponent::paint (juce::Graphics& g)
     if (! compact())
         paintLinkStatus (g, tabs.getBounds().withX (tabs.getRight() + AbcTrainTheme::Spacing::large)
                                 .withRight (accountButton.getX() - 230));
-    paintBanner (g);
+    {
+        // The scrolling part, clipped to its viewport (see pageScroller).
+        juce::Graphics::ScopedSaveState clipped (g);
+        g.reduceClipRegion (pageViewport);
 
-    if (tab == Tab::seminar)       paintSeminar (g);
-    else if (tab == Tab::battle)   paintBattle (g);
-    else                           paintRating (g);
+        paintBanner (g);
+
+        if (tab == Tab::seminar)       paintSeminar (g);
+        else if (tab == Tab::battle)   paintBattle (g);
+        else                           paintRating (g);
+    }
 
     if (note.isNotEmpty())
     {
-        auto line = getLocalBounds().reduced (AbcTrainTheme::Spacing::large, AbcTrainTheme::Spacing::medium).removeFromBottom (22);
+        const auto lines = noteLines();
+        auto line = getLocalBounds().reduced (AbcTrainTheme::Spacing::large, AbcTrainTheme::Spacing::medium)
+                                    .removeFromBottom (22 * lines);
         g.setColour (theme.accentWarm);
         g.setFont (LnF::labelFont());
-        LnF::fitText (g, note, line, juce::Justification::centredLeft, true);
+        LnF::fitLines (g, note, line, juce::Justification::centredLeft, lines, 0.9f);
     }
 
 }
@@ -1171,7 +1272,12 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
         auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
         g.setColour (theme.textDim);
         g.setFont (LnF::bodyFont());
-        LnF::fitLines (g, text.joinLocal, a.removeFromTop (66), juce::Justification::topLeft, 3, 0.9f);
+        const auto intro = juce::jmax (0, seminarIntroHeight - 4);
+        if (intro >= 14)
+            LnF::fitLines (g, text.joinLocal, a.removeFromTop (intro), juce::Justification::topLeft,
+                           juce::jlimit (1, 3, (int) ((float) intro / LnF::bodyFont().getHeight())), 0.9f);
+        else
+            a.removeFromTop (intro);
         a.removeFromTop (4);
         g.setFont (LnF::labelFont());
         LnF::fitText (g, text.joinCode, a.removeFromTop (20), juce::Justification::centredLeft, true);
@@ -1249,8 +1355,8 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
             g.setColour (lan.linkLocal ? theme.accentWarm : theme.textDim);
             g.setFont (LnF::captionFont());
             LnF::fitLines (g, lan.linkLocal ? text.lanLinkLocal + "\n" + text.lanTrouble : text.lanTrouble,
-                           info.removeFromTop (juce::jmax (0, juce::jmin (info.getHeight(), 72))),
-                           juce::Justification::topLeft, 4, 0.9f);
+                           info.removeFromTop (juce::jmax (0, info.getHeight())),   // all there is: five lines on a small window
+                           juce::Justification::topLeft, 6, 0.9f);
         }
 
         return;
@@ -1356,7 +1462,18 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
         a.removeFromTop (Spacing::medium);
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
-        LnF::fitLines (g, text.decibeloHint, a.removeFromTop (44), juce::Justification::topLeft, 2, 0.9f);
+        {
+            // Never under the buttons at the card's foot: on a phone the
+            // four family rows bring this down to their level, and the
+            // sentence ran on under "Open Community".
+            auto hintArea = a.removeFromTop (44);
+            for (auto* button : { (juce::Component*) &communityButton, (juce::Component*) &battleSignInButton })
+                if (button->isVisible() && hintArea.intersects (button->getBounds()))
+                    hintArea = hintArea.withBottom (juce::jmax (hintArea.getY() + 18, button->getY() - 4));
+
+            LnF::fitLines (g, text.decibeloHint, hintArea, juce::Justification::topLeft,
+                           juce::jmax (1, hintArea.getHeight() / 18), 0.85f);
+        }
 
         a.removeFromTop (Spacing::large);
         g.setColour (theme.textBright);
@@ -1378,11 +1495,12 @@ void LiveScreenComponent::paintBattle (juce::Graphics& g)
         g.setColour (theme.textDim);
         g.setFont (LnF::captionFont());
         auto bottom = a.withTrimmedBottom (controlHeight + 4 + Spacing::small);
-        auto hint = bottom.removeFromBottom (36);
+        // Three lines for the community hint: two cut it on a small window.
+        auto hint = bottom.removeFromBottom (54);
         LnF::fitLines (g, signedIn ? text.battleOnline : text.battleNeedsAccount,
                        bottom.withTrimmedBottom (Spacing::small), juce::Justification::topLeft, 6, 0.85f);
         g.setColour (theme.text);
-        LnF::fitLines (g, text.communityHint, hint, juce::Justification::bottomLeft, 2, 0.85f);
+        LnF::fitLines (g, text.communityHint, hint, juce::Justification::bottomLeft, 3, 0.85f);
     }
 
     paintCard (g, cardB, text.botTitle);
@@ -1482,7 +1600,8 @@ void LiveScreenComponent::paintRating (juce::Graphics& g)
                                                                  : text.ratingEmpty;
         g.setColour (theme.textDim);
         g.setFont (LnF::bodyFont());
-        LnF::fitText (g, message, area.withSizeKeepingCentre (area.getWidth(), 40), juce::Justification::centred, true);
+        // Wrapped: one line of this is wider than a phone.
+        LnF::fitLines (g, message, area.withSizeKeepingCentre (area.getWidth(), 72), juce::Justification::centred, 3, 0.9f);
         return;
     }
 
@@ -1907,6 +2026,23 @@ void LiveScreenComponent::paintLinkStatus (juce::Graphics& g, juce::Rectangle<in
     LnF::fitText (g, label, area, juce::Justification::centredLeft, true);
 }
 
+int LiveScreenComponent::bannerTextWidth (juce::Rectangle<int> box) const
+{
+    auto body = box.reduced (AbcTrainTheme::Spacing::medium).withTrimmedLeft (8);
+    if (! bannerButtonBelow())
+        body.removeFromRight (170 + AbcTrainTheme::Spacing::medium);   // "Check again"
+    return body.getWidth();
+}
+
+int LiveScreenComponent::hintLines (const juce::String& hint, int width)
+{
+    juce::GlyphArrangement layout;
+    layout.addJustifiedText (LnF::captionFont(), juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xa2  ")) + hint,
+                             0.0f, 0.0f, (float) juce::jmax (40, width), juce::Justification::left);
+    const auto height = layout.getBoundingBox (0, -1, true).getHeight();
+    return juce::jlimit (1, 3, juce::roundToInt (height / LnF::captionFont().getHeight()));
+}
+
 void LiveScreenComponent::paintBanner (juce::Graphics& g)
 {
     if (bannerBox.isEmpty())
@@ -1922,8 +2058,8 @@ void LiveScreenComponent::paintBanner (juce::Graphics& g)
     g.setColour (theme.outline);
     g.drawRect (bannerBox, 1);
 
-    auto body = bannerBox.reduced (AbcTrainTheme::Spacing::medium).withTrimmedLeft (8);
-    body.removeFromRight (170 + AbcTrainTheme::Spacing::medium);   // "Check again"
+    auto body = bannerBox.reduced (AbcTrainTheme::Spacing::medium).withTrimmedLeft (8)
+                         .withWidth (bannerTextWidth (bannerBox));
 
     g.setColour (theme.textBright);
     g.setFont (LnF::headingFont().withHeight (18.0f));
@@ -1935,8 +2071,11 @@ void LiveScreenComponent::paintBanner (juce::Graphics& g)
 
     const auto lines = juce::StringArray::fromLines (problem.hints);
     for (int i = 0; i < juce::jmin (4, lines.size()); ++i)
-        LnF::fitText (g, juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xa2  ")) + lines[i],
-                      body.removeFromTop (19), juce::Justification::centredLeft, true);
+    {
+        const auto count = hintLines (lines[i], body.getWidth());
+        LnF::fitLines (g, juce::String (juce::CharPointer_UTF8 ("\xe2\x80\xa2  ")) + lines[i],
+                       body.removeFromTop (19 * count), juce::Justification::centredLeft, count, 0.9f);
+    }
 }
 
 // Out of line and after Checker: a unique_ptr to it needs the whole type.

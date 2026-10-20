@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/TouchScroll.h"
 #include "shared/i18n/LocalisationManager.h"
 #include "shared/ui/CompactSelector.h"
@@ -162,6 +163,8 @@ private:
         bool proOnly = false;
         Page page = Page::training;
         juce::Rectangle<int> bounds;       // laid out in resized()
+        int textHeight = 0;                // a phone: title + however many lines the hint wraps to
+        int hintLines = 2;
     };
 
     void buildRows();
@@ -181,7 +184,16 @@ private:
     // section full width with a back button, and rows stack - title and
     // hint over the control - in a column that scrolls by dragging.
     // ...and a phone on its side, where the rows do not fit the height.
-    bool compact() const { return getWidth() < 600 || getHeight() < 500; }
+    bool compact() const { return getWidth() < 600 || getHeight() < 500 || overflowCompact; }
+
+    // ...and a desktop window too short for the page it shows: the side-by-
+    // side layout has no scrolling, so on a 940 x 620 window the hearing
+    // page ran its last row ("Add") off the bottom of the window
+    // (tools/ClickMap). Such a page is laid out as the scrolling column
+    // instead. Decided per size and per page, in resized().
+    bool overflowCompact = false;
+    juce::Point<int> overflowSize;
+    Page overflowPage = Page::training;
     bool compactShowingPage = false;
     int compactScroll = 0, compactScrollMax = 0;
     TouchScroll scroller;
@@ -282,6 +294,11 @@ private:
 
     std::vector<Row> rows;
     std::unique_ptr<juce::FileChooser> fileChooser;
+
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SettingsScreenComponent)
 };

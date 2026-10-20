@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AppIcons.h"
 #include <functional>
 #include <vector>
@@ -187,6 +188,19 @@ private:
     // again" a row of its own. Same content, one column.
     bool compact() const noexcept { return getWidth() < 600; }
     bool shortCard() const noexcept { return ! compact() && getHeight() < 520; }
+
+    // The four numbers' row is 16 points taller wherever a quarter of the
+    // card is narrower than its notes need, so they wrap to two lines: a
+    // phone on its side gave each 122 points, and "depth in the band, on
+    // average" is 160. (Two rows of two there pushed the round-by-round
+    // plot under the buttons - the card has no more height to give.)
+    int numbersRowHeight() const noexcept
+    {
+        if (compact())
+            return 64;
+        const auto cardWidth = juce::jlimit (480, juce::jmax (480, getWidth() - 60), juce::roundToInt ((float) getWidth() * 0.72f));
+        return (cardWidth - 2 * 32) / 4 < 165 ? 90 : 64;
+    }
     void paintStat (juce::Graphics&, juce::Rectangle<int>, const juce::String& caption,
                     const juce::String& value, juce::Colour valueColour);
 
@@ -213,6 +227,11 @@ private:
     // At most two: the modes that are not the one just played.
     juce::OwnedArray<juce::TextButton> modeButtons;
     juce::String modeCaption;
+
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RunResultsComponent)
 };
