@@ -6,11 +6,15 @@
 
 namespace
 {
+    // With its unit, whole: "425 Hz", "5.2 kHz". It used to return "5.2k"
+    // for callers to append " Hz" to, and "5.2k Hz" is a token the unit
+    // localiser cannot see - the player read "5,2k Гц" beside a scale
+    // labelled "5 кГц".
     juce::String formatFrequency (float hz)
     {
         if (hz >= 1000.0f)
-            return juce::String (hz / 1000.0f, 1) + "k";
-        return juce::String ((int) hz);
+            return juce::String (hz / 1000.0f, 1) + " kHz";
+        return juce::String ((int) hz) + " Hz";
     }
 
 }
@@ -77,9 +81,9 @@ juce::String EQGame::formatNormalisedValue (float normalised) const
 {
     const auto hz = normalisedToFrequency (normalised);
 
-    // Whole Hz low down, one decimal in kHz above 1k: "425 Hz", "1.6k Hz".
+    // Whole Hz low down, one decimal in kHz above 1k: "425 Hz", "1.6 kHz".
     if (hz >= 1000.0f)
-        return juce::String (hz / 1000.0f, 1) + "k Hz";
+        return juce::String (hz / 1000.0f, 1) + " kHz";
 
     return juce::String (juce::roundToInt (hz)) + " Hz";
 }
@@ -296,7 +300,7 @@ void EQGame::submitAnswer (int choiceIndex)
 
 juce::String EQGame::getChoiceLabel (int choiceIndex) const
 {
-    return formatFrequency (bandFrequenciesHz[(size_t) choiceIndex]) + " Hz";
+    return formatFrequency (bandFrequenciesHz[(size_t) choiceIndex]);
 }
 
 juce::String EQGame::getFeedbackText() const
@@ -306,7 +310,7 @@ juce::String EQGame::getFeedbackText() const
 
     const juce::String direction = isBoost ? "boosted" : "cut";
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-           + "It was " + direction + " at " + formatFrequency (targetHz) + " Hz.";
+           + "It was " + direction + " at " + formatFrequency (targetHz) + ".";
 }
 
 void EQGame::updateFilter()

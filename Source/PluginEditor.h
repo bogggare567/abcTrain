@@ -1698,6 +1698,9 @@ private:
     juce::BorderSize<int> safeInsets() const;
     static bool isPhone();
     void placeHelpButton (juce::Rectangle<int> slot);
+    void relayoutIfSafeAreaChanged();
+    bool navPageOpen() const;
+    juce::BorderSize<int> lastSafeInsets;
     juce::Rectangle<int> safeBounds() const { return safeInsets().subtractedFrom (getLocalBounds()); }
 
     // Puts the session and the three pills into whatever mode this

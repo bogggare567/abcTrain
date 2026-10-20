@@ -5,11 +5,15 @@
 
 namespace
 {
+    // With its unit, whole: "425 Hz", "5.2 kHz". It used to return "5.2k"
+    // for callers to append " Hz" to, and "5.2k Hz" is a token the unit
+    // localiser cannot see - the player read "5,2k Гц" beside a scale
+    // labelled "5 кГц".
     juce::String formatFrequency (float hz)
     {
         if (hz >= 1000.0f)
-            return juce::String (hz / 1000.0f, 1) + "k";
-        return juce::String ((int) hz);
+            return juce::String (hz / 1000.0f, 1) + " kHz";
+        return juce::String ((int) hz) + " Hz";
     }
 }
 
@@ -215,7 +219,7 @@ juce::String FrequencyRangeGame::getFeedbackText() const
 
     const juce::String direction = isBoost ? "boosted" : "cut";
     return (lastAnswerCorrect ? juce::String ("Correct! ") : juce::String ("Not quite. "))
-           + "It was " + direction + " at " + formatFrequency (correctFreqHz) + " Hz ("
+           + "It was " + direction + " at " + formatFrequency (correctFreqHz) + " ("
            + ranges[(size_t) pairIndices[(size_t) correctRangeIndex]].label + ").";
 }
 

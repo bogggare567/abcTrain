@@ -1,4 +1,35 @@
 #include "PluginEditor.h"
+#include <cstdio>
+#include <typeinfo>
+
+namespace
+{
+    // ABC_TOUCH_LOG=1: every press and release the app receives, with what
+    // was under it - to find where a tap went (debugging only).
+    struct TouchLog : public juce::MouseListener
+    {
+        void mouseDown (const juce::MouseEvent& e) override { log ("down", e); }
+        void mouseUp (const juce::MouseEvent& e) override   { log ("up", e); }
+        static void log (const char* what, const juce::MouseEvent& e)
+        {
+            juce::String chain;
+            for (auto* c = e.eventComponent; c != nullptr; c = c->getParentComponent())
+                chain << typeid (*c).name() << (c->isVisible() ? "" : "(hidden)") << " " << c->getBounds().toString() << " < ";
+
+            juce::String top;
+            if (auto* editor = e.eventComponent->getTopLevelComponent())
+                for (int i = 0; i < editor->getNumChildComponents(); ++i)
+                    if (auto* child = editor->getChildComponent (i); child->isVisible()
+                        && child->getScreenBounds().contains (e.getScreenPosition()))
+                        top << i << ":" << typeid (*child).name() << child->getBounds().toString() << " ";
+
+            std::fprintf (stderr, "TOUCH %s %.3f at %d,%d\n   chain %s\n   under %s\n", what,
+                          juce::Time::getMillisecondCounterHiRes() / 1000.0,
+                          e.getScreenX(), e.getScreenY(), chain.toRawUTF8(), top.toRawUTF8());
+        }
+    };
+}
+
 #include "Haptics.h"
 #include "BattleShare.h"
 #include "shared/ui/CommunityLink.h"
@@ -809,6 +840,21 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     updateWindow.onClosed = [this] { resized(); repaint(); };
 
     startTimerHz (1);
+
+    if (std::getenv ("ABC_TOUCH_LOG") != nullptr)
+    {
+        static TouchLog touchLog;
+        juce::Desktop::getInstance().addGlobalMouseListener (&touchLog);
+    }
+
+    // And soon after the window appears, not a whole second later: see
+    // relayoutIfSafeAreaChanged.
+    for (const auto delayMs : { 100, 600 })
+        juce::Timer::callAfterDelay (delayMs, [safe = juce::Component::SafePointer<EarTrainerEditor> (this)]
+        {
+            if (safe != nullptr)
+                safe->relayoutIfSafeAreaChanged();
+        });
 
     scoreLabel.setJustificationType (juce::Justification::centredLeft);
     scoreLabel.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
@@ -1988,7 +2034,9 @@ void EarTrainerEditor::resized()
     // The strip beside the notch: only a phone held upright that has one
     // (an SE's 20-point status bar is no room for a clock).
     islandLeft = islandRight = {};
-    if (compactLayout() && currentScreen == Screen::training && safeInsets().getTop() >= 40)
+    if (compactLayout() && navPageOpen())
+        promotionPips.setBounds ({});   // the round's squares stay with the round, not on the page over it
+    else if (compactLayout() && currentScreen == Screen::training && safeInsets().getTop() >= 40)
     {
         auto strip = getLocalBounds().removeFromTop (safeInsets().getTop()).reduced (Spacing::large, 6);
         const auto island = juce::jmin (130, strip.getWidth() / 3);
@@ -2393,7 +2441,10 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
 void EarTrainerEditor::updateStatusBar()
 {
    #if JUCE_IOS
-    const auto hide = compactLayout() && currentScreen == Screen::training && isVisible();
+    // Not under a page from the bar: Profile or Live over a paused round
+    // is not a round, and kept the status bar hidden and the round's
+    // squares beside the island.
+    const auto hide = compactLayout() && currentScreen == Screen::training && isVisible() && ! navPageOpen();
 
     if (hide == statusBarHidden)
         return;
@@ -2408,9 +2459,25 @@ void EarTrainerEditor::updateStatusBar()
     // window un-full-screen itself, so it is put back.
     juce::Desktop::getInstance().setKioskModeComponent (hide ? top : nullptr, false);
 
+    // JUCE's standalone window starts in kiosk mode on iOS, where it has no
+    // border. Out of kiosk mode a ResizableWindow without a native title bar
+    // keeps a 1-point border even full-screen, so after the first round the
+    // whole app sat at (1, 1) inside a thin frame (found in the simulator).
+    // A "native title bar" draws nothing on iOS and removes that border.
     if (! hide)
-        if (auto* peer = top->getPeer())
+    {
+        if (auto* window = dynamic_cast<juce::ResizableWindow*> (top))
+        {
+            if (! window->isUsingNativeTitleBar())
+                window->setUsingNativeTitleBar (true);
+
+            window->setFullScreen (true);
+        }
+        else if (auto* peer = top->getPeer())
+        {
             peer->setFullScreen (true);
+        }
+    }
    #endif
 }
 
@@ -3050,8 +3117,26 @@ void EarTrainerEditor::rebuildGameSelectorItems()
 
 }
 
+void EarTrainerEditor::relayoutIfSafeAreaChanged()
+{
+    // iOS reports the notch / Dynamic Island / home-bar insets only once
+    // the window is on screen, after the first layout - and again on every
+    // rotation. Nothing laid the screens out again when they arrived, so
+    // the welcome's "abcTrain" sat under the Dynamic Island on an iPhone 17
+    // (found in the simulator, not by any tool: the tools fake the insets
+    // from the start).
+    const auto now = safeInsets();
+    if (now != lastSafeInsets)
+    {
+        lastSafeInsets = now;
+        resized();
+        repaint();
+    }
+}
+
 void EarTrainerEditor::timerCallback()
 {
+    relayoutIfSafeAreaChanged();
     countPracticeSecond();
 
     // The ears' clock. Runs on every screen: time on the menus is quiet
@@ -3531,6 +3616,19 @@ void EarTrainerEditor::refreshRailStatus()
     else if (settingsScreen.isVisible()
              || hearingTestScreen.isVisible()) active = TopNavComponent::Item::settings;
     else if (liveScreen.isVisible())      active = TopNavComponent::Item::live;
+    else if (profileScreen.isVisible())   active = TopNavComponent::Item::profile;   // was missing: Profile lit "Trainings"
+
+    // A phone's bar has four tabs. Achievements and Settings are reached
+    // from Profile there, and Sounds from an exercise: light the tab they
+    // belong to rather than none at all.
+    if (compactLayout() || sideways())
+    {
+        if (active == TopNavComponent::Item::achievements || active == TopNavComponent::Item::settings)
+            active = TopNavComponent::Item::profile;
+        else if (active == TopNavComponent::Item::sounds)
+            active = TopNavComponent::Item::trainings;
+    }
+
     topNav.setActiveItem (active);
     topNav.setVisible (railIsVisible());
 }
@@ -4019,7 +4117,7 @@ void EarTrainerEditor::refreshProfile()
         row.detail = localisation.getText ("profile.familyDetail", { { "rounds", juce::String (familyRounds[f]) },
                                                                     { "games", juce::String (familyGames[f]) } });
         const auto now = lastRatings[f];
-        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("â");
+        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("\xe2\x80\x94");
 
         // How far it moved over the days the chart shows.
         if (now > 0 && c.history.size() >= 2)
@@ -4029,7 +4127,7 @@ void EarTrainerEditor::refreshProfile()
                     const auto delta = now - day[f];
                     if (delta != 0)
                     {
-                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("â")) + juce::String (std::abs (delta));
+                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("\xe2\x88\x92")) + juce::String (std::abs (delta));
                         row.deltaUp = delta > 0;
                     }
                     break;
@@ -4746,7 +4844,20 @@ void EarTrainerEditor::afterAnswer (bool wasCorrect)
         safeThis->processor.getGameManager().getActiveGame().setPlayProcessed (false);
         safeThis->refreshBeforeAfter();
         safeThis->processor.getGameManager().getActiveGame().newRound();
+
+        // The player may have left for a page from the bar while the
+        // advance was pending: the new round is dealt, but the page stays
+        // on top and silent - nothing of the round may come back under it.
+        if (safeThis->navPageOpen())
+            safeThis->hideContentUnderNavPage();
     });
+}
+
+bool EarTrainerEditor::navPageOpen() const
+{
+    return studioScreen.isVisible() || achievementsScreen.isVisible() || trainingSounds.isVisible()
+        || settingsScreen.isVisible() || liveScreen.isVisible() || profileScreen.isVisible()
+        || hearingTestScreen.isVisible();
 }
 
 void EarTrainerEditor::changeListenerCallback (juce::ChangeBroadcaster* source)
