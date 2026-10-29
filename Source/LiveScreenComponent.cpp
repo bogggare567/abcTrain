@@ -1088,7 +1088,6 @@ int LiveScreenComponent::minimumCardsHeight() const
 
 void LiveScreenComponent::mouseDown (const juce::MouseEvent& e)  { pageScroller.mouseDown (e); }
 void LiveScreenComponent::mouseDrag (const juce::MouseEvent& e)  { pageScroller.mouseDrag (e); }
-void LiveScreenComponent::mouseUp (const juce::MouseEvent& e)    { pageScroller.mouseUp (e); }
 void LiveScreenComponent::mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails& wheel)
 {
     pageScroller.mouseWheelMove (wheel, 220.0f);
@@ -2803,6 +2802,11 @@ void LiveScreenComponent::paintBattleDesk (juce::Graphics& g)
 
 void LiveScreenComponent::mouseUp (const juce::MouseEvent& e)
 {
+    // A finger that dragged the page scrolled it; only a tap picks a row.
+    pageScroller.mouseUp (e);
+    if (e.mouseWasDraggedSinceMouseDown())
+        return;
+
     // A seminar in the archive's list: its rounds on the right.
     if (tab == Tab::seminar && archiveOpen && ! compact())
     {

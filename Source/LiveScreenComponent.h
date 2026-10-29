@@ -310,7 +310,6 @@ private:
     void paintBattle (juce::Graphics&);
     void layoutBattleDesk (juce::Rectangle<int>);
     void paintBattleDesk (juce::Graphics&);
-    void mouseUp (const juce::MouseEvent&) override;
     juce::Rectangle<int> ladderRowBounds (int index) const;
     void paintRating (juce::Graphics&);
     void paintOverlay (juce::Graphics&);
