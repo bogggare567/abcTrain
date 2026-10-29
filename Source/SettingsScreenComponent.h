@@ -7,6 +7,8 @@
 #include "shared/ui/SegmentedChoice.h"
 #include "TrainerSettings.h"
 #include "shared/audio/HearingProfile.h"
+#include "Hotkeys.h"
+#include "HotkeysEditor.h"
 #include <functional>
 #include <memory>
 
@@ -104,6 +106,14 @@ public:
     static constexpr const char* dailyMinutesKey = "dailyMinutes";
     std::function<void()> onDailyMinutesChanged;
 
+    // How an answer is given on a computer (2026-10-24): 0 on letting go of
+    // the scale (as before), 1 by pressing "Answer" (or Enter) after
+    // placing it - for whoever wants to listen once more first.
+    static constexpr const char* answerByButtonKey = "answerByButton";
+
+    // The window kept above other apps (beside a DAW).
+    static constexpr const char* alwaysOnTopKey = "alwaysOnTop";
+
     // How before and after are matched in loudness (t03): 0 RMS, 1 BS.1770.
     static constexpr const char* loudnessMatchKey = "loudnessMatch";
     std::function<void (int)> onLoudnessMatchChanged;
@@ -117,8 +127,12 @@ public:
 
     void refresh();
 
-    enum class Page { training, hearing, appearance, background, live, about };
-    static constexpr int numPages = 6;
+    enum class Page { training, hearing, appearance, background, live, about, keys };
+    static constexpr int numPages = 7;
+
+    // "Output: MacBook Pro Speakers · 48 kHz · 256 smp · 5.3 ms" - the
+    // line along the foot of every page (Set-PC board). Null: no line.
+    std::function<juce::String()> outputSummary;
     void selectPage (Page);
 
     // From elsewhere in the app ("open hearing settings"): on a phone this
@@ -141,6 +155,8 @@ public:
     void mouseUp (const juce::MouseEvent&) override;
     void mouseDown (const juce::MouseEvent&) override;
     void mouseDrag (const juce::MouseEvent&) override;
+    void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
+    void paintOverChildren (juce::Graphics&) override;
     void visibilityChanged() override;
 
     static void applyStoredBackground (juce::PropertiesFile&);
@@ -162,7 +178,27 @@ private:
         bool proOnly = false;
         Page page = Page::training;
         juce::Rectangle<int> bounds;       // laid out in resized()
+        juce::String groupKey;             // the framed group it sits in (buildRows)
     };
+
+    // The QLab-style page (Set-PC board, 2026-10-24): the rail in three
+    // sections with a count per page, a search over every row's title and
+    // hint, rows in framed groups, the page scrolling under the wheel when
+    // it is longer than the window, and a status line along the foot.
+    struct RailEntry { const char* captionKey; int page; };   // page -1: a caption
+    static const std::vector<RailEntry>& railEntries();
+    juce::String pageLabel (Page) const;
+    int pageCount (Page) const;          // rows offered, or matches while searching
+    bool rowMatches (const Row&) const;
+    bool railOffers (Page) const;
+    juce::TextEditor searchBox;
+    juce::String searchQuery;
+    int deskScroll = 0, deskScrollMax = 0;
+    struct GroupFrame { juce::String key; juce::Rectangle<int> bounds; };
+    std::vector<GroupFrame> groupFrames;
+    int footerHeight() const;
+
+    void refreshHotkeysStrings();
 
     void buildRows();
     void timerCallback() override;
@@ -198,6 +234,9 @@ private:
     LocalisationManager& localisation;
     juce::PropertiesFile& properties;
     TrainerSettings settings { properties };
+    // Keys: the table of shortcuts (Hotkeys), its own page.
+    Hotkeys::Map hotkeyMap { properties };
+    HotkeysEditor hotkeysEditor { hotkeyMap };
 
     Page currentPage = Page::training;
     int hoveredMenuRow = -1;
@@ -262,6 +301,13 @@ private:
     // Live
     SegmentedChoice liveTabChoice;
     SegmentedChoice uiSoundsChoice, dailyMinutesChoice, loudnessMatchChoice, answerSoundChoice, hapticsChoice;
+    SegmentedChoice answerModeChoice, onTopChoice;
+
+    // Beginner / Pro as two named halves at the top of the rail (was a
+    // switch at its foot that people did not find).
+    SegmentedChoice modeChoice;
+    juce::String lockedHint() const;
+    void applyDefaultMarks();
     juce::TextButton accountButton;
     SegmentedChoice syncChoice;
     juce::TextButton syncNowButton;

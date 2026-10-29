@@ -5,6 +5,7 @@
 #include "shared/ui/AbcTrainTheme.h"
 #include <functional>
 #include <vector>
+#include <limits>
 
 // A row of square segments, one lit: "2 | 3 | 4", "OFF | ON".
 //
@@ -60,6 +61,10 @@ public:
     // A Learner plugin passes its family colour.
     void setAccent (juce::Colour c) { accentOverride = c; repaint(); }
 
+    // The standard value, marked with a small dot in its cell (Settings: so
+    // the player always sees which one is "as it comes"). INT_MIN: none.
+    void setDefaultValue (int v) { defaultValue = v; repaint(); }
+
     void paint (juce::Graphics& g) override
     {
         const auto& theme = AbcTrainTheme::current();
@@ -107,6 +112,12 @@ public:
 
             AbcTrainLookAndFeel::drawTrackedText (g, text, r, cellFont, textColour, tracking,
                                                   juce::Justification::centred);
+
+            if (values[i] == defaultValue)
+            {
+                g.setColour (selected ? textColour.withAlpha (0.8f) : theme.textDim);
+                g.fillEllipse (juce::Rectangle<float> (4.0f, 4.0f).withCentre ({ r.getCentreX(), r.getBottom() - 5.0f }));
+            }
         }
 
         g.setColour (theme.outline);
@@ -130,6 +141,7 @@ public:
 
 private:
     juce::Colour accentOverride;
+    int defaultValue = std::numeric_limits<int>::min();
     juce::String shown (const juce::String& label) const
     {
         return uppercase ? AbcTrainLookAndFeel::toCaps (label) : label;

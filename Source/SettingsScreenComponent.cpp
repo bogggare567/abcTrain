@@ -1,6 +1,7 @@
 #include "SettingsScreenComponent.h"
 
 #include <cstdlib>
+#include <algorithm>
 #include "shared/ui/CommunityLink.h"
 #include "shared/ui/IdleScreensaver.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
@@ -47,7 +48,39 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
         if (onTrainerSettingsChanged != nullptr)
             onTrainerSettingsChanged();
     };
-    addAndMakeVisible (modeSwitch);
+    addChildComponent (modeSwitch);   // kept for the key handler; the rail shows modeChoice
+
+    modeChoice.setComponentID ("settings.mode");
+    modeChoice.onChange = [this] (int v)
+    {
+        modeSwitch.setToggleState (v == 1, juce::dontSendNotification);
+        settings.setMode (v == 1 ? TrainerSettings::Mode::pro : TrainerSettings::Mode::beginner);
+        syncControlsFromSettings();
+
+        if (onTrainerSettingsChanged != nullptr)
+            onTrainerSettingsChanged();
+    };
+    addAndMakeVisible (modeChoice);
+
+    answerModeChoice.setValue (properties.getIntValue (answerByButtonKey, 0));
+    answerModeChoice.onChange = [this] (int v)
+    {
+        properties.setValue (answerByButtonKey, v);
+        properties.saveIfNeeded();
+        if (onSettingsChanged != nullptr)
+            onSettingsChanged();
+    };
+    addAndMakeVisible (answerModeChoice);
+
+    onTopChoice.setValue (properties.getBoolValue (alwaysOnTopKey, false) ? 1 : 0);
+    onTopChoice.onChange = [this] (int v)
+    {
+        properties.setValue (alwaysOnTopKey, v == 1);
+        properties.saveIfNeeded();
+        if (onSettingsChanged != nullptr)
+            onSettingsChanged();
+    };
+    addAndMakeVisible (onTopChoice);
 
     compactBackButton.setButtonText (juce::String::fromUTF8 ("\xe2\x80\xb9  ") + localisation.getText ("ui.settings"));
     compactBackButton.onClick = [this]
@@ -510,6 +543,31 @@ SettingsScreenComponent::SettingsScreenComponent (LocalisationManager& localisat
     };
     addChildComponent (closeButton);
 
+    // ---- search and keys (Set-PC boards) --------------------------------
+    searchBox.setComponentID ("settings.search");
+    searchBox.setFont (AbcTrainLookAndFeel::labelFont());
+    searchBox.onTextChange = [this]
+    {
+        searchQuery = searchBox.getText().trim();
+
+        // Jump to a page that has what is asked for, if this one has not.
+        if (searchQuery.isNotEmpty() && pageCount (currentPage) == 0)
+            for (const auto& e : railEntries())
+                if (e.page >= 0 && railOffers ((Page) e.page) && pageCount ((Page) e.page) > 0)
+                {
+                    deskScroll = 0;
+                    selectPage ((Page) e.page);
+                    break;
+                }
+
+        resized();
+        repaint();
+    };
+    searchBox.onEscapeKey = [this] { searchBox.clear(); searchBox.onTextChange(); };
+    addAndMakeVisible (searchBox);
+
+    addChildComponent (hotkeysEditor);
+
     buildRows();
     refresh();
     selectPage (Page::training);
@@ -525,9 +583,10 @@ void SettingsScreenComponent::buildRows()
 {
     // Order here is order on the page.
     rows = {
+        { "set.answerMode.title",   "set.answerMode.hint",   &answerModeChoice, 0, false, Page::training },
         { "set.haptics.title",      "set.haptics.hint",      &hapticsChoice,  0, false, Page::training },
-        { "set.stepRule.title",     "set.stepRule.hint",     &stepRule,       0, true,  Page::training },
         { "set.answerPause.title",  "set.answerPause.hint",  &answerPause,    0, true,  Page::training },
+        { "set.stepRule.title",     "set.stepRule.hint",     &stepRule,       0, true,  Page::training },
         { "set.hints.title",        "set.hints.hint",        &hints,          0, true,  Page::training },
         { "set.allModes.title",     "set.allModes.hint",     &allModes,       0, true,  Page::training },
         { "set.lives.title",        "set.lives.hint",        &survivalLives,  0, true,  Page::training },
@@ -536,9 +595,9 @@ void SettingsScreenComponent::buildRows()
 
         { "set.audioDevice.title",  "set.audioDevice.hint",  &audioDeviceButton, standardControlWidth, false, Page::hearing },
         { "set.hearingProfile.title", "set.hearingProfile.hintNone", &profileRow, 0, false, Page::hearing },
+        { "set.hearingApply.title", "set.hearingApply.hint",  &applyChoice,    0, false, Page::hearing },
         { "set.uiSounds.title",     "set.uiSounds.hint",     &uiSoundsChoice, 0, false, Page::hearing },
         { "set.answerSound.title",  "set.answerSound.hint",  &answerSoundChoice, 0, false, Page::hearing },
-        { "set.hearingApply.title", "set.hearingApply.hint",  &applyChoice,    0, false, Page::hearing },
         { "set.hearingOn.title",    "set.hearingOn.hint",    &hearingOn,      0, false, Page::hearing },
         { "set.break.title",        "set.break.hint",        &breakMinutes,   0, true,  Page::hearing },
         { "set.fatigue.title",      "set.fatigue.hint",      &fatigueHint,    0, true,  Page::hearing },
@@ -554,8 +613,9 @@ void SettingsScreenComponent::buildRows()
         { "set.typeface.title",     "set.typeface.hint",     &typefaceSelector,    standardControlWidth, false, Page::appearance },
         { "set.screensaver.title",  "set.screensaver.hint",  &screensaverSelector, standardControlWidth, false, Page::appearance },
 
-        { "ui.backgroundImage",     "set.background.hint",   &backgroundButtons, 0, false, Page::background },
-        { "ui.backgroundDim",       "set.backgroundDim.hint", &scrimSlider,      standardControlWidth, false, Page::background },
+        { "ui.backgroundImage",     "set.background.hint",   &backgroundButtons, 0, false, Page::appearance },
+        { "ui.backgroundDim",       "set.backgroundDim.hint", &scrimSlider,      standardControlWidth, false, Page::appearance },
+        { "set.onTop.title",        "set.onTop.hint",        &onTopChoice,      0, false, Page::appearance },
 
         { "set.liveTab.title",      "set.liveTab.hint",      &liveTabChoice,    0,   false, Page::live },
         { "set.account.title",      "set.account.hint",      &accountButton,    standardControlWidth, false, Page::live },
@@ -565,12 +625,122 @@ void SettingsScreenComponent::buildRows()
         { "set.autoUpdate.title",   "set.autoUpdate.hint",   &autoUpdateChoice, 0,   false, Page::about },
         { "set.checkNow.title",     "set.checkNow.hint",     &checkNowButton,   standardControlWidth, false, Page::about },
     };
+
+    // The framed groups (Set-PC board). A row's group is decided by what
+    // it is about; rows of one group are consecutive on their page.
+    const std::pair<juce::Component*, const char*> groups[] {
+        { &answerModeChoice, "set.group.answer" }, { &hapticsChoice, "set.group.answer" }, { &answerPause, "set.group.answer" },
+        { &stepRule, "set.group.difficulty" }, { &hints, "set.group.difficulty" },
+        { &allModes, "set.group.runs" }, { &survivalLives, "set.group.runs" },
+        { &blitzSeconds, "set.group.runs" }, { &blitzPenalty, "set.group.runs" },
+        { &loudnessMatchChoice, "set.group.sound" }, { &dailyMinutesChoice, "set.group.daily" },
+        { &audioDeviceButton, "set.group.output" }, { &profileRow, "set.group.output" }, { &applyChoice, "set.group.output" },
+        { &uiSoundsChoice, "set.group.feedback" }, { &answerSoundChoice, "set.group.feedback" },
+        { &hearingOn, "set.group.protection" }, { &breakMinutes, "set.group.protection" }, { &fatigueHint, "set.group.protection" },
+        { &calibrationRow, "set.group.protection" }, { &weeklyLimit, "set.group.protection" }, { &exposureRow, "set.group.protection" },
+        { &themeChoice, "set.group.look" }, { &languageChoice, "set.group.look" }, { &textScaleSlider, "set.group.look" },
+        { &typefaceSelector, "set.group.look" }, { &screensaverSelector, "set.group.look" },
+        { &backgroundButtons, "set.group.background" }, { &scrimSlider, "set.group.background" },
+        { &onTopChoice, "set.group.window" },
+        { &liveTabChoice, "set.group.live" }, { &accountButton, "set.group.account" }, { &syncChoice, "set.group.account" },
+        { &syncNowButton, "set.group.account" },
+        { &autoUpdateChoice, "set.group.updates" }, { &checkNowButton, "set.group.updates" },
+    };
+
+    for (auto& row : rows)
+        for (const auto& [control, key] : groups)
+            if (row.control == control)
+                row.groupKey = key;
+}
+
+const std::vector<SettingsScreenComponent::RailEntry>& SettingsScreenComponent::railEntries()
+{
+    static const std::vector<RailEntry> entries {
+        { "set.rail.app", -1 },
+        { nullptr, (int) Page::training }, { nullptr, (int) Page::hearing }, { nullptr, (int) Page::appearance },
+        { nullptr, (int) Page::keys },
+        { "set.rail.online", -1 },
+        { nullptr, (int) Page::live },
+        { "set.rail.system", -1 },
+        { nullptr, (int) Page::about },
+    };
+    return entries;
+}
+
+bool SettingsScreenComponent::railOffers (Page page) const
+{
+    // Keys need a keyboard: not on a phone.
+    return page != Page::keys || ! compact();
+}
+
+juce::String SettingsScreenComponent::pageLabel (Page page) const
+{
+    switch (page)
+    {
+        case Page::training:   return localisation.getText ("set.page.exercises");
+        case Page::hearing:    return localisation.getText ("set.page.sound");
+        case Page::appearance: return localisation.getText ("ui.settingsAppearance");
+        case Page::background: return localisation.getText ("ui.settingsBackground");
+        case Page::live:       return localisation.getText ("set.page.live");
+        case Page::keys:       return localisation.getText ("set.page.keys");
+        case Page::about:
+        default:               return localisation.getText ("ui.about");
+    }
+}
+
+bool SettingsScreenComponent::rowMatches (const Row& row) const
+{
+    return searchQuery.isNotEmpty()
+        && (localisation.getText (row.titleKey).containsIgnoreCase (searchQuery)
+            || hintFor (row).containsIgnoreCase (searchQuery));
+}
+
+int SettingsScreenComponent::pageCount (Page page) const
+{
+    int count = 0;
+
+    if (page == Page::keys)
+    {
+        for (const auto& a : Hotkeys::actions())
+            count += searchQuery.isEmpty() || localisation.getText (a.titleKey).containsIgnoreCase (searchQuery) ? 1 : 0;
+        return count;
+    }
+
+    for (const auto& row : rows)
+        if (row.page == page && rowIsOffered (row))
+            count += searchQuery.isEmpty() || rowMatches (row) ? 1 : 0;
+
+    return count;
+}
+
+int SettingsScreenComponent::footerHeight() const
+{
+    return compact() ? 0 : 30;
+}
+
+void SettingsScreenComponent::refreshHotkeysStrings()
+{
+    HotkeysEditor::Strings k;
+    const auto t = [this] (const char* key) { return localisation.getText (key); };
+    k.all = t ("keys.all");
+    k.action = t ("keys.col.action");
+    k.key = t ("keys.col.key");
+    k.second = t ("keys.col.second");
+    k.where = t ("keys.col.where");
+    k.defaults = t ("keys.defaults");
+    k.clashes = t ("keys.clashes");
+    k.noClashes = t ("keys.noClashes");
+    k.press = t ("keys.press");
+    k.note = t ("keys.note");
+    k.text = [this] (const char* key) { return localisation.getText (key); };
+    hotkeysEditor.setStrings (std::move (k));
 }
 
 void SettingsScreenComponent::syncControlsFromSettings()
 {
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
     modeSwitch.setToggleState (pro, juce::dontSendNotification);
+    modeChoice.setValue (pro ? 1 : 0);
 
     // In Beginner the Pro rows show what is actually in force - the
     // defaults - not the Pro values waiting in the file.
@@ -633,8 +803,41 @@ bool SettingsScreenComponent::rowIsOffered (const Row& row) const
     return row.control != &audioDeviceButton || onAudioDevice != nullptr;
 }
 
+juce::String SettingsScreenComponent::lockedHint() const
+{
+    return localisation.getText ("set.lockedHint");
+}
+
+void SettingsScreenComponent::applyDefaultMarks()
+{
+    // The standard value of every choice, as a dot in its cell.
+    const std::pair<SegmentedChoice*, Id> trainer[] {
+        { &stepRule, Id::stepRule }, { &answerPause, Id::answerPause }, { &survivalLives, Id::survivalLives },
+        { &blitzSeconds, Id::blitzSeconds }, { &blitzPenalty, Id::blitzPenalty }, { &hints, Id::hints },
+        { &allModes, Id::allModesOpen }, { &hearingOn, Id::hearingOn }, { &breakMinutes, Id::breakReminderMinutes },
+        { &fatigueHint, Id::fatigueHint }, { &weeklyLimit, Id::weeklyLimit },
+    };
+    for (const auto& [c, id] : trainer)
+        c->setDefaultValue (TrainerSettings::spec (id).defaultValue);
+
+    loudnessMatchChoice.setDefaultValue (0);
+    dailyMinutesChoice.setDefaultValue (15);
+    uiSoundsChoice.setDefaultValue (2);
+    answerSoundChoice.setDefaultValue (answerSoundDefault);
+    hapticsChoice.setDefaultValue (hapticsDefault);
+    answerModeChoice.setDefaultValue (0);
+    onTopChoice.setDefaultValue (0);
+    liveTabChoice.setDefaultValue (1);
+    autoUpdateChoice.setDefaultValue (1);
+}
+
 juce::String SettingsScreenComponent::hintFor (const Row& row) const
 {
+    // A Pro rule while in Beginner: say so, instead of a greyed row that
+    // just does not respond (the author: "чтобы людей не запутать").
+    if (row.proOnly && settings.getMode() == TrainerSettings::Mode::beginner && ! row.control->isEnabled())
+        return lockedHint();
+
     // A few hints say what the *current* value does, which is the whole
     // point of having them.
     if (row.control == &stepRule)
@@ -673,6 +876,10 @@ void SettingsScreenComponent::refresh()
     const auto secs = [this] (int s) { return localisation.getText ("set.seconds", { { "n", n (s) } }); };
 
     modeSwitch.setButtonText (t ("set.mode.switch"));
+    modeChoice.setOptions ({ 0, 1 }, { t ("set.mode.beginner"), t ("set.mode.pro") });
+    answerModeChoice.setOptions ({ 0, 1 }, { t ("set.answerMode.release"), t ("set.answerMode.button") });
+    onTopChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
+    applyDefaultMarks();
 
     stepRule.setOptions ({ 2, 3, 4 }, { "2", "3", "4" });
     answerPause.setOptions ({ 0, 1, 2 }, { t ("set.pause.short"), t ("set.pause.normal"), t ("set.pause.long") });
@@ -731,6 +938,11 @@ void SettingsScreenComponent::refresh()
     applyChoice.setOptions ({ 0, 1 }, { t ("set.off"), t ("set.on") });
     refreshHearingProfileRow();
     closeButton.setButtonText (t ("ui.close"));
+    searchBox.setTextToShowWhenEmpty (juce::String::fromUTF8 ("\xe2\x8c\x95  ") + t ("set.search"), theme.textDim);
+    searchBox.setColour (juce::TextEditor::backgroundColourId, theme.displayBackground);
+    searchBox.setColour (juce::TextEditor::outlineColourId, theme.outline);
+    searchBox.setColour (juce::TextEditor::textColourId, theme.textBright);
+    refreshHotkeysStrings();
 
     // A Slider's text box keeps the colours it was built with; the light
     // theme drew white numbers on a white box.
@@ -954,17 +1166,35 @@ juce::Rectangle<int> SettingsScreenComponent::sideMenuBounds() const
     return getLocalBounds().removeFromLeft (railWidth);
 }
 
+namespace
+{
+    constexpr int modeCaption = 18, modeNote = 36;
+}
+
 juce::Rectangle<int> SettingsScreenComponent::modeSwitchBounds() const
 {
-    // At the foot of the rail, over a two-line note of what it does.
+    // On a computer: at the top of the rail, under the search - "Beginner |
+    // Pro" decides what every page below means, so it comes first (it was
+    // a switch at the foot that people did not find). On a phone: at the
+    // foot of the menu, as before.
     auto rail = sideMenuBounds().reduced (AbcTrainTheme::Spacing::medium, AbcTrainTheme::Spacing::large);
-    rail.removeFromBottom (40);
-    return rail.removeFromBottom (controlHeight);
+
+    if (compact())
+    {
+        rail.removeFromBottom (modeNote + 4);
+        return rail.removeFromBottom (controlHeight);
+    }
+
+    rail.removeFromTop (8 + controlHeight + AbcTrainTheme::Spacing::medium + modeCaption);
+    return rail.removeFromTop (controlHeight);
 }
 
 int SettingsScreenComponent::menuTop() const
 {
-    return sideMenuBounds().getY() + AbcTrainTheme::Spacing::large + 8;
+    // On a computer the search and the mode sit over the menu.
+    return sideMenuBounds().getY() + AbcTrainTheme::Spacing::large + 8
+         + (compact() ? 0 : controlHeight + AbcTrainTheme::Spacing::medium + modeCaption + controlHeight + 4 + modeNote
+                            + AbcTrainTheme::Spacing::small);
 }
 
 juce::Rectangle<int> SettingsScreenComponent::pageBounds() const
@@ -980,19 +1210,29 @@ juce::Rectangle<int> SettingsScreenComponent::pageBounds() const
                                .translated (0, -compactScroll);
     }
 
-    return getLocalBounds().withTrimmedLeft (railWidth).reduced (AbcTrainTheme::Spacing::large + 8,
-                                                                 AbcTrainTheme::Spacing::large);
+    return getLocalBounds().withTrimmedLeft (railWidth).withTrimmedBottom (footerHeight())
+                           .reduced (AbcTrainTheme::Spacing::large + 8, AbcTrainTheme::Spacing::large)
+                           .translated (0, currentPage == Page::keys ? 0 : -deskScroll);
 }
 
 int SettingsScreenComponent::menuRowAt (juce::Point<int> p) const
 {
-    auto area = sideMenuBounds().withTrimmedTop (menuTop())
+    auto area = sideMenuBounds().withTrimmedTop (menuTop() - sideMenuBounds().getY())
                                 .reduced (AbcTrainTheme::Spacing::small, 0);
 
-    for (int i = 0; i < numPages; ++i)
+    for (const auto& e : railEntries())
     {
+        if (e.page < 0)
+        {
+            area.removeFromTop (compact() ? 34 : 28);
+            continue;
+        }
+
+        if (! railOffers ((Page) e.page))
+            continue;
+
         if (area.removeFromTop (compact() ? 48 : menuRowHeight).contains (p))
-            return i;
+            return e.page;
 
         area.removeFromTop (2);
     }
@@ -1008,6 +1248,9 @@ juce::Rectangle<int> SettingsScreenComponent::compactViewport() const
 
 void SettingsScreenComponent::selectPage (Page page)
 {
+    if (page != currentPage)
+        deskScroll = 0;
+
     currentPage = page;
     applyPageVisibility();
     syncControlsFromSettings();
@@ -1027,15 +1270,17 @@ void SettingsScreenComponent::applyPageVisibility()
     feedbackButton.setVisible (page == Page::about);
     communityButton.setVisible (page == Page::about);
     betaToggle.setVisible (page == Page::about);
+    hotkeysEditor.setVisible (page == Page::keys);
 }
 
 void SettingsScreenComponent::resized()
 {
-    modeSwitch.setBounds (modeSwitchBounds());
+    modeChoice.setBounds (modeSwitchBounds());
+    modeSwitch.setBounds ({});
 
     const auto isCompact = compact();
     compactBackButton.setVisible (isCompact && compactShowingPage);
-    modeSwitch.setVisible (! isCompact || ! compactShowingPage);
+    modeChoice.setVisible (! isCompact || ! compactShowingPage);
 
     if (isCompact)
     {
@@ -1046,14 +1291,49 @@ void SettingsScreenComponent::resized()
     }
 
     auto page = pageBounds();
-    page.removeFromTop (30 + AbcTrainTheme::Spacing::small);   // heading
+    auto headingRow = page.removeFromTop (30);
+    page.removeFromTop (AbcTrainTheme::Spacing::small);
+
+    searchBox.setVisible (! isCompact);
+    groupFrames.clear();
+
+    if (! isCompact)
+    {
+        searchBox.setBounds (sideMenuBounds().reduced (AbcTrainTheme::Spacing::medium, 0)
+                                             .withTrimmedTop (AbcTrainTheme::Spacing::large + 8)
+                                             .removeFromTop (controlHeight));
+
+        // "Back to the standard rules" on the heading's line, at the right
+        // edge, as the board has it.
+        if (currentPage == Page::training)
+            resetButton.setBounds (headingRow.removeFromRight (240).withSizeKeepingCentre (240, controlHeight));
+    }
 
     if (currentPage == Page::training || currentPage == Page::hearing)
         page.removeFromTop (26);                                // the mode note / status line
     else if (currentPage == Page::about)
         page.removeFromTop (22);                                // the version line
 
+    // A page longer than the window runs on below it and scrolls: laid out
+    // in the window's height, the last rows were squeezed to nothing and
+    // drawn on top of each other (the hearing and exercise pages).
+    if (! isCompact && currentPage != Page::about && currentPage != Page::keys)
+        page.setHeight (100000);
+
     const auto contentWidth = juce::jmin (page.getWidth(), 980);
+    constexpr int groupCaption = 26, groupInset = 16;
+    juce::String openGroup;
+
+    // A row taken off the page inside its group's frame.
+    const auto takeRow = [&] (int height)
+    {
+        auto full = page.removeFromTop (height).withWidth (contentWidth);
+
+        if (! groupFrames.empty())
+            groupFrames.back().bounds = groupFrames.back().bounds.isEmpty() ? full : groupFrames.back().bounds.getUnion (full);
+
+        return full.reduced (groupInset, 0);
+    };
 
     for (auto& row : rows)
     {
@@ -1061,6 +1341,16 @@ void SettingsScreenComponent::resized()
 
         if (row.page != currentPage || ! rowIsOffered (row))
             continue;
+
+        if (! isCompact && row.groupKey != openGroup)
+        {
+            if (! groupFrames.empty())
+                page.removeFromTop (AbcTrainTheme::Spacing::large);
+
+            page.removeFromTop (groupCaption);
+            groupFrames.push_back ({ row.groupKey, {} });
+            openGroup = row.groupKey;
+        }
 
         if (isCompact)
         {
@@ -1090,12 +1380,12 @@ void SettingsScreenComponent::resized()
         // and 50 dB over a thumb's width is a fader that barely moves.
         if (row.control == &calibrationRow)
         {
-            row.bounds = page.removeFromTop (rowHeight + controlHeight + 10).withWidth (contentWidth);
-            calibrationRow.setBounds (row.bounds.withTrimmedBottom (8));
+            row.bounds = takeRow (rowHeight + controlHeight + 22);
+            calibrationRow.setBounds (row.bounds.withTrimmedBottom (16));
             continue;
         }
 
-        row.bounds = page.removeFromTop (rowHeight).withWidth (contentWidth);
+        row.bounds = takeRow (rowHeight);
 
         auto controlArea = row.bounds.withTrimmedLeft (titleColumn);
         const auto width = row.controlWidth > 0 ? row.controlWidth : controlArea.getWidth();
@@ -1185,7 +1475,13 @@ void SettingsScreenComponent::resized()
         clearBackgroundButton.setBounds (r.removeFromLeft (juce::jmin (120, r.getWidth())));
     }
 
-    if (currentPage == Page::training)
+    if (! groupFrames.empty())
+        page.removeFromTop (AbcTrainTheme::Spacing::large);
+
+    if (currentPage == Page::keys)
+        hotkeysEditor.setBounds (page);
+
+    if (currentPage == Page::training && isCompact)
         resetButton.setBounds (page.removeFromTop (12 + controlHeight).removeFromBottom (controlHeight)
                                    .withX (page.getX() + (isCompact ? 0 : titleColumn))
                                    .withWidth (juce::jmin (240, page.getWidth())));
@@ -1224,6 +1520,22 @@ void SettingsScreenComponent::resized()
         }
     }
 
+    if (! isCompact)
+    {
+        // The page scrolls under the wheel when it is longer than the
+        // window (the hearing page with its groups is).
+        const auto contentBottom = page.getY() + (currentPage == Page::keys ? 0 : deskScroll);
+        const auto visibleBottom = getHeight() - footerHeight() - AbcTrainTheme::Spacing::medium;
+        deskScrollMax = currentPage == Page::keys ? 0 : juce::jmax (0, contentBottom - visibleBottom);
+
+        if (deskScroll > deskScrollMax)
+        {
+            deskScroll = deskScrollMax;
+            resized();
+            return;
+        }
+    }
+
     if (isCompact)
     {
         // How far the column runs past the screen, and nothing that has
@@ -1242,7 +1554,7 @@ void SettingsScreenComponent::resized()
         }
 
         for (auto* child : getChildren())
-            if (child != &compactBackButton && child != &modeSwitch && child->isVisible()
+            if (child != &compactBackButton && child != &modeChoice && child->isVisible()
                 && (! compactShowingPage || child->getY() < view.getY()))
                 child->setVisible (false);
     }
@@ -1261,36 +1573,60 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
     g.setColour (theme.divider);
     g.fillRect (area.getRight() - 1, area.getY(), 1, area.getHeight());
 
-    // The mode, at the foot: a hairline over it, the switch, and a line
-    // under it saying what the switch is doing right now.
+    // The mode: its caption over it, and a line under it saying what it is
+    // doing right now.
     const auto modeBox = modeSwitchBounds();
-    g.setColour (theme.divider);
-    g.fillRect (area.getX() + AbcTrainTheme::Spacing::medium, modeBox.getY() - AbcTrainTheme::Spacing::small,
-                area.getWidth() - AbcTrainTheme::Spacing::medium * 2, 1);
-
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
-    g.setColour (theme.textDim);
+
+    if (! compact())
+    {
+        g.setColour (theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::microFont());
+        AbcTrainLookAndFeel::fitText (g, localisation.getText ("set.mode.caption").toUpperCase(),
+                                      modeBox.translated (0, -modeCaption).withHeight (modeCaption).withTrimmedLeft (2),
+                                      juce::Justification::centredLeft, true);
+    }
+
+    g.setColour (pro ? theme.accentWarm : theme.textDim);
     g.setFont (AbcTrainLookAndFeel::captionFont());
     AbcTrainLookAndFeel::fitLines (g, localisation.getText (pro ? "set.mode.hintPro" : "set.mode.hintBeginner"),
-                      modeBox.translated (0, controlHeight + 4).withHeight (36), juce::Justification::topLeft, 2, 1.0f);
+                      modeBox.translated (0, controlHeight + 4).withHeight (modeNote), juce::Justification::topLeft, 2, 1.0f);
 
-    const juce::String labels[] { localisation.getText ("set.page.training"),
-                                   localisation.getText ("set.page.hearing"),
-                                   localisation.getText ("ui.settingsAppearance"),
-                                   localisation.getText ("ui.settingsBackground"),
-                                   localisation.getText ("set.page.live"),
-                                   localisation.getText ("ui.about") };
+    if (! compact())
+    {
+        g.setColour (theme.divider);
+        g.fillRect (area.getX() + AbcTrainTheme::Spacing::medium, menuTop() - AbcTrainTheme::Spacing::small,
+                    area.getWidth() - AbcTrainTheme::Spacing::medium * 2, 1);
+    }
 
     auto rowArea = area.withTrimmedTop (menuTop() - area.getY()).reduced (AbcTrainTheme::Spacing::small, 0);
 
-    for (int i = 0; i < numPages; ++i)
+    for (const auto& e : railEntries())
     {
+        if (e.page < 0)
+        {
+            // A section caption: small, spaced, the accent's colour.
+            auto cap = rowArea.removeFromTop (compact() ? 34 : 28);
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::microFont());
+            AbcTrainLookAndFeel::fitText (g, localisation.getText (e.captionKey).toUpperCase(),
+                                          cap.withTrimmedLeft (14).withTrimmedTop (8), juce::Justification::centredLeft, true);
+            continue;
+        }
+
+        const auto page = (Page) e.page;
+
+        if (! railOffers (page))
+            continue;
+
         const auto bounds = rowArea.removeFromTop (compact() ? 48 : menuRowHeight);
         rowArea.removeFromTop (2);
 
-        const auto selected = (int) currentPage == i;
+        const auto selected = currentPage == page;
+        const auto count = pageCount (page);
+        const auto empty = searchQuery.isNotEmpty() && count == 0;
 
-        if (selected || hoveredMenuRow == i)
+        if (selected || hoveredMenuRow == e.page)
         {
             g.setColour (selected ? theme.accent.withAlpha (0.18f) : theme.widgetBackground.withAlpha (0.6f));
             g.fillRect (bounds.toFloat().reduced (2.0f, 0.0f));
@@ -1302,9 +1638,16 @@ void SettingsScreenComponent::paintSideMenu (juce::Graphics& g, juce::Rectangle<
             g.fillRect (bounds.toFloat().withWidth (3.0f).reduced (0.0f, 6.0f));
         }
 
-        g.setColour (selected ? theme.textBright : theme.text);
+        auto label = bounds.withTrimmedLeft (14).withTrimmedRight (10);
+
+        // How many rows the page has - or, while searching, how many match.
+        g.setColour (searchQuery.isNotEmpty() && count > 0 ? theme.accentWarm : theme.textDim);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+        AbcTrainLookAndFeel::fitText (g, juce::String (count), label.removeFromRight (30), juce::Justification::centredRight, false);
+
+        g.setColour (empty ? theme.textDim : selected ? theme.textBright : theme.text);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
-        AbcTrainLookAndFeel::fitText (g, labels[i], bounds.withTrimmedLeft (14), juce::Justification::centredLeft, true);
+        AbcTrainLookAndFeel::fitText (g, pageLabel (page), label, juce::Justification::centredLeft, true);
     }
 }
 
@@ -1329,16 +1672,33 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
     if (compact())
         g.reduceClipRegion (compactViewport());
 
-    const juce::String heading = currentPage == Page::training   ? localisation.getText ("set.page.training")
-                               : currentPage == Page::hearing    ? localisation.getText ("set.page.hearing")
-                               : currentPage == Page::appearance ? localisation.getText ("ui.settingsAppearance")
-                               : currentPage == Page::background ? localisation.getText ("ui.settingsBackground")
-                               : currentPage == Page::live       ? localisation.getText ("set.page.live")
-                                                                 : localisation.getText ("ui.about");
+    const auto heading = pageLabel (currentPage);
 
-    g.setColour (theme.textBright);
-    g.setFont (AbcTrainLookAndFeel::titleFont());
-    AbcTrainLookAndFeel::fitText (g, heading, page.removeFromTop (30), juce::Justification::centredLeft, false);
+    {
+        // The page's name, and beside it, quieter, what to expect of it.
+        auto headingRow = page.removeFromTop (30);
+        g.setColour (theme.textBright);
+        g.setFont (AbcTrainLookAndFeel::titleFont());
+        const auto titleWidth = juce::jmin (headingRow.getWidth(),
+                                            juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), heading)) + 4);
+        AbcTrainLookAndFeel::fitText (g, heading, headingRow.removeFromLeft (titleWidth), juce::Justification::centredLeft, false);
+
+        if (! compact())
+        {
+            headingRow.removeFromLeft (16);
+            if (currentPage == Page::training && resetButton.isVisible())
+                headingRow.removeFromRight (256);
+            g.setColour (theme.textDim);
+            g.setFont (AbcTrainLookAndFeel::labelFont());
+            const char* intro = currentPage == Page::keys       ? "set.sub.keys"
+                              : currentPage == Page::training   ? "set.intro.exercises"
+                              : currentPage == Page::hearing    ? "set.intro.sound"
+                              : currentPage == Page::appearance ? "set.intro.look"
+                              : currentPage == Page::live       ? "set.intro.live"
+                                                                : "set.intro.about";
+            AbcTrainLookAndFeel::fitText (g, localisation.getText (intro), headingRow, juce::Justification::centredLeft, true);
+        }
+    }
     page.removeFromTop (AbcTrainTheme::Spacing::small);
 
     const auto pro = settings.getMode() == TrainerSettings::Mode::pro;
@@ -1367,6 +1727,20 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
                     juce::Justification::centredLeft, false);
     }
 
+    // The groups: a caption over a frame round its rows.
+    for (const auto& frame : groupFrames)
+    {
+        g.setColour (theme.windowBackground.withAlpha (0.35f));
+        g.fillRect (frame.bounds);
+        g.setColour (theme.outline);
+        g.drawRect (frame.bounds, 1);
+
+        g.setColour (theme.accent);
+        g.setFont (AbcTrainLookAndFeel::microFont());
+        AbcTrainLookAndFeel::fitText (g, localisation.getText (frame.key).toUpperCase(),
+                                      frame.bounds.withHeight (22).translated (0, -24), juce::Justification::centredLeft, true);
+    }
+
     // Rows: title and what it does on the left, hairline between rows.
     for (const auto& row : rows)
     {
@@ -1378,7 +1752,16 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
         auto text = compact() ? rowBounds.removeFromTop (compactTextHeight - 4)
                               : rowBounds.removeFromLeft (titleColumn - 24);
 
-        g.setColour (enabled ? theme.textBright : theme.textDim);
+        // A search hit: a warm bar at the row's edge and a warm title.
+        const auto hit = rowMatches (row);
+
+        if (hit)
+        {
+            g.setColour (theme.accentWarm);
+            g.fillRect (row.bounds.getX() - (compact() ? 8 : 12), row.bounds.getY() + 8, 3, row.bounds.getHeight() - 16);
+        }
+
+        g.setColour (hit ? theme.accentWarm : enabled ? theme.textBright : theme.textDim);
         g.setFont (AbcTrainLookAndFeel::bodyFont());
         AbcTrainLookAndFeel::fitText (g, localisation.getText (row.titleKey), text.removeFromTop (24).withTrimmedTop (4),
                     juce::Justification::centredLeft, true);
@@ -1387,8 +1770,74 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
         g.setFont (AbcTrainLookAndFeel::labelFont());
         AbcTrainLookAndFeel::fitLines (g, hintFor (row), text.withTrimmedBottom (4), juce::Justification::topLeft, 2, 0.9f);
 
-        g.setColour (theme.divider);
-        g.fillRect (row.bounds.getX(), row.bounds.getBottom() - 1, row.bounds.getWidth(), 1);
+        const auto lastInFrame = std::any_of (groupFrames.begin(), groupFrames.end(),
+                                              [&row] (const GroupFrame& f) { return f.bounds.getBottom() == row.bounds.getBottom(); });
+
+        if (! lastInFrame)
+        {
+            g.setColour (theme.divider);
+            g.fillRect (row.bounds.getX(), row.bounds.getBottom() - 1, row.bounds.getWidth(), 1);
+        }
+    }
+}
+
+void SettingsScreenComponent::paintOverChildren (juce::Graphics& g)
+{
+    if (footerHeight() == 0)
+        return;
+
+    // The foot of the page: where the sound goes and where the settings
+    // live. Over the children, so a row scrolled under it is covered.
+    const auto& theme = AbcTrainTheme::current();
+    auto foot = getLocalBounds().withTrimmedLeft (railWidth).removeFromBottom (footerHeight());
+
+    g.setColour (theme.panelBackground);
+    g.fillRect (foot);
+    g.setColour (theme.divider);
+    g.fillRect (foot.removeFromTop (1));
+
+    foot.reduce (AbcTrainTheme::Spacing::large + 8, 0);
+    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+
+    const auto path = properties.getFile().getFullPathName();
+    g.setColour (theme.textDim);
+    auto right = foot.removeFromRight (juce::jmin (foot.getWidth() / 2, 520));
+    AbcTrainLookAndFeel::fitText (g, path, right, juce::Justification::centredRight, true);
+
+    // What the dot in a choice means.
+    {
+        g.setFont (AbcTrainLookAndFeel::captionFont());
+        const auto legend = localisation.getText ("set.defaultLegend");
+        const auto w = juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), legend)) + 18;
+        auto box = foot.removeFromRight (juce::jmin (w, foot.getWidth() / 2));
+        foot.removeFromRight (12);
+        g.fillEllipse (juce::Rectangle<float> (5.0f, 5.0f).withCentre ({ (float) box.getX() + 4.0f, (float) box.getCentreY() }));
+        AbcTrainLookAndFeel::fitText (g, legend, box.withTrimmedLeft (12), juce::Justification::centredLeft, true);
+        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (12.0f));
+    }
+
+    if (outputSummary != nullptr)
+    {
+        g.setColour (theme.text);
+        AbcTrainLookAndFeel::fitText (g, outputSummary(), foot, juce::Justification::centredLeft, true);
+    }
+}
+
+void SettingsScreenComponent::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
+{
+    if (compact() || deskScrollMax <= 0)
+    {
+        juce::Component::mouseWheelMove (e, wheel);
+        return;
+    }
+
+    const auto next = juce::jlimit (0, deskScrollMax, deskScroll - juce::roundToInt (wheel.deltaY * 240.0f));
+
+    if (next != deskScroll)
+    {
+        deskScroll = next;
+        resized();
+        repaint();
     }
 }
 
