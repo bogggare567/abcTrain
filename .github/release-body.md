@@ -26,13 +26,21 @@
   - Страница «Клавиши»: свои горячие клавиши для тренировки, семинара и Студии.
 - **Перед забегом** открывается лист: ваш уровень, три режима с рекордами и звук. **Профиль** показывает Decibelo по семействам и его историю.
 - **Подсказки** занимают всё свободное место на шкале. Закрытая подсказка показана рамкой с замком, а не пустотой. Чёрных «колодцев» на панелях больше нет.
+- **Версии плагинов.** У Learner EQ, Comp и Verb теперь своя версия, её видно в DAW (раньше везде стояло 1.0.0). Плагин предлагает обновиться, только когда изменился сам. На странице «О программе» указаны версии частей.
+- **Уроки от авторов.** Звукорежиссёр или преподаватель может предложить свой урок: текстовым файлом через pull request или через форму на GitHub. Проверка формата идёт автоматически, автор указан в уроке. Как это сделать: [lessons/CONTRIBUTING.md](https://github.com/bogggare567/abcTrain/blob/main/lessons/CONTRIBUTING.md).
+- **Телефоны.**
+  - Исправления под iPhone: вырез, рамка окна, вкладки, единицы.
+  - Частотные упражнения спрашивают только о том, что есть в клипе.
+  - Первая сборка для **Android** (APK в файлах релиза, экспериментальная).
+  - iPhone и iPad ставятся сборкой из Xcode.
+  - Как установить: [На телефоне и планшете](https://github.com/bogggare567/abcTrain/wiki/ru-Mobile).
 - **Безопасность.** Пакет звуков с именем `..` или `.` больше не может удалить папку вне библиотеки.
 - **Исправлено:**
   - Студия не открывалась целиком после своего плагина;
   - кракозябры вместо «·» и «—»;
   - строки настроек наезжали друг на друга внизу длинной страницы.
 
-Почему сделано так: [ADR 059–068](https://github.com/bogggare567/abcTrain/tree/main/docs/decisions). Руководство: [Свои плагины](https://github.com/bogggare567/abcTrain/wiki/ru-Your-own-plugins).
+Почему сделано так: [ADR 059–071](https://github.com/bogggare567/abcTrain/tree/main/docs/decisions). Руководство: [Свои плагины](https://github.com/bogggare567/abcTrain/wiki/ru-Your-own-plugins).
 
 ---
 
@@ -44,6 +52,9 @@
 - **Settings.** Search, Beginner / Pro, clearer pages and a Keys page for your own hotkeys.
 - **A start sheet** before each run, and a **profile** with Decibelo by family.
 - **Hints** fill the free space on the ruler, and a locked hint is shown as locked.
+- **Plugin versions.** Learner EQ, Comp and Verb carry their own version in your DAW (they all said 1.0.0) and offer an update only when they changed.
+- **Lessons from contributors** by pull request or a GitHub form, checked automatically and credited: [lessons/CONTRIBUTING.md](https://github.com/bogggare567/abcTrain/blob/main/lessons/CONTRIBUTING.md).
+- **Phones.** iPhone fixes, and frequency exercises ask only about what the clip contains. A first, experimental **Android** APK is in the release assets. iPhone and iPad install by building with Xcode: [On a phone or tablet](https://github.com/bogggare567/abcTrain/wiki/Mobile).
 - **Security.** A sound pack can no longer delete a folder outside the library.
 - **Fixes.** The Studio after your own plugin, garbled "·" and "—", and overlapping settings rows.
 
