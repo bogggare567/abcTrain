@@ -17,7 +17,7 @@ Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 &nbsp;
 [![Try it in your browser](https://img.shields.io/badge/Try%20it%20first-no%20install-2A2A3A?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
 &nbsp;
-[![2.2 Saint Petersburg](https://img.shields.io/badge/2.2-Saint%20Petersburg-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
+[![2.3](https://img.shields.io/badge/version-2.3-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
 
 <br>
 

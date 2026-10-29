@@ -17,7 +17,7 @@
 &nbsp;
 [![Попробовать в браузере](https://img.shields.io/badge/%D0%A1%D0%BD%D0%B0%D1%87%D0%B0%D0%BB%D0%B0%20%D0%BF%D0%BE%D0%BF%D1%80%D0%BE%D0%B1%D0%BE%D0%B2%D0%B0%D1%82%D1%8C-%D0%B1%D0%B5%D0%B7%20%D1%83%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%BA%D0%B8-2A2A3A?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
 &nbsp;
-[![2.2 Saint Petersburg](https://img.shields.io/badge/2.2-Saint%20Petersburg-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
+[![2.3](https://img.shields.io/badge/version-2.3-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
 
 <br>
 
