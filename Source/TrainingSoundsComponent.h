@@ -7,6 +7,7 @@
 
 #include "PluginProcessor.h"
 #include "shared/ui/TouchScroll.h"
+#include "shared/ui/AbcTrainLookAndFeel.h"
 #include <functional>
 #include <map>
 
@@ -325,6 +326,11 @@ public:
     void visibilityChanged() override;
 
 private:
+
+    // The page's gradient and grain, drawn once and kept as a picture -
+    // redrawn from scratch it cost most of every frame on a phone
+    // (AbcTrainLookAndFeel::PanelBackgroundCache).
+    AbcTrainLookAndFeel::PanelBackgroundCache backgroundCache;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrainingSoundsComponent)
 };

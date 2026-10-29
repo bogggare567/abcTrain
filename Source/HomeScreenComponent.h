@@ -110,6 +110,12 @@ public:
     // Narrower than a desktop row can be (a phone): the name gets the
     // whole top line, the threshold and the record share the line under it.
     bool compact() const noexcept { return getWidth() < 520; }
+
+    // Rows stack name / threshold / record on three lines below this width.
+    // One line needs ~210 for the name, ~240 for a pair of names and ~100
+    // for the ruler; a phone on its side (~650 here) has not got that, and
+    // cut both names on every row while compact() still said "desktop".
+    bool stackedRows() const noexcept { return getWidth() < 700; }
     void mouseWheelMove (const juce::MouseEvent&, const juce::MouseWheelDetails&) override;
 
 private:

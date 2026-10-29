@@ -27,11 +27,11 @@ static juce::String answerFor (GameManager& manager, int exercise, int level, ju
     if (exercise < 0 || exercise >= manager.getNumGames())
         return R"({"error":"exercise"})";
 
+    // Exactly what the app does, clip included: the frequency exercises
+    // draw from what the seed's clip has in it (SpectralContent.h), so a
+    // judge that skipped the clip would judge a different round.
     auto& game = manager.getGame (exercise);
-    game.setSeededRounds (true);
-    game.setDifficulty (juce::jlimit (1, 10, level));
-    game.seedNextRound (seed);
-    game.newRound();
+    manager.startSeededRound (game, juce::jlimit (1, 10, level), seed, 48000.0);
 
     // Which part of the exercise the round falls in (the skill bucket) - for
     // the answers the server keeps to train the bots on (b07). A game knows

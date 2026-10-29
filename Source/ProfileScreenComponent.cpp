@@ -168,7 +168,7 @@ void ProfileScreenComponent::paintLinkRow (juce::Graphics& g, juce::Rectangle<in
 
 void ProfileScreenComponent::paint (juce::Graphics& g)
 {
-    LnF::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
     const auto l = layout();
 
     if (supportShown)

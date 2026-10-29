@@ -569,7 +569,12 @@ void IconButton::paintButton (juce::Graphics& g, bool shouldDrawButtonAsHighligh
         press = AbcTrainTheme::Ease::out (laf->getStateRegistry().pressAmount (*this, shouldDrawButtonAsDown));
     }
 
-    const auto bounds = getLocalBounds().toFloat().reduced (1.0f).translated (0.0f, press);
+    auto drawn = getLocalBounds().toFloat();
+    if (visualSize > 0.0f)
+        drawn = drawn.withSizeKeepingCentre (juce::jmin (drawn.getWidth(), visualSize),
+                                             juce::jmin (drawn.getHeight(), visualSize));
+
+    const auto bounds = drawn.reduced (1.0f).translated (0.0f, press);
 
     // No frame at rest: a title row of six outlined boxes is exactly the
     // noise this replaced. The surface only appears under the pointer.

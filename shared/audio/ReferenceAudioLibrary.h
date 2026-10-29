@@ -2,6 +2,7 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_data_structures/juce_data_structures.h>
+#include "shared/audio/SpectralContent.h"
 #include <atomic>
 #include <functional>
 
@@ -239,6 +240,23 @@ public:
     float getActiveSustain() const noexcept { return activeSustain.load(); }
     static float sustainOf (const juce::AudioBuffer<float>&, double sampleRate);
 
+    // What the active clip has in it - which third-octaves carry energy,
+    // whether it is hits (see shared/audio/SpectralContent.h). Measured on
+    // the file at its own sample rate when the clip is chosen, so the same
+    // file gives the same profile on every machine at every device rate -
+    // a battle's server judge depends on that. Message thread only: the
+    // exercises read it in newRound(), never on the audio thread. Not
+    // analysed (everything counts as present) while no clip is chosen.
+    const SpectralContent::Profile& getActiveContent() const noexcept
+    {
+        static const SpectralContent::Profile none;
+        return activeBuffer.load() != nullptr ? activeContent : none;
+    }
+
+    // presentOctaves() of the active clip, readable from the audio thread
+    // (TestSignalGenerator::usableClip runs there too).
+    float getActivePresentOctaves() const noexcept { return activePresentOctaves.load(); }
+
     static constexpr double maxBufferSeconds = 20.0;
 
 private:
@@ -278,6 +296,9 @@ private:
     juce::OwnedArray<juce::AudioBuffer<float>> loadedBuffers;
     std::atomic<const juce::AudioBuffer<float>*> activeBuffer { nullptr };
     std::atomic<float> activeSustain { 1.0f };
+    SpectralContent::Profile activeContent;
+    juce::HashMap<juce::String, SpectralContent::Profile> contentCache;
+    std::atomic<float> activePresentOctaves { 10.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ReferenceAudioLibrary)
 };

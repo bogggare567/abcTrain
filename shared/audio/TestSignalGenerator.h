@@ -92,9 +92,28 @@ public:
     // tail disappears inside a held guitar chord, and a compressor on a pad
     // barely moves. Such an exercise skips a chosen clip that is not hits
     // and plays its own sound instead (Bogdan: "задержку нельзя на гитаре").
-    enum class Need { any, hits };
+    //
+    // The frequency exercises need the opposite: a spread of spectrum to
+    // put a boost in. A sine, a lone sub drop, a narrow pad is one or two
+    // octaves of sound and every other question about it is unanswerable,
+    // so `spectrum` skips a clip with fewer than minPresentOctaves of
+    // energy in it. Within a clip that passes, the exercise still asks
+    // only about the ranges that are there (activeContent).
+    enum class Need { any, hits, spectrum };
     void setNeed (Need n) noexcept { need = n; }
     static constexpr float hitsSustainLimit = 0.35f;
+    static constexpr float minPresentOctaves = 3.0f;
+
+    // What the clip about to play has in it, when it is a clip - for the
+    // exercise to draw its question from (see SpectralContent.h). Pink
+    // noise and the exercise's own beds are not analysed: everything is in
+    // pink noise, and the beds were built for their exercise. Message
+    // thread.
+    const SpectralContent::Profile& activeContent() const noexcept
+    {
+        static const SpectralContent::Profile none;
+        return usableClip() != nullptr ? library->getActiveContent() : none;
+    }
 
     // The chosen clip, if this exercise can use it.
     const juce::AudioBuffer<float>* usableClip() const noexcept
@@ -103,6 +122,9 @@ public:
             return nullptr;
         const auto* buffer = library->getActiveBuffer();
         if (buffer != nullptr && need == Need::hits && library->getActiveSustain() > hitsSustainLimit)
+            return nullptr;
+        if (buffer != nullptr && need == Need::spectrum
+            && library->getActivePresentOctaves() < minPresentOctaves)
             return nullptr;
         return buffer;
     }

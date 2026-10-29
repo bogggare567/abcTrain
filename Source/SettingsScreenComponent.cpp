@@ -1275,6 +1275,9 @@ void SettingsScreenComponent::applyPageVisibility()
 
 void SettingsScreenComponent::resized()
 {
+    if (overflowCompact && (overflowSize != juce::Point<int> (getWidth(), getHeight()) || overflowPage != currentPage))
+        overflowCompact = false;
+
     modeChoice.setBounds (modeSwitchBounds());
     modeSwitch.setBounds ({});
 
@@ -1354,16 +1357,30 @@ void SettingsScreenComponent::resized()
 
         if (isCompact)
         {
+            // As tall as the hint needs at this width: a fixed two lines cut
+            // the longer ones ("Signals on an answer, a step up, the end of
+            // a battle - several takes...") in the middle on every phone.
+            {
+                juce::GlyphArrangement layout;
+                const auto font = AbcTrainLookAndFeel::labelFont();
+                layout.addJustifiedText (font, hintFor (row), 0.0f, 0.0f, (float) juce::jmax (40, page.getWidth()),
+                                         juce::Justification::left);
+                row.hintLines = juce::jlimit (1, 5, juce::roundToInt (layout.getBoundingBox (0, -1, true).getHeight()
+                                                                      / font.getHeight()));
+                row.textHeight = juce::jmax (compactTextHeight,
+                                             24 + juce::roundToInt ((float) row.hintLines * (font.getHeight() + 1.0f)) + 10);
+            }
+
             if (row.control == &calibrationRow)
             {
                 // Three lines: play, the fader, keep or forget.
-                row.bounds = page.removeFromTop (compactTextHeight + 3 * (compactControlHeight + 8) + 8);
-                calibrationRow.setBounds (row.bounds.withTrimmedTop (compactTextHeight).withTrimmedBottom (8));
+                row.bounds = page.removeFromTop (row.textHeight + 3 * (compactControlHeight + 8) + 8);
+                calibrationRow.setBounds (row.bounds.withTrimmedTop (row.textHeight).withTrimmedBottom (8));
                 continue;
             }
 
-            row.bounds = page.removeFromTop (compactTextHeight + compactControlHeight + 14);
-            auto box = row.bounds.withTrimmedTop (compactTextHeight).removeFromTop (compactControlHeight);
+            row.bounds = page.removeFromTop (row.textHeight + compactControlHeight + 14);
+            auto box = row.bounds.withTrimmedTop (row.textHeight).removeFromTop (compactControlHeight);
 
             if (row.controlWidth > 0)
                 box = box.withWidth (juce::jmin (box.getWidth(), juce::jmax (row.controlWidth, 120)));
@@ -1559,6 +1576,16 @@ void SettingsScreenComponent::resized()
                 child->setVisible (false);
     }
 
+    if (! isCompact && page.getY() > pageBounds().getBottom() - 40)
+    {
+        overflowCompact = true;
+        overflowSize = { getWidth(), getHeight() };
+        overflowPage = currentPage;
+        compactShowingPage = true;
+        resized();
+        return;
+    }
+
     closeButton.setBounds (pageBounds().removeFromBottom (32).removeFromRight (100));
 }
 
@@ -1655,7 +1682,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
     g.setColour (theme.panelBackground);
     g.fillRect (getLocalBounds());
 
@@ -1749,7 +1776,7 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
         const auto enabled = row.control->isEnabled();
         auto rowBounds = row.bounds;
-        auto text = compact() ? rowBounds.removeFromTop (compactTextHeight - 4)
+        auto text = compact() ? rowBounds.removeFromTop (juce::jmax (compactTextHeight, row.textHeight) - 4)
                               : rowBounds.removeFromLeft (titleColumn - 24);
 
         // A search hit: a warm bar at the row's edge and a warm title.
@@ -1768,7 +1795,8 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        AbcTrainLookAndFeel::fitLines (g, hintFor (row), text.withTrimmedBottom (4), juce::Justification::topLeft, 2, 0.9f);
+        AbcTrainLookAndFeel::fitLines (g, hintFor (row), text.withTrimmedBottom (4), juce::Justification::topLeft,
+                                       compact() ? juce::jmax (2, row.hintLines) : 2, 0.9f);
 
         const auto lastInFrame = std::any_of (groupFrames.begin(), groupFrames.end(),
                                               [&row] (const GroupFrame& f) { return f.bounds.getBottom() == row.bounds.getBottom(); });

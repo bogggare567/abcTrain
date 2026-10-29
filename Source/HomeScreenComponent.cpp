@@ -59,8 +59,9 @@ void HomeScreenComponent::rebuildLayout()
             ++numSections;
 
     const auto chrome = numSections * headerHeight + (numSections - 1) * sectionGap;
-    // Two lines a row on a phone, so never shorter than two lines need.
-    const auto rowHeight = juce::jlimit (compact() ? 54 : minRowHeight, compact() ? 60 : maxRowHeight,
+    // Three lines a row on a phone (see paintRow), so never shorter than
+    // three lines need.
+    const auto rowHeight = juce::jlimit (stackedRows() ? 70 : minRowHeight, stackedRows() ? 76 : maxRowHeight,
                                          (area.getHeight() - chrome) / juce::jmax (1, (int) cards.size()));
 
     // The whole list's height at this row height; anything past the
@@ -115,6 +116,7 @@ void HomeScreenComponent::paintSectionHeader (juce::Graphics& g, const Section& 
             g, section.count,
             area.removeFromRight (AbcTrainLookAndFeel::trackedTextWidth (section.count, countFont, 0.0f) + 12.0f),
             countFont, theme.textDim, 0.0f, juce::Justification::centredLeft);
+        area.removeFromRight (14.0f);   // the title never runs into the count
     }
 
     const auto titleFont = AbcTrainLookAndFeel::headingFont();
@@ -125,7 +127,12 @@ void HomeScreenComponent::paintSectionHeader (juce::Graphics& g, const Section& 
                                            titleFont, theme.text, 2.7f,
                                            juce::Justification::centredLeft);
 
-    if (section.subtitle.isNotEmpty())
+    // The English name only where it fits whole. Drawn into whatever was
+    // left, it was squeezed to nothing and printed on top of the count
+    // ("ПРОСТРАНСТВО И СТЕРЕО" on a phone left it zero points).
+    if (section.subtitle.isNotEmpty()
+        && area.getWidth() - 12.0f >= AbcTrainLookAndFeel::trackedTextWidth (AbcTrainLookAndFeel::toCaps (section.subtitle),
+                                                                             AbcTrainLookAndFeel::microFont(), 1.68f))
     {
         area.removeFromLeft (12.0f);
         const auto subFont = AbcTrainLookAndFeel::microFont();
@@ -219,41 +226,54 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
         inner.removeFromLeft (14.0f);
     }
 
-    if (compact())
+    if (stackedRows())
     {
-        // The name on the top line, the whole width; under it the record in
-        // words on the left and the threshold on the right. No ruler: at
-        // this width it would be a 40-point smear.
-        auto top = inner.withTrimmedBottom (inner.getHeight() * 0.46f);
-        auto bottom = inner.withTop (top.getBottom() + 2.0f);
+        // Three lines, each the whole width: the name, the threshold, the
+        // record in words. No ruler: at this width it would be a 40-point
+        // smear.
+        //
+        // It was two, with the threshold and the record sharing the second
+        // line 45/55 - and at a phone's width neither fitted: "Hard
+        // Clipping и Overdrive" and "60% точности · 9266 раундов" were
+        // both cut on every card (tools/ClickMap, iPhone).
+        const auto lineHeight = inner.getHeight() / 3.0f;
+        auto top = inner.removeFromTop (lineHeight + 2.0f);
+        auto middle = inner.removeFromTop (lineHeight - 1.0f);
+        auto bottom = inner.withTrimmedRight (8.0f);
 
         g.setColour (card.isCurrent || eased > 0.5f ? theme.textBright : theme.text);
         g.setFont (AbcTrainLookAndFeel::titleFont());
         AbcTrainLookAndFeel::fitLines (g, card.name, top.toNearestInt(), juce::Justification::bottomLeft, 1, 0.8f);
 
-        auto number = bottom.removeFromRight (juce::jmin (130.0f, bottom.getWidth() * 0.45f));
         g.setColour (theme.textBright);
         g.setFont (card.levelIsNumber ? AbcTrainLookAndFeel::monoFont().withHeight (15.0f * AbcTrainLookAndFeel::getTextScale())
                                       : AbcTrainLookAndFeel::labelFont());
-        AbcTrainLookAndFeel::fitLines (g, card.levelText, number.toNearestInt(), juce::Justification::topRight, 1, 0.75f);
+        AbcTrainLookAndFeel::fitLines (g, card.levelText, middle.toNearestInt(), juce::Justification::centredLeft, 1, 0.75f);
 
         g.setColour (theme.textDim);
         g.setFont (AbcTrainLookAndFeel::labelFont());
-        AbcTrainLookAndFeel::fitLines (g, card.statsLine, bottom.withTrimmedRight (8.0f).toNearestInt(),
+        AbcTrainLookAndFeel::fitLines (g, card.statsLine, bottom.toNearestInt(),
                                        juce::Justification::topLeft, 1, 0.85f);
         return;
     }
 
     // --- the number, on the right, as on a meter ---
-    auto right = inner.removeFromRight (juce::jlimit (170.0f, 230.0f, inner.getWidth() * 0.2f));
+    //
+    // As wide as what it says, within limits. A fixed 170..230 fitted a
+    // number in units and cut a pair of names ("Hard Clipping и Overdrive"
+    // needs 239) on every window narrower than the design size.
+    const auto levelFont = card.levelIsNumber
+                               ? AbcTrainLookAndFeel::monoFont().withHeight (18.0f * AbcTrainLookAndFeel::getTextScale())
+                               : AbcTrainLookAndFeel::titleFont();
+    const auto levelWidth = juce::GlyphArrangement::getStringWidth (levelFont, card.levelText) + 6.0f;
+    auto right = inner.removeFromRight (juce::jlimit (170.0f, juce::jmax (170.0f, inner.getWidth() * 0.34f),
+                                                      juce::jmax (levelWidth, inner.getWidth() * 0.2f)));
     {
         const auto bothLines = right.getHeight() >= 44.0f;
         auto numberArea = bothLines ? right.withTrimmedBottom (right.getHeight() * 0.44f) : right;
 
         g.setColour (theme.textBright);
-        g.setFont (card.levelIsNumber
-                       ? AbcTrainLookAndFeel::monoFont().withHeight (18.0f * AbcTrainLookAndFeel::getTextScale())
-                       : AbcTrainLookAndFeel::titleFont());
+        g.setFont (levelFont);
         AbcTrainLookAndFeel::fitLines (g, card.levelText, numberArea.toNearestInt(),
                            bothLines ? juce::Justification::bottomRight : juce::Justification::centredRight,
                            1, 0.75f);
@@ -271,7 +291,11 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
     inner.removeFromRight (20.0f);
 
     // --- name and its record in words ---
-    auto nameColumn = inner.removeFromLeft (juce::jlimit (210.0f, 320.0f, inner.getWidth() * 0.38f));
+    // The name gets what it needs up to 320 before the ruler gets the rest
+    // - the ruler reads at any width above ~80, a cut name does not.
+    const auto nameWidth = juce::GlyphArrangement::getStringWidth (AbcTrainLookAndFeel::titleFont(), card.name) + 6.0f;
+    auto nameColumn = inner.removeFromLeft (juce::jlimit (210.0f, juce::jmax (210.0f, juce::jmin (320.0f, inner.getWidth() - 96.0f)),
+                                                          juce::jmax (nameWidth, inner.getWidth() * 0.38f)));
     {
         const auto twoLines = nameColumn.getHeight() >= 44.0f;
         auto top = twoLines ? nameColumn.withTrimmedBottom (nameColumn.getHeight() * 0.44f) : nameColumn;

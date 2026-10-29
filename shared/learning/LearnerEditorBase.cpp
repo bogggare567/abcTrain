@@ -588,7 +588,7 @@ void LearnerEditorBase::paint (juce::Graphics& g)
 {
     const auto& theme = AbcTrainTheme::current();
 
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat(), accent);
+    backgroundCache.paint (g, getLocalBounds().toFloat(), accent);
 
     // The name, tracked, beside the icon; a hairline; then the family in
     // its own colour - which part of the subject this plugin teaches.

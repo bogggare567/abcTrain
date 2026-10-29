@@ -369,6 +369,11 @@ void TopNavComponent::paintCompact (juce::Graphics& g)
 
 void TopNavComponent::paint (juce::Graphics& g)
 {
+    Dimming::paint (g, getLocalBounds(), dimmed, [this] (juce::Graphics& inner) { paintContent (inner); });
+}
+
+void TopNavComponent::paintContent (juce::Graphics& g)
+{
     if (compact)
     {
         paintCompact (g);

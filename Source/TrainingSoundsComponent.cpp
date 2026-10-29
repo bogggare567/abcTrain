@@ -1,4 +1,5 @@
 #include "TrainingSoundsComponent.h"
+#include <cstdlib>
 
 #include <utility>
 #include "shared/audio/PackCatalog.h"
@@ -462,9 +463,25 @@ namespace
     constexpr int overviewBuckets = 480;
     constexpr int railHeadingHeight = 26;
 
-    // The rail's buttons, bottom up: import, fragment, choose folder,
-    // reveal - and the import status line above them.
-    constexpr int railButtonsHeight = 10 + 34 + 6 + 28 + 4 + 28 + 4 + 28;
+    // The rail's buttons, bottom up: import, packs, fragment, choose
+    // folder, reveal - and the import status line above them. A finger's
+    // height on a touch screen (44, Apple's minimum); 28 was a mouse's.
+    //
+    // The total is computed from the same numbers resized() lays out with.
+    // It used to be a hand-added constant that had lost the fifth button,
+    // so "Open folder" sat over the bottom of the import status line.
+    bool touchScreen()
+    {
+       #if JUCE_IOS || JUCE_ANDROID
+        return true;
+       #else
+        return std::getenv ("SNAP_SAFE") != nullptr;   // the tools' phone
+       #endif
+    }
+
+    int railButtonHeight() { return touchScreen() ? 44 : 28; }
+    int railImportHeight() { return touchScreen() ? 48 : 34; }
+    int railButtonsTotal()  { return 10 + railImportHeight() + 6 + 4 * railButtonHeight() + 3 * 4; }
     constexpr int railStatusHeight = 34 + 8;
 
     juce::String formatTime (double seconds, bool fine)
@@ -501,7 +518,7 @@ juce::Rectangle<int> TrainingSoundsComponent::railListBounds() const
 {
     auto rail = railBounds().reduced (10, 0);
     rail.removeFromTop (48);   // the rail's own heading
-    rail.removeFromBottom (railButtonsHeight + railStatusHeight);
+    rail.removeFromBottom (railButtonsTotal() + railStatusHeight);
     return rail;
 }
 
@@ -973,7 +990,7 @@ void TrainingSoundsComponent::paintRail (juce::Graphics& g)
     }
 
     // Import progress, or what the last import did, above the buttons.
-    auto bottom = rail.reduced (10, 0).withTrimmedBottom (railButtonsHeight + 8);
+    auto bottom = rail.reduced (10, 0).withTrimmedBottom (railButtonsTotal() + 8);
     auto status = bottom.removeFromBottom (34);
 
     if (importRunning)
@@ -1365,7 +1382,7 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
 void TrainingSoundsComponent::paint (juce::Graphics& g)
 {
-    AbcTrainLookAndFeel::paintPanelBackground (g, getLocalBounds().toFloat());
+    backgroundCache.paint (g, getLocalBounds().toFloat());
 
     paintRail (g);
     paintFilePane (g);
@@ -1626,18 +1643,18 @@ void TrainingSoundsComponent::resized()
     using namespace AbcTrainTheme;
 
     auto rail = railBounds().reduced (10);
-    importButton.setBounds (rail.removeFromBottom (34));
+    importButton.setBounds (rail.removeFromBottom (railImportHeight()));
     rail.removeFromBottom (6);
 
-    packsButton.setBounds (rail.removeFromBottom (28));
+    packsButton.setBounds (rail.removeFromBottom (railButtonHeight()));
     rail.removeFromBottom (4);
 
-    fragmentButton.setBounds (rail.removeFromBottom (28));
+    fragmentButton.setBounds (rail.removeFromBottom (railButtonHeight()));
     rail.removeFromBottom (4);
 
-    chooseFolderButton.setBounds (rail.removeFromBottom (28));
+    chooseFolderButton.setBounds (rail.removeFromBottom (railButtonHeight()));
     rail.removeFromBottom (4);
-    revealButton.setBounds (rail.removeFromBottom (28));
+    revealButton.setBounds (rail.removeFromBottom (railButtonHeight()));
 
     auto header = previewBounds().reduced (12).removeFromTop (34);
     auto selectionHeader = header;

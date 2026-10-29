@@ -743,6 +743,43 @@ void AbcTrainLookAndFeel::drawLinearSlider (juce::Graphics& g, int x, int y, int
 
 // ----------------------------------------------------------- combo/menu
 
+namespace
+{
+    // A button label on one line when it fits there without being squeezed
+    // past recognition, and on two when the button is tall enough for two
+    // and the label has a space to break at. Phone buttons are 44 points
+    // tall and often a third of a 390-point row: "ПОКАЗАНО НА ЭТОТ РАУНД"
+    // and "ПРОДОЛЖИТЬ БЕЗ АККАУНТА" were cut to their middles on one line
+    // with room for two beneath them (tools/ClickMap, phone sizes).
+    void drawButtonLabel (juce::Graphics& g, const juce::String& text, juce::Rectangle<float> area,
+                          const juce::Font& font, juce::Colour colour, float tracking)
+    {
+        const auto plain = juce::GlyphArrangement::getStringWidth (font, text);
+        const auto twoLinesFit = area.getHeight() >= font.getHeight() * 2.0f + 6.0f;
+        const auto space = text.trim().containsChar (' ');
+
+        if (plain <= area.getWidth() / 0.8f || ! twoLinesFit || ! space)
+        {
+            AbcTrainLookAndFeel::drawTrackedText (g, text, area, font, colour, tracking, juce::Justification::centred);
+            return;
+        }
+
+        // The space nearest the middle, so the two lines balance.
+        const auto trimmed = text.trim();
+        auto best = -1;
+        for (int i = 0; i < trimmed.length(); ++i)
+            if (trimmed[i] == ' ' && (best < 0 || std::abs (i - trimmed.length() / 2) < std::abs (best - trimmed.length() / 2)))
+                best = i;
+
+        const auto lineHeight = font.getHeight() + 2.0f;
+        auto block = area.withSizeKeepingCentre (area.getWidth(), lineHeight * 2.0f);
+        AbcTrainLookAndFeel::drawTrackedText (g, trimmed.substring (0, best).trim(), block.removeFromTop (lineHeight),
+                                              font, colour, tracking, juce::Justification::centred);
+        AbcTrainLookAndFeel::drawTrackedText (g, trimmed.substring (best + 1).trim(), block,
+                                              font, colour, tracking, juce::Justification::centred);
+    }
+}
+
 void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& button,
                                            bool shouldDrawButtonAsHighlighted,
                                            bool shouldDrawButtonAsDown)
@@ -772,19 +809,18 @@ void AbcTrainLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b
 
         juce::ignoreUnused (shouldDrawButtonAsHighlighted, shouldDrawButtonAsDown);
 
-        drawTrackedText (g, toCaps (button.getButtonText()),
+        drawButtonLabel (g, toCaps (button.getButtonText()),
                          button.getLocalBounds().toFloat().reduced (6.0f, 0.0f),
-                         labelFont(), colour, 1.4f, juce::Justification::centred);
+                         labelFont(), colour, 1.4f);
         return;
     }
 
     // Tracked capitals in the page colour. Drawn here rather than left to
     // the base class because JUCE has no letter-spacing on drawText, and
     // untracked capitals in a solid block read as a warning sign.
-    drawTrackedText (g, toCaps (button.getButtonText()),
-                     button.getLocalBounds().toFloat(),
-                     headingFont(), labelColourOn (primaryFill), 1.9f,
-                     juce::Justification::centred);
+    drawButtonLabel (g, toCaps (button.getButtonText()),
+                     button.getLocalBounds().toFloat().reduced (4.0f, 0.0f),
+                     headingFont(), labelColourOn (primaryFill), 1.9f);
 }
 
 void AbcTrainLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height, bool isButtonDown,
@@ -1099,10 +1135,21 @@ void AbcTrainLookAndFeel::paintDisplayWell (juce::Graphics& g, juce::Rectangle<f
 
     // Inner shadow along the top edge, faked with a short gradient strip:
     // the cue that says "recessed" rather than "raised".
+    //
+    // Filled over the top strip only. The gradient is transparent below
+    // 10 px, but filling the whole well with it made the renderer shade
+    // every pixel of it - on a phone at 3x that was half of the training
+    // screen's frame, since the answer scale is the largest well there is.
     juce::ColourGradient inner (t.shadow.withAlpha (0.35f * t.shadowStrength), bounds.getX(), bounds.getY(),
                                  juce::Colours::transparentBlack, bounds.getX(), bounds.getY() + 10.0f, false);
-    g.setGradientFill (inner);
-    g.fillRoundedRectangle (bounds, Radius::well);
+    {
+        juce::Graphics::ScopedSaveState state (g);
+        juce::Path shape;
+        shape.addRoundedRectangle (bounds, Radius::well);
+        g.reduceClipRegion (shape);
+        g.setGradientFill (inner);
+        g.fillRect (bounds.withHeight (juce::jmin (bounds.getHeight(), 11.0f)));
+    }
 
     // A hairline, not a frame.
     //
@@ -1309,14 +1356,14 @@ juce::StringArray AbcTrainLookAndFeel::takeTextAudit()
     return lines;
 }
 
-void AbcTrainLookAndFeel::noteTextOverflow (const juce::String& text, float needed, float available)
+void AbcTrainLookAndFeel::noteTextOverflow (const juce::String& text, float needed, float available, bool cut)
 {
     auto& audit = textAudit();
 
     if (! audit.enabled)
         return;
 
-    const auto line = audit.context + "\t" + text.replace ("\n", " ") + "\t"
+    const auto line = juce::String (cut ? "CUT\t" : "SQUEEZED\t") + audit.context + "\t" + text.replace ("\n", " ") + "\t"
                     + juce::String (juce::roundToInt (needed)) + " > " + juce::String (juce::roundToInt (available));
 
     if (! audit.lines.contains (line))
@@ -1349,7 +1396,7 @@ void AbcTrainLookAndFeel::fitText (juce::Graphics& g, const juce::String& textIn
     fitted = fitted.withHorizontalScale (font.getHorizontalScale() * widthScale);
 
     if (textAudit().everything || fontScale * widthScale < reportBelow || width * fontScale * widthScale > room + 0.5f)
-        noteTextOverflow (text, width, room);
+        noteTextOverflow (text, width, room, width * fontScale * widthScale > room + 0.5f);
 
     g.setFont (fitted);
     g.drawText (text, area, justification, useEllipsesIfTooLong);
@@ -1436,9 +1483,9 @@ void AbcTrainLookAndFeel::fitLines (juce::Graphics& g, const juce::String& textI
     }
 
     if (! fitted)
-        noteTextOverflow (text, juce::GlyphArrangement::getStringWidth (font, text), width * (float) juce::jmax (1, maxLines));
+        noteTextOverflow (text, juce::GlyphArrangement::getStringWidth (font, text), width * (float) juce::jmax (1, maxLines), true);
     else if (textAudit().everything && ! juce::approximatelyEqual (chosen.getHeight(), font.getHeight()))
-        noteTextOverflow (text, juce::GlyphArrangement::getStringWidth (font, text), width * (float) juce::jmax (1, maxLines));
+        noteTextOverflow (text, juce::GlyphArrangement::getStringWidth (font, text), width * (float) juce::jmax (1, maxLines), false);
 
     juce::Graphics::ScopedSaveState state (g);
     g.setFont (chosen);
@@ -1475,7 +1522,7 @@ void AbcTrainLookAndFeel::drawTrackedText (juce::Graphics& g, const juce::String
             font = font.withHorizontalScale (font.getHorizontalScale() * widthScale);
 
             if (textAudit().everything || fontScale * widthScale < reportBelow || plain * fontScale * widthScale > area.getWidth() + 0.5f)
-                noteTextOverflow (text, natural, area.getWidth());
+                noteTextOverflow (text, natural, area.getWidth(), plain * fontScale * widthScale > area.getWidth() + 0.5f);
         }
         else
         {
