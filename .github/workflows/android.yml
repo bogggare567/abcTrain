@@ -1,0 +1,120 @@
+# Android APK (ADR 071). JUCE's CMake cannot target Android, so this job:
+#   1. configures the ordinary host build to get compile_commands.json and
+#      the binary data juceaide generates (strings, fonts, lessons, sounds);
+#   2. writes a Projucer project from it (tools/android/make_jucer.py) - no
+#      hand-kept second list of sources;
+#   3. builds the Projucer from the same JUCE and resaves the project, which
+#      writes the Gradle project;
+#   4. builds the release APK with the runner's Android SDK and NDK.
+# On a tag the APK goes onto the release next to the desktop installers.
+#
+# Signing: repository secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASS,
+# ANDROID_KEY_ALIAS, ANDROID_KEY_PASS (docs/wiki/Mobile.md says how to make
+# them). Without them the APK is signed with the runner's throwaway debug
+# key: it installs, but the next one cannot update it in place.
+name: Android
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # git describe gives the version
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libfreetype6-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
+            libxrandr-dev libxrender-dev libglu1-mesa-dev mesa-common-dev libcurl4-openssl-dev \
+            libwebkit2gtk-4.1-dev libgtk-3-dev
+
+      - name: Cache JUCE (FetchContent)
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: ${{ runner.os }}-juce-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Host build - compile commands and binary data
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build build --parallel 4 --target I18nData FontData SampleData LessonData UiSoundData BrandData
+
+      - name: Projucer from the same JUCE
+        run: |
+          cmake -S build/_deps/juce-src -B projucer -DCMAKE_BUILD_TYPE=Release -DJUCE_BUILD_EXTRAS=ON
+          cmake --build projucer --target Projucer --parallel 4
+          echo "PROJUCER=$(find projucer -type f -name Projucer -perm -u+x | head -1)" >> "$GITHUB_ENV"
+
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/abctrain.keystore"
+            echo "ANDROID_KEYSTORE=$RUNNER_TEMP/abctrain.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No ANDROID_KEYSTORE_BASE64 secret: the APK is signed with a throwaway debug key and cannot update a previous install."
+            mkdir -p ~/.android
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+              -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Android project
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          python3 tools/android/make_jucer.py --build build --juce build/_deps/juce-src --out build-android
+          xvfb-run -a "$PROJUCER" --resave build-android/abcTrain.jucer
+          ls build-android/Builds/Android
+
+      - name: Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build the APK
+        working-directory: build-android/Builds/Android
+        env:
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          # The Projucer wrote its own machine's SDK path; this runner's
+          # wins (the last line of a properties file does). The NDK is the
+          # one build.gradle names, which the runner image has installed.
+          echo "sdk.dir=$ANDROID_HOME" >> local.properties
+          ./gradlew --no-daemon assembleRelease_
+          mkdir -p "$GITHUB_WORKSPACE/apk"
+          v="$(python3 -c 'import json;print(json.load(open("'"$GITHUB_WORKSPACE"'/versions.json"))["app"])')"
+          find . -name '*.apk' -path '*release*' -exec cp {} "$GITHUB_WORKSPACE/apk/abcTrain-$v-android.apk" \;
+          ls -la "$GITHUB_WORKSPACE/apk"
+
+      - name: Keep the APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: abcTrain-android
+          path: apk/*.apk
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: apk/*.apk
+          prerelease: ${{ contains(github.ref_name, '-') }}

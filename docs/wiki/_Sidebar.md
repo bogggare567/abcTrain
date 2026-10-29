@@ -1,6 +1,7 @@
 **Getting started**
 * [Home](Home)
 * [Installation](Installation)
+* [On a phone or tablet](Mobile)
 * [Your first ten minutes](Your-first-ten-minutes)
 
 **Using it**
@@ -24,6 +25,7 @@
 **По-русски**
 * [Главная](ru-Home)
 * [Установка](ru-Installation)
+* [На телефоне и планшете](ru-Mobile)
 * [Первые десять минут](ru-Your-first-ten-minutes)
 * [Девять упражнений](ru-The-nine-exercises)
 * [Обучающие плагины](ru-The-teaching-plugins)
