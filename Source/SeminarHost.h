@@ -2,6 +2,7 @@
 
 #include "LocalRoom.h"
 #include "Games/Game.h"
+#include "SeminarArchive.h"
 #include <functional>
 
 // Runs a local seminar: the exercise plays on this computer into the hall,
@@ -25,7 +26,8 @@ public:
         std::function<int()> activeGameIndex;
         std::function<Game&(int)> game;
         std::function<void (int)> selectGame;          // switches the app's active exercise
-        std::function<void()> startRound;              // newRound() + a fresh clip, clean first
+        std::function<void (bool freshClip)> startRound;   // newRound(), a fresh clip unless one sound for all, clean first
+        std::function<juce::String()> soundName;           // the clip playing, for the round list and the archive
         std::function<void (bool play, bool processed)> setSound;
         std::function<juce::String (const Game&)> localisedName;
         std::function<juce::String (const Game&)> localisedPrompt;
@@ -57,6 +59,28 @@ public:
     bool isPlaying() const noexcept { return playing; }
     bool isProcessed() const noexcept { return processed; }
 
+    // ---- the host screen (Sem-Host board, 2026-10-24) ----
+
+    // Numbers instead of names on the host's list, the projector and in
+    // the archive.
+    void setAnonymous (bool a) { room.setAnonymous (a); }
+    bool isAnonymous() const { return room.isAnonymous(); }
+
+    // A fresh sound every round (default), or one sound for the whole seminar.
+    void setSoundPerRound (bool perRound) noexcept { soundPerRound = perRound; }
+    bool isSoundPerRound() const noexcept { return soundPerRound; }
+
+    // The rounds are planned when the room opens, so the host sees them all
+    // ahead. A plan set here (the archive's "repeat the mistakes") is used
+    // by the next room instead of a random one.
+    void setNextPlan (std::vector<int> games) { nextPlan = std::move (games); }
+    bool hasNextPlan() const noexcept { return ! nextPlan.empty(); }
+    const std::vector<int>& getPlan() const noexcept { return plan; }
+    const std::vector<SeminarArchive::Round>& getRecords() const noexcept { return records; }
+
+    // After the last round: the seminar as the archive keeps it.
+    std::function<void (const SeminarArchive::Session&)> onFinished;
+
     // The exercise indices of a family (0 frequency ... 3 character) - the
     // same split the bot battles use.
     static const std::vector<int>& gamesOfFamily (int family);
@@ -64,6 +88,11 @@ public:
 private:
     void askCurrent();
 
+    void makePlan();
+    std::vector<int> plan, nextPlan;
+    std::vector<SeminarArchive::Round> records;
+    bool soundPerRound = true;
+    juce::String title;
     Hooks hooks;
     LocalRoom room;
     Stage stage = Stage::closed;

@@ -216,7 +216,7 @@ void OnlineBattle::timerCallback()
     poll();
 }
 
-void OnlineBattle::search (const juce::String& family)
+void OnlineBattle::search (const juce::String& family, bool casual)
 {
     state = {};
     state.stage = Stage::searching;
@@ -225,6 +225,8 @@ void OnlineBattle::search (const juce::String& family)
 
     auto* body = new juce::DynamicObject();
     body->setProperty ("family", family);
+    if (casual)
+        body->setProperty ("casual", true);
 
     // Before the request: a transport may answer at once (tests do), and
     // its answer must land on top of "searching", not under it.

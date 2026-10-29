@@ -50,6 +50,12 @@ public:
     // list, and the name comes from the list.
     void configure (const juce::String& title, bool listOnly, std::vector<Invitee> invitees);
 
+    // Anonymous (Sem-Host board): what the host, the projector and the
+    // archive see is a number per seat, never the name. The phone itself
+    // still greets its owner by name.
+    void setAnonymous (bool);
+    bool isAnonymous() const;
+
     // Starts serving on the first free port from `preferredPort` up. False,
     // with the reason, when no port could be opened.
     bool open (int preferredPort, juce::String& error);
@@ -107,6 +113,7 @@ public:
         bool voted = false;
         bool lastRight = false;
         bool present = false;    // polled within the last few seconds
+        int seat = 0;            // join order, 1-based (the number shown when anonymous)
     };
 
     struct Snapshot
@@ -175,6 +182,7 @@ private:
     mutable juce::CriticalSection lock;
     juce::String title, roomCode;
     bool listOnly = false;
+    bool anonymous = false;
     std::vector<Invitee> invitees;
     std::vector<Seat> seats;
     Phase phase = Phase::lobby;

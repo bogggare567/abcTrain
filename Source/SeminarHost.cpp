@@ -15,7 +15,36 @@ void SeminarHost::configure (const juce::String& title, int mask, int rounds,
 {
     familyMask = (mask & 0xf) != 0 ? (mask & 0xf) : 1;
     totalRounds = juce::jlimit (1, 50, rounds);
+    this->title = title;
     room.configure (title, listOnly, std::move (invitees));
+    makePlan();
+}
+
+void SeminarHost::makePlan()
+{
+    plan.clear();
+    records.clear();
+
+    if (! nextPlan.empty())
+    {
+        plan = std::move (nextPlan);
+        nextPlan.clear();
+        totalRounds = (int) plan.size();
+        return;
+    }
+
+    // The chosen families in turn, an exercise of each at random - as
+    // before, only decided up front so the host can see the whole list.
+    std::vector<int> chosen;
+    for (int f = 0; f < 4; ++f)
+        if ((familyMask >> f) & 1)
+            chosen.push_back (f);
+
+    for (int r = 0; r < totalRounds; ++r)
+    {
+        const auto& candidates = gamesOfFamily (chosen[(size_t) (r % (int) chosen.size())]);
+        plan.push_back (candidates[(size_t) random.nextInt ((int) candidates.size())]);
+    }
 }
 
 bool SeminarHost::openRoom (juce::String& error)
@@ -48,20 +77,16 @@ void SeminarHost::start()
 
 void SeminarHost::askCurrent()
 {
-    // The round's family: the chosen ones in turn.
-    std::vector<int> chosen;
-    for (int f = 0; f < 4; ++f)
-        if ((familyMask >> f) & 1)
-            chosen.push_back (f);
+    if ((int) plan.size() < round)
+        makePlan();
 
-    const auto family = chosen[(size_t) ((round - 1) % (int) chosen.size())];
-    const auto& candidates = gamesOfFamily (family);
-    const auto index = candidates[(size_t) random.nextInt ((int) candidates.size())];
+    const auto index = plan[(size_t) (round - 1)];
 
     if (hooks.activeGameIndex() != index)
         hooks.selectGame (index);
 
-    hooks.startRound();
+    // One sound for all: a fresh clip only for the first round.
+    hooks.startRound (soundPerRound || round == 1);
     auto& game = hooks.game (index);
 
     LocalRoom::Question q;
@@ -117,6 +142,25 @@ void SeminarHost::reveal()
     room.reveal (a);
     stage = Stage::revealed;
 
+    // The round as the archive keeps it: what it was, who got it wrong.
+    {
+        const auto snap = room.snapshot();
+        SeminarArchive::Round r;
+        r.game = hooks.activeGameIndex();
+        r.exercise = hooks.localisedName (game);
+        r.answer = a.label;
+        r.sound = hooks.soundName != nullptr ? hooks.soundName() : juce::String();
+        r.answered = snap.answered;
+        r.right = snap.right;
+        for (const auto& p : snap.players)
+            if (p.voted && ! p.lastRight)
+                r.missed.add (p.name);
+
+        if ((int) records.size() >= round)
+            records.resize ((size_t) round - 1);
+        records.push_back (r);
+    }
+
     // Now that everybody knows, the processed version is the lesson.
     setSound (true, true);
 }
@@ -131,6 +175,17 @@ void SeminarHost::next()
         setSound (false, false);
         room.finish();
         stage = Stage::finished;
+
+        if (onFinished != nullptr && ! records.empty())
+        {
+            SeminarArchive::Session s;
+            s.title = title;
+            s.when = juce::Time::getCurrentTime();
+            s.anonymous = room.isAnonymous();
+            s.people = (int) room.snapshot().players.size();
+            s.rounds = records;
+            onFinished (s);
+        }
         return;
     }
 
@@ -143,6 +198,7 @@ void SeminarHost::again()
     setSound (false, false);
     room.backToLobby();
     round = 0;
+    records.clear();
     stage = Stage::lobby;
 }
 

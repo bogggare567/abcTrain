@@ -14,10 +14,6 @@ namespace
 
     using LnF = AbcTrainLookAndFeel;
 
-    juce::String randomRoomCode (juce::Random& r)
-    {
-        return juce::String (r.nextInt ({ 100, 999 })) + " " + juce::String (r.nextInt ({ 100, 999 }));
-    }
 
     // Letters that cannot be misread for digits or each other.
     juce::String randomSignInCode (juce::Random& r)
@@ -209,6 +205,77 @@ LiveScreenComponent::LiveScreenComponent()
     for (auto* b : { &projectorButton, &startButton, &closeRoomButton, &playAButton, &playBButton, &stopButton })
         addChildComponent (b);
 
+    // ---- the host screen and the archive (Sem-Host, Sem-Archive) ----
+    anonChoice.setValue (0);
+    anonChoice.onChange = [this] (int v) { if (seminar != nullptr) seminar->setAnonymous (v == 1); repaint(); };
+    soundChoice.setValue (1);
+    soundChoice.onChange = [this] (int v) { if (seminar != nullptr) seminar->setSoundPerRound (v == 1); repaint(); };
+    archiveFilter.setValue (1);
+    archiveFilter.onChange = [this] (int) { repaint(); };
+
+    archiveButton.onClick = [this]
+    {
+        archiveOpen = true;
+        archiveSelected = 0;
+        refreshArchive();
+        refreshVisibility();
+        resized();
+        repaint();
+    };
+    archiveBackButton.onClick = [this]
+    {
+        archiveOpen = false;
+        refreshVisibility();
+        resized();
+        repaint();
+    };
+    exportButton.onClick = [this]
+    {
+        if (archiveSelected < 0 || archiveSelected >= (int) archive.size())
+            return;
+
+        const auto session = archive[(size_t) archiveSelected];
+        exportChooser = std::make_unique<juce::FileChooser> (text.archiveExport,
+            juce::File::getSpecialLocation (juce::File::userDocumentsDirectory)
+                .getChildFile (session.when.formatted ("abcTrain seminar %Y-%m-%d.csv")), "*.csv");
+        exportChooser->launchAsync (juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::warnAboutOverwriting,
+                                    [session] (const juce::FileChooser& chooser)
+        {
+            const auto file = chooser.getResult();
+            if (file != juce::File())
+                file.replaceWithText (SeminarArchive::toCsv (session));
+        });
+    };
+    repeatButton.onClick = [this]
+    {
+        if (seminar == nullptr || archiveSelected < 0 || archiveSelected >= (int) archive.size())
+            return;
+
+        std::vector<int> games;
+        for (const auto& r : archive[(size_t) archiveSelected].rounds)
+            if (r.game >= 0 && (r.right < r.answered || ! r.missed.isEmpty()))
+                games.push_back (r.game);
+
+        if (games.empty())
+        {
+            setNote (text.archiveNoMistakes);
+            return;
+        }
+
+        seminar->setNextPlan (games);
+        archiveOpen = false;
+        setNote (text.archiveRepeatSet.replace ("{{n}}", juce::String ((int) games.size())));
+        refreshVisibility();
+        resized();
+        repaint();
+    };
+    LnF::makePrimary (repeatButton, true);
+
+    for (auto* c : { (juce::Component*) &anonChoice, (juce::Component*) &soundChoice, (juce::Component*) &archiveFilter,
+                     (juce::Component*) &archiveButton, (juce::Component*) &archiveBackButton,
+                     (juce::Component*) &exportButton, (juce::Component*) &repeatButton })
+        addChildComponent (c);
+
     // ---- battle ----
     battleFamily.setValue (0);
     battleFamily.setUppercase (false);
@@ -234,7 +301,7 @@ LiveScreenComponent::LiveScreenComponent()
         }
 
         if (requireServer() && onFindOpponent != nullptr)
-            onFindOpponent (juce::jlimit (0, 3, battleFamily.getValue()));
+            onFindOpponent (juce::jlimit (0, 3, battleFamily.getValue()), ratedChoice.getValue() == 1);
     };
     // While a room waits for "Accept", this is "Decline". (Challenges by
     // code need a second queue on the server; not yet - ADR 048.)
@@ -243,6 +310,7 @@ LiveScreenComponent::LiveScreenComponent()
 
     for (auto* b : { &searchButton, &challengeButton, &battleSignInButton })
         addChildComponent (b);
+    addChildComponent (searchRadar);
 
     // ---- battle: a bot ----
     botChoice.setValue (0);
@@ -258,6 +326,47 @@ LiveScreenComponent::LiveScreenComponent()
     };
     LnF::makePrimary (botStartButton, true);
     addChildComponent (botStartButton);
+
+    // ---- battle on a computer (Battle-PC board) ----
+    ratedChoice.setValue (0);
+    ratedChoice.setUppercase (true);
+    ratedChoice.onChange = [this] (int) { repaint(); };
+    addChildComponent (ratedChoice);
+    addChildComponent (familyTiles);
+
+    for (int i = 0; i < BotListener::numBots; ++i)
+    {
+        auto* b = ladderButtons.add (new juce::TextButton());
+        b->onClick = [this, i]
+        {
+            const auto bot = BattleRecords::ladder()[(size_t) i];
+            botChoice.setValue ((int) bot);
+
+            // A locked bot says what opens it, rather than being a dead
+            // button (ClickMap: nothing on a page is there to do nothing).
+            if (records != nullptr && ! records->isOpen (bot))
+            {
+                setNote (text.botNames[(int) bot] + ": " + text.ladderLocked.replace ("{{n}}", juce::String (BattleRecords::priceOf (i))));
+                return;
+            }
+
+            if (onStartBotBattle != nullptr)
+                onStartBotBattle (bot, juce::jlimit (0, 3, battleFamily.getValue()));
+        };
+        addChildComponent (b);
+    }
+
+    botDayButton.onClick = [this]
+    {
+        if (records == nullptr || onStartBotBattle == nullptr)
+            return;
+        const auto d = records->daily (juce::Time::getCurrentTime());
+        battleFamily.setValue (d.family);
+        botChoice.setValue ((int) d.bot);
+        onStartBotBattle (d.bot, d.family);
+    };
+    LnF::makePrimary (botDayButton, true);
+    addChildComponent (botDayButton);
 
     // ---- rating ----
     ratingFamily.setValue (0);
@@ -408,6 +517,17 @@ void LiveScreenComponent::setStrings (Strings newStrings)
     challengeButton.setButtonText (text.decline);
     battleSignInButton.setButtonText (text.signIn);
     botStartButton.setButtonText (text.botStart);
+    ratedChoice.setOptions ({ 0, 1 }, { text.battleRated, text.battleFriendly });
+    anonChoice.setOptions ({ 0, 1 }, { text.semNames, text.semAnon });
+    soundChoice.setOptions ({ 0, 1 }, { text.semOneSound, text.semSoundPerRound });
+    archiveFilter.setOptions ({ 0, 1 }, { text.archiveAll, text.archiveErrors });
+    archiveButton.setButtonText (text.archiveButton);
+    archiveBackButton.setButtonText (juce::String::fromUTF8 ("\xe2\x80\xb9  ") + text.archiveBack);
+    exportButton.setButtonText (text.archiveExport);
+    repeatButton.setButtonText (text.archiveRepeat);
+    stopButton.setButtonText (text.stopSound);
+    botDayButton.setButtonText (text.acceptDay);
+    refreshLadder();
     {
         std::vector<int> ids;
         for (int i = 0; i < BotListener::numBots; ++i)
@@ -748,10 +868,23 @@ void LiveScreenComponent::refreshVisibility()
     constexpr auto canHost = true;
    #endif
     // A phone-width window has no second card to put them in (ADR 060).
-    const auto hosting = canHost && onSeminar && ! roomOpen && ! compact();
+    const auto desk = ! compact();
+    const auto inArchive = onSeminar && desk && archiveOpen;
+    const auto hosting = canHost && onSeminar && ! roomOpen && desk && ! archiveOpen;
 
-    codeEditor.setVisible (onSeminar);
-    joinButton.setVisible (onSeminar);
+    // A room open on a computer takes the whole page (the host screen), and
+    // so does the archive: the join card goes for that time.
+    const auto joinShown = onSeminar && ! inArchive && ! (roomOpen && desk);
+    codeEditor.setVisible (joinShown);
+    joinButton.setVisible (joinShown);
+
+    anonChoice.setVisible (onSeminar && desk && ! inArchive && (hosting || roomOpen));
+    soundChoice.setVisible (onSeminar && desk && ! inArchive && (hosting || roomOpen));
+    archiveButton.setVisible (hosting);
+
+    for (auto* c : { (juce::Component*) &archiveFilter, (juce::Component*) &archiveBackButton,
+                     (juce::Component*) &exportButton, (juce::Component*) &repeatButton })
+        c->setVisible (inArchive);
 
     for (auto* c : { (juce::Component*) &whereChoice, (juce::Component*) &whoChoice,
                      (juce::Component*) &roundsChoice, (juce::Component*) &openRoomButton })
@@ -763,7 +896,7 @@ void LiveScreenComponent::refreshVisibility()
     invitesButton.setVisible (hosting && whoChoice.getValue() == 1);
 
     for (auto* b : { &projectorButton, &startButton, &closeRoomButton })
-        b->setVisible (onSeminar && roomOpen);
+        b->setVisible (onSeminar && roomOpen && ! inArchive);
 
     for (auto* b : { &playAButton, &playBButton, &stopButton })
         b->setVisible (onSeminar && running() && this->seminar->getStage() != SeminarHost::Stage::finished);
@@ -776,12 +909,23 @@ void LiveScreenComponent::refreshVisibility()
                      (juce::Component*) &communityButton })
         c->setVisible (peopleShown);
 
+    // A computer gets the Battle-PC page: tiles, the ladder, the bot of
+    // the day. The phone keeps its two cards and their switch.
+
     for (auto* c : { (juce::Component*) &battleFamily, (juce::Component*) &botChoice,
                      (juce::Component*) &botStartButton })
-        c->setVisible (botShown);
+        c->setVisible (botShown && ! desk);
+
+    ratedChoice.setVisible (battle && desk);
+    familyTiles.setVisible (battle && desk);
+    botDayButton.setVisible (battle && desk && records != nullptr);
+
+    for (auto* b : ladderButtons)
+        b->setVisible (battle && desk);
 
     sideChoice.setVisible (battle && compact());
     challengeButton.setVisible (peopleShown && readyForYou);
+    searchRadar.setVisible (peopleShown && radarWanted && ! radarArea.isEmpty());
 
     for (auto* c : { (juce::Component*) &ratingFamily, (juce::Component*) &scopeChoice,
                      (juce::Component*) &periodChoice, (juce::Component*) &openSiteButton })
@@ -869,6 +1013,18 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
 
+    if (! compact() && archiveOpen)
+    {
+        layoutArchive (area);
+        return;
+    }
+
+    if (! compact() && roomOpen)
+    {
+        layoutHost (area);
+        return;
+    }
+
     if (compact())
     {
         // A phone joins a seminar; it does not host one (ADR 060).
@@ -954,16 +1110,25 @@ void LiveScreenComponent::layoutSeminar (juce::Rectangle<int> area)
     }
 
     roundsChoice.setBounds (row (controlHeight).withWidth (180));
+    anonChoice.setBounds (row (controlHeight).withWidth (juce::jmin (b.getWidth() - labelColumn, juce::jmax (260, anonChoice.getPreferredWidth()))));
+    soundChoice.setBounds (row (controlHeight).withWidth (juce::jmin (b.getWidth() - labelColumn, juce::jmax (300, soundChoice.getPreferredWidth()))));
 
     auto buttons = b.removeFromBottom (controlHeight + 4);
     openRoomButton.setBounds (buttons.removeFromRight (200));
     buttons.removeFromRight (Spacing::small);
     invitesButton.setBounds (buttons.removeFromRight (200));
+    archiveButton.setBounds (buttons.removeFromLeft (juce::jmin (220, buttons.getWidth())));
 }
 
 void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
+
+    if (! compact())
+    {
+        layoutBattleDesk (area);
+        return;
+    }
 
     if (compact())
     {
@@ -999,6 +1164,11 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
         searchButton.setBounds (row);
 
         auto bottom = people.removeFromBottom (controlHeight + 4);
+        radarArea = people.withTrimmedTop (Spacing::small).withTrimmedBottom (Spacing::small);
+        if (radarArea.getHeight() < 120)
+            radarArea = {};
+        searchRadar.setBounds (radarArea);
+        searchRadar.setVisible (radarWanted && ! radarArea.isEmpty());
         battleSignInButton.setBounds (bottom.removeFromLeft (juce::jmin (160, bottom.getWidth() / 2)));
         bottom.removeFromLeft (Spacing::small);
         communityButton.setBounds (bottom);
@@ -1028,6 +1198,11 @@ void LiveScreenComponent::layoutBattle (juce::Rectangle<int> area)
         }
         searchButton.setBounds (row);
     }
+    radarArea = a.withTrimmedTop (Spacing::medium).withTrimmedBottom (controlHeight + 4 + Spacing::medium);
+    if (radarArea.getHeight() < 120)
+        radarArea = {};
+    searchRadar.setBounds (radarArea);
+    searchRadar.setVisible (radarWanted && ! radarArea.isEmpty() && ! cardA.isEmpty());
     {
         auto bottom = cardA.reduced (Spacing::large).removeFromBottom (controlHeight + 4);
         battleSignInButton.setBounds (bottom.removeFromLeft (160));
@@ -1166,6 +1341,18 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
     using namespace AbcTrainTheme;
     const auto& theme = current();
 
+    if (! compact() && archiveOpen)
+    {
+        paintArchive (g);
+        return;
+    }
+
+    if (! compact() && roomOpen)
+    {
+        paintHost (g);
+        return;
+    }
+
     paintCard (g, cardA, text.joinTitle);
     {
         auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
@@ -1177,7 +1364,10 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
         LnF::fitText (g, text.joinCode, a.removeFromTop (20), juce::Justification::centredLeft, true);
     }
 
-    if (roomOpen)
+    // A phone does not host (the card is not laid out there): without
+    // this guard an open room painted its QR into an empty rectangle at
+    // the top-left corner of the screen.
+    if (roomOpen && ! cardB.isEmpty())
     {
         const auto local = whereChoice.getValue() == 1;
         paintCard (g, cardB, local ? text.roomOpenLocal : text.roomOpenOnline);
@@ -1281,11 +1471,23 @@ void LiveScreenComponent::paintSeminar (juce::Graphics& g)
     label (b.removeFromTop (controlHeight), text.families);
     b.removeFromTop (Spacing::medium);
     label (b.removeFromTop (controlHeight), text.rounds);
+    b.removeFromTop (Spacing::medium);
+    label (b.removeFromTop (controlHeight), text.semPeopleRow);
+    b.removeFromTop (Spacing::medium);
+    label (b.removeFromTop (controlHeight), text.semSoundRow);
+
 }
 
 void LiveScreenComponent::paintBattle (juce::Graphics& g)
 {
     using namespace AbcTrainTheme;
+
+    if (! compact())
+    {
+        paintBattleDesk (g);
+        return;
+    }
+
     const auto& theme = current();
     const Family families[] { Family::frequency, Family::dynamics, Family::space, Family::character };
     const juce::String fams[] { text.freq, text.dyn, text.space, text.character };
@@ -1460,15 +1662,36 @@ void LiveScreenComponent::paintRating (juce::Graphics& g)
     auto area = tableArea;
 
     const juce::String cols[] { text.colRank, text.colNick, text.colCountry, text.colRating, text.colRecord };
-    const float widths[] { 0.08f, 0.40f, 0.14f, 0.18f, 0.20f };
+    // On a phone the country column goes: five tracked headings in 360
+    // points ran into each other ("COUNTRYDECIBELOWON-LOST").
+    const auto narrow = area.getWidth() < 480;
+    const float wide[] { 0.08f, 0.40f, 0.14f, 0.18f, 0.20f };
+    const float slim[] { 0.10f, 0.42f, 0.0f, 0.26f, 0.22f };
+    const auto* widths = narrow ? slim : wide;
     auto header = area.removeFromTop (30);
     auto x = (float) header.getX();
 
     for (int i = 0; i < 5; ++i)
     {
         const auto w = widths[i] * (float) header.getWidth();
-        LnF::drawTrackedText (g, LnF::toCaps (cols[i]), juce::Rectangle<float> (x, (float) header.getY(), w, (float) header.getHeight()),
-                              LnF::microFont(), theme.textDim, 1.4f);
+
+        if (w <= 0.0f)
+            continue;
+
+        const auto cell = juce::Rectangle<float> (x, (float) header.getY(), w - 6.0f, (float) header.getHeight());
+        const auto caps = LnF::toCaps (cols[i]);
+
+        if (LnF::trackedTextWidth (caps, LnF::microFont(), 1.4f) <= cell.getWidth())
+        {
+            LnF::drawTrackedText (g, caps, cell, LnF::microFont(), theme.textDim, 1.4f);
+        }
+        else
+        {
+            g.setColour (theme.textDim);
+            g.setFont (LnF::microFont());
+            LnF::fitText (g, caps, cell.toNearestInt(), juce::Justification::centredLeft, true);
+        }
+
         x += w;
     }
 
@@ -1516,6 +1739,9 @@ void LiveScreenComponent::paintRating (juce::Graphics& g)
         for (int i = 0; i < 5; ++i)
         {
             const auto w = widths[i] * (float) row.getWidth();
+
+            if (w <= 0.0f)
+                continue;
             g.setColour (i == 1 ? theme.textBright : theme.text);
             g.setFont (i == 1 ? LnF::bodyFont() : LnF::monoFont().withHeight (14.0f));
             LnF::fitText (g, cells[i], juce::Rectangle<float> (cx, (float) row.getY(), w - 8.0f, (float) row.getHeight()).toNearestInt(),
@@ -1990,10 +2216,479 @@ void LiveScreenComponent::setReadyCheck (bool waitingForYou)
     repaint();
 }
 
+void LiveScreenComponent::setSearchProgress (int waitingMs, int inQueue)
+{
+    radarWanted = true;
+    searchRadar.setOwnRating (myRatings[(size_t) juce::jlimit (0, 3, battleFamily.getValue())]);
+    searchRadar.showSearching (waitingMs, inQueue);
+    searchRadar.setVisible (tab == Tab::battle && ! radarArea.isEmpty());
+}
+
+void LiveScreenComponent::setReadyProgress (int deadlineInMs, int members, int accepted)
+{
+    radarWanted = true;
+    searchRadar.showReady (deadlineInMs, members, accepted);
+    searchRadar.setVisible (tab == Tab::battle && ! radarArea.isEmpty());
+}
+
+void LiveScreenComponent::clearSearchProgress()
+{
+    if (! radarWanted)
+        return;
+
+    radarWanted = false;
+    searchRadar.stop();
+}
+
 void LiveScreenComponent::setMyRatings (const std::array<int, 4>& ratings)
 {
     myRatings = ratings;
+    familyTiles.repaint();
     repaint();
+}
+
+void LiveScreenComponent::setBattleRecords (BattleRecords* r)
+{
+    records = r;
+    refreshLadder();
+    refreshVisibility();
+    repaint();
+}
+
+void LiveScreenComponent::refreshLadder()
+{
+    const auto order = BattleRecords::ladder();
+
+    for (int i = 0; i < ladderButtons.size() && i < (int) order.size(); ++i)
+    {
+        const auto bot = order[(size_t) i];
+        const auto open = records != nullptr ? records->isOpen (bot) : BattleRecords::priceOf (i) == 0;
+        const auto stars = records != nullptr ? records->stars (bot) : 0;
+        auto* b = ladderButtons[i];
+        b->setAlpha (open ? 1.0f : 0.45f);
+        b->setButtonText (! open ? juce::String::fromUTF8 ("\xe2\x80\x94") : stars >= 3 ? text.rematch : text.fight);
+    }
+
+    repaint();
+}
+
+// ---- battle on a computer (Battle-PC board, 2026-10-24) ------------------
+
+juce::Rectangle<int> LiveScreenComponent::FamilyTiles::tile (int i) const
+{
+    const auto gap = 8;
+    const auto w = (getWidth() - gap) / 2, h = (getHeight() - gap) / 2;
+    return { (i % 2) * (w + gap), (i / 2) * (h + gap), w, h };
+}
+
+void LiveScreenComponent::FamilyTiles::paint (juce::Graphics& g)
+{
+    using namespace AbcTrainTheme;
+    const auto& theme = current();
+    const Family families[] { Family::frequency, Family::dynamics, Family::space, Family::character };
+    const juce::String names[] { owner.text.freq, owner.text.dyn, owner.text.space, owner.text.character };
+    const auto chosen = owner.battleFamily.getValue();
+
+    for (int i = 0; i < 4; ++i)
+    {
+        auto r = tile (i);
+        const auto on = i == chosen;
+        g.setColour (on ? theme.accent.withAlpha (0.16f) : theme.widgetBackground.withAlpha (0.5f));
+        g.fillRect (r);
+        g.setColour (on ? theme.accent : theme.outline);
+        g.drawRect (r, on ? 2 : 1);
+        g.setColour (accentFor (families[i]));
+        g.fillRect (r.removeFromLeft (4).reduced (0, 1));
+
+        auto inner = r.reduced (12, 6);
+        auto top = inner.removeFromTop (inner.getHeight() / 2);
+        g.setColour (on ? theme.textBright : theme.text);
+        g.setFont (LnF::bodyFont());
+        LnF::fitText (g, names[i], top.withTrimmedRight (20), juce::Justification::bottomLeft, true);
+
+        if (on)
+        {
+            g.setColour (theme.accent);
+            LnF::fitText (g, juce::String::fromUTF8 ("\xe2\x9c\x93"), top.removeFromRight (20), juce::Justification::centredRight, false);
+        }
+
+        const auto rating = owner.myRatings[(size_t) i];
+        g.setColour (theme.textDim);
+        g.setFont (LnF::monoFont().withHeight (16.0f));
+        LnF::fitText (g, rating > 0 ? juce::String (rating) : juce::String::fromUTF8 ("\xe2\x80\x94"),
+                      inner, juce::Justification::centredLeft, false);
+    }
+}
+
+void LiveScreenComponent::FamilyTiles::mouseUp (const juce::MouseEvent& e)
+{
+    for (int i = 0; i < 4; ++i)
+        if (tile (i).contains (e.getPosition()))
+        {
+            owner.battleFamily.setValue (i);
+            repaint();
+            owner.repaint();
+            return;
+        }
+}
+
+juce::Rectangle<int> LiveScreenComponent::ladderRowBounds (int index) const
+{
+    constexpr int header = 26;
+    const auto rowH = juce::jmin (40, (ladderArea.getHeight() - header) / BotListener::numBots);
+    return { ladderArea.getX(), ladderArea.getY() + header + index * rowH, ladderArea.getWidth(), rowH };
+}
+
+void LiveScreenComponent::layoutBattleDesk (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+    sideChoice.setBounds ({});
+
+    cardA = area.removeFromLeft (area.getWidth() * 36 / 100);
+    area.removeFromLeft (Spacing::large);
+    cardB = area;
+
+    // People.
+    auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
+    ratedChoice.setBounds (a.removeFromTop (controlHeight).withWidth (juce::jmin (a.getWidth(), juce::jmax (320, ratedChoice.getPreferredWidth()))));
+    a.removeFromTop (22 + Spacing::medium);          // what the mode does
+    a.removeFromTop (26);                            // "Exercises in the battle"
+    familyTiles.setBounds (a.removeFromTop (juce::jlimit (96, 132, a.getHeight() / 4)));
+    a.removeFromTop (Spacing::large);
+    {
+        auto row = a.removeFromTop (controlHeight + 6);
+        if (readyForYou)
+        {
+            challengeButton.setBounds (row.removeFromRight (row.getWidth() / 3));
+            row.removeFromRight (Spacing::small);
+        }
+        else
+        {
+            challengeButton.setBounds ({});
+        }
+        searchButton.setBounds (row);
+    }
+    a.removeFromTop (Spacing::medium);
+    auto bottom = a.removeFromBottom (controlHeight + 4);
+    battleSignInButton.setBounds (bottom.removeFromLeft (juce::jmin (160, bottom.getWidth() / 2)));
+    bottom.removeFromLeft (Spacing::small);
+    communityButton.setBounds (bottom.removeFromRight (juce::jmin (240, bottom.getWidth())));
+    a.removeFromBottom (Spacing::medium + 36);       // the community hint
+    peopleInfo = a;
+    radarArea = a.getHeight() >= 140 ? a : juce::Rectangle<int>();
+    searchRadar.setBounds (radarArea);
+    searchRadar.setVisible (radarWanted && ! radarArea.isEmpty());
+
+    // Bots.
+    auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
+    b.removeFromTop (20 + Spacing::small);            // the subtitle
+    dayBox = records != nullptr ? b.removeFromTop (60) : juce::Rectangle<int>();
+    botDayButton.setBounds (dayBox.isEmpty() ? juce::Rectangle<int>()
+                                             : dayBox.reduced (10).removeFromRight (150));
+    if (! dayBox.isEmpty())
+        b.removeFromTop (Spacing::large);
+
+    b.removeFromBottom (20);                          // the disclaimer
+    b.removeFromBottom (Spacing::small);
+    const auto ladderHeight = juce::jmin (26 + BotListener::numBots * 40, juce::jmax (26 + BotListener::numBots * 30, b.getHeight() * 60 / 100));
+    ladderArea = b.removeFromTop (ladderHeight);
+    b.removeFromTop (Spacing::small + 24);            // the selected bot's line
+    b.removeFromTop (Spacing::medium);
+    recentArea = b;
+
+    for (int i = 0; i < ladderButtons.size(); ++i)
+        ladderButtons[i]->setBounds (ladderRowBounds (i).removeFromRight (120).reduced (0, 5));
+}
+
+void LiveScreenComponent::paintBattleDesk (juce::Graphics& g)
+{
+    using namespace AbcTrainTheme;
+    const auto& theme = current();
+    const auto dot = juce::String::fromUTF8 ("  \xc2\xb7  ");
+    const juce::String fams[] { text.freq, text.dyn, text.space, text.character };
+
+    // ---- people ----
+    paintCard (g, cardA, text.humansTitle);
+    {
+        auto a = cardA.reduced (Spacing::large).withTrimmedTop (cardTitleHeight + controlHeight + 4);
+        g.setColour (ratedChoice.getValue() == 0 ? theme.textDim : theme.accentWarm);
+        g.setFont (LnF::captionFont());
+        LnF::fitText (g, ratedChoice.getValue() == 0 ? text.ratedHint : text.friendlyHint, a.removeFromTop (22), juce::Justification::centredLeft, true);
+        a.removeFromTop (Spacing::medium);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::microFont());
+        LnF::fitText (g, text.familiesCaption.toUpperCase(), a.removeFromTop (20), juce::Justification::topLeft, true);
+
+        // Under the button: the search as it goes, or what a battle is.
+        if (! (radarWanted && ! radarArea.isEmpty()))
+        {
+            auto info = peopleInfo;
+            const auto signedIn = account != nullptr && account->isSignedIn();
+
+            if (onlineLine.isNotEmpty())
+            {
+                g.setColour (searchingOnline ? theme.accent : theme.text);
+                g.setFont (LnF::bodyFont());
+                LnF::fitLines (g, onlineLine, info.removeFromTop (48), juce::Justification::topLeft, 2, 0.9f);
+                info.removeFromTop (Spacing::small);
+            }
+
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitLines (g, signedIn ? text.battleOnline : text.battleNeedsAccount, info, juce::Justification::topLeft, 5, 0.85f);
+        }
+
+        auto hint = juce::Rectangle<int> (peopleInfo.getX(), peopleInfo.getBottom() + Spacing::small, peopleInfo.getWidth(), 36);
+        g.setColour (theme.text);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.communityHint, hint, juce::Justification::bottomLeft, 2, 0.85f);
+    }
+
+    // ---- bots ----
+    paintCard (g, cardB, text.botsTitle);
+    if (cardB.isEmpty())
+        return;
+
+    auto b = cardB.reduced (Spacing::large).withTrimmedTop (cardTitleHeight);
+
+    // The stars collected, at the title's right.
+    if (records != nullptr)
+    {
+        g.setColour (theme.accentWarm);
+        g.setFont (LnF::monoFont().withHeight (16.0f));
+        auto corner = cardB.reduced (Spacing::large).removeFromTop (24);
+        const auto label = juce::String (records->totalStars()) + "/" + juce::String (3 * BotListener::numBots);
+        const auto w = juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), label)) + 4;
+        LnF::fitText (g, label, corner.removeFromRight (w), juce::Justification::centredRight, false);
+        auto box = corner.removeFromRight (20).withSizeKeepingCentre (14, 14).toFloat();
+        juce::Path star;
+        star.addStar (box.getCentre(), 5, 3.0f, 7.0f);
+        g.fillPath (star);
+    }
+
+    g.setColour (theme.textDim);
+    g.setFont (LnF::captionFont());
+    LnF::fitText (g, text.botsSub, b.removeFromTop (20), juce::Justification::centredLeft, true);
+
+    // The bot of the day: a box of its own, the one call to action here.
+    if (records != nullptr && ! dayBox.isEmpty())
+    {
+        const auto d = records->daily (juce::Time::getCurrentTime());
+        g.setColour (theme.accent.withAlpha (0.10f));
+        g.fillRect (dayBox);
+        g.setColour (theme.accent.withAlpha (0.6f));
+        g.drawRect (dayBox, 1);
+
+        auto inner = dayBox.reduced (14, 8);
+        inner.removeFromRight (160);
+        auto top = inner.removeFromTop (inner.getHeight() / 2);
+        g.setColour (theme.accent);
+        g.setFont (LnF::microFont());
+        LnF::fitText (g, text.botOfDay.toUpperCase() + dot + (d.wonToday ? text.botDayWon : text.botDayLeft.replace ("{{n}}", juce::String (d.hoursLeft))),
+                      top, juce::Justification::bottomLeft, true);
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (19.0f));
+        LnF::fitText (g, text.botNames[(int) d.bot] + dot + fams[d.family] + dot + "Decibelo " + juce::String (BotListener::profileOf (d.bot).rating),
+                      inner, juce::Justification::centredLeft, true);
+    }
+
+    // The ladder: name, Decibelo, score, stars, what the next star asks for.
+    {
+        auto head = ladderArea.withHeight (26);
+        auto cols = [&] (juce::Rectangle<int> r)
+        {
+            r.removeFromRight (130);   // the button
+            std::array<juce::Rectangle<int>, 5> c;
+            const auto w = r.getWidth();
+            c[0] = r.removeFromLeft (w * 26 / 100);
+            c[1] = r.removeFromLeft (w * 14 / 100);
+            c[2] = r.removeFromLeft (w * 12 / 100);
+            c[3] = r.removeFromLeft (w * 16 / 100);
+            c[4] = r;
+            return c;
+        };
+
+        const auto hc = cols (head);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::microFont());
+        const juce::String heads[] { text.colBot, "DECIBELO", text.colScore, text.colStars, text.colNext };
+        for (int i = 0; i < 5; ++i)
+            LnF::fitText (g, heads[i].toUpperCase(), hc[(size_t) i], juce::Justification::centredLeft, true);
+        g.setColour (theme.divider);
+        g.fillRect (head.getX(), head.getBottom() - 1, head.getWidth(), 1);
+
+        const auto order = BattleRecords::ladder();
+        const auto total = records != nullptr ? records->totalStars() : 0;
+
+        for (int i = 0; i < BotListener::numBots; ++i)
+        {
+            const auto bot = order[(size_t) i];
+            const auto row = ladderRowBounds (i);
+            const auto rec = records != nullptr ? records->recordOf (bot) : BattleRecords::BotRecord {};
+            const auto stars = BattleRecords::starsOf (rec);
+            const auto open = records != nullptr ? records->isOpen (bot) : BattleRecords::priceOf (i) == 0;
+            const auto c = cols (row);
+
+            if ((int) bot == botChoice.getValue())
+            {
+                g.setColour (theme.accent.withAlpha (0.10f));
+                g.fillRect (row);
+            }
+
+            g.setColour (open ? theme.textBright : theme.textDim);
+            g.setFont (LnF::bodyFont());
+            LnF::fitText (g, text.botNames[(int) bot], c[0].reduced (6, 0), juce::Justification::centredLeft, true);
+
+            g.setFont (LnF::monoFont().withHeight (14.0f));
+            g.setColour (theme.text);
+            LnF::fitText (g, juce::String (BotListener::profileOf (bot).rating), c[1], juce::Justification::centredLeft, false);
+            g.setColour (theme.textDim);
+            LnF::fitText (g, rec.wins + rec.losses > 0 ? juce::String (rec.wins) + juce::String::fromUTF8 ("\xe2\x80\x93") + juce::String (rec.losses) : juce::String(),
+                          c[2], juce::Justification::centredLeft, false);
+
+            // Stars: filled in the warm colour, the rest outlined - drawn,
+            // since a typed star falls back to another font at another size.
+            {
+                auto sr = c[3];
+                for (int k = 0; k < 3; ++k)
+                {
+                    auto box = sr.removeFromLeft (22).withSizeKeepingCentre (14, 14).toFloat();
+                    juce::Path p;
+                    p.addStar (box.getCentre(), 5, 3.0f, 7.0f);
+                    if (k < stars)
+                    {
+                        g.setColour (theme.accentWarm);
+                        g.fillPath (p);
+                    }
+                    else
+                    {
+                        g.setColour (theme.outline);
+                        g.strokePath (p, juce::PathStrokeType (1.2f));
+                    }
+                }
+            }
+
+            const auto next = ! open ? text.ladderLocked.replace ("{{n}}", juce::String (BattleRecords::priceOf (i)))
+                            : stars >= 3 ? text.ladderPassed
+                            : rec.wins >= 3 ? text.ladderFlawless
+                            : rec.wins > 0 ? text.ladderWins.replace ("{{n}}", juce::String (rec.wins))
+                                           : text.ladderOpen;
+            g.setColour (! open ? theme.textDim : stars >= 3 ? theme.positive : theme.text);
+            g.setFont (LnF::captionFont());
+            LnF::fitText (g, next, c[4].withTrimmedRight (8), juce::Justification::centredLeft, true);
+
+            g.setColour (theme.divider);
+            g.fillRect (row.getX(), row.getBottom() - 1, row.getWidth(), 1);
+        }
+        juce::ignoreUnused (total);
+
+        // The selected bot's character, one line under the table.
+        const auto chosen = (BotListener::Bot) juce::jlimit (0, BotListener::numBots - 1, botChoice.getValue());
+        const auto& profile = BotListener::profileOf (chosen);
+        const auto speed = profile.reactionMs <= 1300 ? text.botSpeedFast
+                         : profile.reactionMs >= 2200 ? text.botSpeedSlow : juce::String();
+        auto line = juce::Rectangle<int> (ladderArea.getX(), ladderArea.getBottom() + Spacing::small, ladderArea.getWidth(), 24);
+        g.setColour (theme.text);
+        g.setFont (LnF::captionFont());
+        LnF::fitText (g, text.botNames[(int) chosen] + ": " + text.botSpecialty[(int) chosen]
+                           + (speed.isNotEmpty() ? juce::String::fromUTF8 ("  \xc2\xb7  ") + speed : juce::String()),
+                      line, juce::Justification::centredLeft, true);
+    }
+
+    // The last battles.
+    {
+        auto r = recentArea;
+        g.setColour (theme.textDim);
+        g.setFont (LnF::microFont());
+        LnF::fitText (g, text.recentTitle.toUpperCase(), r.removeFromTop (20), juce::Justification::centredLeft, true);
+
+        const auto list = records != nullptr ? records->recent() : std::vector<BattleRecords::Recent> {};
+
+        if (list.empty())
+        {
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitLines (g, text.recentEmpty, r.removeFromTop (40), juce::Justification::topLeft, 2, 0.9f);
+        }
+
+        const auto now = juce::Time::getCurrentTime();
+        const auto dayOf = [] (juce::Time t) { return (t.toMilliseconds() + (juce::int64) t.getUTCOffsetSeconds() * 1000) / (24LL * 3600 * 1000); };
+
+        for (const auto& e : list)
+        {
+            if (r.getHeight() < 26)
+                break;
+
+            auto row = r.removeFromTop (28);
+            const auto when = juce::Time (e.when);
+            const auto days = dayOf (now) - dayOf (when);
+            const auto whenText = days == 0 ? text.today : days == 1 ? text.yesterday : when.formatted ("%d.%m");
+
+            juce::String who = e.who;
+            if (e.isBot)
+                for (int k = 0; k < BotListener::numBots; ++k)
+                    if (e.who == BotListener::idOf ((BotListener::Bot) k))
+                        who = text.botNames[k] + " " + text.botSuffix;
+
+            const auto result = e.place == 1 ? text.resWon : e.place == 0 ? text.resLost : e.place < 0 ? text.resDraw
+                                                                                          : text.resPlace.replace ("{{n}}", juce::String (e.place));
+
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, whenText, row.removeFromLeft (90), juce::Justification::centredLeft, true);
+            auto deltaBox = row.removeFromRight (60);
+            auto resultBox = row.removeFromRight (120);
+            g.setColour (theme.text);
+            LnF::fitText (g, who, row.withTrimmedRight (8), juce::Justification::centredLeft, true);
+            g.setColour (e.place == 1 ? theme.positive : e.place == 0 ? theme.accentWarm : theme.text);
+            LnF::fitText (g, result, resultBox, juce::Justification::centredLeft, true);
+
+            if (e.rated && e.ratingDelta != 0)
+            {
+                g.setColour (e.ratingDelta > 0 ? theme.positive : theme.accentWarm);
+                g.setFont (LnF::monoFont().withHeight (13.0f));
+                LnF::fitText (g, (e.ratingDelta > 0 ? "+" : juce::String::fromUTF8 ("\xe2\x88\x92")) + juce::String (std::abs (e.ratingDelta)),
+                              deltaBox, juce::Justification::centredRight, false);
+            }
+
+            g.setColour (theme.divider);
+            g.fillRect (row.getX() - 90, row.getBottom() - 1, recentArea.getWidth(), 1);
+        }
+    }
+
+    // The disclaimer along the foot.
+    g.setColour (theme.textDim);
+    g.setFont (LnF::captionFont());
+    LnF::fitText (g, text.botDisclaimer, cardB.reduced (Spacing::large).removeFromBottom (20), juce::Justification::centredLeft, true);
+}
+
+void LiveScreenComponent::mouseUp (const juce::MouseEvent& e)
+{
+    // A seminar in the archive's list: its rounds on the right.
+    if (tab == Tab::seminar && archiveOpen && ! compact())
+    {
+        auto l = archiveList.reduced (14).withTrimmedTop (34);
+        for (int i = 0; i < (int) archive.size(); ++i)
+            if (l.removeFromTop (52).contains (e.getPosition()))
+            {
+                archiveSelected = i;
+                repaint();
+                return;
+            }
+        return;
+    }
+
+    // A row of the ladder: that bot's character in the line under it.
+    if (tab != Tab::battle || compact())
+        return;
+
+    for (int i = 0; i < BotListener::numBots; ++i)
+        if (ladderRowBounds (i).withTrimmedRight (130).contains (e.getPosition()))
+        {
+            botChoice.setValue ((int) BattleRecords::ladder()[(size_t) i]);
+            repaint();
+            return;
+        }
 }
 
 void LiveScreenComponent::refreshAccountButton()
@@ -2051,4 +2746,675 @@ void LiveScreenComponent::loadRating()
         safe->ratingState = ok ? RatingState::loaded : RatingState::failed;
         safe->repaint();
     });
+}
+
+// ---- the host screen (Sem-Host board, 2026-10-24) ----------------------------
+
+void LiveScreenComponent::layoutHost (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+    cardA = cardB = {};
+
+    hostHeader = area.removeFromTop (44);
+    area.removeFromTop (Spacing::medium);
+    hostFooter = area.removeFromBottom (56);
+    area.removeFromBottom (Spacing::medium);
+    hostPeople = area.removeFromLeft (juce::jlimit (220, 300, area.getWidth() / 5));
+    area.removeFromLeft (Spacing::medium);
+    hostRounds = area.removeFromRight (juce::jlimit (220, 300, area.getWidth() / 4));
+    area.removeFromRight (Spacing::medium);
+    hostCentre = area;
+
+    {
+        auto h = hostHeader;
+        closeRoomButton.setBounds (h.removeFromRight (180).withSizeKeepingCentre (180, controlHeight + 4));
+        h.removeFromRight (Spacing::small);
+        projectorButton.setBounds (h.removeFromRight (220).withSizeKeepingCentre (220, controlHeight + 4));
+    }
+
+    anonChoice.setBounds (hostPeople.reduced (14).withTrimmedTop (24).removeFromTop (controlHeight));
+    soundChoice.setBounds (hostRounds.reduced (14).withTrimmedTop (24).removeFromTop (controlHeight));
+
+    auto c = hostCentre.reduced (18);
+    c.removeFromTop (20 + 40 + 44 + Spacing::medium);   // round, exercise, prompt
+    auto buttons = c.removeFromTop (60);
+    const auto third = (buttons.getWidth() - 2 * Spacing::small) / 3;
+    playAButton.setBounds (buttons.removeFromLeft (third));
+    buttons.removeFromLeft (Spacing::small);
+    playBButton.setBounds (buttons.removeFromLeft (third));
+    buttons.removeFromLeft (Spacing::small);
+    stopButton.setBounds (buttons);
+    c.removeFromTop (Spacing::large);
+    hostVotes = c;
+
+    startButton.setBounds (hostFooter.reduced (10).removeFromRight (260));
+    invitesButton.setBounds ({});
+}
+
+void LiveScreenComponent::paintVotes (juce::Graphics& g, juce::Rectangle<int> box, const LocalRoom::Snapshot& snap) const
+{
+    using namespace AbcTrainTheme;
+    const auto& theme = current();
+    const auto& q = snap.question;
+    const auto revealed = snap.phase == LocalRoom::Phase::revealed;
+
+    if (box.getHeight() < 60)
+        return;
+
+    if (q.continuous)
+    {
+        auto axis = box.removeFromBottom (22);
+        auto plot = box.withTrimmedBottom (2);
+        const auto xOf = [&plot] (float v) { return (float) plot.getX() + juce::jlimit (0.0f, 1.0f, v) * (float) plot.getWidth(); };
+
+        // The answer's zone and line, once shown.
+        if (revealed)
+        {
+            const auto left = xOf (snap.answer.value - q.tolerance), right = xOf (snap.answer.value + q.tolerance);
+            g.setColour (theme.positive.withAlpha (0.12f));
+            g.fillRect (juce::Rectangle<float> (left, (float) plot.getY(), right - left, (float) plot.getHeight()));
+            g.setColour (theme.positive);
+            g.fillRect (juce::Rectangle<float> (xOf (snap.answer.value) - 1.0f, (float) plot.getY(), 2.0f, (float) plot.getHeight()));
+        }
+
+        g.setColour (theme.outline);
+        g.drawHorizontalLine (plot.getBottom(), (float) plot.getX(), (float) plot.getRight());
+
+        // Each vote a square, stacked where votes land close together.
+        constexpr int buckets = 40;
+        std::array<int, buckets> stack {};
+        const auto size = 14.0f;
+
+        for (auto v : snap.votes)
+        {
+            const auto k = juce::jlimit (0, buckets - 1, (int) (v * buckets));
+            const auto y = (float) plot.getBottom() - 4.0f - size - (float) stack[(size_t) k]++ * (size + 3.0f);
+            if (y < (float) plot.getY())
+                continue;
+            const auto inside = std::abs (v - snap.answer.value) <= q.tolerance;
+            g.setColour (! revealed ? theme.accent : inside ? theme.positive : theme.accentWarm);
+            g.fillRect (juce::Rectangle<float> (size, size).withPosition (xOf (v) - size * 0.5f, y));
+        }
+
+        g.setColour (theme.textDim);
+        g.setFont (LnF::monoFont().withHeight (11.0f));
+        for (const auto& m : q.marks)
+            LnF::fitText (g, m.label, juce::Rectangle<float> (xOf (m.position) - 30.0f, (float) axis.getY() + 4.0f, 60.0f, 14.0f).toNearestInt(),
+                          juce::Justification::centred, false);
+        return;
+    }
+
+    // Choices: a bar per option, as long as its share of the votes.
+    const auto n = juce::jmax (1, q.choices.size());
+    std::vector<int> counts ((size_t) n, 0);
+    for (auto v : snap.votes)
+        counts[(size_t) juce::jlimit (0, n - 1, juce::roundToInt (v))]++;
+
+    const auto rowH = juce::jmin (44, box.getHeight() / n);
+    for (int i = 0; i < n; ++i)
+    {
+        auto row = box.removeFromTop (rowH).reduced (0, 4);
+        const auto right = revealed && i == snap.answer.choice;
+        g.setColour (right ? theme.positive : theme.text);
+        g.setFont (LnF::bodyFont());
+        LnF::fitText (g, q.choices[i], row.removeFromLeft (juce::jmin (220, row.getWidth() / 3)), juce::Justification::centredLeft, true);
+        auto count = row.removeFromRight (40);
+        auto track = row.reduced (8, juce::jmax (0, (row.getHeight() - 14) / 2)).toFloat();
+        g.setColour (theme.displayBackground);
+        g.fillRect (track);
+        g.setColour (right ? theme.positive : revealed ? theme.accentWarm : theme.accent);
+        g.fillRect (track.withWidth (track.getWidth() * (float) counts[(size_t) i] / (float) juce::jmax (1, (int) snap.votes.size())));
+        g.setColour (theme.textDim);
+        g.setFont (LnF::monoFont().withHeight (13.0f));
+        LnF::fitText (g, juce::String (counts[(size_t) i]), count, juce::Justification::centredRight, false);
+    }
+}
+
+void LiveScreenComponent::paintHost (juce::Graphics& g)
+{
+    using namespace AbcTrainTheme;
+    const auto& theme = current();
+
+    if (seminar == nullptr)
+        return;
+
+    const auto snap = seminar->getRoom().snapshot();
+    const auto& q = snap.question;
+    const auto stage = seminar->getStage();
+    const auto dot = juce::String::fromUTF8 ("  \xc2\xb7  ");
+    const auto fill = [] (juce::String t, int n, int m) { return t.replace ("{{n}}", juce::String (n)).replace ("{{m}}", juce::String (m)); };
+
+    const auto panel = [&] (juce::Rectangle<int> r)
+    {
+        g.setColour (theme.panelBackground);
+        g.fillRect (r);
+        g.setColour (theme.outline);
+        g.drawRect (r, 1);
+    };
+    const auto caption = [&] (juce::Rectangle<int> r, const juce::String& t, juce::Justification j = juce::Justification::centredLeft)
+    {
+        g.setColour (theme.textDim);
+        g.setFont (LnF::microFont());
+        LnF::fitText (g, t.toUpperCase(), r, j, true);
+    };
+
+    // ---- header: the room, its code and address ----
+    {
+        auto h = hostHeader;
+        h.removeFromRight (180 + Spacing::small + 220 + Spacing::large);
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (22.0f));
+        const auto titleW = juce::jmin (h.getWidth() / 2, juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), snap.title)) + 8);
+        LnF::fitText (g, snap.title, h.removeFromLeft (titleW), juce::Justification::centredLeft, true);
+        h.removeFromLeft (Spacing::large);
+
+        g.setColour (theme.accent);
+        g.setFont (LnF::monoFont().withHeight (20.0f));
+        auto code = h.removeFromLeft (110);
+        LnF::fitText (g, snap.roomCode, code, juce::Justification::centredLeft, true);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::monoFont().withHeight (13.0f));
+        LnF::fitText (g, roomAddress(), h, juce::Justification::centredLeft, true);
+    }
+
+    // ---- people ----
+    panel (hostPeople);
+    {
+        auto p = hostPeople.reduced (14);
+        auto top = p.removeFromTop (20);
+        caption (top, fill (text.semInRoom, (int) snap.players.size(), 0));
+        caption (top, fill (text.semAnswered, snap.answered, 0), juce::Justification::centredRight);
+        p.removeFromTop (4 + controlHeight + 4);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.semAnonHint, p.removeFromTop (30), juce::Justification::topLeft, 2, 0.85f);
+        p.removeFromTop (4);
+
+        auto players = snap.players;
+        std::sort (players.begin(), players.end(), [] (const LocalRoom::Player& a, const LocalRoom::Player& b) { return a.seat < b.seat; });
+
+        if (players.empty())
+        {
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, text.nobodyYet, p.removeFromTop (30), juce::Justification::centredLeft, true);
+        }
+
+        for (const auto& pl : players)
+        {
+            if (p.getHeight() < 30)
+                break;
+            auto row = p.removeFromTop (34);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::monoFont().withHeight (11.0f));
+            LnF::fitText (g, juce::String (pl.seat), row.removeFromLeft (22), juce::Justification::centredLeft, false);
+
+            const auto revealed = stage == SeminarHost::Stage::revealed;
+            g.setColour (! pl.voted ? theme.outline : revealed ? (pl.lastRight ? theme.positive : theme.accentWarm) : theme.accent);
+            g.fillRect (row.removeFromLeft (10).withSizeKeepingCentre (10, 10));
+            row.removeFromLeft (8);
+
+            g.setColour (pl.present ? theme.text : theme.textDim);
+            g.setFont (LnF::bodyFont());
+            auto score = row.removeFromRight (36);
+            LnF::fitText (g, pl.name, row, juce::Justification::centredLeft, true);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::monoFont().withHeight (12.0f));
+            LnF::fitText (g, juce::String (pl.score), score, juce::Justification::centredRight, false);
+            g.setColour (theme.divider);
+            g.fillRect (row.getX() - 40, row.getBottom() - 1, hostPeople.getWidth() - 28, 1);
+        }
+    }
+
+    // ---- the round ----
+    panel (hostCentre);
+    {
+        auto c = hostCentre.reduced (18);
+
+        if (stage == SeminarHost::Stage::lobby || stage == SeminarHost::Stage::closed)
+        {
+            // Before the start: the way in, large.
+            const auto side = juce::jmin (260, c.getHeight() - 80, c.getWidth() / 2);
+            auto qrBox = c.removeFromLeft (side).withSizeKeepingCentre (side, side);
+            paintQrInto (g, roomQr, roomQrUrl, roomJoinUrl(), qrBox);
+            c.removeFromLeft (Spacing::large * 2);
+            auto info = c.withSizeKeepingCentre (c.getWidth(), juce::jmin (c.getHeight(), 240));
+            g.setColour (theme.textDim);
+            g.setFont (LnF::bodyFont());
+            LnF::fitText (g, text.typeAddress, info.removeFromTop (26), juce::Justification::centredLeft, true);
+            g.setColour (theme.textBright);
+            g.setFont (LnF::monoFont().withHeight (28.0f));
+            LnF::fitText (g, roomAddress(), info.removeFromTop (42), juce::Justification::centredLeft, true);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, text.roomCodeLabel, info.removeFromTop (22), juce::Justification::centredLeft, true);
+            g.setColour (theme.accent);
+            g.setFont (LnF::monoFont().withHeight (44.0f));
+            LnF::fitText (g, snap.roomCode, info.removeFromTop (56), juce::Justification::centredLeft, true);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitLines (g, text.sameWifi, info.removeFromTop (40), juce::Justification::topLeft, 2, 0.9f);
+        }
+        else if (stage == SeminarHost::Stage::finished)
+        {
+            g.setColour (theme.textBright);
+            g.setFont (LnF::headingFont().withHeight (26.0f));
+            LnF::fitText (g, text.results, c.removeFromTop (40), juce::Justification::centredLeft, true);
+            g.setColour (theme.positive);
+            g.setFont (LnF::captionFont());
+            LnF::fitText (g, text.archiveSaved, c.removeFromTop (22), juce::Justification::centredLeft, true);
+            c.removeFromTop (Spacing::medium);
+
+            int place = 0, previous = -1;
+            for (size_t i = 0; i < snap.players.size() && c.getHeight() >= 28; ++i)
+            {
+                const auto& pl = snap.players[i];
+                if (pl.score != previous)
+                    place = (int) i + 1;
+                previous = pl.score;
+                auto row = c.removeFromTop (28);
+                g.setColour (place == 1 ? theme.accent : theme.textDim);
+                g.setFont (LnF::monoFont());
+                LnF::fitText (g, juce::String (place), row.removeFromLeft (34), juce::Justification::centredLeft, true);
+                g.setColour (theme.text);
+                g.setFont (LnF::bodyFont());
+                LnF::fitText (g, pl.name, row.removeFromLeft (row.getWidth() - 60), juce::Justification::centredLeft, true);
+                g.setFont (LnF::monoFont());
+                LnF::fitText (g, juce::String (pl.score), row, juce::Justification::centredRight, true);
+            }
+        }
+        else
+        {
+            caption (c.removeFromTop (20), fill (text.hostRound, q.round, q.totalRounds));
+            g.setColour (theme.textBright);
+            g.setFont (LnF::headingFont().withHeight (28.0f));
+            LnF::fitText (g, q.exercise + (stage == SeminarHost::Stage::revealed ? dot + snap.answer.label : juce::String()),
+                          c.removeFromTop (40), juce::Justification::centredLeft, true);
+            g.setColour (theme.text);
+            g.setFont (LnF::bodyFont());
+            LnF::fitLines (g, q.prompt, c.removeFromTop (44), juce::Justification::topLeft, 2, 0.85f);
+
+            auto v = hostVotes;
+            auto head = v.removeFromTop (20);
+            caption (head, text.semHallAnswers);
+            caption (head, fill (text.answeredOf, snap.answered, (int) snap.players.size())
+                               + (stage == SeminarHost::Stage::revealed ? dot + fill (text.semRightOf, snap.right, snap.answered) : juce::String()),
+                     juce::Justification::centredRight);
+            v.removeFromTop (Spacing::small);
+            paintVotes (g, v, snap);
+        }
+    }
+
+    // ---- the rounds ----
+    panel (hostRounds);
+    {
+        auto r = hostRounds.reduced (14);
+        caption (r.removeFromTop (20), text.semRounds);
+        r.removeFromTop (4 + controlHeight + Spacing::small);
+
+        const auto& plan = seminar->getPlan();
+        const auto& records = seminar->getRecords();
+        const auto current = seminar->getRound();
+        const auto rowH = juce::jlimit (30, 46, r.getHeight() / juce::jmax (1, (int) plan.size()));
+
+        for (int i = 0; i < (int) plan.size() && r.getHeight() >= rowH; ++i)
+        {
+            auto row = r.removeFromTop (rowH);
+            const auto n = i + 1;
+            const auto done = i < (int) records.size();
+            const auto now = n == current && ! done && stage != SeminarHost::Stage::finished;
+
+            if (now)
+            {
+                g.setColour (theme.accent.withAlpha (0.16f));
+                g.fillRect (row.expanded (6, 0));
+            }
+
+            g.setColour (theme.textDim);
+            g.setFont (LnF::monoFont().withHeight (11.0f));
+            LnF::fitText (g, juce::String (n), row.removeFromLeft (22), juce::Justification::centredLeft, false);
+
+            auto score = row.removeFromRight (44);
+            if (done)
+            {
+                const auto& rec = records[(size_t) i];
+                g.setColour (rec.right * 2 >= juce::jmax (1, rec.answered) ? theme.positive : theme.accentWarm);
+                g.setFont (LnF::monoFont().withHeight (12.0f));
+                LnF::fitText (g, juce::String (rec.right) + "/" + juce::String (rec.answered), score, juce::Justification::centredRight, false);
+            }
+            else if (now)
+            {
+                g.setColour (theme.accent);
+                g.setFont (LnF::labelFont());
+                LnF::fitText (g, text.semNow, score, juce::Justification::centredRight, false);
+            }
+
+            const auto name = gameNameOf != nullptr ? gameNameOf (plan[(size_t) i]) : juce::String (plan[(size_t) i]);
+            const auto sound = done ? records[(size_t) i].sound : juce::String();
+            auto top = sound.isNotEmpty() ? row.removeFromTop (row.getHeight() / 2 + 2) : row;
+            g.setColour (n > current ? theme.textDim : theme.text);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, name, top, sound.isNotEmpty() ? juce::Justification::bottomLeft : juce::Justification::centredLeft, true);
+
+            if (sound.isNotEmpty())
+            {
+                g.setColour (theme.textDim);
+                g.setFont (LnF::captionFont());
+                LnF::fitText (g, juce::String::fromUTF8 ("\xe2\x99\xaa ") + sound, row, juce::Justification::topLeft, true);
+            }
+        }
+    }
+
+    // ---- footer: the keys ----
+    g.setColour (theme.outline);
+    g.drawRect (hostFooter, 1);
+    {
+        auto f = hostFooter.reduced (14, 0);
+        f.removeFromRight (260 + 14);
+        const std::pair<const char*, juce::String> keys[] { { "sem.next", text.semKeyNext }, { "sem.reveal", text.semKeyReveal },
+                                                             { "sem.play", text.semKeyPlay }, { "sem.projector", text.semKeyProjector } };
+        for (const auto& [id, what] : keys)
+        {
+            const auto key = hotkeyLabel != nullptr ? hotkeyLabel (id) : juce::String();
+            if (key.isEmpty())
+                continue;
+
+            g.setFont (LnF::monoFont().withHeight (12.0f));
+            const auto kw = juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), key)) + 12;
+            auto cap = f.removeFromLeft (kw).withSizeKeepingCentre (kw, 22);
+            g.setColour (theme.outline);
+            g.drawRect (cap, 1);
+            g.setColour (theme.textBright);
+            LnF::fitText (g, key, cap, juce::Justification::centred, false);
+            f.removeFromLeft (6);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            const auto tw = juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), what)) + 4;
+            LnF::fitText (g, what, f.removeFromLeft (juce::jmin (tw, f.getWidth())), juce::Justification::centredLeft, true);
+            f.removeFromLeft (18);
+        }
+
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitText (g, text.semKeysHint, f, juce::Justification::centredRight, true);
+    }
+}
+
+bool LiveScreenComponent::runSeminarHotkey (const juce::String& id)
+{
+    if (seminar == nullptr || ! roomOpen || tab != Tab::seminar)
+        return false;
+
+    const auto stage = seminar->getStage();
+
+    if (id == "sem.next")
+    {
+        startButton.triggerClick();
+        return true;
+    }
+
+    if (id == "sem.reveal")
+    {
+        if (stage == SeminarHost::Stage::listening)
+            startButton.triggerClick();
+        return true;
+    }
+
+    if (id == "sem.play")
+    {
+        if (running())
+        {
+            seminar->setSound (! seminar->isPlaying(), seminar->isProcessed());
+            refreshHostButtons();
+        }
+        return true;
+    }
+
+    if (id == "sem.projector")
+    {
+        projectorButton.triggerClick();
+        return true;
+    }
+
+    return false;
+}
+
+// ---- the archive (Sem-Archive board) ------------------------------------------
+
+void LiveScreenComponent::refreshArchive()
+{
+    if (! archiveFrozen)
+        archive = SeminarArchive::list();
+
+    archiveSelected = juce::jlimit (0, juce::jmax (0, (int) archive.size() - 1), archiveSelected);
+    repaint();
+}
+
+void LiveScreenComponent::openArchiveForSnapshot (const std::vector<SeminarArchive::Session>& sessions)
+{
+    archive = sessions;
+    archiveFrozen = true;
+    archiveOpen = true;
+    archiveSelected = 0;
+    showTab (Tab::seminar);
+}
+
+std::vector<int> LiveScreenComponent::archiveRowsShown() const
+{
+    std::vector<int> rows;
+    if (archiveSelected < 0 || archiveSelected >= (int) archive.size())
+        return rows;
+
+    const auto& s = archive[(size_t) archiveSelected];
+    for (int i = 0; i < (int) s.rounds.size(); ++i)
+    {
+        const auto& r = s.rounds[(size_t) i];
+        if (archiveFilter.getValue() == 0 || r.right < r.answered || ! r.missed.isEmpty())
+            rows.push_back (i);
+    }
+    return rows;
+}
+
+void LiveScreenComponent::layoutArchive (juce::Rectangle<int> area)
+{
+    using namespace AbcTrainTheme;
+    cardA = cardB = {};
+    archiveList = area.removeFromLeft (juce::jlimit (240, 320, area.getWidth() / 4));
+    area.removeFromLeft (Spacing::large);
+    archiveTable = area;
+
+    archiveBackButton.setBounds (archiveList.reduced (14).removeFromBottom (controlHeight + 4));
+
+    auto t = archiveTable.reduced (18);
+    t.removeFromTop (40 + Spacing::small);
+    auto row = t.removeFromTop (controlHeight);
+    archiveFilter.setBounds (row.removeFromLeft (juce::jmin (row.getWidth() / 2, juce::jmax (320, archiveFilter.getPreferredWidth()))));
+    repeatButton.setBounds (row.removeFromRight (juce::jmin (320, row.getWidth() / 2)));
+    row.removeFromRight (Spacing::small);
+    exportButton.setBounds (row.removeFromRight (juce::jmin (180, row.getWidth())));
+}
+
+void LiveScreenComponent::paintArchive (juce::Graphics& g)
+{
+    using namespace AbcTrainTheme;
+    const auto& theme = current();
+
+    for (auto r : { archiveList, archiveTable })
+    {
+        g.setColour (theme.panelBackground);
+        g.fillRect (r);
+        g.setColour (theme.outline);
+        g.drawRect (r, 1);
+    }
+
+    // ---- the list ----
+    {
+        auto l = archiveList.reduced (14);
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (22.0f));
+        LnF::fitText (g, text.archiveTitle, l.removeFromTop (34), juce::Justification::centredLeft, true);
+        l.removeFromBottom (controlHeight + 4 + Spacing::medium);
+        auto foot = l.removeFromBottom (56);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitLines (g, text.archiveStored, foot, juce::Justification::bottomLeft, 4, 0.85f);
+
+        for (int i = 0; i < (int) archive.size() && l.getHeight() >= 48; ++i)
+        {
+            const auto& s = archive[(size_t) i];
+            auto row = l.removeFromTop (52);
+            if (i == archiveSelected)
+            {
+                g.setColour (theme.accent.withAlpha (0.16f));
+                g.fillRect (row);
+            }
+            auto inner = row.reduced (8, 6);
+            g.setColour (theme.text);
+            g.setFont (LnF::bodyFont());
+            LnF::fitText (g, s.title, inner.removeFromTop (inner.getHeight() / 2), juce::Justification::centredLeft, true);
+            const auto pct = s.answeredTotal() > 0 ? juce::roundToInt (100.0f * (float) s.rightTotal() / (float) s.answeredTotal()) : 0;
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitText (g, s.when.formatted ("%d.%m.%Y") + juce::String::fromUTF8 (" \xc2\xb7 ") + juce::String (s.people)
+                               + juce::String::fromUTF8 (" \xc2\xb7 ") + juce::String (pct) + "%",
+                          inner, juce::Justification::centredLeft, true);
+            g.setColour (theme.divider);
+            g.fillRect (row.getX(), row.getBottom() - 1, row.getWidth(), 1);
+        }
+    }
+
+    // ---- the table ----
+    auto t = archiveTable.reduced (18);
+
+    if (archive.empty())
+    {
+        g.setColour (theme.textDim);
+        g.setFont (LnF::bodyFont());
+        LnF::fitLines (g, text.archiveEmpty, t.withSizeKeepingCentre (juce::jmin (t.getWidth(), 520), 80), juce::Justification::centred, 3, 0.9f);
+        return;
+    }
+
+    const auto& s = archive[(size_t) juce::jlimit (0, (int) archive.size() - 1, archiveSelected)];
+    {
+        auto head = t.removeFromTop (40);
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (26.0f));
+        const auto title = s.title + juce::String::fromUTF8 (" \xc2\xb7 ") + s.when.formatted ("%d.%m");
+        const auto w = juce::jmin (head.getWidth() * 3 / 5, juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), title)) + 8);
+        LnF::fitText (g, title, head.removeFromLeft (w), juce::Justification::centredLeft, true);
+        head.removeFromLeft (Spacing::large);
+        const auto pct = s.answeredTotal() > 0 ? juce::roundToInt (100.0f * (float) s.rightTotal() / (float) s.answeredTotal()) : 0;
+        g.setColour (theme.textDim);
+        g.setFont (LnF::labelFont());
+        LnF::fitText (g, text.archiveSummary.replace ("{{people}}", juce::String (s.people))
+                                            .replace ("{{rounds}}", juce::String ((int) s.rounds.size()))
+                                            .replace ("{{pct}}", juce::String (pct)),
+                      head, juce::Justification::centredLeft, true);
+    }
+    t.removeFromTop (Spacing::small + controlHeight + Spacing::medium);
+
+    // Columns: # | round · answer | sound | group | missed.
+    const auto cols = [] (juce::Rectangle<int> r)
+    {
+        std::array<juce::Rectangle<int>, 5> c;
+        const auto w = r.getWidth();
+        c[0] = r.removeFromLeft (34);
+        c[1] = r.removeFromLeft (w * 28 / 100);
+        c[2] = r.removeFromLeft (w * 18 / 100);
+        c[3] = r.removeFromLeft (w * 18 / 100);
+        c[4] = r;
+        return c;
+    };
+
+    {
+        auto head = t.removeFromTop (28);
+        const auto c = cols (head);
+        g.setColour (theme.textDim);
+        g.setFont (LnF::microFont());
+        const juce::String heads[] { "#", text.colRoundAnswer, text.colSound, text.colGroup, text.colMissed };
+        for (int i = 0; i < 5; ++i)
+            LnF::fitText (g, heads[i].toUpperCase(), c[(size_t) i], juce::Justification::centredLeft, true);
+        g.setColour (theme.outline);
+        g.fillRect (head.getX(), head.getBottom() - 1, head.getWidth(), 1);
+    }
+
+    const auto rows = archiveRowsShown();
+
+    if (rows.empty())
+    {
+        g.setColour (theme.positive);
+        g.setFont (LnF::bodyFont());
+        LnF::fitText (g, text.archiveNoMistakes, t.removeFromTop (48), juce::Justification::centredLeft, true);
+    }
+
+    for (auto i : rows)
+    {
+        if (t.getHeight() < 50)
+            break;
+
+        const auto& r = s.rounds[(size_t) i];
+        auto row = t.removeFromTop (56);
+        const auto c = cols (row);
+
+        g.setColour (theme.textDim);
+        g.setFont (LnF::monoFont().withHeight (12.0f));
+        LnF::fitText (g, juce::String (i + 1), c[0], juce::Justification::centredLeft, false);
+
+        {
+            auto cell = c[1].reduced (0, 8);
+            g.setColour (theme.text);
+            g.setFont (LnF::bodyFont());
+            LnF::fitText (g, r.exercise, cell.removeFromTop (cell.getHeight() / 2), juce::Justification::centredLeft, true);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitText (g, r.answer, cell, juce::Justification::centredLeft, true);
+        }
+
+        g.setColour (theme.textDim);
+        g.setFont (LnF::captionFont());
+        LnF::fitText (g, r.sound.isNotEmpty() ? juce::String::fromUTF8 ("\xe2\x99\xaa ") + r.sound : juce::String(), c[2].withTrimmedRight (8),
+                      juce::Justification::centredLeft, true);
+
+        {
+            auto cell = c[3].withTrimmedRight (12);
+            auto label = cell.removeFromRight (44);
+            auto track = cell.withSizeKeepingCentre (cell.getWidth(), 8).toFloat();
+            const auto share = r.answered > 0 ? (float) r.right / (float) r.answered : 0.0f;
+            g.setColour (theme.displayBackground);
+            g.fillRect (track);
+            g.setColour (share < 0.6f ? theme.accentWarm : theme.accent);
+            g.fillRect (track.withWidth (track.getWidth() * share));
+            g.setColour (theme.text);
+            g.setFont (LnF::monoFont().withHeight (12.0f));
+            LnF::fitText (g, juce::String (r.right) + "/" + juce::String (r.answered), label, juce::Justification::centredRight, false);
+        }
+
+        {
+            // Who missed it: a chip each, as many as fit on two lines.
+            auto cell = c[4].reduced (0, 6);
+            g.setFont (LnF::captionFont());
+            int x = cell.getX(), y = cell.getY();
+            const auto chipH = 20;
+            for (const auto& name : r.missed)
+            {
+                const auto w = juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), name)) + 14;
+                if (x + w > cell.getRight())
+                {
+                    x = cell.getX();
+                    y += chipH + 4;
+                    if (y + chipH > cell.getBottom())
+                        break;
+                }
+                juce::Rectangle<int> chip (x, y, juce::jmin (w, cell.getWidth()), chipH);
+                g.setColour (theme.accentWarm.withAlpha (0.6f));
+                g.drawRect (chip, 1);
+                g.setColour (theme.accentWarm);
+                LnF::fitText (g, name, chip.reduced (6, 0), juce::Justification::centred, true);
+                x += w + 4;
+            }
+        }
+
+        g.setColour (theme.divider);
+        g.fillRect (row.getX(), row.getBottom() - 1, row.getWidth(), 1);
+    }
 }

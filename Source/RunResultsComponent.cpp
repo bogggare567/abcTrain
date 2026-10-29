@@ -240,6 +240,33 @@ void RunResultsComponent::paint (juce::Graphics& g)
             g.setFont (AbcTrainLookAndFeel::headingFont());
             AbcTrainLookAndFeel::fitText (g, newBestText, pill.toNearestInt(), juce::Justification::centred, false);
         }
+        else if (summary.badge.isNotEmpty())
+        {
+            g.setFont (AbcTrainLookAndFeel::headingFont());
+            const auto width = juce::jmin (top.getWidth() / 2,
+                                           juce::roundToInt (juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), summary.badge)) + 28);
+            auto pill = top.removeFromRight (width).withSizeKeepingCentre (width, 24).toFloat();
+            g.setColour (theme.accentWarm.withAlpha (0.14f));
+            g.fillRect (pill);
+            g.setColour (theme.accentWarm.withAlpha (0.7f));
+            g.drawRect (pill, 1.0f);
+            // A leading star is drawn, not typed: the font has no star of
+            // its own and the fallback one came out twice the size (Mac).
+            auto label = summary.badge;
+            auto inside = pill.toNearestInt().reduced (8, 0);
+            g.setColour (theme.accentWarm);
+            const auto star = juce::String::fromUTF8 ("\xe2\x98\x85");
+            if (label.startsWith (star))
+            {
+                label = label.substring (star.length()).trimStart();
+                auto box = inside.removeFromLeft (16).withSizeKeepingCentre (12, 12).toFloat();
+                juce::Path p;
+                p.addStar (box.getCentre(), 5, box.getWidth() * 0.22f, box.getWidth() * 0.5f, -juce::MathConstants<float>::halfPi * 0.0f);
+                g.fillPath (p);
+                inside.removeFromLeft (4);
+            }
+            AbcTrainLookAndFeel::fitText (g, label, inside, juce::Justification::centred, true);
+        }
 
         g.setColour (theme.textBright);
         g.setFont (AbcTrainLookAndFeel::headingFont().withHeight (22.0f));
@@ -384,7 +411,19 @@ void RunResultsComponent::paint (juce::Graphics& g)
         const auto spare = inner.getHeight() - 38 - 2 * AbcTrainTheme::Spacing::large - 12;
         const auto plotHeight = anyBucketTried ? 62 : juce::jlimit (62, 220, spare);
 
-        auto plot = inner.removeFromTop (plotHeight).toFloat().withTrimmedLeft (26.0f).reduced (0.0f, 5.0f);
+        auto plotRow = inner.removeFromTop (plotHeight);
+
+        // A battle on a computer: the damage round by round beside the HP
+        // lines (Battle-Result board) - what each round cost you and what
+        // it cost them, as two bars from the middle.
+        juce::Rectangle<int> damageBox;
+        if (battle && ! compact() && plotRow.getWidth() > 640)
+        {
+            damageBox = plotRow.removeFromRight (juce::jmin (360, plotRow.getWidth() * 36 / 100));
+            plotRow.removeFromRight (AbcTrainTheme::Spacing::large);
+        }
+
+        auto plot = plotRow.toFloat().withTrimmedLeft (26.0f).reduced (0.0f, 5.0f);
         const auto n = battle ? (int) summary.hpYou.size() + 1 : (int) summary.marks.size();
 
         // Grid: three faint lines and their labels.
@@ -432,20 +471,91 @@ void RunResultsComponent::paint (juce::Graphics& g)
                     g.setColour (colour);
                     g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre ({ xAt (i), plot.getBottom() - plot.getHeight() * (*values)[(size_t) i] }));
                 }
+
+            if (! damageBox.isEmpty())
+            {
+                auto box = damageBox;
+                auto head = box.removeFromTop (16);
+                const auto numW = 22;
+                const auto half = (box.getWidth() - numW) / 2;
+
+                head.removeFromLeft (numW);
+                AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.damageTaken),
+                                                       head.removeFromLeft (half).withTrimmedRight (6).toFloat(),
+                                                       AbcTrainLookAndFeel::microFont(), theme.textDim, 1.2f);
+                AbcTrainLookAndFeel::drawTrackedText (g, AbcTrainLookAndFeel::toCaps (detail.damageDealt),
+                                                       head.withTrimmedLeft (6).toFloat(),
+                                                       AbcTrainLookAndFeel::microFont(), theme.textDim, 1.2f);
+
+                const auto rounds = (int) summary.hpYou.size();
+                const auto rowH = juce::jmin (22.0f, (float) box.getHeight() / (float) juce::jmax (1, rounds));
+                auto prevYou = 100.0f, prevThem = 100.0f;
+
+                for (int i = 0; i < rounds; ++i)
+                {
+                    auto row = box.removeFromTop (juce::roundToInt (rowH));
+                    const auto taken = juce::jmax (0.0f, prevYou - summary.hpYou[(size_t) i]);
+                    const auto dealt = juce::jmax (0.0f, prevThem - summary.hpThem[(size_t) i]);
+                    prevYou = summary.hpYou[(size_t) i];
+                    prevThem = summary.hpThem[(size_t) i];
+
+                    if ((float) i > shownUpTo + 0.001f)
+                        continue;
+
+                    g.setColour (theme.textDim);
+                    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
+                    AbcTrainLookAndFeel::fitText (g, juce::String (i + 1), row.removeFromLeft (numW), juce::Justification::centredLeft, false);
+
+                    auto left = row.removeFromLeft (half).reduced (3, 0);
+                    auto right = row.reduced (3, 0);
+                    const auto barH = juce::jmin (10.0f, rowH - 6.0f);
+                    constexpr float maxDamage = 20.0f;   // SessionManager::damageFor's ceiling
+
+                    const auto labelW = 30;
+                    auto leftTrack = left.withTrimmedLeft (labelW).toFloat();
+                    auto rightTrack = right.withTrimmedRight (labelW).toFloat();
+
+                    if (taken >= 0.5f)
+                    {
+                        const auto w = leftTrack.getWidth() * juce::jmin (1.0f, taken / maxDamage);
+                        g.setColour (theme.accentWarm);
+                        g.fillRect (juce::Rectangle<float> (leftTrack.getRight() - w, leftTrack.getCentreY() - barH * 0.5f, w, barH));
+                        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
+                        AbcTrainLookAndFeel::fitText (g, juce::String::fromUTF8 ("\xe2\x88\x92") + juce::String (juce::roundToInt (taken)),
+                                                      left.removeFromLeft (labelW), juce::Justification::centredLeft, false);
+                    }
+
+                    if (dealt >= 0.5f)
+                    {
+                        const auto w = rightTrack.getWidth() * juce::jmin (1.0f, dealt / maxDamage);
+                        g.setColour (theme.positive);
+                        g.fillRect (juce::Rectangle<float> (rightTrack.getX(), rightTrack.getCentreY() - barH * 0.5f, w, barH));
+                        g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
+                        AbcTrainLookAndFeel::fitText (g, "+" + juce::String (juce::roundToInt (dealt)),
+                                                      right.removeFromRight (labelW), juce::Justification::centredRight, false);
+                    }
+
+                    g.setColour (theme.divider);
+                    g.drawVerticalLine (left.getRight() + 3, (float) row.getY() + 2.0f, (float) row.getBottom() - 2.0f);
+                }
+            }
         }
         else if (n > 0)
         {
-            std::vector<float> values;
-            for (const auto& m : summary.marks)
-                values.push_back (m.correct ? juce::jmax (0.08f, m.quality) : 0.0f);
-
-            line (values, theme.textDim);
+            // One column per round (visual review, ADR 063): a hit stands as
+            // tall as it was close to the centre of the band, a miss is a
+            // short block in the warning colour. Read at a glance, where a
+            // line through dots had to be followed point by point.
+            const auto slot = plot.getWidth() / (float) n;
+            const auto barWidth = juce::jlimit (3.0f, 28.0f, slot - juce::jmax (2.0f, slot * 0.18f));
 
             for (int i = 0; i < n && (float) i <= shownUpTo + 0.001f; ++i)
             {
                 const auto& m = summary.marks[(size_t) i];
+                const auto height = plot.getHeight() * (m.correct ? juce::jmax (0.18f, m.quality) : 0.14f);
+                const auto cx = plot.getX() + slot * ((float) i + 0.5f);
                 g.setColour (m.correct ? theme.positive : theme.negative);
-                g.fillEllipse (juce::Rectangle<float> (8.0f, 8.0f).withCentre ({ xAt (i), plot.getBottom() - plot.getHeight() * values[(size_t) i] }));
+                g.fillRect (juce::Rectangle<float> (barWidth, height).withPosition (cx - barWidth * 0.5f, plot.getBottom() - height));
             }
         }
 
@@ -455,9 +565,12 @@ void RunResultsComponent::paint (juce::Graphics& g)
         const auto first = battle ? 1 : 0;
         const auto every = n > 12 ? (n + 11) / 12 : 1;
         for (int i = first; i < n; i += every)
+        {
+            const auto cx = battle ? xAt (i) : plot.getX() + plot.getWidth() / (float) n * ((float) i + 0.5f);
             AbcTrainLookAndFeel::fitText (g, juce::String (battle ? i : i + 1),
-                                          juce::Rectangle<float> (xAt (i) - 12.0f, plot.getBottom() + 3.0f, 24.0f, 12.0f).toNearestInt(),
+                                          juce::Rectangle<float> (cx - 12.0f, plot.getBottom() + 3.0f, 24.0f, 12.0f).toNearestInt(),
                                           juce::Justification::centred, false);
+        }
         inner.removeFromTop (12);
     }
 
@@ -469,7 +582,11 @@ void RunResultsComponent::paint (juce::Graphics& g)
     // where a bar a few pixels tall made the reader estimate it.
     // A phone on its side has no height for it: the plot and the four
     // numbers say most of it, and the buttons must stay reachable.
-    if (! shortCard())
+    // A battle: the HP lines and the damage took this room; the sentence
+    // under them ran into the buttons (the author's screenshot, 2026-10-24).
+    const auto battleCard = ! summary.hpYou.empty() && summary.hpYou.size() == summary.hpThem.size();
+
+    if (! shortCard() && ! (battleCard && ! compact()))
     {
         // On a phone the sentence goes under the plot; its 16-point top
         // margin below is the gap between them.
@@ -505,55 +622,40 @@ void RunResultsComponent::paint (juce::Graphics& g)
         // no empty axes, the sentence beside says so.
         if (anyTried)
         {
+            // A row per range: its name, a bar as long as the share of
+            // hits, and the count. The weakest range is the one in the
+            // warning colour (visual review: the line over seven points cut
+            // its own labels on a phone - "High-mi... Presence").
             const auto count = juce::jmin (7, (int) summary.buckets.size());
-            auto plot = left.withTrimmedBottom (18).toFloat().reduced (8.0f, 8.0f);
-            const auto xAt = [&] (int i) { return count <= 1 ? plot.getCentreX() : plot.getX() + plot.getWidth() * (float) i / (float) (count - 1); };
+            auto rowsArea = left.toFloat();
+            const auto rowHeight = juce::jmin (20.0f, rowsArea.getHeight() / (float) juce::jmax (1, count));
+            const auto nameWidth = juce::jmin (110.0f, rowsArea.getWidth() * 0.34f);
 
-            for (int k = 0; k <= 2; ++k)
+            for (int b = 0; b < count; ++b)
             {
+                const auto& bucket = summary.buckets[(size_t) b];
+                auto row = rowsArea.removeFromTop (rowHeight);
+                auto name = row.removeFromLeft (nameWidth);
+                auto number = row.removeFromRight (44.0f);
+                const auto track = row.reduced (6.0f, 0.0f).withSizeKeepingCentre (row.getWidth() - 12.0f, 7.0f);
+
+                g.setColour (b == worst ? theme.textBright : theme.text);
+                g.setFont (AbcTrainLookAndFeel::captionFont());
+                AbcTrainLookAndFeel::fitText (g, bucket.label, name.toNearestInt(), juce::Justification::centredLeft, true);
+
                 g.setColour (theme.divider);
-                g.drawHorizontalLine (juce::roundToInt (plot.getBottom() - plot.getHeight() * (float) k * 0.5f), plot.getX(), plot.getRight());
-            }
-
-            juce::Path p;
-            bool open = false;
-            for (int b = 0; b < count; ++b)
-            {
-                const auto& bucket = summary.buckets[(size_t) b];
-                if (bucket.attempts == 0) { open = false; continue; }
-                const auto hit = 1.0f - bucket.missRate();
-                const juce::Point<float> pt { xAt (b), plot.getBottom() - plot.getHeight() * hit * counted };
-                if (! open) p.startNewSubPath (pt); else p.lineTo (pt);
-                open = true;
-            }
-            g.setColour (theme.textDim);
-            g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-            for (int b = 0; b < count; ++b)
-            {
-                const auto& bucket = summary.buckets[(size_t) b];
-                const auto x = xAt (b);
+                g.fillRect (track);
 
                 if (bucket.attempts > 0)
                 {
                     const auto hit = 1.0f - bucket.missRate();
-                    const auto y = plot.getBottom() - plot.getHeight() * hit * counted;
-                    g.setColour (b == worst ? theme.negative : theme.positive);
-                    g.fillEllipse (juce::Rectangle<float> (8.0f, 8.0f).withCentre ({ x, y }));
+                    g.setColour (b == worst ? theme.negative : theme.accent);
+                    g.fillRect (track.withWidth (track.getWidth() * hit * counted));
                     g.setColour (theme.textDim);
-                    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (10.0f));
+                    g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (11.0f));
                     AbcTrainLookAndFeel::fitText (g, juce::String (bucket.attempts - bucket.misses) + "/" + juce::String (bucket.attempts),
-                                                  juce::Rectangle<float> (x - 20.0f, y - 18.0f, 40.0f, 12.0f).toNearestInt(),
-                                                  juce::Justification::centred, false);
+                                                  number.toNearestInt(), juce::Justification::centredRight, false);
                 }
-
-                g.setColour (b == worst ? theme.textBright : theme.textDim);
-                g.setFont (AbcTrainLookAndFeel::microFont());
-                const auto labelWidth = count <= 1 ? 80.0f : juce::jmax (40.0f, plot.getWidth() / (float) (count - 1));
-                AbcTrainLookAndFeel::fitText (g, bucket.label,
-                                              juce::Rectangle<float> (x - labelWidth * 0.5f, left.toFloat().getBottom() - 16.0f, labelWidth, 14.0f).toNearestInt(),
-                                              b == 0 ? juce::Justification::centredLeft : b == count - 1 ? juce::Justification::centredRight
-                                                                                                         : juce::Justification::centred, true);
             }
         }
 

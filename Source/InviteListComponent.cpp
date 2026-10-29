@@ -136,6 +136,15 @@ public:
         auto r = getLocalBounds().reduced (0, 3);
         removeButton.setBounds (r.removeFromRight (32).withSizeKeepingCentre (30, 30));
         r.removeFromRight (84);   // the code, painted
+
+        if (owner.stacked())
+        {
+            name.setBounds (r.removeFromTop (InviteListComponent::rowHeight - 6));
+            r.removeFromTop (6);
+            mail.setBounds (r.removeFromTop (InviteListComponent::rowHeight - 6));
+            return;
+        }
+
         const auto half = (r.getWidth() - 8) * 45 / 100;
         name.setBounds (r.removeFromLeft (half));
         r.removeFromLeft (8);
@@ -354,11 +363,12 @@ void InviteListComponent::layoutRows()
     for (auto* row : rows)
         row->removeButton.setVisible (! row->isEmpty());
 
-    const auto w = juce::jmax (100, viewport.getWidth() - (rows.size() * rowHeight > viewport.getHeight() ? 10 : 0));
-    content.setSize (w, rows.size() * rowHeight);
+    const auto h = currentRowHeight();
+    const auto w = juce::jmax (100, viewport.getWidth() - (rows.size() * h > viewport.getHeight() ? 10 : 0));
+    content.setSize (w, rows.size() * h);
 
     for (int i = 0; i < rows.size(); ++i)
-        rows[i]->setBounds (0, i * rowHeight, w, rowHeight);
+        rows[i]->setBounds (0, i * h, w, h);
 }
 
 void InviteListComponent::paint (juce::Graphics& g)
@@ -367,10 +377,18 @@ void InviteListComponent::paint (juce::Graphics& g)
     auto header = getLocalBounds().removeFromTop (headerHeight);
     header.removeFromRight (36);
     auto codeBox = header.removeFromRight (80);
-    const auto half = (header.getWidth() - 8) * 45 / 100;
+    const auto half = stacked() ? header.getWidth() : (header.getWidth() - 8) * 45 / 100;
 
     g.setColour (theme.textDim);
     g.setFont (LnF::labelFont());
+
+    if (stacked())
+    {
+        LnF::fitText (g, text.name + " / " + text.mail, header.withTrimmedLeft (2), juce::Justification::centredLeft, true);
+        LnF::fitText (g, text.code, codeBox, juce::Justification::centred, true);
+        return;
+    }
+
     LnF::fitText (g, text.name, header.removeFromLeft (half).withTrimmedLeft (2), juce::Justification::centredLeft, true);
     header.removeFromLeft (8);
     LnF::fitText (g, text.mail, header.withTrimmedLeft (2), juce::Justification::centredLeft, true);

@@ -91,7 +91,7 @@ public:
     // without a network.
     static State parse (const juce::var& json, const State& previous);
 
-    void search (const juce::String& family);
+    void search (const juce::String& family, bool casual = false);   // casual: friendly, no rating (the server's {casual:true})
     void accept (bool yes);   // the room found: in or out
     void cancel();     // out of the queue - or, mid-battle, give up
     void answer (const juce::var& fields);   // matchId and round are added here

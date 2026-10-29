@@ -338,6 +338,21 @@ void LocalRoom::backToLobby()
     changed();
 }
 
+void LocalRoom::setAnonymous (bool shouldBe)
+{
+    {
+        const juce::ScopedLock sl (lock);
+        anonymous = shouldBe;
+    }
+    changed();
+}
+
+bool LocalRoom::isAnonymous() const
+{
+    const juce::ScopedLock sl (lock);
+    return anonymous;
+}
+
 LocalRoom::Snapshot LocalRoom::snapshot() const
 {
     const juce::ScopedLock sl (lock);
@@ -354,10 +369,12 @@ LocalRoom::Snapshot LocalRoom::snapshot() const
 
     const auto now = juce::Time::getMillisecondCounter();
 
-    for (const auto& seat : seats)
+    for (size_t i = 0; i < seats.size(); ++i)
     {
+        const auto& seat = seats[i];
         Player p;
-        p.name = seat.name;
+        p.seat = (int) i + 1;
+        p.name = anonymous ? juce::String::fromUTF8 ("\xe2\x84\x96 ") + juce::String (p.seat) : seat.name;
         p.score = seat.score;
         p.voted = seat.hasVote;
         p.lastRight = seat.lastRight;

@@ -116,6 +116,10 @@ public:
         // shows "Share the result": it goes to the clipboard, never
         // anywhere by itself, and the community link appears after.
         juce::String shareText;
+
+        // A pill at the heading's right in the warm colour - "a star from
+        // the Cat: 2 of 3" after a bot battle. Empty: none.
+        juce::String badge;
     };
 
     // Captions for the detail parts of the card; English defaults so a
@@ -135,6 +139,8 @@ public:
         juce::String roundByRound { "Round by round" };
         juce::String byRange      { "By range" };
         juce::String lastMiss     { "The last miss: {{answer}} for {{target}}." };
+        juce::String damageTaken  { "Taken" };
+        juce::String damageDealt  { "Dealt" };
     };
 
     void setDetailStrings (DetailStrings);

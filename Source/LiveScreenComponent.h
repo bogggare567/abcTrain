@@ -11,6 +11,9 @@
 #include "ProjectorWindow.h"
 #include "InviteListComponent.h"
 #include "CodeSheet.h"
+#include "SearchRadar.h"
+#include "BattleRecords.h"
+#include "SeminarArchive.h"
 #include <functional>
 #include <vector>
 
@@ -135,6 +138,41 @@ public:
         juce::String botSpeedFast { "answers fast" }, botSpeedSlow { "thinks long, rarely slips" };
         juce::String botDisclaimer { "Characters inspired by differences in animal hearing - game profiles, not biology." };
         juce::String humansTitle { "Against people" };
+        // The battle tab on a computer (Battle-PC board, 2026-10-24).
+        juce::String battleRated { "Rated" }, battleFriendly { "Friendly" };
+        juce::String ratedHint { "Decibelo moves after the battle." };
+        juce::String friendlyHint { "No rating: Decibelo and the feed stay as they are." };
+        juce::String familiesCaption { "Exercises in the battle" };
+        juce::String botsTitle { "Bots" }, botsSub { "work offline - each has its own Decibelo" };
+        juce::String botOfDay { "Bot of the day" }, botDayLeft { "{{n}} h left" }, botDayWon { "beaten today" }, acceptDay { "Accept" };
+        juce::String colBot { "Bot" }, colScore { "Score" }, colStars { "Stars" }, colNext { "To the next" };
+        juce::String ladderPassed { "done" }, ladderFlawless { "flawless win - one more star" }, ladderWins { "wins {{n}}/3" };
+        juce::String ladderOpen { "open" }, ladderLocked { "opens at {{n}} stars" };
+        juce::String fight { "Battle" }, rematch { "Rematch" };
+        juce::String recentTitle { "Last battles" };
+        juce::String recentEmpty { "None yet: start with a bot - it never waits for an opponent." };
+        juce::String resWon { "won" }, resLost { "lost" }, resDraw { "draw" }, resPlace { "place {{n}}" };
+        juce::String today { "today" }, yesterday { "yesterday" }, botSuffix { "(bot)" };
+        // The host screen and the archive (Sem-Host, Sem-Archive boards).
+        juce::String semNames { "Names" }, semAnon { "Anonymous" };
+        juce::String semAnonHint { "anonymous: numbers only on the projector and in the archive" };
+        juce::String semInRoom { "In the room - {{n}}" }, semAnswered { "Answered {{n}}" };
+        juce::String semRounds { "Rounds" }, semOneSound { "One sound" }, semSoundPerRound { "A sound per round" };
+        juce::String semNow { "now" }, semSilence { "Silence" };
+        juce::String semHallAnswers { "The hall's answers - only you see them" };
+        juce::String semRightOf { "right {{n}} of {{m}}" };
+        juce::String semKeysHint { "keys are changed in Settings" };
+        juce::String semKeyNext { "next" }, semKeyReveal { "show the answer" }, semKeyPlay { "play / stop" }, semKeyProjector { "projector" };
+        juce::String semPeopleRow { "People" }, semSoundRow { "Round sound" };
+        juce::String archiveButton { "Seminar archive" }, archiveTitle { "My seminars" }, archiveBack { "Back to the seminar" };
+        juce::String archiveAll { "All rounds" }, archiveErrors { "Only with mistakes" };
+        juce::String archiveExport { "Export CSV" }, archiveRepeat { "Repeat the mistakes with the group" };
+        juce::String archiveRepeatSet { "The next room: {{n}} [[round|rounds]] from the mistakes" };
+        juce::String archiveEmpty { "Seminars you hold appear here: every round, its answer and who missed it." };
+        juce::String archiveStored { "Kept on this computer. A round's sound is kept by name: repeating the mistakes plays the same exercises with fresh rounds." };
+        juce::String archiveSummary { "{{people}} people - {{rounds}} rounds - {{pct}}% right" };
+        juce::String colRoundAnswer { "Round - answer" }, colSound { "Sound" }, colGroup { "Group" }, colMissed { "Missed" };
+        juce::String archiveNoMistakes { "No mistakes" }, archiveSaved { "Saved to the archive" };
         juce::String lanTrouble { "Phones cannot open the address? Guest Wi-Fi often keeps devices apart - use a normal network or a hotspot. Allow abcTrain incoming connections in the firewall. Turn off mobile data on the phone." };
 
         // The local seminar, working (2026-09-25).
@@ -193,16 +231,37 @@ public:
     // "Find an opponent": the editor stands in the server's queue
     // (OnlineBattle) and reports back through setOnlineStatus. The page
     // asks for the player's Decibelo when the battle tab opens.
-    std::function<void (int family)> onFindOpponent;
+    std::function<void (int family, bool casual)> onFindOpponent;
     std::function<void()> onCancelSearch;
     std::function<void()> onBattleTabShown;
     // A room found: Accept (true) or Decline (false), ADR 050.
     std::function<void (bool)> onAcceptMatch;
     void setReadyCheck (bool waitingForYou);
+
+    // The search and the ready check as a picture (SearchRadar, ADR 063).
+    void setSearchProgress (int waitingMs, int inQueue);
+    void setReadyProgress (int deadlineInMs, int members, int accepted);
+    void clearSearchProgress();
+    void setRadarStrings (SearchRadar::Strings s) { searchRadar.setStrings (std::move (s)); }
+    // For snapshots: the radar at a fixed moment of a search.
+    void showSearchForSnapshot (int waitingMs) { searchingOnline = true; setSearchProgress (waitingMs, 3); searchRadar.freezeAt (waitingMs * 0.001); resized(); }
     void showBattleTab() { showTab (Tab::battle); }
     void setOnlineStatus (bool searching, const juce::String& line);
     // Decibelo per family (0 = no battles there yet).
     void setMyRatings (const std::array<int, 4>& ratings);
+
+    // The seminar's host screen and archive.
+    std::function<juce::String (int gameIndex)> gameNameOf;            // the exercise's name, for the round list
+    std::function<juce::String (const char* actionId)> hotkeyLabel;    // "PgDn", for the key hints
+    bool runSeminarHotkey (const juce::String& actionId);              // false: not in a running room
+    bool isHostingRoom() const noexcept { return roomOpen && ! compact(); }
+    void refreshArchive();
+    void openArchiveForSnapshot (const std::vector<SeminarArchive::Session>&);
+
+    // The ladder, the bot of the day and the last battles (BattleRecords).
+    void setBattleRecords (BattleRecords*);
+    bool isRatedSearch() const noexcept { return ratedChoice.getValue() == 0; }
+    void refreshLadderFromOutside() { refreshLadder(); }
 
     // For tools/EditorSnapshots.
     void openRoomForSnapshot (bool local);
@@ -248,6 +307,10 @@ private:
     void paintCard (juce::Graphics&, juce::Rectangle<int>, const juce::String& title) const;
     void paintSeminar (juce::Graphics&);
     void paintBattle (juce::Graphics&);
+    void layoutBattleDesk (juce::Rectangle<int>);
+    void paintBattleDesk (juce::Graphics&);
+    void mouseUp (const juce::MouseEvent&) override;
+    juce::Rectangle<int> ladderRowBounds (int index) const;
     void paintRating (juce::Graphics&);
     void paintOverlay (juce::Graphics&);
 
@@ -292,6 +355,22 @@ private:
                       const juce::String& url, juce::Rectangle<int>) const;
     void paintRunning (juce::Graphics&, juce::Rectangle<int>);
 
+    // The host screen (a room open, on a computer) and the archive.
+    SegmentedChoice anonChoice, soundChoice, archiveFilter;
+    juce::TextButton archiveButton, archiveBackButton, exportButton, repeatButton;
+    bool archiveOpen = false, archiveFrozen = false;
+    int archiveSelected = 0;
+    std::vector<SeminarArchive::Session> archive;
+    juce::Rectangle<int> hostHeader, hostPeople, hostCentre, hostRounds, hostFooter, hostVotes;
+    juce::Rectangle<int> archiveList, archiveTable;
+    std::unique_ptr<juce::FileChooser> exportChooser;
+    void layoutHost (juce::Rectangle<int>);
+    void paintHost (juce::Graphics&);
+    void layoutArchive (juce::Rectangle<int>);
+    void paintArchive (juce::Graphics&);
+    void paintVotes (juce::Graphics&, juce::Rectangle<int>, const LocalRoom::Snapshot&) const;
+    std::vector<int> archiveRowsShown() const;
+
     // Battle
     SegmentedChoice battleFamily, botChoice;
     juce::TextButton searchButton, challengeButton, battleSignInButton, botStartButton;
@@ -300,6 +379,27 @@ private:
     bool readyForYou = false;
     juce::String onlineLine;
     std::array<int, 4> myRatings {};
+    SearchRadar searchRadar;
+
+    // Battle on a computer: rated or friendly, the families as tiles with
+    // their ratings, the ladder with a button per bot, the bot of the day.
+    SegmentedChoice ratedChoice;
+    struct FamilyTiles : public juce::Component
+    {
+        explicit FamilyTiles (LiveScreenComponent& o) : owner (o) {}
+        void paint (juce::Graphics&) override;
+        void mouseUp (const juce::MouseEvent&) override;
+        juce::Rectangle<int> tile (int i) const;
+        LiveScreenComponent& owner;
+    };
+    FamilyTiles familyTiles { *this };
+    juce::OwnedArray<juce::TextButton> ladderButtons;
+    juce::TextButton botDayButton;
+    BattleRecords* records = nullptr;
+    juce::Rectangle<int> ladderArea, dayBox, recentArea, peopleInfo;
+    void refreshLadder();
+    juce::Rectangle<int> radarArea;
+    bool radarWanted = false;
 
     // Rating
     SegmentedChoice ratingFamily, scopeChoice, periodChoice;

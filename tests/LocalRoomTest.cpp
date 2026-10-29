@@ -247,7 +247,7 @@ public:
             hooks.activeGameIndex = [&] { return active; };
             hooks.game = [&] (int i) -> Game& { return games.getGame (i); };
             hooks.selectGame = [&] (int i) { active = i; games.setActiveGameIndex (i); };
-            hooks.startRound = [&] { ++rounds; games.getActiveGame().newRound(); };
+            hooks.startRound = [&] (bool) { ++rounds; games.getActiveGame().newRound(); };
             hooks.setSound = [&] (bool p, bool pr) { playing = p; processed = pr; };
             hooks.localisedName = [] (const Game& g) { return g.getName(); };
             hooks.localisedPrompt = [] (const Game& g) { return g.getInstructions(); };

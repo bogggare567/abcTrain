@@ -73,5 +73,12 @@ private:
     juce::Random random;
     static constexpr int rowHeight = 38, headerHeight = 24;
 
+    // Under this width a row is two lines - the name over the e-mail -
+    // because side by side each field was ~60 px on a phone and showed
+    // the middle of what was typed (visual review).
+    static constexpr int stackBelow = 420;
+    bool stacked() const { return getWidth() > 0 && getWidth() < stackBelow; }
+    int currentRowHeight() const { return stacked() ? 2 * rowHeight + 4 : rowHeight; }
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (InviteListComponent)
 };
