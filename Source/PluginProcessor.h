@@ -15,6 +15,7 @@
 #include "shared/audio/HearingProfile.h"
 #include "shared/dsp/HearingCompensation.h"
 #include "ProbeTone.h"
+#include "OwnPlugins/OwnPluginPlayer.h"
 #include <array>
 #include <atomic>
 #include <memory>
@@ -164,7 +165,18 @@ public:
     // silent during the hearing test and calibration.
     UiSounds& getUiSounds() noexcept { return uiSounds; }
 
+    // ---- «Свой плагин» (ADR 065) ----
+    //
+    // The player's own installed plugin, two instances on a practice loop.
+    // While active it replaces the trainer's signal like the Studio does;
+    // the output level and the hearing meter still apply after it.
+    OwnPluginPlayer& getOwnPluginPlayer() noexcept { return ownPlugin; }
+    void setOwnPluginActive (bool shouldBe) noexcept { ownPluginActive.store (shouldBe); }
+
 private:
+    OwnPluginPlayer ownPlugin;
+    std::atomic<bool> ownPluginActive { false };
+
     ClipPreview clipPreview;
     UiSounds uiSounds;
 

@@ -32,6 +32,12 @@ StudioScreenComponent::StudioScreenComponent (Host hostToUse)
         addAndMakeVisible (button);
     }
 
+    ownButton.setButtonText ("Your plugin");
+    ownButton.setComponentID ("studio.own");
+    ownButton.onClick = [this] { selectOwnPlugin(); };
+    if (host.makeOwnPluginPanel != nullptr)
+        addAndMakeVisible (ownButton);
+
     lessonsButton.setComponentID ("studio.lessons");
     lessonsButton.onClick = [this] { if (onLessons) onLessons(); };
     addAndMakeVisible (lessonsButton);
@@ -46,7 +52,51 @@ StudioScreenComponent::~StudioScreenComponent()
 
 void StudioScreenComponent::open()
 {
-    showEditorFor (selected);
+    if (ownSelected)
+        showOwnPanel();
+    else
+        showEditorFor (selected);
+}
+
+void StudioScreenComponent::selectOwnPlugin()
+{
+    if (host.makeOwnPluginPanel == nullptr)
+        return;
+
+    ownSelected = true;
+    refreshSwitch();
+    showOwnPanel();
+}
+
+void StudioScreenComponent::showOwnPanel()
+{
+    dropEditor();
+
+    if (host.setActiveEffect != nullptr)
+        host.setActiveEffect (-1);
+
+    if (ownPanel == nullptr)
+        ownPanel = host.makeOwnPluginPanel();
+
+    if (ownPanel != nullptr)
+        addAndMakeVisible (*ownPanel);
+
+    if (host.setOwnPluginActive != nullptr)
+        host.setOwnPluginActive (true);
+
+    resized();
+    repaint();
+}
+
+void StudioScreenComponent::dropOwnPanel()
+{
+    if (host.setOwnPluginActive != nullptr)
+        host.setOwnPluginActive (false);
+
+    // Destroying the page drops both plugin instances: a plugin left loaded
+    // under the trainer's menus would still hold its licence, its memory and
+    // the CPU.
+    ownPanel.reset();
 }
 
 void StudioScreenComponent::close()
@@ -58,17 +108,30 @@ void StudioScreenComponent::close()
         host.setActiveEffect (-1);
 
     dropEditor();
+    dropOwnPanel();
 }
 
 void StudioScreenComponent::select (Effect effect)
 {
-    if (effect == selected && editor != nullptr)
+    if (effect == selected && editor != nullptr && ! ownSelected)
         return;
+
+    // Coming back from «Your plugin»: the page was open, only with the own
+    // panel in it instead of an editor - so isOpen() said no, and EQ / Comp
+    // / Verb stayed empty until the whole Studio was reopened (the author,
+    // 2026-10-24: "после своего плагина не открывается студия").
+    const auto wasOpen = isOpen() || ownSelected;
+
+    if (ownSelected)
+    {
+        ownSelected = false;
+        dropOwnPanel();
+    }
 
     selected = effect;
     refreshSwitch();
 
-    if (isOpen())
+    if (wasOpen)
         showEditorFor (effect);
 }
 
@@ -124,7 +187,7 @@ void StudioScreenComponent::refreshSwitch()
     for (int i = 0; i < numEffects; ++i)
     {
         auto& button = switchButtons[(size_t) i];
-        const auto on = (int) selected == i;
+        const auto on = (int) selected == i && ! ownSelected;
         const auto colour = AbcTrainTheme::accentFor (familyFor (i));
 
         button.setToggleState (on, juce::dontSendNotification);
@@ -133,6 +196,10 @@ void StudioScreenComponent::refreshSwitch()
         button.setColour (juce::TextButton::buttonOnColourId, colour);
         button.setColour (juce::TextButton::textColourOnId, AbcTrainTheme::current().windowBackground);
     }
+
+    ownButton.setToggleState (ownSelected, juce::dontSendNotification);
+    ownButton.setColour (juce::TextButton::buttonOnColourId, AbcTrainTheme::current().accent);
+    ownButton.setColour (juce::TextButton::textColourOnId, AbcTrainTheme::current().windowBackground);
 }
 
 void StudioScreenComponent::setRotatePromptAllowed (bool allowed)
@@ -232,6 +299,9 @@ void StudioScreenComponent::resized()
             rail.removeFromTop (6);
         }
 
+        if (host.makeOwnPluginPanel != nullptr)
+            ownButton.setBounds (rail.removeFromTop (44));
+
         lessonsButton.setBounds (rail.removeFromBottom (44));
         placeEditor (area);
         return;
@@ -253,6 +323,11 @@ void StudioScreenComponent::resized()
         x += 95;
     }
 
+    // Your own plugin: after the three, a step apart - it is not one of
+    // ours, and it is a different kind of page.
+    if (host.makeOwnPluginPanel != nullptr)
+        ownButton.setBounds (x + 12, bar.getY(), 150, bar.getHeight());
+
     // The way to the courses, at the far end of the same bar: the lessons
     // turn these plugins' knobs, so they open from where the plugins are.
     lessonsButton.setBounds (bar.removeFromRight (150).withTrimmedRight (20));
@@ -262,6 +337,9 @@ void StudioScreenComponent::resized()
 
 void StudioScreenComponent::placeEditor (juce::Rectangle<int> area)
 {
+    if (ownPanel != nullptr)
+        ownPanel->setBounds (area);
+
     if (editor == nullptr)
         return;
 

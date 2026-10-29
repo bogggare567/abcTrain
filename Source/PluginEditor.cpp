@@ -377,14 +377,6 @@ namespace
         return loc.getText ("rank." + juce::String (rung));
     }
 
-    // "next: Mixing ear", or the top-of-ladder line.
-    juce::String nextRankLine (int level, const LocalisationManager& loc)
-    {
-        const auto rung = juce::jlimit (1, 5, (juce::jlimit (1, 10, level) + 1) / 2);
-        return rung >= 5 ? loc.getText ("ui.rankTop")
-                         : loc.getText ("ui.rankNext", { { "rank", loc.getText ("rank." + juce::String (rung + 1)) } });
-    }
-
     // An achievement's name and description with its numbers filled in:
     // "300 rounds", "«Guess the Reverb»", "threshold ±0,35 oct in ...".
     // The rules are generated per exercise (Achievements.cpp), so the
@@ -692,6 +684,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     // thing it is covering, but before the results/toast overlays, which
     // must stay on top of everything).
     addChildComponent (runHud);
+    addChildComponent (battleStrip);
     addChildComponent (runCountdown);
 
     // The way out of a live run.
@@ -742,11 +735,14 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     addChildComponent (hintSpectrum);
     addChildComponent (hintWaveform);
     addChildComponent (hintEcho);
+    addChildComponent (hintPlaceholder);
+    hintPlaceholder.toBack();
 
     // On the page, not in wells: the hint shares the answer section and
     // the page may be the player's own picture (see resized()).
     vectorscope.setBackdropVisible (false);
     hintSpectrum.setBackdropVisible (false);
+    hintSpectrum.setAutoRange (true);
     hintWaveform.setBackdropVisible (false);
     hintEcho.setBackdropVisible (false);
 
@@ -879,15 +875,24 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
 
     instructionsButton.onClick = [this]
     {
-        instructionsPinnedOpen = ! instructionsPinnedOpen;
+        // The exercise's paragraph, in a callout under "?": read it when
+        // you want it, and the screen does not move (2026-10-24).
+        struct Callout : public juce::Component
+        {
+            juce::String text;
+            void paint (juce::Graphics& g) override
+            {
+                g.setColour (AbcTrainTheme::current().text);
+                g.setFont (AbcTrainLookAndFeel::bodyFont());
+                AbcTrainLookAndFeel::fitLines (g, text, getLocalBounds().reduced (6), juce::Justification::topLeft, 8, 1.0f);
+            }
+        };
 
-        // Actually show it. This flipped the flag and re-laid the screen
-        // out around a label that was still invisible, so pressing "?"
-        // moved things very slightly and produced no text at all - the
-        // button looked broken because it was.
-        instructionLabel.setVisible (shouldShowInstructions());
-        resized();
-        repaint();
+        auto callout = std::make_unique<Callout>();
+        callout->text = instructionLabel.getText();
+        const auto lines = juce::jlimit (2, 8, callout->text.length() / 52 + 1);
+        callout->setSize (440, lines * 22 + 16);
+        juce::CallOutBox::launchAsynchronously (std::move (callout), instructionsButton.getScreenBounds(), nullptr);
     };
     addChildComponent (instructionsButton);
 
@@ -925,6 +930,7 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     settingsScreen.onClosed = [this] { resized(); repaint(); };
     settingsScreen.onSettingsChanged = [this]
     {
+        applyWindowPrefs();
         // A text-scale change alters how much room every label needs, so
         // the layout has to be redone rather than merely repainted.
         resized();
@@ -949,6 +955,28 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
             holder->showAudioSettingsDialog();
     };
    #endif
+
+    // The foot of the settings page: where the sound goes, at what rate
+    // and buffer, and the latency that buffer costs.
+    settingsScreen.outputSummary = [this]
+    {
+        juce::String device;
+       #if JucePlugin_Build_Standalone
+        if (auto* holder = juce::StandalonePluginHolder::getInstance())
+            if (auto* d = holder->deviceManager.getCurrentAudioDevice())
+                device = d->getName();
+       #endif
+        const auto rate = processor.getSampleRate();
+        const auto block = processor.getBlockSize();
+
+        if (rate <= 0.0)
+            return localisation.getText ("set.footer.noOutput");
+
+        return localisation.getText ("set.footer.output", { { "device", device.isNotEmpty() ? device : juce::String ("-") } })
+             + juce::String::fromUTF8 (" \xc2\xb7 ") + juce::String (rate / 1000.0, 1) + " kHz"
+             + juce::String::fromUTF8 (" \xc2\xb7 ") + juce::String (block) + " smp"
+             + juce::String::fromUTF8 (" \xc2\xb7 ") + juce::String (1000.0 * block / rate, 1) + " ms";
+    };
 
     settingsScreen.onCalibrationNoise = [this] (bool play) { processor.setCalibrationNoise (play); };
     settingsScreen.onAddExposure = [this] (double hours, double levelDbA)
@@ -1050,11 +1078,18 @@ EarTrainerEditor::EarTrainerEditor (EarTrainerProcessor& p)
     liveScreen.onStartBotBattle = [this] (BotListener::Bot bot, int family) { startBotBattle (bot, family); };
 
     // A battle with a person (ADR 048).
-    liveScreen.onFindOpponent = [this] (int family)
+    liveScreen.onFindOpponent = [this] (int family, bool casual)
     {
         static const char* families[] { "freq", "dyn", "space", "char" };
-        onlineBattle.search (families[juce::jlimit (0, 3, family)]);
+        onlineBattle.search (families[juce::jlimit (0, 3, family)], casual);
     };
+    liveScreen.setBattleRecords (&battleRecords);
+    liveScreen.gameNameOf = [this] (int index)
+    {
+        auto& gm = processor.getGameManager();
+        return index >= 0 && index < gm.getNumGames() ? translateGameName (gm.getGame (index).getName(), localisation) : juce::String();
+    };
+    liveScreen.hotkeyLabel = [this] (const char* id) { return Hotkeys::Map::label (hotkeys.get (id, 0)); };
     liveScreen.onCancelSearch = [this] { onlineBattle.cancel(); };
     liveScreen.onAcceptMatch = [this] (bool yes) { onlineBattle.accept (yes); };
     liveScreen.onBattleTabShown = [this] { refreshMyRatings(); };
@@ -1369,6 +1404,32 @@ void EarTrainerEditor::openLessons()
         lessonsWindow->centreWithSize (1000, 660);
     }
 
+    // Side by side, never on top of each other (the author, 2026-10-24:
+    // "уроки и приложение на одном экране не помещаются"). A lesson turns
+    // the Studio's knobs and the player watches them move, so the app keeps
+    // the left of the screen and the lessons take a column on the right;
+    // the app is narrowed only if the two do not fit as they are.
+   #if ! JUCE_IOS
+    if (auto* top = getTopLevelComponent(); top != nullptr && top != this)
+        if (const auto* display = juce::Desktop::getInstance().getDisplays().getDisplayForRect (top->getScreenBounds()))
+        {
+            auto screen = display->userArea.reduced (6);
+            const auto lessonsWidth = juce::jlimit (560, 820, screen.getWidth() * 2 / 5);
+            auto column = screen.removeFromRight (lessonsWidth);
+            lessonsWindow->setBounds (column);
+
+            auto app = top->getBounds();
+            if (app.getRight() > screen.getRight() || app.getX() < screen.getX())
+            {
+                app.setX (screen.getX());
+                app.setWidth (juce::jmin (app.getWidth(), screen.getWidth() - 6));
+                app.setY (juce::jlimit (screen.getY(), screen.getBottom() - juce::jmin (app.getHeight(), screen.getHeight()), app.getY()));
+                app.setHeight (juce::jmin (app.getHeight(), screen.getHeight()));
+                top->setBounds (app);
+            }
+        }
+   #endif
+
     processor.getUiSounds().trigger (UiSounds::Event::open);
     lessonsWindow->setVisible (true);
     lessonsWindow->toFront (true);
@@ -1615,6 +1676,7 @@ void EarTrainerEditor::adaptScaleToWindow()
 void EarTrainerEditor::parentHierarchyChanged()
 {
     AudioProcessorEditor::parentHierarchyChanged();
+    applyWindowPrefs();   // the window now exists: keep it on top if asked
 
     if (nativeWindowAdopted || WindowFit::fittingDisabled())
         return;
@@ -1734,11 +1796,9 @@ void EarTrainerEditor::paint (juce::Graphics& g)
         // The caption over the scale. It says what to *do*, not what the
         // thing is called, which is the difference between a label and an
         // instruction.
-        if (! answerHeadingRow.isEmpty())
-            AbcTrainLookAndFeel::drawTrackedText (
-                g, AbcTrainLookAndFeel::toCaps (answerHeadingText),
-                answerHeadingRow.toFloat(), AbcTrainLookAndFeel::labelFont(),
-                theme.textDim, 2.8f, juce::Justification::centredLeft);
+        // The caption over the scale ("two options, never a third", "drag
+        // along the scale") is gone (the author, 2026-10-24): the scale says
+        // it, and "?" has the paragraph.
 
         // How far into this exercise's level, as ten segments beside the
         // sentence that says the same thing in words. Ten, because the
@@ -1791,10 +1851,56 @@ bool EarTrainerEditor::keyPressed (const juce::KeyPress& key)
 {
     screensaver.noteActivity();
 
-    if (key == juce::KeyPress::spaceKey && beforeButton.isVisible())
+    // Settings > Keys (Hotkeys). The Studio's own-plugin page first, when
+    // it is in front; then the trainer's keys, which also run a battle
+    // round (it is the trainer's own screen).
+   #if JUCE_PLUGINHOST_VST3 || JUCE_PLUGINHOST_AU
+    if (studioScreen.isVisible())
+        if (auto* own = dynamic_cast<OwnPluginsPanel*> (studioScreen.getOwnPluginPanel()))
+            if (own->isShowing())
+                if (const auto id = hotkeys.actionFor (key, Hotkeys::Scope::studio); id.isNotEmpty())
+                    return own->handleHotkey (id);
+   #endif
+
+    // The seminar's host screen: its own keys (a presenter's clicker sends
+    // Page Down), whichever control has the focus.
+    if (liveScreen.isShowing() && liveScreen.isHostingRoom())
+        if (const auto id = hotkeys.actionFor (key, Hotkeys::Scope::seminar); id.isNotEmpty())
+            if (liveScreen.runSeminarHotkey (id))
+                return true;
+
+    if (currentScreen == Screen::training && choiceSlider.isShowing())
+        if (const auto id = hotkeys.actionFor (key, Hotkeys::Scope::training); id.isNotEmpty())
+            return runTrainingHotkey (id);
+
+    return false;
+}
+
+bool EarTrainerEditor::runTrainingHotkey (const juce::String& id)
+{
+    auto& game = processor.getGameManager().getActiveGame();
+    const auto abShown = beforeButton.isVisible();
+
+    if (id == "train.toggle" && abShown)  { setPlayProcessed (! game.isPlayingProcessed()); return true; }
+    if (id == "train.a" && abShown)       { setPlayProcessed (false); return true; }
+    if (id == "train.b" && abShown)       { setPlayProcessed (true); return true; }
+    if (id == "train.left")               { choiceSlider.nudge (-1, false); return true; }
+    if (id == "train.right")              { choiceSlider.nudge (1, false); return true; }
+    if (id == "train.fineLeft")           { choiceSlider.nudge (-1, true); return true; }
+    if (id == "train.fineRight")          { choiceSlider.nudge (1, true); return true; }
+    if (id == "train.answer")             { choiceSlider.commitFromKeyboard(); return true; }
+
+    if (id == "train.hint")
     {
-        auto& game = processor.getGameManager().getActiveGame();
-        setPlayProcessed (! game.isPlayingProcessed());
+        if (hintButton.isVisible() && hintButton.isEnabled())
+            hintButton.triggerClick();
+        return true;
+    }
+
+    if (id == "train.help")
+    {
+        if (instructionsButton.isVisible())
+            instructionsButton.triggerClick();
         return true;
     }
 
@@ -1885,7 +1991,6 @@ void EarTrainerEditor::resized()
     // below - so the 60px this used to reserve was reserving it for a
     // third copy of one of those two.
     auto area = contentBounds().reduced (compactLayout() ? Spacing::medium : Spacing::large, Spacing::medium);
-    const auto phone = compactLayout();
 
     // --- the tool bar, bottom left ---------------------------------------
     {
@@ -1969,7 +2074,7 @@ void EarTrainerEditor::resized()
     else
         layoutTraining (area);
     collapseModePills();
-    choiceSlider.setConfirmMode (touchFirst() && (compactLayout() || sideways()));
+    choiceSlider.setConfirmMode ((touchFirst() && (compactLayout() || sideways())) || answerByButton());
 
     // The strip beside the notch: only a phone held upright that has one
     // (an SE's 20-point status bar is no room for a clock).
@@ -2045,12 +2150,14 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
     // Collapses to just the name row once the exercise is familiar (see
     // shouldShowInstructions); the freed height flows to the answer
     // section below, which is the part that improves by being taller.
-    const auto instructionsShown = shouldShowInstructions();
-    // A phone gives the level and the run's HUD a row of their own under
-    // the name, and the instruction three lines rather than two.
-    exerciseSection = area.removeFromTop ((instructionsShown ? (phone ? 132 : 104)
-                                                             : Spacing::large + 30 + Spacing::small)
-                                          + (phone ? 30 + Spacing::tight : 0));
+    // One height in every exercise: the name row (and on a phone the
+    // level/HUD row under it). In a battle the players' strip adds its
+    // own row - a battle is its own screen, steady through all its rounds.
+    const auto stripHeight = battleStripShown()
+                                 ? BattlePlayersStrip::preferredHeight ((int) battleStrip.getPlayers().size(), phone) + Spacing::small
+                                 : 0;
+    exerciseSection = area.removeFromTop (Spacing::large + 30 + Spacing::small
+                                          + (phone ? 30 + Spacing::tight : 0) + stripHeight);
     {
         auto inner = exerciseSection;
         inner.removeFromTop (Spacing::large);   // clear the section heading
@@ -2109,7 +2216,13 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
             currentGameLabel.setBounds (gameRow);
 
         inner.removeFromTop (Spacing::small);
-        instructionLabel.setBounds (inner);
+
+        // In a battle the instruction's place holds the players instead:
+        // same height, so the answer section below keeps its frame.
+        instructionLabel.setBounds ({});
+        battleStrip.setBounds (battleStripShown() ? inner.withHeight (juce::jmin (inner.getHeight(),
+                                   BattlePlayersStrip::preferredHeight ((int) battleStrip.getPlayers().size(), phone)))
+                                                  : juce::Rectangle<int>());
     }
 
     area.removeFromTop (Spacing::large);
@@ -2123,6 +2236,7 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
     // taken what they need), so a hint adds a picture without moving
     // anything you were already looking at.
     hintSection = {};
+    hintPlaceholder.setVisible (false);
 
     {
         const auto showing = hintRevealed && ! hintNarrowsTheScale()
@@ -2263,7 +2377,7 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         {
             // Only the caption up here; A, B and the hint are in the
             // thumb's rows at the bottom.
-            answerHeadingRow = inner.removeFromTop (22);
+            answerHeadingRow = {};   // no caption any more: the row went to the scale
         }
         else
         {
@@ -2283,6 +2397,15 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
             // not a way of playing the run like the mode pills it sat
             // among at the bottom.
             headingRow.removeFromRight (Spacing::medium);
+
+            // "Answer" beside A/B when the player chose to answer by button
+            // (Settings > Exercises): place the answer, listen again, send.
+            if (answerByButton())
+            {
+                answerButton.setBounds (headingRow.removeFromRight (170).withSizeKeepingCentre (170, 34));
+                headingRow.removeFromRight (Spacing::medium);
+            }
+
             hintButton.setBounds (headingRow.removeFromRight (176).withSizeKeepingCentre (176, 34));
             headingRow.removeFromRight (Spacing::medium);
 
@@ -2328,7 +2451,9 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         // is the same call the hint section above makes: an empty stretch
         // of background reads as space, where a drawn frame around nothing
         // reads as a broken element.
-        const auto naturalHeight = choiceSlider.usesContinuousScale() ? 420 : 380;
+        // One height for rulers and cards alike: switching exercises must
+        // not move the scale's frame (stable windows, 2026-10-24).
+        constexpr int naturalHeight = 420;
         // Top-anchored, not centred. Centring split the slack into a gap
         // above and a gap below, and the one above sat between the
         // heading and the thing the heading names - which reads as
@@ -2347,24 +2472,35 @@ void EarTrainerEditor::layoutTraining (juce::Rectangle<int> area)
         // screen jump up at the moment of buying (the author: "начал
         // скакать экран"). Nothing moves now; the picture fills a space
         // that was already there.
-        const auto hintShowing = hintRevealed && ! hintNarrowsTheScale();
-        const auto reserveHint = ! hintNarrowsTheScale() && session.areHintsAllowed();
-        auto sliderHeight = juce::jmin (inner.getHeight(), naturalHeight);
+        // 2026-10-24: the room is kept only where there is a picture to
+        // put in it. Where the hint narrows the scale (Guess the Band), on
+        // the panorama's dial, in a duel and with hints switched off, the
+        // scale takes all of it - an empty band under the scale read as
+        // a screen that had not finished loading ("пустота смущает").
+        // Where there is a picture, the room is all that is left under the
+        // scale, and before buying it holds a locked sketch of the picture
+        // with the buy button, so it never reads as empty either.
+        const auto room = hintPictureRoom();
+        auto sliderHeight = inner.getHeight();
 
-        if (reserveHint)
+        if (room)
         {
             constexpr int cardsFloor = 166;
-            const auto pictureHeight = juce::jlimit (90, 240, (inner.getHeight() - Spacing::medium) * 40 / 100);
-            sliderHeight = juce::jmax (cardsFloor, juce::jmin (sliderHeight, inner.getHeight() - pictureHeight - Spacing::medium));
+            const auto pictureHeight = juce::jmax (120, (inner.getHeight() - Spacing::medium) * 42 / 100);
+            sliderHeight = juce::jmax (cardsFloor, juce::jmin (naturalHeight, inner.getHeight() - pictureHeight - Spacing::medium));
         }
 
         choiceSlider.setBounds (inner.removeFromTop (sliderHeight));
 
-        if (hintShowing)
+        if (room)
         {
             inner.removeFromTop (Spacing::medium);
-            hintSection = inner.withHeight (juce::jmin (inner.getHeight(), 240));
-            placeHintPicture (hintSection);
+            hintSection = inner;
+
+            if (hintRevealed)
+                placeHintPicture (hintSection);
+            else
+                placeHintPlaceholder (hintSection, ! phone);
         }
     }
 
@@ -2463,6 +2599,39 @@ void EarTrainerEditor::placeHintPicture (juce::Rectangle<int> hintRow)
     }
 }
 
+bool EarTrainerEditor::hintPictureRoom() const
+{
+    return currentScreen == Screen::training
+        && session.areHintsAllowed()
+        && ! hintNarrowsTheScale()
+        && ! choiceSlider.showsDial();
+}
+
+void EarTrainerEditor::placeHintPlaceholder (juce::Rectangle<int> room, bool withButton)
+{
+    juce::String key;
+
+    switch (activeHintView())
+    {
+        case Game::HintView::stereo:      key = "ui.hintView.stereo"; break;
+        case Game::HintView::envelope:    key = "ui.hintView.envelope"; break;
+        case Game::HintView::reflections: key = "ui.hintView.reflections"; break;
+        case Game::HintView::spectrum:
+        default:                          key = "ui.hintView.spectrum"; break;
+    }
+
+    hintPlaceholder.setView (activeHintView(), localisation.getText (key));
+    hintPlaceholder.setButtonShown (withButton);
+    hintPlaceholder.setBounds (room);
+    hintPlaceholder.setVisible (true);
+
+    // The buy button moves into the frame it opens: "here is a picture,
+    // press to see it" in one place, instead of a button up by A/B and a
+    // locked frame down here.
+    if (withButton)
+        hintButton.setBounds (hintPlaceholder.buttonArea());
+}
+
 void EarTrainerEditor::layoutTrainingSideways (juce::Rectangle<int> area)
 {
     using namespace AbcTrainTheme;
@@ -2517,11 +2686,23 @@ void EarTrainerEditor::layoutTrainingSideways (juce::Rectangle<int> area)
 
     // The instruction takes what is left - on a short phone, possibly
     // nothing; the "?" still opens it.
-    instructionLabel.setBounds (shouldShowInstructions() && left.getHeight() >= 36 ? left.withTrimmedTop (Spacing::small)
-                                                                                   : juce::Rectangle<int>());
+    if (battleStripShown())
+    {
+        instructionLabel.setBounds ({});
+        battleStrip.setBounds (left.withTrimmedTop (Spacing::small)
+                                   .withHeight (juce::jmin (left.getHeight() - Spacing::small,
+                                                            BattlePlayersStrip::preferredHeight ((int) battleStrip.getPlayers().size(), true))));
+    }
+    else
+    {
+        battleStrip.setBounds ({});
+        instructionLabel.setBounds (shouldShowInstructions() && left.getHeight() >= 36 ? left.withTrimmedTop (Spacing::small)
+                                                                                       : juce::Rectangle<int>());
+    }
 
     // --- the right: verdict, scale, and a bought hint's picture ---------
     hintSection = {};
+    hintPlaceholder.setVisible (false);
     {
         const auto showing = hintRevealed && ! hintNarrowsTheScale() && currentScreen == Screen::training;
         const auto view = activeHintView();
@@ -2541,19 +2722,23 @@ void EarTrainerEditor::layoutTrainingSideways (juce::Rectangle<int> area)
 
     // The hint's room is kept whether or not it is bought, as in the
     // upright layout, so buying it moves nothing.
-    const auto reserveHint = ! hintNarrowsTheScale() && session.areHintsAllowed();
+    const auto room = hintPictureRoom();   // see layoutTraining
     auto sliderHeight = inner.getHeight();
 
-    if (reserveHint)
+    if (room)
         sliderHeight = juce::jmax (150, inner.getHeight() * 62 / 100);
 
     choiceSlider.setBounds (inner.removeFromTop (sliderHeight));
 
-    if (hintRevealed && ! hintNarrowsTheScale())
+    if (room)
     {
         inner.removeFromTop (Spacing::small);
         hintSection = inner;
-        placeHintPicture (hintSection);
+
+        if (hintRevealed)
+            placeHintPicture (hintSection);
+        else
+            placeHintPlaceholder (hintSection, false);
     }
 }
 
@@ -2641,6 +2826,19 @@ void EarTrainerEditor::showAchievementsScreen()
     refreshRailStatus();
 }
 
+// The Live family an exercise belongs to (the battle families, ADR 050):
+// 0 frequency, 1 dynamics, 2 space, 3 character.
+static int liveFamilyOfGame (int gameIndex)
+{
+    switch (gameIndex)
+    {
+        case 0: case 8:                 return 0;
+        case 1: case 7:                 return 1;
+        case 2: case 3: case 4: case 6: return 2;
+        default:                        return 3;
+    }
+}
+
 void EarTrainerEditor::showRunResults (int finalScore)
 {
     auto& progress = processor.getProgressManager();
@@ -2694,6 +2892,25 @@ void EarTrainerEditor::showRunResults (int finalScore)
         summary.pointsNote << "   HP " << juce::roundToInt (session.getPlayerHp()) << " : " << juce::roundToInt (session.getOpponentHp());
     if (duel && onlineResultNote.isNotEmpty())
         summary.pointsNote << "\n" << onlineResultNote;
+
+    // A bot battle goes on the ladder: wins, losses, a flawless win - and
+    // a star earned says so on the card.
+    if (duel && onlineOpponent.isEmpty())
+    {
+        // Given up before the end counts as lost, whatever the HP said then.
+        const auto complete = session.getRoundsThisRun() >= SessionManager::duelRounds
+                           || session.getPlayerHp() <= 0.0f || session.getOpponentHp() <= 0.0f;
+        const auto won = complete && session.getDuelOutcome() == SessionManager::Outcome::won;
+        const auto flawless = won && std::all_of (runMarks.begin(), runMarks.end(), [] (const auto& m) { return m.correct; });
+        const auto bot = session.getOpponent();
+        const auto added = battleRecords.recordBotBattle (bot, won, flawless, liveFamilyOfGame (gameIndex), juce::Time::getCurrentTime());
+
+        if (added > 0)
+            summary.badge = localisation.getText ("bots.starEarned")
+                                .replace ("{{bot}}", opponentName())
+                                .replace ("{{n}}", juce::String (battleRecords.stars (bot)));
+        liveScreen.refreshLadderFromOutside();
+    }
 
     // The battle as text for the community chat (ADR 053): only what the
     // battle produced - names, outcome, HP, rounds, the Decibelo change.
@@ -2878,6 +3095,8 @@ void EarTrainerEditor::showRunResults (int finalScore)
         d.roundByRound = localisation.getText ("ui.res.roundByRound");
         d.byRange = localisation.getText ("ui.res.byRange");
         d.lastMiss = localisation.getText ("ui.res.lastMiss");
+        d.damageTaken = localisation.getText ("ui.res.damageTaken");
+        d.damageDealt = localisation.getText ("ui.res.damageDealt");
         runResults.setDetailStrings (std::move (d));
         runResults.setShareStrings (localisation.getText ("share.button"),
                                     localisation.getText ("share.copied"),
@@ -2904,14 +3123,12 @@ void EarTrainerEditor::showAchievementToast (const juce::String& achievementId)
 
 bool EarTrainerEditor::shouldShowInstructions() const
 {
-    if (instructionsPinnedOpen)
-        return true;
-
-    // Familiar means a handful of lifetime correct answers on *this*
-    // exercise. Below that, the paragraph earns its space; above it, the
-    // space belongs to the answer scale and the "?" brings the text back.
-    const auto index = processor.getGameManager().getActiveGameIndex();
-    return processor.getProgressManager().getStatsForGame (index).correctAnswers < 3;
+    // Never on the screen: the paragraph opens from "?" as a callout
+    // (the author, 2026-10-24: a squeezed sentence under the title "does
+    // not look good"). It used to collapse after three correct answers,
+    // which moved the whole answer section mid-session; with it gone for
+    // good the exercise section has one height in every exercise.
+    return false;
 }
 
 void EarTrainerEditor::beginRunLog()
@@ -2974,7 +3191,9 @@ void EarTrainerEditor::handleAnswerScored (int scoredGameIndex, const ProgressMa
             processor.getUiSounds().trigger (E::correct);
     }
 
-    promotionPips.setVisible (true);
+    // Not in a duel: the round segments sit there, and the staircase is not
+    // what a battle is played for.
+    promotionPips.setVisible (session.getMode() != SessionManager::Mode::duel);
     promotionPips.set (outcome.stepRun, processor.getProgressManager().getStepUpAfter());
 
     showHearingEvents (hearingGuard.noteAnswer (scoredGameIndex, outcome.level));
@@ -3632,7 +3851,13 @@ void EarTrainerEditor::refreshRunStatus()
             }
         }
 
-        if (hudWasVisible != (onTraining && hudNow))
+        const auto stripWasVisible = battleStrip.isVisible();
+        refreshBattleStrip();
+        battleStrip.setVisible (battleStripShown());
+        runHud.setPlayersShownElsewhere (battleStripShown());
+        instructionLabel.setVisible (! battleStripShown() && shouldShowInstructions());
+
+        if (hudWasVisible != (onTraining && hudNow) || stripWasVisible != battleStrip.isVisible())
             resized();
 
         applyRunLock();
@@ -3776,6 +4001,7 @@ void EarTrainerEditor::showScreen (Screen screen)
 
     if (! onTraining)
     {
+        hintPlaceholder.setVisible (false);
         pointsFlyup.setVisible (false);
         promotionPips.setVisible (false);
         runCountdown.cancel();
@@ -3994,7 +4220,7 @@ void EarTrainerEditor::refreshProfile()
         row.detail = localisation.getText ("profile.familyDetail", { { "rounds", juce::String (familyRounds[f]) },
                                                                     { "games", juce::String (familyGames[f]) } });
         const auto now = lastRatings[f];
-        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("â");
+        row.rating = now > 0 ? juce::String (now) : juce::String::fromUTF8 ("\xe2\x80\x94");
 
         // How far it moved over the days the chart shows.
         if (now > 0 && c.history.size() >= 2)
@@ -4004,7 +4230,7 @@ void EarTrainerEditor::refreshProfile()
                     const auto delta = now - day[f];
                     if (delta != 0)
                     {
-                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("â")) + juce::String (std::abs (delta));
+                        row.delta = (delta > 0 ? "+" : juce::String::fromUTF8 ("\xe2\x88\x92")) + juce::String (std::abs (delta));
                         row.deltaUp = delta > 0;
                     }
                     break;
@@ -4315,6 +4541,9 @@ void EarTrainerEditor::refreshLocalisedText()
     }
 
     titleLabel.setText (localisation.getText ("app.eartrainer.name"), juce::dontSendNotification);
+    studioScreen.setOwnPluginLabel (localisation.getText ("own.button"));
+    if (auto* own = dynamic_cast<OwnPluginsPanel*> (studioScreen.getOwnPluginPanel()))
+        own->setStrings (ownPluginStrings());
     studioScreen.setLabels (localisation.getText ("ui.studio.caption"), localisation.getText ("lessons.open"),
                             localisation.getText ("studio.rotate"));
     lessonsWindow.reset();   // its words are in the old language; made again when asked
@@ -4465,10 +4694,13 @@ void EarTrainerEditor::rebuildChoiceSlider()
                                           game.getToleranceNormalised(),
                                           [&game, this] (float t)
                                           { return localiseValueText (game.formatNormalisedValue (t), localisation); });
+        choiceSlider.setIllustration (game.getScaleIllustration(), game.getScaleOctaves());
+        choiceSlider.setShowsGrip (touchFirst());
     }
     else
     {
         choiceSlider.setDiscreteScale();
+        choiceSlider.setIllustration (Game::ScaleIllustration::none, 0.0f);
     }
 
     // No axis caption on either scale. It used to read "< first - last >"
@@ -4586,6 +4818,8 @@ void EarTrainerEditor::requestHint()
     {
         vectorscope.reset();
         hintWaveform.reset();
+        hintWaveform.setTrainerMode (true, localisation.getText ("ui.crestCaption"));
+        hintWaveform.setAccentColour (AbcTrainTheme::accentFor (AbcTrainTheme::Family::dynamics));
         hintSpectrum.setSampleRate (processor.getSampleRate() > 0.0 ? processor.getSampleRate() : 44100.0);
 
         if (auto* reverb = dynamic_cast<ReverbGame*> (&game))
@@ -4812,7 +5046,7 @@ void EarTrainerEditor::refreshFromGameState()
         // on it.
         if (currentScreen == Screen::training)
         {
-            promotionPips.setVisible (true);
+            promotionPips.setVisible (session.getMode() != SessionManager::Mode::duel);
             promotionPips.set (progress.getStepRunForGame (index), progress.getStepUpAfter());
 
             const auto wantInstructions = shouldShowInstructions();
@@ -4827,9 +5061,12 @@ void EarTrainerEditor::refreshFromGameState()
     if (game.hasAnswered())
     {
         if (game.usesContinuousScale())
+        {
+            choiceSlider.setIllustrationDirection (game.getAnswerDirection());
             choiceSlider.showContinuousAnswer (game.getChosenNormalised(),
                                                 game.getCorrectNormalised(),
                                                 game.wasLastAnswerCorrect());
+        }
         else
             choiceSlider.showAnswer (game.getCorrectChoiceIndex(), game.getChosenChoiceIndex(), game.wasLastAnswerCorrect());
 
@@ -5010,6 +5247,73 @@ void EarTrainerEditor::refreshLiveStrings()
     s.botSpeedSlow = g ("live.botSpeedSlow", s.botSpeedSlow);
     s.botDisclaimer = g ("live.botDisclaimer", s.botDisclaimer);
     s.humansTitle = g ("live.humansTitle", s.humansTitle);
+    s.semNames = g ("live.semNames", s.semNames);
+    s.semAnon = g ("live.semAnon", s.semAnon);
+    s.semAnonHint = g ("live.semAnonHint", s.semAnonHint);
+    s.semInRoom = g ("live.semInRoom", s.semInRoom);
+    s.semAnswered = g ("live.semAnswered", s.semAnswered);
+    s.semRounds = g ("live.semRounds", s.semRounds);
+    s.semOneSound = g ("live.semOneSound", s.semOneSound);
+    s.semSoundPerRound = g ("live.semSoundPerRound", s.semSoundPerRound);
+    s.semNow = g ("live.semNow", s.semNow);
+    s.semSilence = g ("live.semSilence", s.semSilence);
+    s.semHallAnswers = g ("live.semHallAnswers", s.semHallAnswers);
+    s.semRightOf = g ("live.semRightOf", s.semRightOf);
+    s.semKeysHint = g ("live.semKeysHint", s.semKeysHint);
+    s.semKeyNext = g ("live.semKeyNext", s.semKeyNext);
+    s.semKeyReveal = g ("live.semKeyReveal", s.semKeyReveal);
+    s.semKeyPlay = g ("live.semKeyPlay", s.semKeyPlay);
+    s.semKeyProjector = g ("live.semKeyProjector", s.semKeyProjector);
+    s.semPeopleRow = g ("live.semPeopleRow", s.semPeopleRow);
+    s.semSoundRow = g ("live.semSoundRow", s.semSoundRow);
+    s.archiveButton = g ("live.archiveButton", s.archiveButton);
+    s.archiveTitle = g ("live.archiveTitle", s.archiveTitle);
+    s.archiveBack = g ("live.archiveBack", s.archiveBack);
+    s.archiveAll = g ("live.archiveAll", s.archiveAll);
+    s.archiveErrors = g ("live.archiveErrors", s.archiveErrors);
+    s.archiveExport = g ("live.archiveExport", s.archiveExport);
+    s.archiveRepeat = g ("live.archiveRepeat", s.archiveRepeat);
+    s.archiveRepeatSet = g ("live.archiveRepeatSet", s.archiveRepeatSet);
+    s.archiveEmpty = g ("live.archiveEmpty", s.archiveEmpty);
+    s.archiveStored = g ("live.archiveStored", s.archiveStored);
+    s.archiveSummary = g ("live.archiveSummary", s.archiveSummary);
+    s.colRoundAnswer = g ("live.colRoundAnswer", s.colRoundAnswer);
+    s.colSound = g ("live.colSound", s.colSound);
+    s.colGroup = g ("live.colGroup", s.colGroup);
+    s.colMissed = g ("live.colMissed", s.colMissed);
+    s.archiveNoMistakes = g ("live.archiveNoMistakes", s.archiveNoMistakes);
+    s.archiveSaved = g ("live.archiveSaved", s.archiveSaved);
+    s.battleRated = g ("live.battleRated", s.battleRated);
+    s.battleFriendly = g ("live.battleFriendly", s.battleFriendly);
+    s.ratedHint = g ("live.ratedHint", s.ratedHint);
+    s.friendlyHint = g ("live.friendlyHint", s.friendlyHint);
+    s.familiesCaption = g ("live.familiesCaption", s.familiesCaption);
+    s.botsTitle = g ("live.botsTitle", s.botsTitle);
+    s.botsSub = g ("live.botsSub", s.botsSub);
+    s.botOfDay = g ("live.botOfDay", s.botOfDay);
+    s.botDayLeft = g ("live.botDayLeft", s.botDayLeft);
+    s.botDayWon = g ("live.botDayWon", s.botDayWon);
+    s.acceptDay = g ("live.acceptDay", s.acceptDay);
+    s.colBot = g ("live.colBot", s.colBot);
+    s.colScore = g ("live.colScore", s.colScore);
+    s.colStars = g ("live.colStars", s.colStars);
+    s.colNext = g ("live.colNext", s.colNext);
+    s.ladderPassed = g ("live.ladderPassed", s.ladderPassed);
+    s.ladderFlawless = g ("live.ladderFlawless", s.ladderFlawless);
+    s.ladderWins = g ("live.ladderWins", s.ladderWins);
+    s.ladderOpen = g ("live.ladderOpen", s.ladderOpen);
+    s.ladderLocked = g ("live.ladderLocked", s.ladderLocked);
+    s.fight = g ("live.fight", s.fight);
+    s.rematch = g ("live.rematch", s.rematch);
+    s.recentTitle = g ("live.recentTitle", s.recentTitle);
+    s.recentEmpty = g ("live.recentEmpty", s.recentEmpty);
+    s.resWon = g ("live.resWon", s.resWon);
+    s.resLost = g ("live.resLost", s.resLost);
+    s.resDraw = g ("live.resDraw", s.resDraw);
+    s.resPlace = g ("live.resPlace", s.resPlace);
+    s.today = g ("live.today", s.today);
+    s.yesterday = g ("live.yesterday", s.yesterday);
+    s.botSuffix = g ("live.botSuffix", s.botSuffix);
     s.roomTitle = g ("live.roomTitle", s.roomTitle);
     s.scanToJoin = g ("live.scanToJoin", s.scanToJoin);
     s.roomCodeLabel = g ("live.roomCodeLabel", s.roomCodeLabel);
@@ -5086,6 +5390,9 @@ void EarTrainerEditor::refreshLiveStrings()
     }
 
     liveScreen.setStrings (std::move (s));
+    liveScreen.setRadarStrings ({ localisation.getText ("live.radar.window"), localisation.getText ("live.radar.anyone"),
+                                  localisation.getText ("live.radar.widening"), localisation.getText ("live.radar.queue"),
+                                  localisation.getText ("live.radar.accept"), localisation.getText ("live.radar.accepted") });
 }
 
 void EarTrainerEditor::refreshAccountState()
@@ -5142,6 +5449,7 @@ void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
 
     onlineOpponent.clear();
     onlineResultNote.clear();
+    onlineBattleLogged = false;
     session.setOpponent (bot);
     session.setMode (SessionManager::Mode::duel);
     session.startRun();   // a second battle in a row: setMode alone would not restart it
@@ -5151,6 +5459,88 @@ void EarTrainerEditor::startBotBattle (BotListener::Bot bot, int family)
 }
 
 // ---- a battle with a person (ADR 048) ---------------------------------------------
+
+OwnPluginsPanel::Strings EarTrainerEditor::ownPluginStrings() const
+{
+    OwnPluginsPanel::Strings t;
+    const auto& L = localisation;
+    t.title = L.getText ("own.title");          t.search = L.getText ("own.search");
+    t.scan = L.getText ("own.scan");            t.scanning = L.getText ("own.scanning");
+    t.found = L.getText ("own.found");          t.none = L.getText ("own.none");
+    t.pick = L.getText ("own.pick");            t.loading = L.getText ("own.loading");
+    t.failed = L.getText ("own.failed");        t.knobs = L.getText ("own.knobs");
+    t.noKnobs = L.getText ("own.noKnobs");      t.options = L.getText ("own.options");
+    t.yours = L.getText ("own.yours");          t.hidden = L.getText ("own.hidden");
+    t.dry = L.getText ("own.dry");              t.start = L.getText ("own.start");
+    t.next = L.getText ("own.next");            t.question = L.getText ("own.question");
+    t.right = L.getText ("own.right");          t.wrong = L.getText ("own.wrong");
+    t.tally = L.getText ("own.tally");          t.locked = L.getText ("own.locked");
+    t.desktopOnly = L.getText ("own.desktopOnly");
+    t.silent = L.getText ("own.silent");
+    t.ownWindow = L.getText ("own.ownWindow");
+    t.sortPurpose = L.getText ("own.sortPurpose");  t.sortName = L.getText ("own.sortName");
+    t.sortVendor = L.getText ("own.sortVendor");
+    t.categories = { L.getText ("own.cat.eq"), L.getText ("own.cat.dyn"), L.getText ("own.cat.space"),
+                     L.getText ("own.cat.sat"), L.getText ("own.cat.mod"), L.getText ("own.cat.other") };
+    t.learn = L.getText ("own.learn");              t.guess = L.getText ("own.guess");
+    t.learnIntro = L.getText ("own.learnIntro");    t.guessIntro = L.getText ("own.guessIntro");
+    t.low = L.getText ("own.low");                  t.high = L.getText ("own.high");
+    t.mine = L.getText ("own.mine");                t.nextKnob = L.getText ("own.nextKnob");
+    t.listenFor = L.getText ("own.listenFor");      t.noDescription = L.getText ("own.noDescription");
+    t.unknownCaption = L.getText ("own.unknownCaption");
+    t.heard = L.getText ("own.heard");
+    t.sweep = L.getText ("own.sweep");              t.copies = L.getText ("own.copies");
+    t.watch = L.getText ("own.watch");
+    t.glossary = [this] (const juce::String& key) { return localisation.getText ("own.g." + key); };
+    return t;
+}
+
+bool EarTrainerEditor::battleStripShown() const
+{
+    return currentScreen == Screen::training && isRunHudActive()
+           && session.getMode() == SessionManager::Mode::duel;
+}
+
+void EarTrainerEditor::refreshBattleStrip()
+{
+    if (! snapshotRoom.empty())
+    {
+        battleStrip.setPlayers (snapshotRoom);
+        return;
+    }
+
+    std::vector<BattlePlayersStrip::Player> room;
+    const auto& st = onlineBattle.getState();
+    const auto youLabel = processor.getLiveAccount().getNick().isNotEmpty() ? processor.getLiveAccount().getNick()
+                                                                             : localisation.getText ("battle.you");
+
+    if (st.stage == OnlineBattle::Stage::playing && ! st.players.empty())
+    {
+        // A room on the server: everyone in the server's order. Whether
+        // the others have answered is only known as one flag, so it is
+        // shown only when there is exactly one other player.
+        for (size_t i = 0; i < st.players.size(); ++i)
+        {
+            const auto& p = st.players[i];
+            BattlePlayersStrip::Player card;
+            card.you = (int) i == st.you;
+            card.name = card.you ? youLabel : p.nick;
+            card.hp = card.you ? session.getPlayerHp() : p.hp;
+            card.left = ! p.alive && p.hp > 0.0f;
+            card.answered = card.you ? st.round.answered
+                                     : (st.players.size() == 2 && st.round.opponentAnswered);
+            room.push_back (card);
+        }
+    }
+    else
+    {
+        // Against a bot: you and it.
+        room.push_back ({ youLabel, session.getPlayerHp(), true, false, processor.getGameManager().getActiveGame().hasAnswered() });
+        room.push_back ({ opponentName(), session.getOpponentHp(), false, false, false });
+    }
+
+    battleStrip.setPlayers (std::move (room));
+}
 
 juce::String EarTrainerEditor::opponentName() const
 {
@@ -5216,6 +5606,13 @@ void EarTrainerEditor::handleOnlineBattle()
 
         liveScreen.setOnlineStatus (st.stage == Stage::searching, line);
         liveScreen.setReadyCheck (st.stage == Stage::ready && st.youAccepted < 0);
+
+        if (st.stage == Stage::searching)
+            liveScreen.setSearchProgress (st.waitingMs, st.inQueue);
+        else if (st.stage == Stage::ready)
+            liveScreen.setReadyProgress (st.deadlineInMs, st.members, st.accepted);
+        else
+            liveScreen.clearSearchProgress();
     }
 
     // A room was found (like CS): bring the window up and the Live page with
@@ -5259,6 +5656,25 @@ void EarTrainerEditor::handleOnlineBattle()
                                        : juce::String();
         if (st.forfeit == "them")
             onlineResultNote = localisation.getText ("live.opponentLeft") + (onlineResultNote.isEmpty() ? "" : "\n" + onlineResultNote);
+        // Into the last battles on the Live page, once.
+        if (! onlineBattleLogged)
+        {
+            onlineBattleLogged = true;
+            BattleRecords::Recent r;
+            r.when = juce::Time::currentTimeMillis();
+            juce::StringArray others;
+            for (int i = 0; i < (int) st.players.size(); ++i)
+                if (i != st.you)
+                    others.add (st.players[(size_t) i].nick);
+            r.who = others.joinIntoString (", ");
+            r.place = st.players.size() > 2 ? st.place
+                    : st.place == 1 ? 1 : st.place == 2 ? 0 : -1;
+            r.rated = st.recorded;
+            r.ratingDelta = juce::roundToInt (st.delta);
+            battleRecords.addRecent (r);
+            liveScreen.repaint();
+        }
+
         if (st.players.size() > 2 && st.place > 0)
             onlineResultNote = localisation.getText ("live.place")
                                    .replace ("{{place}}", juce::String (st.place))
@@ -5337,6 +5753,7 @@ void EarTrainerEditor::startOnlineBattle()
     onlineScheduledRound = -1;
     onlineOpponent = st.opponentNick + " (" + juce::String (st.opponentRating) + ")";
     onlineResultNote.clear();
+    onlineBattleLogged = false;
 
     for (auto* pill : { &practiceButton, &survivalButton, &blitzButton })
         pill->setToggleState (false, juce::dontSendNotification);
@@ -5439,7 +5856,7 @@ void EarTrainerEditor::createSeminarHost()
     // A seminar round is the trainer's round without the player: the same
     // newRound(), a fresh clip, clean first. Nobody answers it here, so
     // the presenter's progress is untouched (ProgressManager scores answers).
-    hooks.startRound = [this]
+    hooks.startRound = [this] (bool freshClip)
     {
         ++pendingAdvanceId;
         clearHint();
@@ -5447,7 +5864,14 @@ void EarTrainerEditor::createSeminarHost()
         game.setPlayProcessed (false);
         refreshBeforeAfter();
         game.newRound();
-        processor.getGameManager().getReferenceAudioLibrary().advanceToRandomClip (processor.getSampleRate());
+        if (freshClip)
+            processor.getGameManager().getReferenceAudioLibrary().advanceToRandomClip (processor.getSampleRate());
+    };
+
+    hooks.soundName = [this]
+    {
+        const auto file = processor.getGameManager().getReferenceAudioLibrary().getSelectedFile();
+        return file.existsAsFile() ? file.getFileNameWithoutExtension() : juce::String();
     };
 
     hooks.setSound = [this] (bool play, bool processed)
@@ -5478,4 +5902,11 @@ void EarTrainerEditor::createSeminarHost()
 
     seminarHost = std::make_unique<SeminarHost> (std::move (hooks));
     liveScreen.setSeminarHost (seminarHost.get());
+
+    // Every seminar held goes to the archive, for going over the mistakes.
+    seminarHost->onFinished = [this] (const SeminarArchive::Session& session)
+    {
+        SeminarArchive::save (session);
+        liveScreen.refreshArchive();
+    };
 }

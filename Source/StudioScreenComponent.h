@@ -37,6 +37,11 @@ public:
 
         // What the Learner's companion window shows as "Hearing today".
         std::function<CompanionHearing()> hearing;
+
+        // «Свой плагин» (ADR 065): the page for the player's own installed
+        // plugins. Absent (nullptr) where the app cannot host plugins - iOS.
+        std::function<std::unique_ptr<juce::Component>()> makeOwnPluginPanel;
+        std::function<void (bool)> setOwnPluginActive;
     };
 
     explicit StudioScreenComponent (Host);
@@ -59,6 +64,9 @@ public:
     // On a phone held upright the plugins do not fit: the page asks for
     // the phone to be turned instead of showing them at a third of their
     // size (ADR 060). Off on a desktop, where a narrow window just scales.
+    void setOwnPluginLabel (const juce::String& label) { ownButton.setButtonText (label); }
+    void selectOwnPlugin();
+    juce::Component* getOwnPluginPanel() const noexcept { return ownPanel.get(); }
     void setRotatePromptAllowed (bool allowed);
     bool showsRotatePrompt() const;
 
@@ -92,6 +100,11 @@ private:
     static constexpr int sideSwitchWidth = 112;
 
     std::array<juce::TextButton, numEffects> switchButtons;
+    juce::TextButton ownButton;
+    bool ownSelected = false;
+    std::unique_ptr<juce::Component> ownPanel;
+    void showOwnPanel();
+    void dropOwnPanel();
     juce::TextButton lessonsButton;
     std::unique_ptr<juce::AudioProcessorEditor> editor;
 

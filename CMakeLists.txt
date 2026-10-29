@@ -34,7 +34,18 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 # and later - every iPhone and iPad that still gets system updates.
 if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     set(ABCTRAIN_IOS ON)
-    set(CMAKE_OSX_DEPLOYMENT_TARGET "18.0" CACHE STRING "Minimum iOS version" FORCE)
+    # The minimum iOS goes to Xcode as its own setting, not through
+    # CMAKE_OSX_DEPLOYMENT_TARGET: JUCE passes that variable on to juceaide,
+    # a tool it builds for the Mac while configuring, and "macOS 18.0" does
+    # not exist ("invalid version number in -target arm64-apple-macos18.0").
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "" CACHE STRING "Left empty on iOS, see below" FORCE)
+    set(CMAKE_XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "18.0")
+    # iPhone and iPad only. Without this Xcode also offers "My Mac" as a
+    # destination, and building for it hands clang the iOS minimum as a
+    # macOS one: "invalid version number in -target arm64-apple-macos18.0".
+    set(CMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS "iphoneos iphonesimulator")
+    set(CMAKE_XCODE_ATTRIBUTE_SUPPORTS_MACCATALYST "NO")
+    set(CMAKE_XCODE_ATTRIBUTE_SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD "NO")
 else()
     set(ABCTRAIN_IOS OFF)
 endif()
@@ -492,8 +503,14 @@ target_sources(EarTrainer
         Source/OnlineBattle.cpp
         Source/LocalRoom.cpp
         Source/SeminarHost.cpp
+        Source/SeminarArchive.cpp
         Source/ProjectorWindow.cpp
         Source/InviteListComponent.cpp
+        Source/OwnPlugins/OwnPluginPlayer.cpp
+        Source/OwnPlugins/OwnPluginsPanel.cpp
+        Source/OwnPlugins/KnobGlossary.cpp
+        Source/Hotkeys.cpp
+        Source/BattleRecords.cpp
 )
 
 target_compile_definitions(EarTrainer
@@ -501,6 +518,14 @@ target_compile_definitions(EarTrainer
         JUCE_WEB_BROWSER=0
         JUCE_VST3_CAN_REPLACE_VST2=0
 )
+
+# «Свой плагин» (ADR 065): the app hosts the player's own VST3 (and AU on
+# macOS) plugins on the desktop. Not on iOS - none of those plugins exist
+# there, and an app may not load other code. The editor tools get the same
+# switch below, so a snapshot shows the page the app shows.
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_compile_definitions(EarTrainer PUBLIC JUCE_PLUGINHOST_VST3=1 $<$<PLATFORM_ID:Darwin>:JUCE_PLUGINHOST_AU=1>)
+endif()
 
 target_link_libraries(EarTrainer
     PRIVATE
@@ -734,6 +759,7 @@ target_sources(EarTrainerTests
         Source/OnlineBattle.cpp
         Source/LocalRoom.cpp
         Source/SeminarHost.cpp
+        Source/SeminarArchive.cpp
         Source/InviteListComponent.cpp
         tests/LocalRoomTest.cpp
         tests/PluralTest.cpp
@@ -747,6 +773,8 @@ target_sources(EarTrainerTests
         tests/BattleShareTest.cpp
         tests/UiSoundsTest.cpp
         tests/LoudnessMatchTest.cpp
+        tests/OwnPluginRoundTest.cpp
+        Source/OwnPlugins/KnobGlossary.cpp
         tests/RoundOracleTest.cpp
         tests/PackCatalogTest.cpp
         tests/LiveMaterialTest.cpp
@@ -827,8 +855,14 @@ set(abcTrainEditorToolSources
         Source/OnlineBattle.cpp
         Source/LocalRoom.cpp
         Source/SeminarHost.cpp
+        Source/SeminarArchive.cpp
         Source/ProjectorWindow.cpp
         Source/InviteListComponent.cpp
+        Source/OwnPlugins/OwnPluginPlayer.cpp
+        Source/OwnPlugins/OwnPluginsPanel.cpp
+        Source/OwnPlugins/KnobGlossary.cpp
+        Source/Hotkeys.cpp
+        Source/BattleRecords.cpp
 )
 
 juce_add_console_app(EditorSnapshots
@@ -847,6 +881,7 @@ target_compile_definitions(EditorSnapshots
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
+        JUCE_PLUGINHOST_VST3=1
 )
 
 target_link_libraries(EditorSnapshots
@@ -929,6 +964,7 @@ target_compile_definitions(ClickMap
     PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
+        JUCE_PLUGINHOST_VST3=1
 )
 
 target_link_libraries(ClickMap
@@ -993,6 +1029,31 @@ juce_add_console_app(RoomDemo PRODUCT_NAME "RoomDemo")
 target_sources(RoomDemo PRIVATE tools/RoomDemo.cpp Source/LocalRoom.cpp)
 target_compile_definitions(RoomDemo PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
 target_link_libraries(RoomDemo PRIVATE juce::juce_gui_basics juce::juce_recommended_config_flags)
+
+# PluginProbe - stage 0 of "Свой плагин" (ADR 064, replica/recon.md): loads
+# installed third-party plugins as a host would and reports whether abcTrain
+# can drive them (parameters and their text, latency, repeatable renders,
+# state restore, demo silence) plus a first sweep of every knob. Not in CI,
+# not shipped: it needs the plugins on this Mac. The app itself gains plugin
+# hosting only in stage 1.
+juce_add_console_app(PluginProbe PRODUCT_NAME "PluginProbe")
+target_sources(PluginProbe PRIVATE tools/PluginProbe.cpp)
+target_compile_definitions(PluginProbe PRIVATE
+    JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_PLUGINHOST_VST3=1 $<$<PLATFORM_ID:Darwin>:JUCE_PLUGINHOST_AU=1>)
+target_link_libraries(PluginProbe PRIVATE juce::juce_audio_processors juce::juce_audio_utils juce::juce_dsp
+    juce::juce_recommended_config_flags)
+
+# OwnPluginSmoke - «Свой плагин» end to end on a real plugin, no window
+# (ADR 065): rounds through OwnPluginPlayer, checking that A is untouched,
+# B is matched in level and switching does not click. Not in CI.
+juce_add_console_app(OwnPluginSmoke PRODUCT_NAME "OwnPluginSmoke")
+target_sources(OwnPluginSmoke PRIVATE tools/OwnPluginSmoke.cpp Source/OwnPlugins/OwnPluginPlayer.cpp)
+target_compile_definitions(OwnPluginSmoke PRIVATE
+    JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_PLUGINHOST_VST3=1 $<$<PLATFORM_ID:Darwin>:JUCE_PLUGINHOST_AU=1>)
+target_link_libraries(OwnPluginSmoke PRIVATE juce::juce_audio_processors juce::juce_audio_utils
+    juce::juce_recommended_config_flags)
 
 
 # The battle server's judge (b05, ADR 056): the game engine without a window,

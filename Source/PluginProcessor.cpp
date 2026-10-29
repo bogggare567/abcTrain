@@ -95,6 +95,7 @@ void EarTrainerProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     clipPreview.prepare (sampleRate);
     uiSounds.prepare (sampleRate);
+    ownPlugin.prepare (sampleRate, samplesPerBlock);
     GainMatch::sampleRate = sampleRate;   // for the BS.1770 match (t03)
     probeTone.prepare (sampleRate);
     hearingCompensation.prepare (sampleRate);
@@ -161,6 +162,17 @@ void EarTrainerProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         // controller's EQ, not part of the mix. Does nothing without an
         // active profile and the Settings switch.
         hearingCompensation.process (buffer);
+        uiSounds.render (buffer);
+        applyOutputGain (buffer);
+        outputMeter.process (buffer);
+        return;
+    }
+
+    // The player's own plugin: like the Studio, it replaces the trainer's
+    // signal, and the same last steps follow it.
+    if (ownPluginActive.load() && ! calibrationNoise.load())
+    {
+        ownPlugin.process (buffer);
         uiSounds.render (buffer);
         applyOutputGain (buffer);
         outputMeter.process (buffer);

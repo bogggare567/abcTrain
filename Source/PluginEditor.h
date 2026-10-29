@@ -18,6 +18,10 @@
 #include "StudioScreenComponent.h"
 #include "LiveScreenComponent.h"
 #include "OnlineBattle.h"
+#include "BattlePlayersStrip.h"
+#include "HintPlaceholder.h"
+#include "Hotkeys.h"
+#include "OwnPlugins/OwnPluginsPanel.h"
 #include "RunResultsComponent.h"
 #include "TopNavComponent.h"
 #include "AchievementsScreenComponent.h"
@@ -201,6 +205,21 @@ public:
     void switchStudioForSnapshot (StudioScreenComponent::Effect effect)
     {
         studioScreen.select (effect);
+        resized();
+    }
+
+    // «Свой плагин» with a list and an answered round, no plugin loaded
+    // (EditorSnapshots "EarTrainer-StudioOwnPlugin").
+    void openOwnPluginForSnapshot (bool learning = false)
+    {
+        openStudioForSnapshot (StudioScreenComponent::Effect::eq);
+        studioScreen.selectOwnPlugin();
+       #if JUCE_PLUGINHOST_VST3 || JUCE_PLUGINHOST_AU
+        if (auto* own = dynamic_cast<OwnPluginsPanel*> (studioScreen.getOwnPluginPanel()))
+            own->showForSnapshot (learning);
+       #else
+        juce::ignoreUnused (learning);
+       #endif
         resized();
     }
 
@@ -496,6 +515,19 @@ public:
 
         refreshRunStatus();
         resized();
+    }
+
+    // A six-player room mid-battle: the strip's two-row shape, one player
+    // gone (EditorSnapshots "EarTrainer-BattleRoom").
+    void battleRoomForSnapshot (int players)
+    {
+        std::vector<BattlePlayersStrip::Player> room {
+            { "bogggare", 88.0f, true, false, false }, { "nyak", 71.0f, false, false, true },
+            { "den4ik", 41.0f, false, true, false },   { "sound_k", 92.0f, false, false, true },
+            { "marina", 30.0f, false, false, false },  { "ilya_m", 54.0f, false, false, false } };
+        room.resize ((size_t) juce::jlimit (2, 6, players));
+        snapshotRoom = room;
+        duelForSnapshot (false);
     }
 
     void startRunForSnapshot (SessionManager::Mode mode)
@@ -867,6 +899,14 @@ private:
             repaint();
         }
 
+        // With the players strip on screen (BattlePlayersStrip) the HP
+        // bars would say the same thing twice: the HUD then shows only
+        // which round of how many, as segments.
+        void setPlayersShownElsewhere (bool shown)
+        {
+            if (shown != playersElsewhere) { playersElsewhere = shown; repaint(); }
+        }
+
         // ... and both sides' HP (ADR 049).
         void setDuelHp (float newPlayerHp, float newOpponentHp)
         {
@@ -892,6 +932,29 @@ private:
             // A battle is about HP (ADR 049): two bars facing each other,
             // yours in the accent, the opponent's warm, then who and which
             // round. Drawn instead of the run score.
+            if (mode == SessionManager::Mode::duel && playersElsewhere)
+            {
+                const auto n = juce::jmax (1, rounds);
+                const auto current = juce::jlimit (1, n, round);
+                auto row = area.withSizeKeepingCentre (area.getWidth(), 8.0f);
+                auto label = row.removeFromRight (48.0f);
+                const auto gap = 3.0f;
+                const auto w = (row.getWidth() - gap * (float) (n - 1)) / (float) n;
+                for (int i = 1; i <= n; ++i)
+                {
+                    const auto seg = juce::Rectangle<float> (row.getX() + (float) (i - 1) * (w + gap), row.getY(), w, row.getHeight());
+                    g.setColour (i < current ? theme.accent : i == current ? theme.accentWarm : theme.displayBackground);
+                    g.fillRect (seg);
+                }
+                g.setColour (theme.text);
+                g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (AbcTrainLookAndFeel::monoFontHeight
+                                                                     * AbcTrainLookAndFeel::getTextScale() * 1.1f));
+                AbcTrainLookAndFeel::fitText (g, juce::String (current) + "/" + juce::String (n),
+                                              label.withHeight (area.getHeight()).withY (area.getY()),
+                                              juce::Justification::centredRight, false);
+                return;
+            }
+
             if (mode == SessionManager::Mode::duel)
             {
                 const auto barH = 8.0f;
@@ -980,6 +1043,8 @@ private:
         }
 
     private:
+        bool playersElsewhere = false;
+
         void flashLostLife()
         {
             if (! flashAnimator.isComplete())
@@ -1355,6 +1420,9 @@ private:
     // Beginner/Pro and every rule it governs, and the ears' own clock
     // (ADR 036). Both read and write the same settings file.
     TrainerSettings trainerSettings { localisationProperties };
+    Hotkeys::Map hotkeys { localisationProperties };
+    BattleRecords battleRecords { localisationProperties };   // the bot ladder, the bot of the day, the last battles   // Settings > Keys writes the same file
+    bool runTrainingHotkey (const juce::String& actionId);
     HearingGuard hearingGuard { localisationProperties };
 
     // Reads TrainerSettings into the session, the staircase and the guard.
@@ -1440,7 +1508,10 @@ private:
     SpectrumAnalyzerComponent hintSpectrum;
     WaveformDisplay hintWaveform;
     EchogramView hintEcho;
+    HintPlaceholder hintPlaceholder;   // the picture's room before it is bought
     bool hintRevealed = false;
+    bool hintPictureRoom() const;      // this round has a picture to make room for
+    void placeHintPlaceholder (juce::Rectangle<int>, bool withButton);
 
     // Which of the three the active exercise wants. One place, because
     // resized() and the visibility pass both need the same answer and two
@@ -1628,6 +1699,25 @@ private:
     // Touch first (ADR 062): a phone or a tablet - or the snapshot tool
     // pretending to be one. The scale then places the answer and the
     // Answer button sends it.
+    bool answerByButton() const
+    {
+       #if JUCE_IOS || JUCE_ANDROID
+        return false;   // a phone already answers with its own button
+       #else
+        return localisationProperties.getIntValue (SettingsScreenComponent::answerByButtonKey, 0) == 1;
+       #endif
+    }
+
+    // "Keep the window above other apps" (Settings > Appearance).
+    void applyWindowPrefs()
+    {
+       #if ! (JUCE_IOS || JUCE_ANDROID)
+        if (auto* top = getTopLevelComponent())
+            if (top != this)
+                top->setAlwaysOnTop (localisationProperties.getBoolValue (SettingsScreenComponent::alwaysOnTopKey, false));
+       #endif
+    }
+
     static bool touchFirst()
     {
        #if JUCE_IOS || JUCE_ANDROID
@@ -1670,6 +1760,10 @@ private:
     // under a HUD, not next to a row of mode pills.
     RunCountdown runCountdown;
     RunHud runHud;
+    BattlePlayersStrip battleStrip;          // who is in a battle, above the exercise
+    std::vector<BattlePlayersStrip::Player> snapshotRoom;   // EditorSnapshots only
+    void refreshBattleStrip();
+    bool battleStripShown() const;
 
     // Ends a live run without leaving the exercise - see the handler.
     juce::TextButton endRunButton;
@@ -1901,6 +1995,7 @@ private:
     int onlineScheduledRound = -1;       // a round waiting for its start time
     juce::String onlineOpponent;         // for the HUD and the result, after the state is gone
     juce::String onlineResultNote;       // "Decibelo +16 -> 1516"
+    bool onlineBattleLogged = false;     // put into BattleRecords' last battles once
     bool readyCheckShown = false;        // the window was brought up for this room
     struct SavedClip { juce::File file; juce::String category; bool pinned = false; } onlineSavedClip;
 
@@ -1932,7 +2027,22 @@ private:
                 h.minutesUntilBreak = juce::jmax (0, config.breakMinutes - hearingGuard.continuousSeconds() / 60);
 
             return h;
-        } } };
+        },
+        // «Свой плагин» (ADR 065): only where the app can host plugins.
+       #if JUCE_PLUGINHOST_VST3 || JUCE_PLUGINHOST_AU
+        [this]() -> std::unique_ptr<juce::Component>
+        {
+            auto panel = std::make_unique<OwnPluginsPanel> (processor.getOwnPluginPlayer());
+            panel->setStrings (ownPluginStrings());
+            panel->scanIfNeeded();
+            return panel;
+        },
+       #else
+        nullptr,
+       #endif
+        [this] (bool active) { processor.setOwnPluginActive (active); } } };
+
+    OwnPluginsPanel::Strings ownPluginStrings() const;
 
     TrainingSoundsComponent trainingSounds;
     // The home screen lives inside a Viewport: nine trainings across four

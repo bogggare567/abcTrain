@@ -166,10 +166,10 @@ namespace
 
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
-                       answered, survivalRun, duelRun, duelResults, home, homeWithRecords, hint,
-                       settingsPro, settingsHearing, settingsAbout, settingsAppearance, hearingNotice, moduleResult,
-                       studioEQ, studioComp, studioVerb, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
-                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, eqSlope,
+                       answered, survivalRun, duelRun, duelResults, battleRoom3, battleRoom6, home, homeWithRecords, hint,
+                       settingsPro, settingsHearing, settingsAbout, settingsKeys, liveArchive, studioOwnLearn, settingsAppearance, hearingNotice, moduleResult,
+                       studioEQ, studioComp, studioVerb, studioOwn, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
+                       liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, liveSearch, eqSlope,
                        liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack,
                        liveRoundOpen, liveRoundAnswer, soundsChecked,
                        hearingSetup, hearingTest, hearingResult, hearingOffer, eqHearing, studioEQHearing,
@@ -265,6 +265,9 @@ namespace
                 if (extra == Extra::duelRun || extra == Extra::duelResults)
                     editor.duelForSnapshot (extra == Extra::duelResults);
 
+                if (extra == Extra::battleRoom3 || extra == Extra::battleRoom6)
+                    editor.battleRoomForSnapshot (extra == Extra::battleRoom3 ? 3 : 6);
+
                 if (extra == Extra::sounds)
                     editor.openSoundsForSnapshot();
 
@@ -302,6 +305,13 @@ namespace
                 if (extra == Extra::settingsLive)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::live, false);
 
+                if (extra == Extra::liveSearch)
+                {
+                    processor.getLiveAccount().signInForSnapshot ("bogdan");
+                    editor.openLiveForSnapshot (1);
+                    editor.getLiveScreenForSnapshot().showSearchForSnapshot (14500);
+                }
+
                 if (extra == Extra::settingsLiveSignedIn || extra == Extra::liveBattleSignedIn)
                 {
                     processor.getLiveAccount().signInForSnapshot ("bogdan");
@@ -316,6 +326,43 @@ namespace
 
                 if (extra == Extra::settingsAbout)
                     editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::about, false);
+
+                if (extra == Extra::liveArchive)
+                {
+                    editor.openLiveForSnapshot (0);
+                    std::vector<SeminarArchive::Session> sessions;
+                    const char* names[] { "Ivan P.", "Maria S.", "Artem K.", "Lena", "Dima", "Olya", "Sasha", "Nikita", "Vera" };
+                    for (int k = 0; k < 4; ++k)
+                    {
+                        SeminarArchive::Session ss;
+                        ss.title = k == 1 ? "Open lesson: compression" : "Sound engineering, year 2";
+                        ss.when = juce::Time (2026, 9, 16 - k * 7, 18, 30);
+                        ss.people = 9 + k;
+                        const std::pair<int, const char*> plan[] { { 0, "boost 1.6 kHz" }, { 1, "Strong, -16 dB" }, { 0, "cut 250 Hz" },
+                                                                   { 8, "Low-mids" }, { 7, "+2 dB" }, { 1, "Light, -2 dB" },
+                                                                   { 3, "R 40" }, { 8, "Presence" }, { 7, "-1 dB" }, { 0, "boost 4 kHz" } };
+                        int r = 0;
+                        for (const auto& [game, answer] : plan)
+                        {
+                            SeminarArchive::Round rr;
+                            rr.game = game;
+                            rr.exercise = game == 0 ? "Guess the Band" : game == 1 ? "Compression" : game == 8 ? "Frequency range" : game == 7 ? "Gain change" : "Pan";
+                            rr.answer = answer;
+                            rr.sound = (r % 3 == 0) ? "Vocal female" : (r % 3 == 1) ? "Drum loop 3" : "Acoustic guitar";
+                            rr.answered = 9;
+                            rr.right = 9 - (r * 7 % 5);
+                            for (int m = 0; m < 9 - rr.right; ++m)
+                                rr.missed.add (names[(r + m * 2) % 9]);
+                            ss.rounds.push_back (rr);
+                            ++r;
+                        }
+                        sessions.push_back (ss);
+                    }
+                    editor.getLiveScreenForSnapshot().openArchiveForSnapshot (sessions);
+                }
+
+                if (extra == Extra::settingsKeys)
+                    editor.openSettingsPageForSnapshot (SettingsScreenComponent::Page::keys, false);
 
                 if (extra == Extra::hearingNotice)
                     editor.showHearingNoticeForSnapshot();
@@ -334,6 +381,12 @@ namespace
                     editor.switchStudioForSnapshot (StudioScreenComponent::Effect::comp);
                     editor.switchStudioForSnapshot (StudioScreenComponent::Effect::eq);
                 }
+
+                if (extra == Extra::studioOwn)
+                    editor.openOwnPluginForSnapshot();
+
+                if (extra == Extra::studioOwnLearn)
+                    editor.openOwnPluginForSnapshot (true);
 
                 if (extra == Extra::studioComp)
                     editor.openStudioForSnapshot (StudioScreenComponent::Effect::comp);
@@ -657,6 +710,8 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SurvivalRun", 0, Extra::survivalRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-DuelRun", 3, Extra::duelRun);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-DuelResults", 3, Extra::duelResults);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-BattleRoom3", 0, Extra::battleRoom3);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-BattleRoom6", 0, Extra::battleRoom6);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Sounds", -1, Extra::sounds);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SoundClips", -1, Extra::soundClips);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Settings", -1, Extra::settings);
@@ -670,6 +725,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingResult", -1, Extra::hearingResult);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-HearingOffer", -1, Extra::hearingOffer);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioComp", -1, Extra::studioComp);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioOwnPlugin", -1, Extra::studioOwn);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioRevisit", -1, Extra::studioRevisit);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioVerb", -1, Extra::studioVerb);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSeminar", -1, Extra::liveSeminar);
@@ -690,6 +746,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsLive", -1, Extra::settingsLive);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsLiveSignedIn", -1, Extra::settingsLiveSignedIn);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveBattleSignedIn", -1, Extra::liveBattleSignedIn);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveSearch", -1, Extra::liveSearch);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Results", -1, Extra::results);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Achievements", -1, Extra::achievements);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-Profile", -1, Extra::profile);
@@ -708,6 +765,9 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsPro", -1, Extra::settingsPro);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsHearing", -1, Extra::settingsHearing);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsAbout", -1, Extra::settingsAbout);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsKeys", -1, Extra::settingsKeys);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveArchive", -1, Extra::liveArchive);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioOwnLearn", -1, Extra::studioOwnLearn);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsAppearance", -1, Extra::settingsAppearance);
 
             if (hadSettings)

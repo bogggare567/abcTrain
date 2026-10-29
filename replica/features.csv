@@ -1,0 +1,31 @@
+feature,area,priority,original,clone,notes
+Скан VST3 и AU в отдельном процессе,host,must,#44,no,падающий плагин не роняет abcTrain
+Список «не загружается» и метка демо,host,must,research,no,
+Загрузка плагина и чтение параметров (имя / единицы / шаги / текст),host,must,#44,no,этап 0
+Восстановление состояния игрока после раунда,host,must,#44,no,сравнение параметров и рендера
+Два экземпляра: эталон и мой,host,must,#44,no,этап 3
+Компенсация latency и хвоста,host,must,research,no,
+A/B кроссфейд на выровненной громкости,host,must,#44,partial,GainMatch уже есть
+Показ настоящего окна плагина (живое / заблокировано / скрыто),ui,must,#44,no,
+Зонд: 33 позиции × тестовые сигналы,probe,must,research,no,PluginProbe
+Таблица положение→текст плагина,probe,must,#44,no,
+Правила роли по единицам и именам,model,must,research,no,базовая линия
+Перцептрон роли ручки,model,should,research,no,веса в приложении
+Подтвердить / исправить роль,model,should,research,no,активное обучение
+Карточка ручки с графиком отклика,ui,should,research,no,
+Перцептуальная шкала расстояний,scale,should,research,no,
+Слышимость ручки на файле игрока,scale,must,research,no,
+Упражнение «Угадай значение» 2/5 вариантов,exercise,must,#44,no,этап 1
+Упражнение «Больше или меньше»,exercise,should,research,no,этап 2
+Упражнение «Какая ручка повернулась»,exercise,should,research,no,этап 2
+Упражнение «Повтори эталон»,exercise,must,#44,no,этап 3
+Повтори несколько ручек,exercise,could,research,no,этап 4
+Итог сессии по ручкам,ui,must,research,no,
+Профиль плагина JSON локально,data,must,research,no,
+Рэк: показать выставленные параметры и совет взять модуль,host,should,user,no,вопрос Богдана
+Оболочки (WaveShell) как отдельные плагины,host,should,user,no,
+Телефон: прогресс и «открыть на компьютере»,ui,could,user,no,
+Отчёт этапа 0,dev,must,research,no,
+Интерфейсы чужих плагинов перерисовать,ui,skip,,skip,не берём: показываем их собственный редактор
+Хостинг bx/FabFilter на iOS,host,skip,,skip,этих плагинов нет под iOS
+Публичный обмен профилями,data,skip,,skip,сначала EULA
