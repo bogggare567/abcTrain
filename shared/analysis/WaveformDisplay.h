@@ -112,6 +112,17 @@ public:
     // Draw the per-column highlight as a gain-reduction line hanging from
     // the top, with a caption, and a legend along the bottom - the Comp's
     // display. Empty strings turn it off.
+    // The trainer's compression hint: the picture is scaled to the signal
+    // (a quiet source no longer draws a hairline), and a meter at the right
+    // shows peak against RMS with their difference in dB - the crest
+    // factor, which is the number compression actually changes (ADR 063).
+    void setTrainerMode (bool shouldUse, juce::String crestCaption = {})
+    {
+        trainerMode = shouldUse;
+        crestText = std::move (crestCaption);
+        repaint();
+    }
+
     void setGainReductionTrace (juce::String captionText, juce::String legendText)
     {
         grCaption = std::move (captionText);
@@ -152,6 +163,9 @@ private:
     std::array<float, numColumns> inputPeaks {}, outputPeaks {}, inputRms {}, outputRms {}, highlights {};
     float inputPeakReadout = 0.0f, outputPeakReadout = 0.0f, highlightReadout = 0.0f;
     juce::String grCaption, legend;
+    bool trainerMode = false;
+    juce::String crestText;
+    float displayGain = 1.0f;
     double lastTick = 0.0;
     bool quiet = true;
 

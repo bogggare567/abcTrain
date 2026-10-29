@@ -112,6 +112,8 @@ public:
 
     // See Game::getHintView.
     HintView getHintView() const override { return HintView::envelope; }
+    ScaleIllustration getScaleIllustration() const override { return ScaleIllustration::echoes; }
+    float getScaleOctaves() const override { return std::log2 (axisMaxMs / axisMinMs); }
 
     int getScore() const override { return correctCount; }
     int getRoundsPlayed() const override { return totalCount; }

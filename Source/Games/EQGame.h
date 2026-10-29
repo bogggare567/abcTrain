@@ -66,6 +66,8 @@ public:
     void submitAnswer (int choiceIndex) override;
 
     bool usesContinuousScale() const override { return true; }
+    ScaleIllustration getScaleIllustration() const override { return ScaleIllustration::bell; }
+    float getScaleOctaves() const override { return std::log2 (normalisedToFrequency (1.0f) / normalisedToFrequency (0.0f)); }
     float getToleranceNormalised() const override;
     float getCorrectNormalised() const override { return frequencyToNormalised (targetHz); }
 

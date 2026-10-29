@@ -50,6 +50,7 @@ private:
     std::array<std::atomic<float>, numPoints> pointsY {};
     std::atomic<int> writeIndex { 0 };
 
+    float displayGain = 1.0f;   // message thread; see paint()
     bool backdrop = true;
     bool opaqueWithBackdrop = true;
 

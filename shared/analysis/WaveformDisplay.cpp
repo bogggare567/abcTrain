@@ -104,7 +104,7 @@ juce::Path WaveformDisplay::buildEnvelope (const std::array<float, numColumns>& 
 
     const auto point = [&] (int i, bool mirrored)
     {
-        const auto a = juce::jlimit (0.0f, 1.0f, values[(size_t) i]) * half;
+        const auto a = juce::jlimit (0.0f, 1.0f, values[(size_t) i] * displayGain) * half;
         return juce::Point<float> (bounds.getX() + step * (float) i, mirrored ? midY + a : midY - a);
     };
 
@@ -141,7 +141,69 @@ void WaveformDisplay::paint (juce::Graphics& g)
         AbcTrainLookAndFeel::overlayTexture (g, bounds, 0.6f);
     }
 
-    const auto plot = bounds.reduced (1.0f, 4.0f);
+    auto plot = bounds.reduced (1.0f, 4.0f);
+
+    if (trainerMode && plot.getWidth() > 220.0f)
+    {
+        // Crest meter: the loudest peak and the average (RMS) level over
+        // the last second or so, as two bars on one dB scale, and the gap
+        // between them written out. A compressor closes that gap.
+        auto meter = plot.removeFromRight (64.0f).reduced (8.0f, 2.0f);
+        plot.removeFromRight (6.0f);
+
+        float peakLevel = 0.0f, sumSquares = 0.0f;
+        constexpr int recent = 160;
+
+        for (int i = numColumns - recent; i < numColumns; ++i)
+        {
+            peakLevel = juce::jmax (peakLevel, outputPeaks[(size_t) i]);
+            sumSquares += outputRms[(size_t) i] * outputRms[(size_t) i];
+        }
+
+        const auto rms = std::sqrt (sumSquares / (float) recent);
+        const auto toY = [&] (float gain, juce::Rectangle<float> r)
+        {
+            const auto db = juce::jlimit (-48.0f, 0.0f, juce::Decibels::gainToDecibels (gain, -60.0f));
+            return r.getBottom() - r.getHeight() * (db + 48.0f) / 48.0f;
+        };
+
+        auto caption = meter.removeFromBottom (30.0f);
+        auto bars = meter;
+        const auto peakBar = bars.removeFromLeft (bars.getWidth() * 0.5f).reduced (3.0f, 0.0f);
+        const auto rmsBar = bars.reduced (3.0f, 0.0f);
+
+        g.setColour (theme.textDim.withAlpha (0.14f));
+        g.fillRect (peakBar);
+        g.fillRect (rmsBar);
+
+        g.setColour (effectiveAccent().withAlpha (0.45f));
+        g.fillRect (peakBar.withTop (toY (peakLevel, peakBar)));
+        g.setColour (effectiveAccent());
+        g.fillRect (rmsBar.withTop (toY (rms, rmsBar)));
+
+        if (peakLevel > 1.0e-4f && rms > 1.0e-5f)
+        {
+            const auto crest = juce::Decibels::gainToDecibels (peakLevel / rms);
+            g.setFont (AbcTrainLookAndFeel::monoFont().withHeight (14.0f));
+            g.setColour (theme.textBright);
+            AbcTrainLookAndFeel::fitText (g, juce::String (crest, 1), caption.removeFromTop (16.0f),
+                                          juce::Justification::centred, false);
+        }
+
+        g.setFont (AbcTrainLookAndFeel::microFont());
+        g.setColour (theme.textDim);
+        AbcTrainLookAndFeel::fitText (g, crestText, caption, juce::Justification::centred, false);
+
+        // Scale the waveform to its own loudest column, slowly, so a
+        // quiet loop is not a hairline and a loud one stays inside.
+        const auto wanted = peakLevel > 1.0e-4f ? juce::jlimit (1.0f, 6.0f, 0.95f / peakLevel) : 1.0f;
+        displayGain += (wanted - displayGain) * (wanted < displayGain ? 0.4f : 0.04f);
+    }
+    else
+    {
+        displayGain = 1.0f;
+    }
+
     const auto midY = plot.getCentreY();
 
     // Faint level guides at -6 and -18 dBFS, and the zero line.

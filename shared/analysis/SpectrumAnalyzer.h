@@ -61,6 +61,11 @@ public:
     void setBackdropVisible (bool shouldShow) { backdrop = shouldShow; setOpaque (shouldShow && opaqueWithBackdrop); repaint(); }
     void paint (juce::Graphics&) override;
 
+    // The picture's top follows the signal instead of sitting at 0 dBFS
+    // (see analyse()). Off by default: a Learner plugin's analyser has to
+    // keep an absolute scale an engineer can read levels off.
+    void setAutoRange (bool shouldAutoRange) { autoRange = shouldAutoRange; }
+
     // Tilt applied to the display, in dB per octave about 1 kHz.
     static constexpr float tiltDbPerOctave = 3.0f;
     static constexpr float floorDb = -90.0f;
@@ -114,6 +119,10 @@ private:
 
     static constexpr int scopeSize = 512;
     std::array<float, (size_t) scopeSize> target {};
+    std::array<float, (size_t) scopeSize> rawDb {};
+    bool autoRange = false;
+    float autoTopDb = ceilingDb;
+    static constexpr float autoRangeDb = 66.0f;
     std::array<float, (size_t) scopeSize> smoothed {};
     std::array<float, (size_t) scopeSize> peak {};
     std::array<float, (size_t) scopeSize> peakHold {};   // seconds left before the peak falls

@@ -102,6 +102,7 @@ public:
 
     // See Game::getHintView.
     HintView getHintView() const override { return HintView::stereo; }
+    ScaleIllustration getScaleIllustration() const override { return ScaleIllustration::stage; }
 
     // A little over two bands either side rather than three: the field is
     // short, and three bands at the easy levels shaded all of it.

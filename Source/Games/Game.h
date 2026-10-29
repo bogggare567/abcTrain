@@ -192,6 +192,22 @@ public:
 
     virtual HintView getHintView() const { return HintView::spectrum; }
 
+    // ---- a picture of the answer on the ruler -------------------------
+    //
+    // The ruler games (band, pan, delay) draw their scale as a picture of
+    // what the *player's own answer* would sound like, not of the round:
+    // a bell where the EQ would sit, a source on a stage, the repeats an
+    // echo at that time would make. It gives the number a shape to hear
+    // against without giving anything away - the round's own value only
+    // appears once the answer is in (ADR 063).
+    enum class ScaleIllustration { none, bell, stage, echoes };
+    virtual ScaleIllustration getScaleIllustration() const { return ScaleIllustration::none; }
+
+    // How many octaves the 0..1 axis spans, for a log axis: lets the bell
+    // keep its musical width and the echoes land on 2t, 3t ... without the
+    // ruler knowing the game's units. 0 = linear axis.
+    virtual float getScaleOctaves() const { return 0.0f; }
+
     // ---- where your misses land -----------------------------------------
     //
     // Every exercise divides its own subject somehow: frequency into named

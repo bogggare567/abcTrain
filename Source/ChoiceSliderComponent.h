@@ -73,6 +73,24 @@ public:
     // The line written over the hint region ("the answer is in here").
     void setHintCaption (juce::String text) { hintCaption = std::move (text); repaint(); }
 
+    // A picture of the answer drawn into the ruler (see
+    // Game::getScaleIllustration): where the player's own value would put
+    // a bell, a source or a train of echoes, and after the answer the
+    // round's value beside it. `direction` is +1 / -1 for a boost or a cut
+    // and only used once the answer is in.
+    void setIllustration (Game::ScaleIllustration kind, float axisOctaves)
+    {
+        illustration = kind;
+        illustrationOctaves = axisOctaves;
+        repaint();
+    }
+    void setIllustrationDirection (int direction) { illustrationDirection = direction; repaint(); }
+    bool showsDial() const noexcept { return isDial(); }   // the panorama: a dial that takes the hint's room too
+
+    // A square grip on the player's line, for a finger: the line alone is
+    // two pixels wide and hides under the fingertip.
+    void setShowsGrip (bool shouldShow) { showsGrip = shouldShow; repaint(); }
+
     void setContinuousScale (std::vector<Game::GridMark> marks,
                              float toleranceNormalised,
                              std::function<juce::String (float)> formatter);
@@ -122,6 +140,13 @@ public:
     void setConfirmMode (bool shouldConfirm) { confirmMode = shouldConfirm; }
     bool hasPendingAnswer() const noexcept { return pending && ! answered; }
     void commitPendingAnswer();
+
+    // The keyboard (Hotkeys train.left/right/answer): the arrows move the
+    // answer in progress - a step of thirty across the ruler, a fifth of
+    // that with Shift, one card on the cards - and Enter sends it. Moving
+    // never sends: the same rule as the mouse (no answer by accident).
+    void nudge (int direction, bool fine);
+    void commitFromKeyboard();
     std::function<void (bool)> onPendingChanged;
 
     // Every step the finger crosses on the scale - a third of an octave's
@@ -184,6 +209,16 @@ private:
 
     void paintContinuousScale (juce::Graphics&);
     void paintContinuousOverlay (juce::Graphics&);
+    void paintIllustration (juce::Graphics&, juce::Rectangle<float> plot, float normalised, juce::Colour, bool strong) const;
+
+    Game::ScaleIllustration illustration = Game::ScaleIllustration::none;
+    struct DialGeometry { juce::Point<float> centre; float radius = 0.0f; };
+    bool isDial() const noexcept;
+    DialGeometry dialGeometry() const;
+    void paintDial (juce::Graphics&);
+    float illustrationOctaves = 0.0f;
+    int illustrationDirection = 1;
+    bool showsGrip = false;
 
     // Live drag position before release, or (once answered) the index the
     // player actually picked - whichever is relevant is what paint() shows

@@ -233,9 +233,21 @@ void ChoiceSliderComponent::updatePreviewFromMouse (const juce::MouseEvent& e)
     if (continuousMode)
     {
         // No snapping: the answer is wherever the pointer is, to the pixel.
-        cursorNormalised = juce::jlimit (0.0f, 1.0f,
-                                          (e.position.x - scaleArea.getX())
-                                              / juce::jmax (1.0f, scaleArea.getWidth()));
+        // On the dial (panorama) it is the direction from the listener.
+        if (isDial())
+        {
+            const auto d = dialGeometry();
+            const auto v = e.position - d.centre;
+            const auto angle = std::atan2 (-v.y, v.x);   // pi at the left speaker, 0 at the right
+            cursorNormalised = juce::jlimit (0.0f, 1.0f, 1.0f - juce::jlimit (0.0f, juce::MathConstants<float>::pi, angle < -juce::MathConstants<float>::halfPi ? juce::MathConstants<float>::pi : angle)
+                                                                    / juce::MathConstants<float>::pi);
+        }
+        else
+        {
+            cursorNormalised = juce::jlimit (0.0f, 1.0f,
+                                              (e.position.x - scaleArea.getX())
+                                                  / juce::jmax (1.0f, scaleArea.getWidth()));
+        }
         cursorEngaged = true;
 
         // Thirty steps across the ruler: a third of an octave on the
@@ -283,6 +295,40 @@ void ChoiceSliderComponent::commitPendingAnswer()
     {
         onChoiceSelected (previewIndex);
     }
+}
+
+void ChoiceSliderComponent::nudge (int direction, bool fine)
+{
+    if (answered || choiceLabels.isEmpty() || direction == 0)
+        return;
+
+    if (continuousMode)
+    {
+        const auto step = fine ? 1.0f / 150.0f : 1.0f / 30.0f;
+        cursorNormalised = juce::jlimit (0.0f, 1.0f, (cursorEngaged ? cursorNormalised : 0.5f) + (float) direction * step);
+        cursorEngaged = true;
+    }
+    else
+    {
+        const auto count = choiceLabels.size();
+        previewIndex = previewIndex < 0 ? (direction > 0 ? 0 : count - 1)
+                                        : juce::jlimit (0, count - 1, previewIndex + direction);
+    }
+
+    if (onStepCrossed != nullptr)
+        onStepCrossed();
+
+    setPending (true);
+    repaint();
+}
+
+void ChoiceSliderComponent::commitFromKeyboard()
+{
+    if (answered || ! (continuousMode ? cursorEngaged : previewIndex >= 0))
+        return;
+
+    setPending (true);
+    commitPendingAnswer();
 }
 
 void ChoiceSliderComponent::mouseDown (const juce::MouseEvent& e) { updatePreviewFromMouse (e); }
@@ -511,9 +557,8 @@ void ChoiceSliderComponent::paintScale (juce::Graphics& g)
     }
 }
 
-void ChoiceSliderComponent::paintOverPanel (juce::Graphics& g)
+void ChoiceSliderComponent::paintOverPanel (juce::Graphics&)
 {
-    const auto& theme = AbcTrainTheme::current();
     const auto n = choiceLabels.size();
     const auto highlighted = answered ? chosenIndex : previewIndex;
 
@@ -573,7 +618,13 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     const auto touch = AbcTrainTheme::Ease::out (touchAmount);
     const auto scaleArea = getScaleArea().toFloat();
 
-    AbcTrainLookAndFeel::paintDisplayWell (g, scaleArea);
+    // On the page, not in a black well (the author, 2026-10-24: "не нужен
+    // чёрный фон, выбивается из общей картины"): a faint tint of the panel
+    // and a hairline keep the scale's shape, the page shows through.
+    g.setColour (theme.panelBackground.withAlpha (0.22f));
+    g.fillRoundedRectangle (scaleArea, AbcTrainTheme::Radius::well);
+    g.setColour (theme.outline.withAlpha (0.35f));
+    g.drawRoundedRectangle (scaleArea, AbcTrainTheme::Radius::well, 1.0f);
 
     juce::Graphics::ScopedSaveState clipped (g);
     juce::Path panelClip;
@@ -601,7 +652,7 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         // the first drag left the whole scale an empty black well - the
         // largest thing on the screen saying nothing - and hid the one
         // answer to "what does my level actually change?".
-        if (bandCentre >= 0.0f)
+        if (bandCentre >= 0.0f && ! isDial())
         {
             const auto left = xFor (bandCentre - toleranceNormalised);
             const auto right = xFor (bandCentre + toleranceNormalised);
@@ -658,7 +709,7 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
     // The hint, if one was bought: everything outside the region is
     // dimmed, so what remains is a shorter stretch of the same ruler
     // rather than a marker pointing at the answer.
-    if (hintHalfWidth > 0.0f)
+    if (hintHalfWidth > 0.0f && ! isDial())
     {
         const auto left = xFor (hintCentre - hintHalfWidth);
         const auto right = xFor (hintCentre + hintHalfWidth);
@@ -703,6 +754,28 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         }
     }
 
+    // ---- the picture of the answer (ADR 063) ----
+    // Drawn above the label row, under the lines: the player's own value
+    // in the accent while aiming, and once the answer is in, the round's
+    // value in the warm colour beside it.
+    if (isDial())
+    {
+        paintDial (g);
+        return;   // the dial is the whole picture: no ruler lines, no vertical cursor
+    }
+
+    if (illustration != Game::ScaleIllustration::none)
+    {
+        const auto plot = scaleArea.withTop (scaleArea.getY() + 30.0f).withBottom (upperRowY - 6.0f).reduced (2.0f, 0.0f);
+
+        if (answered && targetNormalised >= 0.0f)
+            paintIllustration (g, plot, targetNormalised, theme.accentWarm.withAlpha (0.35f + 0.5f * AbcTrainTheme::Ease::out (revealAmount)), false);
+
+        paintIllustration (g, plot, cursorNormalised,
+                           answered ? (lastCorrect ? theme.positive : theme.negative) : theme.accent,
+                           cursorEngaged || answered);
+    }
+
     // Each row remembers where its last label ended: on a phone-width
     // ruler the marks come closer than their labels are wide, and a label
     // that would run into its neighbour is left out rather than drawn
@@ -732,6 +805,12 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         const auto labelX = juce::jlimit (scaleArea.getX() + 1.0f,
                                            scaleArea.getRight() - labelWidth - 1.0f,
                                            x - labelWidth * 0.5f);
+
+        // One row of numbers. The half-octave labels used to sit in a
+        // second row above, and on a phone the two rows read as two
+        // different scales ("-90 -70" over "-100 -50"); their lines stay.
+        if (! mark.emphasised)
+            continue;
 
         const auto rowY = mark.emphasised ? lowerRowY : upperRowY;
         // Derived from the ladder's micro step so the text-size slider and
@@ -782,6 +861,125 @@ void ChoiceSliderComponent::paintContinuousScale (juce::Graphics& g)
         g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 5.0f);
         g.setColour (lineColour);
         g.drawLine (x, scaleArea.getY() + 2.0f, x, scaleArea.getBottom() - 2.0f, 1.8f);
+
+        if (showsGrip && ! answered)
+        {
+            const auto size = 18.0f + 6.0f * touch;
+            const auto grip = juce::Rectangle<float> (size, size).withCentre ({ x, upperRowY - size * 0.5f - 4.0f });
+            g.setColour (lineColour.withAlpha (0.25f));
+            g.fillRect (grip.expanded (4.0f));
+            g.setColour (juce::Colours::white);
+            g.fillRect (grip);
+        }
+    }
+}
+
+void ChoiceSliderComponent::paintIllustration (juce::Graphics& g, juce::Rectangle<float> plot, float normalised,
+                                               juce::Colour colour, bool strong) const
+{
+    if (plot.getHeight() < 24.0f || plot.getWidth() < 40.0f || normalised < 0.0f)
+        return;
+
+    const auto xFor = [&] (float n) { return plot.getX() + plot.getWidth() * juce::jlimit (0.0f, 1.0f, n); };
+    const auto alpha = strong ? 1.0f : 0.55f;
+
+    switch (illustration)
+    {
+        case Game::ScaleIllustration::bell:
+        {
+            // An EQ bell a third of an octave wide either side, the way a
+            // boost of this exercise's Q looks on an analyser.
+            const auto octaves = illustrationOctaves > 0.0f ? illustrationOctaves : 10.0f;
+            const auto up = ! answered || illustrationDirection >= 0;
+            const auto base = up ? plot.getBottom() : plot.getY() + plot.getHeight() * 0.25f;
+            const auto height = plot.getHeight() * (up ? 0.72f : 0.6f);
+            juce::Path curve, fill;
+            const int steps = juce::jmax (40, (int) plot.getWidth() / 3);
+
+            for (int i = 0; i <= steps; ++i)
+            {
+                const auto n = (float) i / (float) steps;
+                const auto d = (n - normalised) * octaves;
+                const auto y = base + (up ? -1.0f : 1.0f) * height * std::exp (-(d * d) / (2.0f * 0.42f * 0.42f));
+                const auto x = xFor (n);
+                if (i == 0) { curve.startNewSubPath (x, y); fill.startNewSubPath (x, base); }
+                curve.lineTo (x, y);
+                fill.lineTo (x, y);
+            }
+
+            fill.lineTo (plot.getRight(), base);
+            fill.closeSubPath();
+            g.setColour (colour.withAlpha (0.10f * alpha));
+            g.fillPath (fill);
+            g.setColour (colour.withAlpha (0.8f * alpha));
+            g.strokePath (curve, juce::PathStrokeType (1.6f));
+            break;
+        }
+
+        case Game::ScaleIllustration::stage:
+        {
+            // The stage seen from above: the listener at the front, the
+            // arc from the left speaker to the right, the source on it.
+            const auto radius = juce::jmin (plot.getWidth() * 0.46f, plot.getHeight() - 14.0f);
+
+            if (radius < 20.0f)
+                return;
+
+            const auto centre = juce::Point<float> (plot.getCentreX(), plot.getBottom() - 6.0f);
+            const auto angle = juce::MathConstants<float>::pi * (1.0f - juce::jlimit (0.0f, 1.0f, normalised));
+            const auto source = centre + juce::Point<float> (std::cos (angle), -std::sin (angle)) * radius;
+
+            {
+                juce::Path arc;
+                arc.addCentredArc (centre.x, centre.y, radius, radius, 0.0f,
+                                   -juce::MathConstants<float>::halfPi, juce::MathConstants<float>::halfPi, true);
+                g.setColour (AbcTrainTheme::current().textDim.withAlpha (0.28f));
+                g.strokePath (arc, juce::PathStrokeType (1.0f));
+
+                for (const auto side : { -1.0f, 1.0f })
+                    g.drawRect (juce::Rectangle<float> (10.0f, 14.0f).withCentre (centre + juce::Point<float> (side * radius, -2.0f)), 1.0f);
+
+                g.drawRect (juce::Rectangle<float> (12.0f, 12.0f).withCentre (centre), 1.2f);
+            }
+
+            juce::Path ray;
+            ray.startNewSubPath (centre);
+            ray.lineTo (source);
+            const float dashes[] = { 3.0f, 3.0f };
+            juce::PathStrokeType (1.0f).createDashedStroke (ray, ray, dashes, 2);
+            g.setColour (colour.withAlpha (0.5f * alpha));
+            g.fillPath (ray);
+            g.setColour (colour.withAlpha (alpha));
+            g.fillEllipse (juce::Rectangle<float> (14.0f, 14.0f).withCentre (source));
+            break;
+        }
+
+        case Game::ScaleIllustration::echoes:
+        {
+            // An echo at this time and the repeats it would make, each
+            // quieter by the same step, on the same log axis as the ruler.
+            const auto octaves = illustrationOctaves > 0.0f ? illustrationOctaves : 5.0f;
+            auto level = 1.0f;
+
+            for (int k = 1; k <= 8; ++k)
+            {
+                const auto n = normalised + std::log2 ((float) k) / octaves;
+
+                if (n > 1.0f)
+                    break;
+
+                const auto x = xFor (n);
+                const auto h = plot.getHeight() * 0.8f * level;
+                g.setColour (colour.withAlpha (alpha * (k == 1 ? 1.0f : 0.75f)));
+                g.fillRect (juce::Rectangle<float> (k == 1 ? 3.0f : 2.0f, h).withPosition (x - 1.0f, plot.getBottom() - h));
+                level *= 0.62f;
+            }
+            break;
+        }
+
+        case Game::ScaleIllustration::none:
+        default:
+            break;
     }
 }
 
@@ -808,9 +1006,12 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
                           .withHeight (24.0f * AbcTrainLookAndFeel::getTextScale());
     const auto textWidth = AbcTrainLookAndFeel::trackedTextWidth (text, font, 1.2f) + 16.0f;
 
-    const auto centreX = juce::jlimit (scaleArea.getX() + textWidth * 0.5f,
-                                        scaleArea.getRight() - textWidth * 0.5f,
-                                        xFor (cursorNormalised) + feedbackWobblePx);
+    // On the dial the readout stays over the listener: the needle moves
+    // in a circle, and a number chasing it sideways reads as jitter.
+    const auto centreX = isDial() ? scaleArea.getCentreX() + feedbackWobblePx
+                                  : juce::jlimit (scaleArea.getX() + textWidth * 0.5f,
+                                                  scaleArea.getRight() - textWidth * 0.5f,
+                                                  xFor (cursorNormalised) + feedbackWobblePx);
 
     auto valueColour = theme.textBright;
     if (answered)
@@ -831,9 +1032,10 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
         const auto targetText = valueFormatter (targetNormalised);
         const auto targetFont = AbcTrainLookAndFeel::headingFont();
         const auto targetWidth = AbcTrainLookAndFeel::trackedTextWidth (targetText, targetFont, 1.0f) + 12.0f;
-        const auto targetX = juce::jlimit (scaleArea.getX() + targetWidth * 0.5f,
-                                            scaleArea.getRight() - targetWidth * 0.5f,
-                                            xFor (targetNormalised));
+        const auto targetX = isDial() ? scaleArea.getCentreX() + textWidth * 0.5f + targetWidth * 0.5f + 8.0f
+                                      : juce::jlimit (scaleArea.getX() + targetWidth * 0.5f,
+                                                      scaleArea.getRight() - targetWidth * 0.5f,
+                                                      xFor (targetNormalised));
 
         AbcTrainLookAndFeel::drawTrackedText (
             g, targetText,
@@ -841,5 +1043,127 @@ void ChoiceSliderComponent::paintContinuousOverlay (juce::Graphics& g)
                                      bigLabelArea.getY() + bigLabelArea.getHeight() * 0.55f,
                                      targetWidth, bigLabelArea.getHeight() * 0.45f),
             targetFont, theme.accentWarm, 1.0f, juce::Justification::centred);
+    }
+}
+
+//==============================================================================
+// The panorama as a dial (2026-10-24, the author: "убирай полоску, оставь
+// только спидометр, просто сделай больше"). The stage seen from above,
+// as large as the well allows: the arc from the left speaker to the right,
+// the listener at its centre, the answer as a needle. The ruler's lines,
+// band and vertical cursor are not drawn - the arc is the scale. Labels sit
+// on the arc where they mean what they say.
+
+bool ChoiceSliderComponent::isDial() const noexcept
+{
+    return continuousMode && illustration == Game::ScaleIllustration::stage;
+}
+
+ChoiceSliderComponent::DialGeometry ChoiceSliderComponent::dialGeometry() const
+{
+    const auto area = getScaleArea().toFloat().reduced (12.0f, 10.0f);
+    DialGeometry d;
+    d.radius = juce::jmax (20.0f, juce::jmin (area.getWidth() * 0.46f, area.getHeight() - 34.0f));
+    d.centre = { area.getCentreX(), area.getBottom() - 26.0f };
+    return d;
+}
+
+void ChoiceSliderComponent::paintDial (juce::Graphics& g)
+{
+    const auto& theme = AbcTrainTheme::current();
+    const auto d = dialGeometry();
+    const auto pi = juce::MathConstants<float>::pi;
+    const auto pointAt = [&] (float normalised, float r)
+    {
+        const auto a = pi * (1.0f - juce::jlimit (0.0f, 1.0f, normalised));
+        return d.centre + juce::Point<float> (std::cos (a), -std::sin (a)) * r;
+    };
+    const auto arcPath = [&] (float from, float to, float r)
+    {
+        juce::Path p;
+        // JUCE arc angles: 0 at 12 o'clock, clockwise. Normalised 0 is the
+        // left speaker (-90 deg), 1 the right one (+90 deg).
+        p.addCentredArc (d.centre.x, d.centre.y, r, r, 0.0f,
+                         -juce::MathConstants<float>::halfPi + pi * juce::jlimit (0.0f, 1.0f, from),
+                         -juce::MathConstants<float>::halfPi + pi * juce::jlimit (0.0f, 1.0f, to), true);
+        return p;
+    };
+
+    // The scale: the arc, ticks every 10, labels at L100 L50 C R50 R100.
+    g.setColour (theme.textDim.withAlpha (0.35f));
+    g.strokePath (arcPath (0.0f, 1.0f, d.radius), juce::PathStrokeType (1.5f));
+
+    for (int i = 0; i <= 20; ++i)
+    {
+        const auto n = (float) i / 20.0f;
+        const auto big = i % 5 == 0;
+        g.setColour (theme.textDim.withAlpha (big ? 0.55f : 0.25f));
+        g.drawLine (juce::Line<float> (pointAt (n, d.radius - (big ? 10.0f : 5.0f)), pointAt (n, d.radius + (big ? 10.0f : 5.0f))), big ? 1.5f : 1.0f);
+    }
+
+    g.setFont (AbcTrainLookAndFeel::microFont());
+    g.setColour (theme.textDim.withAlpha (0.75f));
+    // The same signed numbers the readout and the answer use (the author:
+    // a signed number reads as a position, "L50" as letters to decode).
+    const auto minus = juce::String::fromUTF8 ("\xe2\x88\x92");
+    const juce::String labels[] = { minus + "100", minus + "50", "0", "+50", "+100" };
+    for (int i = 0; i < 5; ++i)
+    {
+        const auto at = pointAt ((float) i / 4.0f, d.radius + 26.0f);
+        AbcTrainLookAndFeel::fitText (g, labels[i], juce::Rectangle<float> (48.0f, 16.0f).withCentre (at),
+                                      juce::Justification::centred, false);
+    }
+
+    // A bought hint: the live stretch of the arc, the rest dimmed.
+    if (hintHalfWidth > 0.0f)
+    {
+        g.setColour (theme.accent.withAlpha (0.28f));
+        g.strokePath (arcPath (hintCentre - hintHalfWidth, hintCentre + hintHalfWidth, d.radius), juce::PathStrokeType (14.0f));
+    }
+
+    // The slack around the needle, as a stretch of the arc - it travels to
+    // the answer once the round is over, like the band on a ruler.
+    const auto reveal = AbcTrainTheme::Ease::out (revealAmount);
+    if (toleranceNormalised > 0.0f && cursorNormalised >= 0.0f)
+    {
+        const auto centreN = answered ? cursorNormalised + (targetNormalised - cursorNormalised) * reveal : cursorNormalised;
+        auto colour = theme.accent.withAlpha (cursorEngaged ? 0.30f : 0.16f);
+        if (answered)
+            colour = theme.accent.interpolatedWith (lastCorrect ? theme.positive : theme.negative, reveal).withAlpha (0.35f);
+        g.setColour (colour);
+        g.strokePath (arcPath (centreN - toleranceNormalised, centreN + toleranceNormalised, d.radius), juce::PathStrokeType (10.0f));
+    }
+
+    // Speakers and the listener.
+    g.setColour (theme.textDim.withAlpha (0.6f));
+    for (const auto side : { 0.0f, 1.0f })
+    {
+        const auto p = pointAt (side, d.radius);
+        g.drawRect (juce::Rectangle<float> (16.0f, 22.0f).withCentre (p.translated (0.0f, 14.0f)), 1.2f);
+    }
+    g.drawEllipse (juce::Rectangle<float> (20.0f, 20.0f).withCentre (d.centre), 1.4f);
+
+    // The round's answer, once it is in.
+    if (answered && targetNormalised >= 0.0f)
+    {
+        const auto t = pointAt (targetNormalised, d.radius);
+        g.setColour (theme.accentWarm.withAlpha (0.35f + 0.65f * reveal));
+        g.drawLine (juce::Line<float> (d.centre, t), 2.0f);
+        g.fillEllipse (juce::Rectangle<float> (16.0f, 16.0f).withCentre (t));
+    }
+
+    // The needle: yours.
+    if (cursorNormalised >= 0.0f)
+    {
+        auto colour = cursorEngaged ? theme.accent : theme.textDim;
+        if (answered)
+            colour = lastCorrect ? theme.positive : theme.negative;
+        const auto tip = pointAt (cursorNormalised, d.radius);
+        g.setColour (colour.withAlpha (0.35f));
+        g.drawLine (juce::Line<float> (d.centre, tip), 6.0f);
+        g.setColour (colour);
+        g.drawLine (juce::Line<float> (d.centre, tip), 2.0f);
+        const auto size = 20.0f + 6.0f * AbcTrainTheme::Ease::out (touchAmount);
+        g.fillEllipse (juce::Rectangle<float> (size, size).withCentre (tip));
     }
 }

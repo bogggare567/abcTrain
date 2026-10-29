@@ -1,6 +1,7 @@
 #include "shared/analysis/SpectrumAnalyzer.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
+#include <algorithm>
 
 SpectrumAnalyzerComponent::SpectrumAnalyzerComponent()
     : forwardFFT (fftOrder),
@@ -145,8 +146,28 @@ void SpectrumAnalyzerComponent::analyse (double elapsedSeconds)
 
             auto db = juce::Decibels::gainToDecibels (magnitude * scale, floorDb - 30.0f);
             db += tiltDbPerOctave * std::log2 (freq / 1000.0f);
-            target[(size_t) i] = juce::jmap (juce::jlimit (floorDb, ceilingDb, db), floorDb, ceilingDb, 0.0f, 1.0f);
+            rawDb[(size_t) i] = db;
         }
+
+        // Auto-range (the trainer's hint): the top of the picture follows
+        // the loudest part of the signal - fast up, slow down - so a quiet
+        // source is not a flat line along the floor and a loud one does not
+        // press against the ceiling. A fixed 0 dB top read as "peaking" on a
+        // phone (reported on the visual review).
+        auto top = ceilingDb, bottom = floorDb;
+
+        if (autoRange)
+        {
+            const auto loudest = *std::max_element (rawDb.begin(), rawDb.end()) + 4.0f;
+            const auto goal = juce::jlimit (-60.0f, ceilingDb + 6.0f, loudest);
+            const auto rate = goal > autoTopDb ? 0.08 : 2.5;
+            autoTopDb += (goal - autoTopDb) * (float) (1.0 - std::exp (-elapsedSeconds / rate));
+            top = autoTopDb;
+            bottom = autoTopDb - autoRangeDb;
+        }
+
+        for (int i = 0; i < scopeSize; ++i)
+            target[(size_t) i] = juce::jmap (juce::jlimit (bottom, top, rawDb[(size_t) i]), bottom, top, 0.0f, 1.0f);
     }
     else
     {

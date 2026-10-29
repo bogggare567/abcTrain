@@ -91,7 +91,7 @@ public:
     juce::String getAnswerDetail() const override
     {
         const auto& preset = presets[(size_t) pairLevels[(size_t) correctLevelIndex]];
-        return preset.label + juce::String (" · ") + juce::String (preset.ratio, 0) + ":1 · "
+        return preset.label + juce::String::fromUTF8 (" \xc2\xb7 ") + juce::String (preset.ratio, 0) + ":1 · "
                  + juce::String (preset.thresholdDb, 0) + " dB";
     }
     int getChosenChoiceIndex() const override { return chosenLevelIndex; }
