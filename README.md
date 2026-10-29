@@ -17,7 +17,7 @@ Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 &nbsp;
 [![Try it in your browser](https://img.shields.io/badge/Try%20it%20first-no%20install-2A2A3A?style=for-the-badge&labelColor=1E1E2E)](https://bogggare567.github.io/abcTrain/)
 &nbsp;
-[![2.0 Saint Petersburg](https://img.shields.io/badge/2.0-Saint%20Petersburg-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
+[![2.2 Saint Petersburg](https://img.shields.io/badge/2.2-Saint%20Petersburg-D98C5F?style=for-the-badge&labelColor=1E1E2E)](https://github.com/bogggare567/abcTrain/releases/latest)
 
 <br>
 
@@ -33,6 +33,7 @@ Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 |:---:|---|
 | 🎧 | **ABC Ear Trainer** — frequency, dynamics, space, character. A psychoacoustic staircase finds your real threshold and shows it in the exercise's own units: *±0.35 oct*, *±1.2 dB*, *Room vs Chamber*. |
 | 🎛️ | **ABC Learner EQ · Comp · Verb** — real processors in your DAW and in the app's Studio tab. Each hides a setting, plays it, and asks you to match it by ear with its own knob. |
+| 🔌 | **Your own plugins** — new in 2.2. Studio → Your plugins finds the VST3/AU on your computer, grouped by purpose. Lessons turn *its* knobs in its own window ("Threshold to -20 dB"), cards explain each knob, then a round hides one knob of your setting and you name its value by ear. |
 | 📚 | **Grounded in research** — how ear training is taught and how the processing is done follow published work. [Why each choice →](docs/research/2026-09-literature-audit.md) |
 | 🎤 | **Live** — a seminar in a room with no internet: the laptop plays into the hall, the audience answers on their phones through one QR code, a projector window shows the votes and the answer. Battles for the Decibelo rating against a person over soundkorb.ru, or offline against six bot listeners. An account only if you want one. |
 | 🔒 | **Offline by default** — training, the plugins and bot battles never touch a network; no telemetry. Live connects only when you open it. |
@@ -43,13 +44,16 @@ Free · macOS · Windows · Linux · the app + VST3 · AU plugins
 
 </div>
 
-## What it looks like in 2.0
+## What it looks like in 2.2
 
 <table>
-<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-Home.webp" alt="Nine exercises in four families, each with your threshold in its own units"><br><sub>Nine exercises in four families, each with your threshold in its own units</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-HintSpectrum.webp" alt="Guess the Band: move along the scale, the hint shows the spectrum"><br><sub>Guess the Band: move along the scale, the hint shows the spectrum</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveRoom.webp" alt="A seminar: the room opens on the laptop, phones join by QR"><br><sub>A seminar: the room opens on the laptop, phones join by QR</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveRoundOpen-Window.webp" alt="The projector window: the task, the votes, the answer"><br><sub>The projector window: the task, the votes, the answer</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveBattleSignedIn.webp" alt="Battles: against a person for Decibelo, or against a bot offline"><br><sub>Battles: against a person for Decibelo, or against a bot offline</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-SoundsChecked.webp" alt="Your own sounds by instrument; tick several and delete at once"><br><sub>Your own sounds by instrument; tick several and delete at once</sub></td></tr>
-<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-StudioEQ.webp" alt="Studio: the Learner plugins inside the app"><br><sub>Studio: the Learner plugins inside the app</sub></td><td width="50%"><img src="docs/screenshots/en/LearnerComp.webp" alt="ABC Learner Comp in a DAW"><br><sub>ABC Learner Comp in a DAW</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-Home.webp" alt="Nine exercises in four families, each with your threshold in its own units"><br><sub>Nine exercises in four families, each with your threshold in its own units</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-StartSheet.webp" alt="Before a run: your level, three modes with records, the sound"><br><sub>Before a run: your level, three modes with records, the sound</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-HintSpectrum.webp" alt="Guess the Band: move along the scale, the hint shows the spectrum"><br><sub>Guess the Band: move along the scale, the hint shows the spectrum</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-StudioOwnLesson.webp" alt="New: a lesson on your own plugin - its knobs move in its own window"><br><sub>New: a lesson on your own plugin - its knobs move in its own window</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-StudioOwnPlugin.webp" alt="New: guess a knob of your plugin by ear, in its own words"><br><sub>New: guess a knob of your plugin by ear, in its own words</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-StudioEQ.webp" alt="Studio: the Learner plugins inside the app"><br><sub>Studio: the Learner plugins inside the app</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveBattleSignedIn.webp" alt="Battles: rated or friendly against people, a ladder of bots with stars"><br><sub>Battles: rated or friendly against people, a ladder of bots with stars</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-DuelResults.webp" alt="After a battle: damage per round next to the HP curves"><br><sub>After a battle: damage per round next to the HP curves</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveSeminar.webp" alt="A seminar: plan the rounds, anonymous mode, a sound per round"><br><sub>A seminar: plan the rounds, anonymous mode, a sound per round</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveRoundOpen-Window.webp" alt="The projector window: the task, the votes, the answer"><br><sub>The projector window: the task, the votes, the answer</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-LiveArchive.webp" alt="Seminar archive: every round, every mistake, CSV export"><br><sub>Seminar archive: every round, every mistake, CSV export</sub></td><td width="50%"><img src="docs/screenshots/en/EarTrainer-Profile.webp" alt="Profile: Decibelo by family and its history"><br><sub>Profile: Decibelo by family and its history</sub></td></tr>
+<tr><td width="50%"><img src="docs/screenshots/en/EarTrainer-SoundsChecked.webp" alt="Your own sounds by instrument; tick several and delete at once"><br><sub>Your own sounds by instrument; tick several and delete at once</sub></td><td width="50%"><img src="docs/screenshots/en/LearnerComp.webp" alt="ABC Learner Comp in a DAW"><br><sub>ABC Learner Comp in a DAW</sub></td></tr>
 </table>
 
 <sub>Rendered by the app itself (tools/EditorSnapshots), so they cannot drift from the code.</sub>
