@@ -134,6 +134,25 @@ endforeach()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/shared/updates/release-names.txt")
 message(STATUS "abcTrain release name: '${ABCTRAIN_CODENAME}'")
 
+# Each part's own version (ADR 069): the app, the three Learner plugins and
+# the course lessons are released together but versioned apart, so a
+# plugin's number moves only when the plugin does. versions.json is the one
+# place they are written; "app" must match the release tag (tools/release.py
+# checks), the plugins' numbers become their VST3/AU version - what a DAW
+# shows - and the update check compares a plugin against its own number.
+file(READ "${CMAKE_SOURCE_DIR}/versions.json" ABCTRAIN_VERSIONS_JSON)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/versions.json")
+foreach(part app learner-eq learner-comp learner-verb lessons)
+    string(JSON value GET "${ABCTRAIN_VERSIONS_JSON}" "${part}")
+    if(NOT value MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+        message(FATAL_ERROR "versions.json: \"${part}\" is \"${value}\", expected X.Y.Z")
+    endif()
+    string(TOUPPER "${part}" var)
+    string(REPLACE "-" "_" var "${var}")
+    set(ABCTRAIN_VERSION_${var} "${value}")
+endforeach()
+message(STATUS "abcTrain parts: app ${ABCTRAIN_VERSION_APP}, EQ ${ABCTRAIN_VERSION_LEARNER_EQ}, Comp ${ABCTRAIN_VERSION_LEARNER_COMP}, Verb ${ABCTRAIN_VERSION_LEARNER_VERB}, lessons ${ABCTRAIN_VERSION_LESSONS}")
+
 configure_file(
     shared/VersionInfo.h.in
     ${CMAKE_BINARY_DIR}/generated/shared/VersionInfo.h
@@ -454,6 +473,7 @@ add_library(abc_learners INTERFACE)
 target_link_libraries(abc_learners INTERFACE abc_learner_eq abc_learner_comp abc_learner_verb)
 
 juce_add_plugin(EarTrainer
+    VERSION ${ABCTRAIN_VERSION_PLAIN}
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Eqg1
@@ -585,6 +605,7 @@ if(ABCTRAIN_IOS)
 endif()
 
 juce_add_plugin(LearnerEQ
+    VERSION ${ABCTRAIN_VERSION_LEARNER_EQ}
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Leq1
@@ -628,6 +649,7 @@ target_link_libraries(LearnerEQ
 )
 
 juce_add_plugin(LearnerComp
+    VERSION ${ABCTRAIN_VERSION_LEARNER_COMP}
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Lcp1
@@ -671,6 +693,7 @@ target_link_libraries(LearnerComp
 )
 
 juce_add_plugin(LearnerVerb
+    VERSION ${ABCTRAIN_VERSION_LEARNER_VERB}
     COMPANY_NAME "soundkorb"
     PLUGIN_MANUFACTURER_CODE Sndk
     PLUGIN_CODE Lvb1
@@ -1060,6 +1083,16 @@ target_compile_definitions(PluginProbe PRIVATE
     JUCE_PLUGINHOST_VST3=1 $<$<PLATFORM_ID:Darwin>:JUCE_PLUGINHOST_AU=1>)
 target_link_libraries(PluginProbe PRIVATE juce::juce_audio_processors juce::juce_audio_utils juce::juce_dsp
     juce::juce_recommended_config_flags)
+
+# LessonCheck - the lesson checker a guest author and the "Lessons" workflow
+# run (lessons/CONTRIBUTING.md, ADR 070): the same rules as LessonFormatTest,
+# file and line, in a minute's build instead of the whole test binary.
+juce_add_console_app(LessonCheck PRODUCT_NAME "LessonCheck")
+target_sources(LessonCheck PRIVATE tools/LessonCheck.cpp shared/learning/LessonFile.cpp
+    shared/learning/KnobGlossary.cpp Source/OwnPlugins/OwnLesson.cpp)
+target_include_directories(LessonCheck PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_definitions(LessonCheck PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+target_link_libraries(LessonCheck PRIVATE juce::juce_audio_processors juce::juce_recommended_config_flags)
 
 # OwnPluginSmoke - «Свой плагин» end to end on a real plugin, no window
 # (ADR 065): rounds through OwnPluginPlayer, checking that A is untouched,

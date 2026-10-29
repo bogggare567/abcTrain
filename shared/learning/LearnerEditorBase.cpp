@@ -551,9 +551,12 @@ void LearnerEditorBase::checkForUpdates()
     updateButton.setEnabled (false);
     showGuide (localisation.getText ("ui.checkingForUpdates"));
 
-    UpdateChecker::checkForUpdatesAsync (CurrentVersion::string,
+    // The plugin's own number (ADR 069): it is offered a release that
+    // changes it, not every release of the app.
+    const juce::String own (CurrentVersion::of (identity.versionPart.toRawUTF8()));
+    UpdateChecker::checkForUpdatesAsync (own,
         UpdateChecker::channelFor (CurrentVersion::string, settingsFile.getBoolValue (UpdateChecker::betaOptInKey, false)),
-        [safeThis, handled] (bool foundNewer, UpdateChecker::ReleaseInfo release)
+        [safeThis, handled, own] (bool foundNewer, UpdateChecker::ReleaseInfo release)
     {
         if (safeThis == nullptr || *handled)
             return;
@@ -564,14 +567,14 @@ void LearnerEditorBase::checkForUpdates()
         if (! foundNewer)
         {
             safeThis->showGuide (safeThis->localisation.getText ("ui.upToDate")
-                                 + " (" + juce::String (CurrentVersion::string) + ")", 4000);
+                                 + " (" + own + ")", 4000);
             return;
         }
 
         safeThis->showGuide ({});
         safeThis->updateWindow.setStrings (updateWindowStrings (safeThis->localisation));
         safeThis->updateWindow.show (release, juce::JUCEApplicationBase::isStandaloneApp());
-    });
+    }, identity.versionPart);
 
     juce::Timer::callAfterDelay (6000, [safeThis, handled]
     {

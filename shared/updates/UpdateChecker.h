@@ -30,7 +30,23 @@ namespace UpdateChecker
         juce::String assetUrl;
         juce::String assetName;
         juce::int64  assetBytes = 0;
+
+        // Each part's version in this release (ADR 069), read from the
+        // line `<!-- versions: {"learner-eq":"2.3.0", ...} -->` the release
+        // workflow appends to the release text. Empty for a release made
+        // before parts had their own versions.
+        juce::StringPairArray parts;
     };
+
+    // The `<!-- versions: {...} -->` line out of a release's text.
+    juce::StringPairArray parsePartVersions (const juce::String& releaseBody);
+
+    // Whether `release` is an update for this part: its own number against
+    // the release's number for it when the release names one, otherwise
+    // (an older release) the release tag against the app's version - the
+    // plugins came in the same installer and had no number of their own.
+    bool isUpdateFor (const ReleaseInfo& release, const juce::String& part,
+                      const juce::String& partVersion, const juce::String& appVersion);
 
     // Which filename ending identifies this platform's installer in a
     // release's asset list: ".dmg", "-setup.exe", ".tar.gz".
@@ -70,8 +86,12 @@ namespace UpdateChecker
     // running offline or in a network-sandboxed host is never bothered by
     // this. The two-argument overload is Channel::stable, unchanged from
     // before beta-channel support existed.
+    //
+    // `part` (versions.json key, "learner-eq") makes a plugin compare its
+    // own version, passed as currentVersion, rather than the app's.
     void checkForUpdatesAsync (const juce::String& currentVersion, Channel channel,
-                                std::function<void (bool foundNewer, ReleaseInfo release)> callback);
+                                std::function<void (bool foundNewer, ReleaseInfo release)> callback,
+                                const juce::String& part = {});
 
     // Downloads `release`'s installer into the user's Downloads folder,
     // reporting 0..1 and then the finished file (or an invalid File on

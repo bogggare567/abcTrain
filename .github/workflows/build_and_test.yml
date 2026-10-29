@@ -219,7 +219,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
-          sparse-checkout: shared/updates/release-names.txt
+          sparse-checkout: |
+            shared/updates/release-names.txt
+            .github/release-body.md
+            versions.json
           sparse-checkout-cone-mode: false
 
       - name: Release title
@@ -230,6 +233,16 @@ jobs:
           line="$(echo "$v" | cut -d. -f1,2)"
           city="$(grep -E "^${line} " shared/updates/release-names.txt | head -1 | cut -d' ' -f2- || true)"
           echo "title=abcTrain ${v}${city:+ — ${city}}" >> "$GITHUB_OUTPUT"
+
+      # Each part's own version (ADR 069), as one machine-readable line at
+      # the end of the release text: a Learner plugin's update check reads
+      # it and is offered the release only if its own number went up.
+      - name: Release text with part versions
+        shell: bash
+        run: |
+          cp .github/release-body.md release-body-final.md
+          printf '\n<!-- versions: %s -->\n' "$(tr -d ' \n' < versions.json)" >> release-body-final.md
+          tail -2 release-body-final.md
 
       - name: Download build artifacts
         uses: actions/download-artifact@v7
@@ -252,7 +265,7 @@ jobs:
             artifacts/installer-windows/*.exe
             artifacts/installer-linux/*.tar.gz
           generate_release_notes: true
-          body_path: .github/release-body.md
+          body_path: release-body-final.md
           # A tag with a suffix (v1.8.0-beta.1) is a pre-release: the stable
           # update check skips it, the beta channel offers it, and the
           # site keeps pointing at the last stable build.

@@ -60,6 +60,29 @@ namespace LessonFile
         return languageCode.startsWithIgnoreCase ("ru") ? step.textRu : step.textEn;
     }
 
+    const juce::StringArray& licenses()
+    {
+        static const juce::StringArray s { "CC BY 4.0", "CC BY-SA 4.0", "CC0" };
+        return s;
+    }
+
+    juce::StringArray styleProblems (const Lesson& l)
+    {
+        juce::StringArray out;
+        if (l.minutes < 3 || l.minutes > 5)
+            out.add (l.id + ": minutes " + juce::String (l.minutes) + " - a lesson reads in 3-5");
+        if (l.steps.size() < 4 || l.steps.size() > 10)
+            out.add (l.id + ": " + juce::String ((int) l.steps.size()) + " steps - write 4-10");
+
+        int words = 0;
+        for (const auto& s : l.steps)
+            words += juce::StringArray::fromTokens (s.textRu, " ", "").size();
+        if (words > l.minutes * 220)
+            out.add (l.id + ": " + juce::String (words) + " words in Russian for " + juce::String (l.minutes)
+                     + " min - shorten it or say more minutes");
+        return out;
+    }
+
     juce::StringArray Lesson::knobKeys() const
     {
         juce::StringArray keys;
@@ -403,12 +426,15 @@ namespace LessonFile
         lesson.titleEn = need ("title.en");
         lesson.sources = header["sources"];
         lesson.group = header["group"];
+        lesson.license = header["license"];
+        if (header.containsKey ("license") && ! licenses().contains (lesson.license))
+            fail (1, "license \"" + lesson.license + "\" is not one of " + licenses().joinIntoString (" / "));
         lesson.order = need ("order").getIntValue();
         lesson.minutes = need ("minutes").getIntValue();
 
         for (const auto& key : header.getAllKeys())
             if (! juce::StringArray { "id", "course", "order", "minutes", "plugin", "material", "author",
-                                      "sources", "title.ru", "title.en", "group" }.contains (key))
+                                      "sources", "title.ru", "title.en", "group", "license" }.contains (key))
                 fail (1, "unknown header \"" + key + "\"");
 
         if (lesson.id.isNotEmpty() && ! lesson.id.containsOnly ("abcdefghijklmnopqrstuvwxyz0123456789-"))

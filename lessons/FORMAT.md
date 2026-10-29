@@ -51,6 +51,8 @@ en: A narrow cut at 300 Hz takes out the boxiness. The voice gets
 | `material` | да | на чём слушать: `vocal`, `kick`, `snare`, `drums`, `bass`, `guitar`, `keys`, `mix`, `pink`, `chord`, `hit` |
 | `author` | да | кто написал |
 | `sources` | желательно | откуда взяты факты: книга, глава |
+| `license` | для приглашённых авторов | `CC BY-SA 4.0`, `CC BY 4.0` или `CC0` — под какой лицензией текст входит в abcTrain ([CONTRIBUTING.md](CONTRIBUTING.md)) |
+| `group` | для `plugin: any` | вид плагина, см. ниже |
 | `title.ru`, `title.en` | да | название на русском и английском |
 
 ## Шаг

@@ -148,40 +148,16 @@ public:
 
         beginTest ("every shipped lesson for your own plugin lands on its numbers");
         {
-            // One generous plugin with every glossary knob, each over the
-            // lesson range of its unit and shown in that unit: whatever a
-            // lesson asks for, it can reach - so a problem here is a typo
-            // in a lesson, not a limit of a plugin.
-            juce::OwnedArray<Knob> owned;
-            juce::Array<juce::AudioProcessorParameter*> params;
-            OwnLesson::KnobMap map;
-
-            for (const auto& key : KnobGlossary::keys())
-            {
-                const auto unit = KnobGlossary::unitOf (key);
-                const auto range = KnobGlossary::rangeOf (key);
-                const auto logTaper = unit == "Hz" || unit == "ms" || unit == "s" || unit == "ratio" || unit == "Q";
-                const auto lo = range.isEmpty() ? 0.0 : logTaper ? juce::jmax (0.01, range.getStart()) : range.getStart();
-                const auto hi = range.isEmpty() ? 1.0 : range.getEnd();
-                auto* k = owned.add (new Knob (key, lo, hi, logTaper, [unit] (double v)
-                                               { return unit == "ratio" ? juce::String (v, 2) + ":1" : juce::String (v, 3) + " " + unit; }));
-                map[key] = params.size();
-                params.add (k);
-            }
-
-            std::map<int, float> mine;
-            for (int i = 0; i < params.size(); ++i)
-                mine[i] = 0.5f;
-
             for (const auto* l : LessonLibrary::forOwnPlugins())
-            {
-                expect (OwnLesson::fits (*l, map), l->id);
-                const auto s = OwnLesson::stateAfter (*l, (int) l->steps.size() - 1, map, params, mine);
-                for (const auto& p : s.problems)
-                    expect (false, l->id + ": " + p);
+                for (const auto& p : OwnLesson::glossaryProblems (*l))
+                    expect (false, p);
 
-                expect (l->knobKeys().size() >= 1, l->id + " turns no knob");
-            }
+            // ...and the check does catch a lesson a real plugin could
+            // never follow.
+            const auto bad = LessonFile::parse (
+                "id: own-x\ncourse: own\norder: 9\nminutes: 3\nplugin: any\ngroup: space\nmaterial: loop\nauthor: t\n"
+                "title.ru: Т\ntitle.en: T\n@step\n@bypass on\nru: а\nen: a\n", "x.lesson");
+            expect (OwnLesson::glossaryProblems (bad.lesson).joinIntoString (" ").contains ("turns no knob"));
         }
     }
 };

@@ -30,6 +30,9 @@ for what's actually planned vs. built.
   the files to `CMakeLists.txt`, write a test following the existing
   `tests/*GameTest.cpp` template. No processor/editor changes needed —
   see [docs/architecture.md](../docs/architecture.md).
+- **Lessons.** A course lesson is a text file - no programming. How to
+  write one, check it and propose it (a pull request, the GitHub site or
+  an issue form): [lessons/CONTRIBUTING.md](../lessons/CONTRIBUTING.md).
 - **Translations.** `shared/i18n/strings/*.json` — each is a flat
   `{"key": "text"}` table. Fixing/improving an existing language's
   strings, or adding a 13th language (one new JSON file + a few lines in
@@ -95,6 +98,9 @@ actionable.
   добавьте файлы в `CMakeLists.txt`, напишите тест по шаблону
   существующих `tests/*GameTest.cpp`. Изменения в процессоре/редакторе не
   нужны — см. [docs/architecture.md](../docs/architecture.md).
+- **Уроки.** Урок — текстовый файл, без программирования. Как его
+  написать, проверить и предложить (pull request, сайт GitHub или форма
+  issue): [lessons/CONTRIBUTING.md](../lessons/CONTRIBUTING.md).
 - **Переводы.** `shared/i18n/strings/*.json` — плоская таблица
   `{"ключ": "текст"}` для каждого языка. Приветствуются как исправления
   существующих языков, так и добавление 13-го языка (один новый JSON-файл

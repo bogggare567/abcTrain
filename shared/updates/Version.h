@@ -24,4 +24,37 @@ namespace CurrentVersion
 
     // "Saint Petersburg" for 2.0.x (shared/updates/release-names.txt).
     constexpr const char* codename = VersionInfo::codename;
+
+    // Each part's own version (versions.json, ADR 069). The app's is
+    // `string` above (the release tag); the plugins and the lessons move
+    // only when they change.
+    namespace Part
+    {
+        inline constexpr const char* learnerEQ   = "learner-eq";
+        inline constexpr const char* learnerComp = "learner-comp";
+        inline constexpr const char* learnerVerb = "learner-verb";
+        inline constexpr const char* lessons     = "lessons";
+    }
+
+    /** The version of a part by its versions.json key; the app's for an
+        empty or unknown key. */
+    inline const char* of (const char* part) noexcept
+    {
+        const auto is = [part] (const char* key)
+        {
+            if (part == nullptr)
+                return false;
+            for (auto* a = part, *b = key;; ++a, ++b)
+            {
+                if (*a != *b) return false;
+                if (*a == 0)  return true;
+            }
+        };
+
+        if (is (Part::learnerEQ))   return VersionInfo::learnerEQ;
+        if (is (Part::learnerComp)) return VersionInfo::learnerComp;
+        if (is (Part::learnerVerb)) return VersionInfo::learnerVerb;
+        if (is (Part::lessons))     return VersionInfo::lessons;
+        return string;
+    }
 }

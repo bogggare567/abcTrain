@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "shared/updates/Version.h"
 #include "shared/dsp/EQCoefficients.h"
 #include "FrequencyGuide.h"
 #include "FrequencyZones.h"
@@ -97,7 +98,7 @@ namespace
 LearnerEQEditor::LearnerEQEditor (LearnerEQProcessor& p)
     : LearnerEditorBase (p, servicesFor (p),
                          { "ABC Learner EQ", AbcTrainTheme::Family::frequency,
-                           AppIcons::Icon::learnerEQ, "lp.bands" }),
+                           AppIcons::Icon::learnerEQ, "lp.bands", CurrentVersion::Part::learnerEQ }),
       eqProcessor (p)
 {
     {

@@ -1,0 +1,58 @@
+name: Lesson · Урок
+description: Предложить урок или поправку к уроку — даже если вы не умеете работать с git / Suggest a lesson or a fix to one, no git needed
+title: "Урок: "
+labels: [lesson]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Урок — это текстовый файл: шаги с текстом и команды, куда повернуть ручки. Как его писать — [lessons/FORMAT.md](https://github.com/bogggare567/abcTrain/blob/main/lessons/FORMAT.md), как предлагать — [lessons/CONTRIBUTING.md](https://github.com/bogggare567/abcTrain/blob/main/lessons/CONTRIBUTING.md).
+        Если вы умеете делать pull request — лучше сразу так: CI проверит файл и покажет ошибки на нужных строках. Если нет — вставьте урок сюда, мы оформим PR и укажем вас автором.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Что это / What is it
+      options:
+        - Новый урок для Студии (Learner EQ / Comp / Verb)
+        - Новый урок для «своего плагина» (plugin: any)
+        - Поправка к существующему уроку
+    validations:
+      required: true
+  - type: input
+    id: author
+    attributes:
+      label: Автор, как подписать в приложении / Author as credited
+      placeholder: Имя Фамилия или псевдоним
+    validations:
+      required: true
+  - type: dropdown
+    id: license
+    attributes:
+      label: Лицензия текста / Licence of the text
+      description: Под ней урок войдёт в abcTrain и сможет распространяться дальше с указанием автора.
+      options:
+        - CC BY-SA 4.0 — с указанием автора, переработки под той же лицензией
+        - CC BY 4.0 — с указанием автора
+        - CC0 — без условий
+    validations:
+      required: true
+  - type: textarea
+    id: lesson
+    attributes:
+      label: Урок / The lesson
+      description: Текст файла целиком (шапка и шаги) или описание поправки.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Источники / Sources
+      description: Книга и глава, статья, откуда взяты факты и числа. Урок без источника принимается, только если он опирается на ваш собственный опыт — тогда так и напишите.
+  - type: checkboxes
+    id: rights
+    attributes:
+      label: Права / Rights
+      options:
+        - label: Текст написан мной (или я имею право его отдать) и не скопирован из книги — пересказ своими словами, цитаты не длиннее предложения / I wrote it, it is not copied from a book
+          required: true

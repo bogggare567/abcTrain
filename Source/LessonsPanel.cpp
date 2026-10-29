@@ -629,7 +629,10 @@ void LessonsPanel::paint (juce::Graphics& g)
                                             + host.textWith ("lessons.lessonOf", { { "n", juce::String (lesson->order) },
                                                                                    { "m", juce::String (ofCourse) } })
                                             + "  ·  " + host.textWith ("lessons.minutes", { { "n", juce::String (lesson->minutes) } })
-                                            + "  ·  " + lesson->plugin.toUpperCase()),
+                                            + "  ·  " + lesson->plugin.toUpperCase()
+                                            // A guest author is named on the lesson (lessons/CONTRIBUTING.md).
+                                            + (lesson->author.isNotEmpty() && lesson->author != "abcTrain" ? "  ·  " + lesson->author
+                                                                                                          : juce::String())),
                           r.removeFromTop (16).toFloat(), LnF::microFont(), theme.textDim, 1.3f);
     r.removeFromTop (6);
 

@@ -1,4 +1,5 @@
 #include "shared/updates/UpdateChecker.h"
+#include "shared/updates/Version.h"
 #include <tuple>
 #include <juce_events/juce_events.h>
 #include <vector>
@@ -143,6 +144,33 @@ namespace UpdateChecker
         }
     }
 
+    juce::StringPairArray parsePartVersions (const juce::String& body)
+    {
+        juce::StringPairArray out;
+        const auto start = body.indexOf ("<!-- versions:");
+        if (start < 0)
+            return out;
+
+        const auto end = body.indexOf (start, "-->");
+        if (end < 0)
+            return out;
+
+        const auto json = juce::JSON::parse (body.substring (start + 14, end).trim());
+        if (auto* obj = json.getDynamicObject())
+            for (const auto& p : obj->getProperties())
+                if (isNewerVersion (p.value.toString(), "0.0.0"))   // a well-formed X.Y.Z, nothing else
+                    out.set (p.name.toString(), p.value.toString());
+        return out;
+    }
+
+    bool isUpdateFor (const ReleaseInfo& release, const juce::String& part,
+                      const juce::String& partVersion, const juce::String& appVersion)
+    {
+        if (part.isNotEmpty() && release.parts.containsKey (part))
+            return isNewerVersion (release.parts[part], partVersion);
+        return isNewerVersion (release.tagName, appVersion);
+    }
+
     ReleaseInfo parseReleaseJson (const juce::String& json)
     {
         // `parsed` must outlive `obj`: var::getDynamicObject() returns a
@@ -157,6 +185,7 @@ namespace UpdateChecker
             ReleaseInfo info;
             info.tagName = obj->getProperty ("tag_name").toString();
             info.htmlUrl = obj->getProperty ("html_url").toString();
+            info.parts = parsePartVersions (obj->getProperty ("body").toString());
             fillAssetFor (*obj, info);
             return info;
         }
@@ -180,7 +209,8 @@ namespace UpdateChecker
                         ReleaseInfo info;
                         info.tagName = obj->getProperty ("tag_name").toString();
                         info.htmlUrl = obj->getProperty ("html_url").toString();
-                    fillAssetFor (*obj, info);
+                        info.parts = parsePartVersions (obj->getProperty ("body").toString());
+                        fillAssetFor (*obj, info);
                         return info;
                     }
                 }
@@ -191,17 +221,17 @@ namespace UpdateChecker
     }
 
     void checkForUpdatesAsync (const juce::String& currentVersion, Channel channel,
-                                std::function<void (bool, ReleaseInfo)> callback)
+                                std::function<void (bool, ReleaseInfo)> callback, const juce::String& part)
     {
        #if JUCE_IOS || JUCE_ANDROID
         // On a phone the store (or Xcode) updates the app, never the app
         // itself: the App Store forbids downloading and installing own code.
         // Silence is the same answer as "could not check" (ADR 007).
-        juce::ignoreUnused (currentVersion, channel, callback);
+        juce::ignoreUnused (currentVersion, channel, callback, part);
         return;
        #endif
 
-        juce::Thread::launch ([currentVersion, channel, callback]
+        juce::Thread::launch ([currentVersion, channel, callback, part]
         {
             const juce::URL url (channel == Channel::beta ? releaseListApiUrl : latestReleaseApiUrl);
 
@@ -219,7 +249,8 @@ namespace UpdateChecker
             if (release.tagName.isEmpty())
                 return;
 
-            const auto foundNewer = isNewerVersion (release.tagName, currentVersion);
+            const auto foundNewer = part.isEmpty() ? isNewerVersion (release.tagName, currentVersion)
+                                                   : isUpdateFor (release, part, currentVersion, CurrentVersion::string);
 
             juce::MessageManager::callAsync ([callback, foundNewer, release]
             {

@@ -54,6 +54,7 @@ public:
         AbcTrainTheme::Family family;
         AppIcons::Icon icon;
         juce::String controlsCaptionKey;   // i18n key for the control section
+        juce::String versionPart;          // versions.json key ("learner-comp"): its own version, ADR 069
     };
 
     LearnerEditorBase (juce::AudioProcessor&, Services, Identity);

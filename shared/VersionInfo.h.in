@@ -12,4 +12,10 @@ namespace VersionInfo
     // The city this release line is named after (shared/updates/release-names.txt),
     // or empty for a line that has none (every release before 2.0).
     constexpr const char* codename = "@ABCTRAIN_CODENAME@";
+
+    // Each part's own version, from versions.json (ADR 069).
+    constexpr const char* learnerEQ   = "@ABCTRAIN_VERSION_LEARNER_EQ@";
+    constexpr const char* learnerComp = "@ABCTRAIN_VERSION_LEARNER_COMP@";
+    constexpr const char* learnerVerb = "@ABCTRAIN_VERSION_LEARNER_VERB@";
+    constexpr const char* lessons     = "@ABCTRAIN_VERSION_LESSONS@";
 }

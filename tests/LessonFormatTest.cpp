@@ -53,17 +53,8 @@ public:
         beginTest ("a lesson reads in the minutes it says: 3-5, about 120-220 words a minute");
         {
             for (const auto& l : LessonLibrary::all())
-            {
-                expect (l.minutes >= 3 && l.minutes <= 5, l.id + ": " + juce::String (l.minutes) + " min");
-                expect (l.steps.size() >= 4 && l.steps.size() <= 10, l.id + ": " + juce::String ((int) l.steps.size()) + " steps");
-
-                int words = 0;
-                for (const auto& s : l.steps)
-                    words += juce::StringArray::fromTokens (s.textRu, " ", "").size();
-
-                expect (words <= l.minutes * 220, l.id + ": " + juce::String (words) + " words for "
-                                                   + juce::String (l.minutes) + " min");
-            }
+                for (const auto& p : LessonFile::styleProblems (l))
+                    expect (false, p);
         }
 
         beginTest ("every command lands on a real parameter, inside its range");

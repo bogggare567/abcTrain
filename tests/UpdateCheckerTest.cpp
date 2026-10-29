@@ -152,6 +152,26 @@ public:
             expect (UpdateChecker::parseReleaseListJson (R"({"message": "Not Found"})", true).tagName.isEmpty()); // an object, not an array
             expect (UpdateChecker::parseReleaseListJson ("[]", true).tagName.isEmpty()); // valid, empty array
         }
+
+        beginTest ("each part has its own version: a plugin is offered only a release that changes it (ADR 069)");
+        {
+            const auto release = UpdateChecker::parseReleaseJson (
+                R"({"tag_name":"v2.3.0","html_url":"x","body":"## 2.3\n\ntext\n\n<!-- versions: {\"app\":\"2.3.0\",\"learner-eq\":\"2.3.0\",\"learner-comp\":\"2.2.0\",\"lessons\":\"bad\"} -->"})");
+
+            expectEquals (release.tagName, juce::String ("v2.3.0"));
+            expectEquals (release.parts["learner-eq"], juce::String ("2.3.0"));
+            expectEquals (release.parts["learner-comp"], juce::String ("2.2.0"));
+            expect (! release.parts.containsKey ("lessons"), "a malformed version is left out");
+
+            expect (UpdateChecker::isUpdateFor (release, "learner-eq", "2.2.0", "2.2.0"));
+            expect (! UpdateChecker::isUpdateFor (release, "learner-comp", "2.2.0", "2.2.0"), "Comp did not change in 2.3");
+            expect (UpdateChecker::isUpdateFor (release, "learner-verb", "2.2.0", "2.2.0"), "not named: the tag against the app");
+
+            const auto old = UpdateChecker::parseReleaseJson (R"({"tag_name":"v2.1.1","html_url":"x","body":"no line"})");
+            expect (old.parts.size() == 0);
+            expect (UpdateChecker::isUpdateFor (old, "learner-eq", "2.2.0", "2.1.0"), "an old release: the tag against the app");
+            expect (! UpdateChecker::isUpdateFor (old, "learner-eq", "2.2.0", "2.1.1"));
+        }
     }
 };
 

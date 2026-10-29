@@ -44,6 +44,7 @@ namespace LessonFile
     {
         juce::String id, course, plugin, material, author, sources;
         juce::String group;   // plugin: any - eq / dynamics / space / saturation / modulation
+        juce::String license; // empty: the project's own lesson; a guest's: CC BY 4.0 / CC BY-SA 4.0 / CC0
         juce::String titleRu, titleEn;
         int order = 0, minutes = 0;
         std::vector<Step> steps;
@@ -72,6 +73,15 @@ namespace LessonFile
     };
 
     Result parse (const juce::String& text, const juce::String& sourceName);
+
+    // What a lesson that parses can still get wrong as a lesson: minutes
+    // honest (3-5), 4-10 steps, the Russian readable in the minutes it
+    // says (about 220 words a minute). The test and tools/LessonCheck use
+    // the same rule, so a guest author sees the same thing the CI does.
+    juce::StringArray styleProblems (const Lesson&);
+
+    // The licences a guest author can put in `license:` (lessons/CONTRIBUTING.md).
+    const juce::StringArray& licenses();   // CC BY 4.0, CC BY-SA 4.0, CC0
 
     // The value sets the format allows, for the parser and for the UI.
     const juce::StringArray& courses();     // eq comp verb routing channel vocal bus

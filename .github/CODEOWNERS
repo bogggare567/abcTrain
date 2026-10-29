@@ -1,0 +1,6 @@
+# Who reviews what. A pull request that touches these paths asks this
+# reviewer automatically; with branch protection on main it cannot be
+# merged without that review.
+/lessons/                 @bogggare567
+/shared/i18n/strings/     @bogggare567
+/versions.json            @bogggare567

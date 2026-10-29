@@ -20,6 +20,7 @@
 """
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -27,6 +28,49 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TAG_PATTERN = re.compile(r"^v\d+\.\d+\.\d+(-(alpha|beta|rc)\.\d+)?$")
+
+# Each part's own version (ADR 069) and where its code lives: a part whose
+# files changed since the last release but whose number did not is named
+# before anything is sent. shared/ is everyone's, so a change there is
+# listed for each plugin too - whether it changes what the plugin does is a
+# judgement, not a rule.
+PARTS = {
+    "learner-eq": ["LearnerEQ/", "shared/dsp/", "shared/learning/", "shared/analysis/"],
+    "learner-comp": ["LearnerComp/", "shared/dsp/", "shared/learning/", "shared/analysis/"],
+    "learner-verb": ["LearnerVerb/", "shared/dsp/", "shared/learning/", "shared/analysis/"],
+    "lessons": ["lessons/"],
+}
+
+
+def check_versions(tag):
+    versions = json.loads((ROOT / "versions.json").read_text(encoding="utf-8"))
+    core = tag[1:].split("-")[0]
+    if versions.get("app") != core:
+        sys.exit(f"versions.json: app = {versions.get('app')}, а тег {tag} — поправьте \"app\" на {core}")
+
+    previous = run("git", "describe", "--tags", "--abbrev=0", "HEAD", check=False)
+    print("Версии частей (versions.json):")
+    for part, value in versions.items():
+        print(f"  {part:13} {value}")
+
+    if not previous:
+        return
+    try:
+        before = json.loads(run("git", "show", f"{previous}:versions.json", check=False) or "{}")
+    except json.JSONDecodeError:
+        before = {}
+
+    stale = []
+    for part, paths in PARTS.items():
+        changed = run("git", "diff", "--name-only", f"{previous}..HEAD", "--", *paths, check=False)
+        if changed and before.get(part) == versions.get(part):
+            files = changed.splitlines()
+            stale.append(f"  {part}: {len(files)} файл(ов) изменилось с {previous}, а версия та же ({versions.get(part)}): "
+                         + ", ".join(files[:3]) + (" …" if len(files) > 3 else ""))
+    if stale:
+        print("Внимание — изменилось, но версия не поднята:")
+        print("\n".join(stale))
+        print("Если изменение касается этой части, поднимите её номер в versions.json и закоммитьте.")
 
 
 def run(*cmd, check=True, capture=True):
@@ -45,6 +89,8 @@ def main():
 
     if not TAG_PATTERN.match(tag):
         sys.exit(f"Тег «{tag}» не похож на vX.Y.Z или vX.Y.Z-beta.N")
+
+    check_versions(tag)
 
     branch = run("git", "rev-parse", "--abbrev-ref", "HEAD")
     if branch != "main":

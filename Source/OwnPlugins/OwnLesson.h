@@ -64,6 +64,14 @@ namespace OwnLesson
     State stateAfter (const LessonFile::Lesson&, int upTo, const KnobMap&,
                       const juce::Array<juce::AudioProcessorParameter*>&, const std::map<int, float>& mine);
 
+    /** A lesson for "your own plugin" played on one imaginary, generous
+        plugin that has every glossary knob over the whole lesson range of
+        its unit: whatever a well-written lesson asks for, it can reach. So
+        anything this returns is a typo in the lesson (a knob the plugin
+        cannot have, a number it cannot show), never a limit of a real
+        plugin. tests/OwnLessonTest and tools/LessonCheck run it. */
+    juce::StringArray glossaryProblems (const LessonFile::Lesson&);
+
     /** The positions min / low / high / max stand for. low and high are
         the same 15 % and 85 % as the Less / More buttons on the knob card. */
     inline constexpr float lowPosition = 0.15f, highPosition = 0.85f;

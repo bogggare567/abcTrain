@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "shared/updates/Version.h"
 #include "CompressorModules.h"
 #include "ParameterGuide.h"
 #include "VocalCompressionLesson.h"
@@ -33,7 +34,7 @@ namespace
 LearnerCompEditor::LearnerCompEditor (LearnerCompProcessor& p)
     : LearnerEditorBase (p, servicesFor (p),
                          { "ABC Learner Comp", AbcTrainTheme::Family::dynamics,
-                           AppIcons::Icon::learnerComp, "lp.compressor" }),
+                           AppIcons::Icon::learnerComp, "lp.compressor", CurrentVersion::Part::learnerComp }),
       compProcessor (p),
       knobs (p.apvts, { { "threshold", t ("knob.threshold", "Threshold"), " " + t ("unit.dB", "dB"), 0 },
                         { "ratio",     t ("knob.ratio", "Ratio"),         ":1", 1 },

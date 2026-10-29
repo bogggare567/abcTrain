@@ -238,4 +238,65 @@ namespace OwnLesson
 
         return s;
     }
+
+    namespace
+    {
+        // A knob of the generous plugin: lo..hi in the key's unit, log
+        // taper for times, frequencies, ratio and Q, text in that unit.
+        struct GenerousKnob : public juce::AudioProcessorParameter
+        {
+            explicit GenerousKnob (const juce::String& k) : key (k), unit (KnobGlossary::unitOf (k))
+            {
+                const auto range = KnobGlossary::rangeOf (key);
+                logTaper = logScale (unit);
+                lo = range.isEmpty() ? 0.0 : logTaper ? juce::jmax (0.01, range.getStart()) : range.getStart();
+                hi = range.isEmpty() ? 1.0 : range.getEnd();
+            }
+
+            double valueAt (float pos) const { return logTaper ? lo * std::pow (hi / lo, (double) pos) : lo + (hi - lo) * pos; }
+            float getValue() const override { return value; }
+            void setValue (float v) override { value = v; }
+            float getDefaultValue() const override { return 0.5f; }
+            juce::String getName (int) const override { return key; }
+            juce::String getLabel() const override { return {}; }
+            float getValueForText (const juce::String&) const override { return 0.0f; }
+            juce::String getText (float pos, int) const override
+            {
+                const auto v = valueAt (pos);
+                return unit == "ratio" ? juce::String (v, 2) + ":1" : juce::String (v, 3) + " " + unit;
+            }
+
+            juce::String key, unit;
+            double lo = 0.0, hi = 1.0;
+            bool logTaper = false;
+            float value = 0.5f;
+        };
+    }
+
+    juce::StringArray glossaryProblems (const LessonFile::Lesson& lesson)
+    {
+        juce::StringArray out;
+        if (! lesson.forOwnPlugin())
+            return out;
+
+        juce::OwnedArray<GenerousKnob> owned;
+        juce::Array<juce::AudioProcessorParameter*> params;
+        KnobMap map;
+        std::map<int, float> mine;
+
+        for (const auto& key : KnobGlossary::keys())
+        {
+            map[key] = params.size();
+            mine[params.size()] = 0.5f;
+            params.add (owned.add (new GenerousKnob (key)));
+        }
+
+        if (lesson.knobKeys().isEmpty())
+            out.add (lesson.id + ": turns no knob");
+
+        const auto s = stateAfter (lesson, (int) lesson.steps.size() - 1, map, params, mine);
+        for (const auto& p : s.problems)
+            out.add (lesson.id + ": " + p);
+        return out;
+    }
 }

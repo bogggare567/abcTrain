@@ -1315,7 +1315,7 @@ void SettingsScreenComponent::resized()
     if (currentPage == Page::training || currentPage == Page::hearing)
         page.removeFromTop (26);                                // the mode note / status line
     else if (currentPage == Page::about)
-        page.removeFromTop (22);                                // the version line
+        page.removeFromTop (40);                                // the version lines: the app, then its parts
 
     // A page longer than the window runs on below it and scrolls: laid out
     // in the window's height, the last rows were squeezed to nothing and
@@ -1752,6 +1752,15 @@ void SettingsScreenComponent::paint (juce::Graphics& g)
                                            + (city.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 (" \xc2\xb7 ")) + city : juce::String()),
                                       page.removeFromTop (18),
                     juce::Justification::centredLeft, false);
+
+        // Each part's own version (ADR 069): the plugins and the lessons
+        // move only when they change, so they can differ from the app's.
+        const juce::String dot (juce::CharPointer_UTF8 (" \xc2\xb7 "));
+        AbcTrainLookAndFeel::fitText (g, "Learner EQ " + juce::String (CurrentVersion::of (CurrentVersion::Part::learnerEQ))
+                                           + dot + "Comp " + CurrentVersion::of (CurrentVersion::Part::learnerComp)
+                                           + dot + "Verb " + CurrentVersion::of (CurrentVersion::Part::learnerVerb)
+                                           + dot + localisation.getText ("lessons.window") + " " + CurrentVersion::of (CurrentVersion::Part::lessons),
+                                      page.removeFromTop (18), juce::Justification::centredLeft, true);
     }
 
     // The groups: a caption over a frame round its rows.

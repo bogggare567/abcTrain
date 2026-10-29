@@ -1407,7 +1407,9 @@ void OwnPluginsPanel::paint (juce::Graphics& g)
             c.removeFromTop (6);
             g.setColour (theme.textDim);
             g.setFont (LnF::captionFont());
-            LnF::fitLines (g, fill (text.lessonSources, "s", l->sources), c, juce::Justification::topLeft, 4, 0.9f);
+            // A guest author is named on the lesson (lessons/CONTRIBUTING.md).
+            const auto credit = l->author.isNotEmpty() && l->author != "abcTrain" ? l->author + ". " : juce::String();
+            LnF::fitLines (g, credit + fill (text.lessonSources, "s", l->sources), c, juce::Justification::topLeft, 4, 0.9f);
             return;
         }
 

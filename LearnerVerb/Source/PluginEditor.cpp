@@ -1,4 +1,5 @@
 #include "PluginEditor.h"
+#include "shared/updates/Version.h"
 #include "ReverbModules.h"
 #include "ReverbGuide.h"
 #include "VocalSpaceLesson.h"
@@ -33,7 +34,7 @@ namespace
 LearnerVerbEditor::LearnerVerbEditor (LearnerVerbProcessor& p)
     : LearnerEditorBase (p, servicesFor (p),
                          { "ABC Learner Verb", AbcTrainTheme::Family::space,
-                           AppIcons::Icon::learnerVerb, "lp.reverb" }),
+                           AppIcons::Icon::learnerVerb, "lp.reverb", CurrentVersion::Part::learnerVerb }),
       verbProcessor (p),
       knobs (p.apvts, { { "decay",    t ("knob.decay", "Decay"),         " " + t ("unit.s", "s"), 2 },
                         { "preDelay", t ("knob.preDelay", "Pre-delay"),  " " + t ("unit.ms", "ms"), 0 },
