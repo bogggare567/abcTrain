@@ -1,0 +1,62 @@
+id: own-verb-decay-mix
+course: own
+order: 6
+minutes: 4
+plugin: any
+group: space
+material: loop
+author: abcTrain
+sources: B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8 «Timing the Decay»; R. Izhaki, «Mixing Audio», 2nd ed., гл. 23 (время затухания и ритм); M. Senior, «Mixing Secrets for the Small Studio», ch. 16.2 «Essential Reverb Controls and Setup»
+title.ru: Decay и Mix: сколько пространства
+title.en: Decay and Mix: how much space
+
+@step
+@knob mix 25
+@knob decay 0.6
+ru: Ваш ревербератор на барабанах: Mix 25 %, Decay 0.6 с. Хвост короткий,
+    он заканчивается до следующего удара. Барабаны получили комнату вокруг
+    себя, но остались чёткими.
+en: Your reverb on drums: Mix 25%, Decay 0.6 s. The tail is short and ends
+    before the next hit. The drums have a room around them and stay tight.
+
+@step
+@knob decay 4
+ru: Decay 4 с: хвост тянется через несколько ударов, удары тонут в
+    собственном эхе, ритм размывается. Длинный ревер на быстрой партии
+    почти всегда звучит как каша.
+en: Decay 4 s: the tail runs over several hits, the hits drown in their own
+    echo and the rhythm smears. A long reverb on a busy part nearly always
+    sounds like mush.
+
+@step
+@knob decay 1.2
+ru: Decay 1.2 с — хвост затихает к следующей доле. Привязать длину к
+    темпу — проверенный способ: ревер дышит с ритмом, а не против него.
+en: Decay 1.2 s - the tail fades by the next beat. Tying the length to the
+    tempo is a tried method: the reverb breathes with the rhythm, not against
+    it.
+
+@step
+@knob mix 60
+ru: Mix 60 %: та же длина, но пространства стало больше, чем самого звука.
+    Барабаны ушли вглубь, как будто микрофоны в другом конце зала. Mix
+    решает, насколько далеко звук.
+en: Mix at 60%: the same length, but now there is more space than drums. The
+    drums have moved back, as if the mics were at the far end of a hall. Mix
+    decides how far away the sound is.
+
+@step
+@knob mix 15
+ru: Mix 15 %: ревер почти не слышен отдельно, но выключите его в окне
+    плагина — и барабаны станут сухими и плоскими. Хорошее количество ревера
+    часто замечают только тогда, когда его убирают.
+en: Mix at 15%: you hardly hear the reverb on its own, but switch it off in
+    the plugin and the drums go dry and flat. A good amount of reverb is often
+    noticed only when it is taken away.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Decay — сколько длится хвост, Mix — сколько
+    его в звуке.
+en: Your setting is back. Decay is how long the tail lasts, Mix how much of
+    it is in the sound.

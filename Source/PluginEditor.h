@@ -210,6 +210,16 @@ public:
 
     // «Свой плагин» with a list and an answered round, no plugin loaded
     // (EditorSnapshots "EarTrainer-StudioOwnPlugin").
+    void openOwnPluginLessonForSnapshot()
+    {
+        openOwnPluginForSnapshot (true);
+       #if JUCE_PLUGINHOST_VST3 || JUCE_PLUGINHOST_AU
+        if (auto* own = dynamic_cast<OwnPluginsPanel*> (studioScreen.getOwnPluginPanel()))
+            own->showLessonForSnapshot();
+       #endif
+        resized();
+    }
+
     void openOwnPluginForSnapshot (bool learning = false)
     {
         openStudioForSnapshot (StudioScreenComponent::Effect::eq);
@@ -2034,6 +2044,19 @@ private:
         {
             auto panel = std::make_unique<OwnPluginsPanel> (processor.getOwnPluginPlayer());
             panel->setStrings (ownPluginStrings());
+            // A lesson is done once, here or in the Studio's lessons window.
+            panel->isLessonDone = [this] (const juce::String& id)
+            {
+                return juce::StringArray::fromTokens (localisationProperties.getValue (LessonsPanel::doneKey), ",", "").contains (id);
+            };
+            panel->markLessonDone = [this] (const juce::String& id)
+            {
+                auto done = juce::StringArray::fromTokens (localisationProperties.getValue (LessonsPanel::doneKey), ",", "");
+                done.addIfNotAlreadyThere (id);
+                done.removeEmptyStrings();
+                localisationProperties.setValue (LessonsPanel::doneKey, done.joinIntoString (","));
+                localisationProperties.saveIfNeeded();
+            };
             panel->scanIfNeeded();
             return panel;
         },

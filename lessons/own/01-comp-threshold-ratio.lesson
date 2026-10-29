@@ -1,0 +1,71 @@
+id: own-comp-threshold-ratio
+course: own
+order: 1
+minutes: 4
+plugin: any
+group: dynamics
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», разделы «Порог (Threshold)», «Отношение (Ratio)», «Взаимосвязь между порогом и отношением»; M. Senior, «Mixing Secrets for the Small Studio», гл. 9; база знаний abcTrain, COMP-007, COMP-008
+title.ru: Threshold и Ratio на вашем компрессоре
+title.en: Threshold and Ratio on your compressor
+
+@step
+@knob ratio min
+@knob threshold max
+ru: Это ваш компрессор на барабанном лупе. Ratio на минимуме, Threshold
+    на максимуме: компрессор включён, но почти ничего не делает. Запомните,
+    как бочка и малый выпрыгивают вперёд, — эту разницу мы будем сокращать.
+en: This is your compressor on a drum loop. Ratio at its minimum, Threshold
+    at its maximum: the compressor is in but does almost nothing. Remember how
+    the kick and snare jump forward - that is the difference we will narrow.
+
+@step
+@knob threshold -20
+ru: Threshold опускаем до −20 дБ — смотрите, как ручка едет в окне плагина.
+    Звук почти не изменился: порог только отделяет то, что компрессор будет
+    трогать, от того, что он оставит в покое. Насколько сильно трогать,
+    решает Ratio.
+en: Threshold down to -20 dB - watch the knob travel in the plugin's window.
+    The sound has barely changed: the threshold only divides what the
+    compressor will touch from what it leaves alone. How hard it touches is
+    up to Ratio.
+
+@step
+@knob ratio 4
+ru: Ratio 4:1: всё, что выше порога на 8 дБ, на выходе превысит его только
+    на 2 дБ. Удары стали ровнее и тише, луп как будто сел плотнее. Если у
+    плагина есть индикатор подавления, он ныряет на каждой доле.
+en: Ratio 4:1: anything 8 dB over the threshold comes out only 2 dB over it.
+    The hits are more even and quieter, the loop sits tighter. If the plugin
+    has a gain reduction meter, it dips on every beat.
+
+@step
+@knob threshold -35
+ru: Порог −35 дБ при том же Ratio: теперь сжимается почти всё, включая
+    хвосты и тарелки между ударами. Динамика исчезла, барабаны звучат
+    придавленно. Это уже слишком — так звучит перекомпрессия.
+en: Threshold at -35 dB with the same Ratio: now almost everything is
+    squeezed, including the tails and cymbals between hits. The dynamics are
+    gone and the drums sound pressed flat. Too much - this is what
+    over-compression sounds like.
+
+@step
+@knob ratio 1.5
+ru: Оставим низкий порог, но уменьшим Ratio до 1.5:1. Звучит мягче:
+    Threshold решает, какую часть сигнала обрабатывать, Ratio — насколько
+    круто. Низкий порог с малым Ratio обычно прозрачнее, чем высокий порог
+    с большим.
+en: Keep the low threshold but drop Ratio to 1.5:1. It sounds gentler:
+    Threshold decides how much of the signal is processed, Ratio how steeply.
+    A low threshold with a small ratio is usually more transparent than a
+    high threshold with a big one.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Послушайте её теперь, зная, что делают две
+    главные ручки: где у вас порог относительно ударов и насколько круто
+    стоит Ratio.
+en: Your setting is back. Listen to it now that you know what the two main
+    knobs do: where your threshold sits against the hits and how steep your
+    Ratio is.

@@ -1,0 +1,66 @@
+id: own-eq-sweep-and-cut
+course: own
+order: 4
+minutes: 4
+plugin: any
+group: eq
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio» (рус. пер.), гл. 14 «Эквалайзеры», «Параметрические фильтры»; Б. Овсински, «Настольная книга звукорежиссёра», гл. 5, «золотые» правила эквализации; Д. Гибсон, «Искусство сведения», гл. 4, «Использование эквалайзера: инструкции шаг за шагом»; база знаний abcTrain, EQ-001
+title.ru: Frequency, Gain и Q: найти и убрать
+title.en: Frequency, Gain and Q: find it and take it out
+
+@step
+@knob q 4
+@knob eqgain 10
+@knob frequency 100
+ru: Одна полоса вашего эквалайзера: узкая (Q 4) и сильно поднятая, +10 дБ
+    на 100 Гц. Если полоса в плагине выключена, включите её — урок крутит
+    только ручки. Слышно, как гудит бочка: так звучит подъём, который
+    «ищет» проблему.
+en: One band of your equaliser: narrow (Q 4) and boosted hard, +10 dB at
+    100 Hz. If the band is switched off in the plugin, switch it on - the
+    lesson only turns knobs. The kick booms: this is a boost used to hunt for
+    a problem.
+
+@step
+@knob frequency 400
+ru: Frequency 400 Гц: подъём переехал в низкую середину. Барабаны звучат
+    картонно, «коробкой». Это частая проблемная зона малого барабана и
+    комнатных микрофонов.
+en: Frequency 400 Hz: the boost has moved into the low mids. The drums sound
+    papery and boxy. This is a common trouble zone for snares and room mics.
+
+@step
+@knob frequency 3000
+ru: 3 кГц: щелчки палок и атака бочки торчат вперёд, луп режет слух.
+    Метод простой: узкий подъём ведут по частотам, пока проблема не станет
+    громче всего.
+en: 3 kHz: the stick clicks and the kick's beater stick out and the loop gets
+    harsh. The method is simple: sweep a narrow boost until the problem is
+    loudest.
+
+@step
+@knob frequency 400
+@knob eqgain -4
+@knob q 2
+ru: Нашли «коробку» на 400 Гц — теперь не поднимаем, а вырезаем: −4 дБ,
+    Q 2. Барабаны стали чище, хотя мы ничего не добавляли. Сначала убрать
+    лишнее, потом добавлять — одно из главных правил эквализации.
+en: We found the box at 400 Hz - now we cut instead: -4 dB, Q 2. The drums
+    are cleaner although nothing was added. Cut what is in the way before you
+    add anything - one of the main rules of equalising.
+
+@step
+@bypass on
+ru: Без обработки. Сравните: «коробка» вернулась. Сравнивайте так после
+    каждого шага — ухо быстро привыкает к любой настройке.
+en: Bypassed. Compare: the box is back. Compare like this after every move -
+    the ear gets used to any setting quickly.
+
+@step
+@bypass off
+@mine
+ru: Ваша настройка вернулась. Frequency выбирает где, Gain — насколько,
+    Q — как широко.
+en: Your setting is back. Frequency picks where, Gain how much, Q how wide.

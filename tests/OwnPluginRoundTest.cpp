@@ -1,4 +1,4 @@
-#include "Source/OwnPlugins/KnobGlossary.h"
+#include "shared/learning/KnobGlossary.h"
 #include <juce_core/juce_core.h>
 #include "../Source/OwnPlugins/OwnPluginRound.h"
 

@@ -1,0 +1,55 @@
+id: own-sat-drive-mix
+course: own
+order: 8
+minutes: 3
+plugin: any
+group: saturation
+material: loop
+author: abcTrain
+sources: M. Senior, «Mixing Secrets for the Small Studio», ch. 12.1 «Distortion as a Mix Tool»; R. Izhaki, «Mixing Audio», 2nd ed., гл. 24 «Дисторшн»; база знаний abcTrain
+title.ru: Drive и Mix: сколько грязи
+title.en: Drive and Mix: how much dirt
+
+@step
+@knob mix max
+@knob drive low
+ru: Ваш сатуратор, Drive почти на минимуме. Отличие от сухого звука
+    едва слышно: чуть плотнее и теплее. Так звучит лёгкая сатурация —
+    её не слышно, пока не выключишь.
+en: Your saturator with Drive near its minimum. The difference from the dry
+    sound is faint: slightly denser and warmer. This is light saturation - you
+    do not hear it until you switch it off.
+
+@step
+@knob drive high
+ru: Drive почти на максимуме: удары сплющились, появились жужжащие
+    призвуки, тарелки стали шершавыми. Громкость могла вырасти —
+    сравнивайте на одинаковом уровне, иначе громче всегда кажется лучше.
+en: Drive near its maximum: the hits are flattened, buzzing overtones appear
+    and the cymbals turn gritty. The level may have gone up - compare at the
+    same loudness, otherwise louder always seems better.
+
+@step
+@knob mix 30
+ru: Тот же сильный Drive, но Mix 30 %: грязь подмешана к чистому сигналу.
+    Удар сохранил форму, а призвуки добавили плотности и характера. Это
+    параллельная сатурация.
+en: The same heavy Drive with Mix at 30%: the dirt is blended under the clean
+    signal. The hit keeps its shape and the overtones add density and
+    character. This is parallel saturation.
+
+@step
+@knob drive pos=0.5
+@knob mix max
+ru: Средний Drive на полном Mix. Ищите точку, где луп стал плотнее и
+    заметнее в миксе, а искажение ещё не слышно как отдельный звук.
+en: Medium Drive at full Mix. Look for the point where the loop is denser and
+    easier to hear in a mix, but the distortion is not yet heard as a sound of
+    its own.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Drive решает, сколько искажения, Mix — сколько
+    его в звуке.
+en: Your setting is back. Drive decides how much distortion, Mix how much of
+    it is in the sound.

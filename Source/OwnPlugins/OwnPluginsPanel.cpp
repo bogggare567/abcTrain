@@ -1,8 +1,9 @@
 #include "OwnPluginsPanel.h"
-#include "KnobGlossary.h"
+#include "shared/learning/KnobGlossary.h"
 #include "shared/ui/AbcTrainLookAndFeel.h"
 #include "shared/ui/AbcTrainTheme.h"
 #include "shared/audio/BuiltInSynth.h"
+#include "../LessonLibrary.h"
 #include <algorithm>
 #include <map>
 
@@ -173,7 +174,10 @@ OwnPluginsPanel::OwnPluginsPanel (OwnPluginPlayer& p) : player (p)
     modeChoice.setValue (0);
     modeChoice.onChange = [this] (int)
     {
-        // Leaving a round half-way is allowed; it just ends.
+        // Leaving a round half-way is allowed; it just ends. So does a
+        // lesson, and the player's setting comes back with it.
+        endLesson (false);
+        lessonJustFinished = false;
         restoreDemoKnob (false);
         roundOn = answered = false;
         checking = false;
@@ -241,6 +245,44 @@ OwnPluginsPanel::OwnPluginsPanel (OwnPluginPlayer& p) : player (p)
         addChildComponent (b);
     LnF::makePrimary (learnNext, true);
 
+    // A course lesson on this plugin (ADR 068).
+    lessonList.setRowHeight (56);
+    lessonList.setColour (juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+    addChildComponent (lessonList);
+    lessonBack.onClick = [this] { if (lessonStep > 0) showLessonStep (lessonStep - 1); };
+    lessonNext.onClick = [this]
+    {
+        const auto* l = chosenLesson();
+        if (l == nullptr)
+            return;
+
+        if (lessonStep + 1 < (int) l->steps.size())
+        {
+            lessonJustFinished = false;
+            showLessonStep (lessonStep + 1);
+            return;
+        }
+
+        // The last step: done, and the player's own setting comes back.
+        if (markLessonDone != nullptr)
+            markLessonDone (l->id);
+        endLesson (true);
+        lessonJustFinished = true;
+        lessonList.repaint();
+        refreshRoundUi();
+        repaint();
+    };
+    lessonDry.setClickingTogglesState (false);
+    lessonDry.onClick = [this]
+    {
+        const auto dry = player.getListen() != OwnPluginPlayer::Listen::dry;
+        setListen (dry ? OwnPluginPlayer::Listen::dry : OwnPluginPlayer::Listen::a);
+        refreshRoundUi();
+    };
+    for (auto* b : { &lessonBack, &lessonNext, &lessonDry })
+        addChildComponent (b);
+    LnF::makePrimary (lessonNext, true);
+
     setStrings (text);
 }
 
@@ -254,7 +296,9 @@ void OwnPluginsPanel::setStrings (Strings s)
     text = std::move (s);
     searchBox.setTextToShowWhenEmpty (text.search, AbcTrainTheme::current().textDim);
     sortChoice.setOptions ({ 0, 1, 2 }, { text.sortPurpose, text.sortName, text.sortVendor });
-    modeChoice.setOptions ({ 0, 1 }, { text.learn, text.guess });
+    modeChoice.setOptions ({ lessonStepId, knobsStepId, guessStepId }, { text.lessonsStep, text.learn, text.guess });
+    lessonBack.setButtonText (text.lessonBack);
+    lessonDry.setButtonText (text.lessonDry);
     scanButton.setButtonText (text.scan);
     listenA.setButtonText (text.yours);
     listenB.setButtonText (text.hidden);
@@ -509,8 +553,39 @@ std::unique_ptr<OwnPluginPlayer::Rig> OwnPluginsPanel::buildRig (const Variant& 
     return rig;
 }
 
+juce::File OwnPluginsPanel::settingFile (const juce::String& name, const juce::String& format)
+{
+    // Next to the settings file, like the seminar archive. One file per
+    // plugin and format: an AU's state is not a VST3's.
+   #if JUCE_MAC
+    const auto dir = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                         .getChildFile ("Application Support/abcTrain/own-plugins");
+   #else
+    const auto dir = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                         .getChildFile ("abcTrain/own-plugins");
+   #endif
+    return dir.getChildFile (juce::File::createLegalFileName (name + " " + format) + ".state");
+}
+
 void OwnPluginsPanel::releasePlugin()
 {
+    endLesson (false);
+    restoreDemoKnob (false);
+
+    // The player's setting (A) is his: it is there the next time he opens
+    // this plugin, as a host would keep it in a project.
+    if (auto* rig = player.getRig(); rig != nullptr && ! frozen && current.name.isNotEmpty())
+    {
+        juce::MemoryBlock state;
+        rig->a->getStateInformation (state);
+        const auto file = settingFile (current.name, currentFormat);
+        if (state.getSize() > 0 && state.getSize() < 8 * 1024 * 1024 && file.getParentDirectory().createDirectory())
+            file.replaceWithData (state.getData(), state.getSize());
+    }
+
+    lessonsHere.clear();
+    knobMap.clear();
+    lessonList.updateContent();
     restoreDemoKnob (false);
     motion = {};
     roundOn = answered = false;
@@ -574,6 +649,14 @@ void OwnPluginsPanel::load (const Entry& e)
 
     current = e;
 
+    // The setting he left it with last time.
+    {
+        juce::MemoryBlock saved;
+        if (settingFile (e.name, currentFormat).loadFileAsData (saved) && saved.getSize() > 0)
+            for (auto* inst : { rig->a.get(), rig->b.get() })
+                inst->setStateInformation (saved.getData(), (int) saved.getSize());
+    }
+
     // The knobs, as the host reads them.
     knobs.clear();
     const auto& params = rig->a->getParameters();
@@ -601,9 +684,11 @@ void OwnPluginsPanel::load (const Entry& e)
     player.setRig (std::move (rig));
     status = text.pick;
 
-    // A new plugin starts at getting to know it.
-    modeChoice.setValue (0, juce::dontSendNotification);
+    // A new plugin starts at a lesson if one fits it, otherwise at getting
+    // to know its knobs one by one.
     rebuildLearnKnobs();
+    rebuildLessons();
+    modeChoice.setValue (lessonsHere.empty() ? knobsStepId : lessonStepId, juce::dontSendNotification);
     rebuildKnobToggles();
     selectLearnKnob (0);
     resized();          // editorFrame for this window size
@@ -1062,6 +1147,12 @@ void OwnPluginsPanel::startRound()
 
 void OwnPluginsPanel::timerCallback()
 {
+    if (! lessonGlides.empty())
+    {
+        stepLessonGlides();
+        return;
+    }
+
     if (motion.index >= 0)
     {
         stepMotion();
@@ -1136,9 +1227,25 @@ void OwnPluginsPanel::refreshRoundUi()
 {
     const auto loaded = player.getRig() != nullptr || ! knobs.empty();
     const auto learn = loaded && learning();
-    const auto guessing = loaded && ! learning();
+    const auto guessing = loaded && modeChoice.getValue() == guessStepId;
 
     modeChoice.setVisible (loaded);
+
+    // Step 0: a lesson.
+    const auto lessonOn = loaded && lessonMode();
+    const auto* chosen = chosenLesson();
+    const auto started = lessonOn && chosen != nullptr && lessonStep >= 0;
+    lessonList.setVisible (lessonOn && ! lessonsHere.empty());
+    lessonNext.setVisible (lessonOn && chosen != nullptr);
+    lessonBack.setVisible (started);
+    lessonDry.setVisible (started);
+    if (chosen != nullptr)
+    {
+        lessonNext.setButtonText (lessonStep < 0 ? text.lessonStart
+                                  : lessonStep + 1 >= (int) chosen->steps.size() ? text.lessonDone : text.lessonNext);
+        lessonBack.setEnabled (lessonStep > 0);
+        LnF::makePrimary (lessonDry, player.getListen() == OwnPluginPlayer::Listen::dry);
+    }
 
     // Step 1.
     knobList.setVisible (learn);
@@ -1241,6 +1348,7 @@ void OwnPluginsPanel::paint (juce::Graphics& g)
         g.setFont (LnF::bodyFont());
         const auto line = current.name.isEmpty() ? text.pick
                         : status.isNotEmpty() && status != text.pick ? status
+                        : lessonMode() ? text.lessonIntro
                         : learning() ? text.learnIntro : text.guessIntro;
         LnF::fitText (g, line, h, juce::Justification::centredLeft, true);
     }
@@ -1257,6 +1365,70 @@ void OwnPluginsPanel::paint (juce::Graphics& g)
 
     if (roundArea.isEmpty() || (player.getRig() == nullptr && knobs.empty()))
         return;
+
+    // ---- step 0: a lesson ----
+    if (lessonMode())
+    {
+        g.setColour (theme.divider);
+        g.fillRect (roundArea.getX(), roundArea.getY(), roundArea.getWidth(), 1);
+
+        const auto* l = chosenLesson();
+        if (l == nullptr)
+        {
+            g.setColour (theme.textDim);
+            g.setFont (LnF::bodyFont());
+            LnF::fitLines (g, text.noLessons, roundArea.withTrimmedTop (30).withHeight (90), juce::Justification::topLeft, 3, 0.9f);
+            return;
+        }
+
+        auto progress = roundArea.withHeight (26).withTrimmedTop (4);
+        if (lessonStep >= 0)
+        {
+            g.setColour (theme.textDim);
+            g.setFont (LnF::labelFont());
+            LnF::fitText (g, text.lessonStepOf.replace ("{{n}}", juce::String (lessonStep + 1))
+                                              .replace ("{{m}}", juce::String ((int) l->steps.size())),
+                          progress, juce::Justification::centredRight, true);
+        }
+
+        auto c = cardArea;
+        g.setColour (theme.textBright);
+        g.setFont (LnF::headingFont().withHeight (24.0f));
+        LnF::fitText (g, l->title (text.language), c.removeFromTop (34), juce::Justification::centredLeft, true);
+
+        if (lessonStep < 0)
+        {
+            g.setColour (lessonJustFinished ? theme.positive : theme.textDim);
+            g.setFont (LnF::labelFont());
+            const auto meta = lessonJustFinished ? text.lessonFinished
+                            : text.lessonMeta.replace ("{{n}}", juce::String ((int) l->steps.size()))
+                                             .replace ("{{m}}", juce::String (l->minutes));
+            LnF::fitText (g, meta, c.removeFromTop (22), juce::Justification::centredLeft, true);
+            c.removeFromTop (6);
+            g.setColour (theme.textDim);
+            g.setFont (LnF::captionFont());
+            LnF::fitLines (g, fill (text.lessonSources, "s", l->sources), c, juce::Justification::topLeft, 4, 0.9f);
+            return;
+        }
+
+        const auto& step = l->steps[(size_t) lessonStep];
+        auto body = c;
+        juce::Rectangle<int> note;
+        if (lessonReachProblem)
+            note = body.removeFromBottom (20);
+
+        g.setColour (theme.text);
+        g.setFont (LnF::bodyFont());
+        LnF::fitLines (g, l->text (step, text.language), body, juce::Justification::topLeft, 7, 0.85f);
+
+        if (! note.isEmpty())
+        {
+            g.setColour (theme.accentWarm);
+            g.setFont (LnF::captionFont());
+            LnF::fitText (g, text.lessonReach, note, juce::Justification::centredLeft, true);
+        }
+        return;
+    }
 
     // ---- step 1: the card of the chosen knob ----
     if (learning())
@@ -1417,6 +1589,20 @@ void OwnPluginsPanel::resized()
         learnNext.setBounds (buttons);
     }
 
+    // ---- step 0: a lesson - the same band as the knob cards ----
+    {
+        auto band = roundArea.withTrimmedTop (30);
+        lessonList.setBounds (band.removeFromLeft (juce::jmin (280, band.getWidth() / 3)));
+        band.removeFromLeft (Spacing::large);
+        auto buttons = band.removeFromBottom (44);
+        const auto nextWidth = juce::jmin (230, buttons.getWidth() / 3);
+        lessonNext.setBounds (buttons.removeFromRight (nextWidth));
+        const auto w = juce::jmin (180, (buttons.getWidth() - 2 * Spacing::small) / 2);
+        lessonBack.setBounds (buttons.removeFromLeft (w));
+        buttons.removeFromLeft (Spacing::small);
+        lessonDry.setBounds (buttons.removeFromLeft (w));
+    }
+
     // ---- step 2 ----
     auto r = roundArea;
     r.removeFromTop (28 + 18 + Spacing::small);
@@ -1506,7 +1692,7 @@ void OwnPluginsPanel::showForSnapshot (bool learningStep)
 
     if (learningStep)
     {
-        modeChoice.setValue (0, juce::dontSendNotification);
+        modeChoice.setValue (knobsStepId, juce::dontSendNotification);
         learnSelected = 2;   // Attack
         knobList.selectRow (2, false, true);
         learnPlaying = learnHighValue;
@@ -1517,7 +1703,7 @@ void OwnPluginsPanel::showForSnapshot (bool learningStep)
         return;
     }
 
-    modeChoice.setValue (1, juce::dontSendNotification);
+    modeChoice.setValue (guessStepId, juce::dontSendNotification);
     round.knob = 4;
     round.knobName = "Attack";
     round.options = { 0.0f, 0.2f, 0.4f, 0.6f, 0.8f };
@@ -1538,6 +1724,14 @@ void OwnPluginsPanel::showForSnapshot (bool learningStep)
 
 bool OwnPluginsPanel::handleHotkey (const juce::String& id)
 {
+    if (lessonMode())
+    {
+        if (id == "own.next") { if (lessonNext.isVisible()) lessonNext.triggerClick(); return true; }
+        if (id == "own.dry")  { if (lessonDry.isVisible())  lessonDry.triggerClick();  return true; }
+        if (id == "own.a")    { if (lessonBack.isVisible() && lessonBack.isEnabled()) lessonBack.triggerClick(); return true; }
+        return false;
+    }
+
     if (learning() && ! learnKnobs.empty())
     {
         if (id == "own.a")    { learnMine.triggerClick(); return true; }
@@ -1552,4 +1746,222 @@ bool OwnPluginsPanel::handleHotkey (const juce::String& id)
     if (id == "own.dry") { if (listenDry.isEnabled()) listenDry.triggerClick(); return true; }
     if (id == "own.next"){ if (startButton.isEnabled() && startButton.isVisible()) startButton.triggerClick(); return true; }
     return false;
+}
+
+//==============================================================================
+// A course lesson on this plugin (ADR 068)
+
+void OwnPluginsPanel::rebuildLessons()
+{
+    // The plugin's knobs by glossary key: the first of each kind, as the
+    // knob cards list them (a band in use before the others).
+    knobMap.clear();
+    for (const auto& lk : learnKnobs)
+        if (lk.key.isNotEmpty() && knobMap.find (lk.key) == knobMap.end())
+            knobMap[lk.key] = lk.index;
+
+    static const juce::StringArray groupOf { "eq", "dynamics", "space", "saturation", "modulation" };
+    const auto group = current.category < (int) groupOf.size() ? groupOf[(int) current.category] : juce::String();
+
+    // A lesson for this kind of plugin that it has every knob for. A plugin
+    // the list could not place ("Other") takes any lesson it has the knobs
+    // for: bx_masterdesk is a compressor too.
+    lessonsHere.clear();
+    for (const auto* l : LessonLibrary::forOwnPlugins())
+        if (OwnLesson::fits (*l, knobMap) && (group.isEmpty() || l->group == group))
+            lessonsHere.push_back (l);
+
+    lessonSelected = 0;
+    lessonStep = -1;
+    lessonJustFinished = false;
+    lessonList.updateContent();
+    if (! lessonsHere.empty())
+        lessonList.selectRow (0, false, true);
+}
+
+const LessonFile::Lesson* OwnPluginsPanel::chosenLesson() const
+{
+    return juce::isPositiveAndBelow (lessonSelected, (int) lessonsHere.size()) ? lessonsHere[(size_t) lessonSelected] : nullptr;
+}
+
+void OwnPluginsPanel::selectLesson (int i)
+{
+    if (i == lessonSelected && lessonStep < 0)
+        return;
+
+    endLesson (true);
+    lessonJustFinished = false;
+    lessonSelected = juce::jlimit (0, juce::jmax (0, (int) lessonsHere.size() - 1), i);
+    lessonList.selectRow (lessonSelected, false, true);
+    refreshRoundUi();
+    repaint();
+}
+
+void OwnPluginsPanel::showLessonStep (int k)
+{
+    const auto* l = chosenLesson();
+    auto* rig = player.getRig();
+    if (l == nullptr || rig == nullptr || l->steps.empty())
+        return;
+
+    const auto& params = rig->a->getParameters();
+
+    // The player's setting, kept to come back to.
+    if (lessonStep < 0)
+    {
+        restoreDemoKnob (false);
+        lessonMine.clear();
+        for (int i = 0; i < params.size(); ++i)
+            lessonMine[i] = params[i]->getValue();
+    }
+
+    lessonStep = juce::jlimit (0, (int) l->steps.size() - 1, k);
+    const auto state = OwnLesson::stateAfter (*l, lessonStep, knobMap, params, lessonMine);
+    lessonReachProblem = ! state.problems.isEmpty();
+
+    // Every knob the lesson turns goes where this step says - or back to
+    // the player's value if the step comes before the one that turned it.
+    lessonGlides.clear();
+    for (const auto& [key, index] : knobMap)
+    {
+        auto* p = params[index];
+        if (p == nullptr)
+            continue;
+        const auto it = state.positions.find (index);
+        const auto target = it != state.positions.end() ? it->second : lessonMine[index];
+        if (std::abs (p->getValue() - target) > 1.0e-4f)
+            lessonGlides.push_back ({ index, p->getValue(), target });
+    }
+
+    setListen (state.dry ? OwnPluginPlayer::Listen::dry : OwnPluginPlayer::Listen::a);
+    lessonGlideStartMs = juce::Time::getMillisecondCounterHiRes();
+    if (! lessonGlides.empty())
+        startTimerHz (60);
+
+    refreshRoundUi();
+    repaint();
+}
+
+void OwnPluginsPanel::stepLessonGlides()
+{
+    auto* rig = player.getRig();
+    if (rig == nullptr)
+    {
+        lessonGlides.clear();
+        return;
+    }
+
+    const auto t = juce::jlimit (0.0, 1.0, (juce::Time::getMillisecondCounterHiRes() - lessonGlideStartMs) / lessonGlideMs);
+    const auto eased = (float) (0.5 - 0.5 * std::cos (juce::MathConstants<double>::pi * t));
+    const auto& params = rig->a->getParameters();
+
+    for (const auto& gl : lessonGlides)
+        if (auto* p = params[gl.index])
+            p->setValueNotifyingHost (gl.from + (gl.to - gl.from) * eased);
+
+    if (t >= 1.0)
+    {
+        lessonGlides.clear();
+        if (motion.index < 0 && ! checking)
+            stopTimer();
+    }
+}
+
+void OwnPluginsPanel::endLesson (bool animated)
+{
+    auto* rig = player.getRig();
+    const auto wasOn = lessonStep >= 0 || ! lessonGlides.empty();
+    lessonStep = -1;
+    lessonReachProblem = false;
+
+    if (! wasOn || rig == nullptr || lessonMine.empty())
+    {
+        lessonGlides.clear();
+        return;
+    }
+
+    const auto& params = rig->a->getParameters();
+    lessonGlides.clear();
+    for (const auto& [key, index] : knobMap)
+        if (auto* p = params[index])
+        {
+            const auto mine = lessonMine[index];
+            if (animated)
+                lessonGlides.push_back ({ index, p->getValue(), mine });
+            else
+                p->setValueNotifyingHost (mine);
+        }
+
+    setListen (OwnPluginPlayer::Listen::a);
+    if (animated && ! lessonGlides.empty())
+    {
+        lessonGlideStartMs = juce::Time::getMillisecondCounterHiRes();
+        startTimerHz (60);
+    }
+    else
+    {
+        lessonGlides.clear();
+    }
+}
+
+int OwnPluginsPanel::LessonListModel::getNumRows()
+{
+    return (int) owner.lessonsHere.size();
+}
+
+void OwnPluginsPanel::LessonListModel::paintListBoxItem (int row, juce::Graphics& g, int width, int height, bool selected)
+{
+    if (! juce::isPositiveAndBelow (row, (int) owner.lessonsHere.size()))
+        return;
+
+    const auto& theme = AbcTrainTheme::current();
+    const auto* l = owner.lessonsHere[(size_t) row];
+    auto r = juce::Rectangle<int> (0, 0, width, height);
+
+    if (selected)
+    {
+        g.setColour (theme.accent.withAlpha (0.22f));
+        g.fillRect (r);
+    }
+
+    // A tick once done, like the Studio's lessons.
+    auto mark = r.removeFromLeft (24);
+    if (owner.lessonDone (l->id))
+    {
+        g.setColour (theme.positive);
+        g.setFont (LnF::bodyFont());
+        LnF::fitText (g, juce::String::fromUTF8 ("\xe2\x9c\x93"), mark, juce::Justification::centred, false);
+    }
+
+    // The title on up to two lines: a lesson title is a sentence, and the
+    // list is a third of a 940 px window.
+    r = r.reduced (4, 4);
+    g.setColour (selected ? theme.textBright : theme.text);
+    g.setFont (LnF::labelFont());
+    LnF::fitLines (g, l->title (owner.text.language), r.removeFromTop (r.getHeight() - 16), juce::Justification::centredLeft, 2, 0.9f);
+    g.setColour (theme.textDim);
+    g.setFont (LnF::microFont());
+    LnF::fitText (g, owner.text.lessonMeta.replace ("{{n}}", juce::String ((int) l->steps.size()))
+                                          .replace ("{{m}}", juce::String (l->minutes)),
+                  r, juce::Justification::centredLeft, true);
+}
+
+void OwnPluginsPanel::LessonListModel::selectedRowsChanged (int row)
+{
+    if (row >= 0 && row != owner.lessonSelected)
+        owner.selectLesson (row);
+}
+
+void OwnPluginsPanel::showLessonForSnapshot()
+{
+    // bx_glue's knobs, the first compressor lesson on its third step.
+    showForSnapshot (true);
+    rebuildLessons();
+    modeChoice.setValue (lessonStepId, juce::dontSendNotification);
+    lessonSelected = 0;
+    lessonList.selectRow (0, false, true);
+    lessonStep = juce::jmin (2, juce::jmax (0, chosenLesson() != nullptr ? (int) chosenLesson()->steps.size() - 1 : 0));
+    refreshRoundUi();
+    resized();
+    repaint();
 }

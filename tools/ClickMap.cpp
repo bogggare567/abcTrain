@@ -155,6 +155,13 @@ namespace
                 continue;
             }
 
+            // A row of a long Settings page below the fold is reached by
+            // scrolling, as a person would.
+            if (! editor.getLocalBounds().contains (editor.getLocalPoint (c, c->getLocalBounds().getCentre())))
+                for (auto* p = c->getParentComponent(); p != nullptr; p = p->getParentComponent())
+                    if (auto* settings = dynamic_cast<SettingsScreenComponent*> (p))
+                        settings->scrollToReveal (*c);
+
             const auto centre = editor.getLocalPoint (c, c->getLocalBounds().getCentre());
 
             if (! editor.getLocalBounds().contains (centre))

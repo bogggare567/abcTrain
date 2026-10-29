@@ -1,0 +1,69 @@
+id: own-comp-attack-release
+course: own
+order: 2
+minutes: 4
+plugin: any
+group: dynamics
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», разделы «Время срабатывания компрессии (Attack)», «Время восстановления компрессора (Release)»; Б. Овсински, «Настольная книга звукорежиссёра», «Настройка компрессора»; база знаний abcTrain, COMP-001, COMP-002
+title.ru: Attack и Release: сохранить удар или убрать
+title.en: Attack and Release: keep the hit or take it away
+
+@step
+@knob threshold -25
+@knob ratio 4
+@knob attack min
+@knob release 100
+ru: Компрессор сжимает заметно, атака на минимуме. Он успевает схватить
+    самое начало каждого удара: щелчок палки и бочки срезан, барабаны
+    звучат тупее и как будто отодвинулись назад.
+en: The compressor is working hard, attack at its minimum. It catches the
+    very start of every hit: the stick and kick click is shaved off, the drums
+    sound duller and seem to sit further back.
+
+@step
+@knob attack 30
+ru: Attack 30 мс: первые миллисекунды удара проходят нетронутыми, а
+    компрессор зажимает уже корпус и хвост. Щелчок вернулся и на фоне
+    приглушённого тела кажется даже острее. Так компрессия делает барабаны
+    более ударными.
+en: Attack 30 ms: the first milliseconds of each hit pass untouched and the
+    compressor clamps down on the body and tail. The click is back and,
+    against the quieter body, sounds even sharper. This is how compression
+    makes drums punchier.
+
+@step
+@knob attack 10
+ru: Классический способ найти атаку: начать с длинной и укорачивать, пока
+    удар не начнёт тускнеть, — и вернуться чуть назад. На барабанах граница
+    часто лежит около 5–15 мс. Оставим 10 мс.
+en: The classic way to find the attack: start long and shorten it until the
+    hit starts to go dull, then back off a little. On drums the edge is often
+    around 5-15 ms. We leave it at 10 ms.
+
+@step
+@knob release max
+ru: Release на максимуме. Компрессор не успевает отпустить до следующего
+    удара, и каждый новый удар приходит уже прижатым. Барабаны теряют жизнь,
+    сжатие превращается в простое ослабление, как фейдером.
+en: Release at its maximum. The compressor cannot let go before the next hit,
+    so each new hit arrives already held down. The drums lose their life and
+    the compression turns into a plain level cut, like a fader.
+
+@step
+@knob release 120
+ru: Release 120 мс: к следующей доле усиление успевает восстановиться.
+    Компрессор «дышит» в ритме партии. Совсем короткий Release поднимает
+    хвосты и комнату и может дать искажения на низах — попробуйте сами в
+    окне плагина.
+en: Release 120 ms: gain is back before the next beat. The compressor breathes
+    with the part. A very short Release lifts the tails and the room and can
+    distort the low end - try it yourself in the plugin's window.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Теперь вы знаете, где искать: атака решает
+    судьбу удара, Release — что происходит между ударами.
+en: Your setting is back. Now you know where to look: the attack decides
+    what happens to the hit, Release what happens between hits.

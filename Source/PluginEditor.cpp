@@ -5491,6 +5491,14 @@ OwnPluginsPanel::Strings EarTrainerEditor::ownPluginStrings() const
     t.heard = L.getText ("own.heard");
     t.sweep = L.getText ("own.sweep");              t.copies = L.getText ("own.copies");
     t.watch = L.getText ("own.watch");
+    t.lessonsStep = L.getText ("own.lessonsStep");      t.lessonIntro = L.getText ("own.lessonIntro");
+    t.noLessons = L.getText ("own.noLessons");          t.lessonMeta = L.getText ("own.lessonMeta");
+    t.lessonStart = L.getText ("own.lessonStart");      t.lessonBack = L.getText ("own.lessonBack");
+    t.lessonNext = L.getText ("own.lessonNext");        t.lessonDone = L.getText ("own.lessonDone");
+    t.lessonDry = L.getText ("own.lessonDry");          t.lessonStepOf = L.getText ("own.lessonStepOf");
+    t.lessonSources = L.getText ("own.lessonSources");  t.lessonFinished = L.getText ("own.lessonFinished");
+    t.lessonReach = L.getText ("own.lessonReach");
+    t.language = L.getCurrentLanguage();
     t.glossary = [this] (const juce::String& key) { return localisation.getText ("own.g." + key); };
     return t;
 }

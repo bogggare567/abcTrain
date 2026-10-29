@@ -372,6 +372,7 @@ target_sources(abc_learning INTERFACE
     ${abcShared}/learning/CompanionPanel.cpp
     ${abcShared}/learning/PracticeSourceSelector.cpp
     ${abcShared}/learning/LessonFile.cpp
+    ${abcShared}/learning/KnobGlossary.cpp
 )
 target_link_libraries(abc_learning INTERFACE abc_ui abc_analysis abc_audio abc_dsp abc_updates)
 
@@ -508,7 +509,7 @@ target_sources(EarTrainer
         Source/InviteListComponent.cpp
         Source/OwnPlugins/OwnPluginPlayer.cpp
         Source/OwnPlugins/OwnPluginsPanel.cpp
-        Source/OwnPlugins/KnobGlossary.cpp
+        Source/OwnPlugins/OwnLesson.cpp
         Source/Hotkeys.cpp
         Source/BattleRecords.cpp
 )
@@ -774,7 +775,8 @@ target_sources(EarTrainerTests
         tests/UiSoundsTest.cpp
         tests/LoudnessMatchTest.cpp
         tests/OwnPluginRoundTest.cpp
-        Source/OwnPlugins/KnobGlossary.cpp
+        tests/OwnLessonTest.cpp
+        Source/OwnPlugins/OwnLesson.cpp
         tests/RoundOracleTest.cpp
         tests/PackCatalogTest.cpp
         tests/LiveMaterialTest.cpp
@@ -860,7 +862,7 @@ set(abcTrainEditorToolSources
         Source/InviteListComponent.cpp
         Source/OwnPlugins/OwnPluginPlayer.cpp
         Source/OwnPlugins/OwnPluginsPanel.cpp
-        Source/OwnPlugins/KnobGlossary.cpp
+        Source/OwnPlugins/OwnLesson.cpp
         Source/Hotkeys.cpp
         Source/BattleRecords.cpp
 )

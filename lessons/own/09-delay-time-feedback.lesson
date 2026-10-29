@@ -1,0 +1,50 @@
+id: own-delay-time-feedback
+course: own
+order: 9
+minutes: 3
+plugin: any
+group: space
+material: loop
+author: abcTrain
+sources: B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8 «The Dimension Element», разделы о дилее и расчёте времени по темпу; R. Izhaki, «Mixing Audio», 2nd ed., гл. 21 «Дилеи»; M. Senior, «Mixing Secrets for the Small Studio», ch. 17 «Mixing with Delays»
+title.ru: Time и Feedback: эхо в темпе
+title.en: Time and Feedback: echo in time
+
+@step
+@knob mix 25
+@knob feedback 0
+@knob delaytime 60
+ru: Ваш дилей: короткое время, 60 мс, без повторов. Это не эхо, а
+    удвоение: каждый удар стал толще, будто сыграли двое.
+en: Your delay: a short time, 60 ms, no repeats. This is not an echo but a
+    doubling: every hit is thicker, as if two people played it.
+
+@step
+@knob delaytime 250
+ru: 250 мс: теперь слышно отдельное эхо за каждым ударом. Если оно
+    попадает между долями, ритм путается, — поэтому время эха обычно
+    подбирают под темп: четверть, восьмая, восьмая с точкой.
+en: 250 ms: now a separate echo follows every hit. If it lands between the
+    beats the rhythm gets confused - which is why echo time is usually set to
+    the tempo: a quarter, an eighth, a dotted eighth.
+
+@step
+@knob feedback 60
+ru: Feedback 60 %: эхо повторяется снова и снова, затихая. Повторы
+    накладываются на следующие удары и наполняют паузы.
+en: Feedback 60%: the echo repeats again and again, fading out. The repeats
+    stack on the next hits and fill the gaps.
+
+@step
+@knob feedback 20
+ru: Feedback 20 %: два-три повтора — достаточно, чтобы пространство было
+    слышно, и не настолько, чтобы залить ритм.
+en: Feedback 20%: two or three repeats - enough to hear the space, not
+    enough to flood the rhythm.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Time — когда приходит повтор, Feedback —
+    сколько их.
+en: Your setting is back. Time is when the repeat comes, Feedback how many
+    there are.

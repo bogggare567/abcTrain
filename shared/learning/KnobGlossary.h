@@ -30,4 +30,15 @@ namespace KnobGlossary
     /** Where the knob comes in the familiarisation: the essentials of a
         kind of plugin first (lower is earlier). */
     int orderOf (const juce::String& key);
+
+    /** The unit a lesson writes this knob's value in (lessons/FORMAT.md,
+        "plugin: any"), whatever unit the plugin itself shows: "dB", "ms",
+        "s", "Hz", "%", "ratio" (4 means 4:1), "Q" (a bare number), or "" when plugins disagree
+        too much to name one (Drive, Tone, Depth...) - such a knob is
+        placed by position (pos=0.7) or by min / low / high / max. */
+    juce::String unitOf (const juce::String& key);
+
+    /** The values a lesson may ask for in that unit - wide enough for any
+        plugin, narrow enough to catch a typo (-200 dB, 40 s of attack). */
+    juce::Range<double> rangeOf (const juce::String& key);
 }

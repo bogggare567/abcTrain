@@ -6,6 +6,7 @@
 **Using it**
 * [The nine exercises](The-nine-exercises)
 * [The teaching plugins](The-teaching-plugins)
+* [Your own plugins](Your-own-plugins)
 * [Training on your own audio](Training-on-your-own-audio)
 * [Levels, streaks and achievements](Levels-streaks-and-achievements)
 
@@ -26,6 +27,7 @@
 * [Первые десять минут](ru-Your-first-ten-minutes)
 * [Девять упражнений](ru-The-nine-exercises)
 * [Обучающие плагины](ru-The-teaching-plugins)
+* [Свои плагины](ru-Your-own-plugins)
 * [Тренировка на своей музыке](ru-Training-on-your-own-audio)
 * [Уровни, серии и достижения](ru-Levels-streaks-and-achievements)
 * [Решение проблем](ru-Troubleshooting)

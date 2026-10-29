@@ -1841,6 +1841,25 @@ void SettingsScreenComponent::mouseWheelMove (const juce::MouseEvent& e, const j
     }
 }
 
+bool SettingsScreenComponent::scrollToReveal (juce::Component& child)
+{
+    for (int i = 0; i < 400; ++i)
+    {
+        const auto centre = getLocalPoint (&child, child.getLocalBounds().getCentre());
+        if (getLocalBounds().contains (centre))
+            return true;
+        if (compact() || deskScrollMax <= 0)
+            return false;
+
+        const auto next = juce::jlimit (0, deskScrollMax, deskScroll + (centre.y > getHeight() ? 120 : -120));
+        if (next == deskScroll)
+            return false;
+        deskScroll = next;
+        resized();
+    }
+    return false;
+}
+
 // ---- mouse ------------------------------------------------------------
 
 void SettingsScreenComponent::mouseMove (const juce::MouseEvent& event)

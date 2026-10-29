@@ -71,4 +71,15 @@ namespace LessonLibrary
                 return &l;
         return nullptr;
     }
+
+    std::vector<const LessonFile::Lesson*> forOwnPlugins()
+    {
+        std::vector<const LessonFile::Lesson*> out;
+        for (const auto& l : all())
+            if (l.forOwnPlugin())
+                out.push_back (&l);
+
+        std::stable_sort (out.begin(), out.end(), [] (auto* a, auto* b) { return a->order < b->order; });
+        return out;
+    }
 }

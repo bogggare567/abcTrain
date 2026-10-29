@@ -1,4 +1,5 @@
 #include "LessonFile.h"
+#include "KnobGlossary.h"
 
 namespace LessonFile
 {
@@ -11,6 +12,12 @@ namespace LessonFile
     const juce::StringArray& plugins()
     {
         static const juce::StringArray s { "eq", "comp", "verb" };
+        return s;
+    }
+
+    const juce::StringArray& ownGroups()
+    {
+        static const juce::StringArray s { "eq", "dynamics", "space", "saturation", "modulation" };
         return s;
     }
 
@@ -51,6 +58,16 @@ namespace LessonFile
     juce::String Lesson::text (const Step& step, const juce::String& languageCode) const
     {
         return languageCode.startsWithIgnoreCase ("ru") ? step.textRu : step.textEn;
+    }
+
+    juce::StringArray Lesson::knobKeys() const
+    {
+        juce::StringArray keys;
+        for (const auto& st : steps)
+            for (const auto& a : st.actions)
+                if (a.verb == "knob" && a.args.size() > 0)
+                    keys.addIfNotAlreadyThere (a.args[0]);
+        return keys;
     }
 
     namespace
@@ -189,6 +206,47 @@ namespace LessonFile
                                  { "damping", 0, 100 }, { "width", 0, 100 }, { "mix", 0, 100 } },
                                { { "type", verbTypes() }, { "routing", juce::StringArray { "insert", "send" } } });
             }
+            else if (v == "knob")
+            {
+                needPlugin ("any");
+                static const juce::StringArray words { "min", "low", "high", "max", "mine" };
+                const auto usage = "write @knob <key> <value|min|low|high|max|mine> or @knob <key> pos=0..1";
+
+                if (a.args.isEmpty() || ! KnobGlossary::keys().contains (a.args[0]))
+                {
+                    c.fail ("knob \"" + a.args[0] + "\" is not a glossary key (" + KnobGlossary::keys().joinIntoString (" ") + ")");
+                    return;
+                }
+
+                const auto& key = a.args[0];
+                const auto unit = KnobGlossary::unitOf (key);
+                const auto hasPos = a.has ("pos");
+
+                if (a.named.size() > (hasPos ? 1 : 0) || a.args.size() + (hasPos ? 1 : 0) != 2)
+                {
+                    c.fail (usage);
+                    return;
+                }
+
+                if (hasPos)
+                    c.range ("pos", a.named["pos"], 0.0f, 1.0f);
+                else if (! words.contains (a.args[1]))
+                {
+                    if (unit.isEmpty())
+                        c.fail (key + " has no unit every plugin shares: use pos=0..1 or min/low/high/max/mine");
+                    else
+                    {
+                        const auto r = KnobGlossary::rangeOf (key);
+                        c.range (key + " (" + unit + ")", a.args[1], (float) r.getStart(), (float) r.getEnd());
+                    }
+                }
+            }
+            else if (v == "mine")
+            {
+                needPlugin ("any");
+                if (! a.args.isEmpty() || a.named.size() > 0)
+                    c.fail ("takes no arguments");
+            }
             else if (v == "bypass")
             {
                 if (a.args.size() != 1 || ! juce::StringArray { "on", "off" }.contains (a.args[0]))
@@ -196,6 +254,11 @@ namespace LessonFile
             }
             else if (v == "highlight")
             {
+                if (plugin == "any")
+                {
+                    c.fail ("plugin: any has no graph to highlight on");
+                    return;
+                }
                 if (a.args.size() != 2)
                 {
                     c.fail ("write @highlight <from Hz> <to Hz>");
@@ -208,6 +271,11 @@ namespace LessonFile
             }
             else if (v == "material")
             {
+                if (plugin == "any")
+                {
+                    c.fail ("plugin: any plays the practice loop; it has no other material");
+                    return;
+                }
                 if (a.args.size() != 1 || ! materials().contains (a.args[0]))
                     c.fail ("write @material " + materials().joinIntoString ("|"));
             }
@@ -334,22 +402,39 @@ namespace LessonFile
         lesson.titleRu = need ("title.ru");
         lesson.titleEn = need ("title.en");
         lesson.sources = header["sources"];
+        lesson.group = header["group"];
         lesson.order = need ("order").getIntValue();
         lesson.minutes = need ("minutes").getIntValue();
 
         for (const auto& key : header.getAllKeys())
             if (! juce::StringArray { "id", "course", "order", "minutes", "plugin", "material", "author",
-                                      "sources", "title.ru", "title.en" }.contains (key))
+                                      "sources", "title.ru", "title.en", "group" }.contains (key))
                 fail (1, "unknown header \"" + key + "\"");
 
         if (lesson.id.isNotEmpty() && ! lesson.id.containsOnly ("abcdefghijklmnopqrstuvwxyz0123456789-"))
             fail (1, "id \"" + lesson.id + "\" must be lower-case latin, digits and dashes");
-        if (lesson.course.isNotEmpty() && ! courses().contains (lesson.course))
-            fail (1, "course \"" + lesson.course + "\" is not one of " + courses().joinIntoString ("/"));
-        if (lesson.plugin.isNotEmpty() && ! plugins().contains (lesson.plugin))
-            fail (1, "plugin \"" + lesson.plugin + "\" is not one of " + plugins().joinIntoString ("/"));
-        if (lesson.material.isNotEmpty() && ! materials().contains (lesson.material))
-            fail (1, "material \"" + lesson.material + "\" is not one of " + materials().joinIntoString ("/"));
+        if (lesson.forOwnPlugin())
+        {
+            // A lesson for the player's own plugin (ADR 068): its own
+            // course, a group to be offered by, and the practice loop.
+            if (lesson.course != ownCourse)
+                fail (1, "a plugin: any lesson is in course: " + juce::String (ownCourse));
+            if (! ownGroups().contains (lesson.group))
+                fail (1, "group \"" + lesson.group + "\" is not one of " + ownGroups().joinIntoString ("/"));
+            if (lesson.material != "loop")
+                fail (1, "a plugin: any lesson plays material: loop");
+        }
+        else
+        {
+            if (lesson.course.isNotEmpty() && ! courses().contains (lesson.course))
+                fail (1, "course \"" + lesson.course + "\" is not one of " + courses().joinIntoString ("/"));
+            if (lesson.plugin.isNotEmpty() && ! plugins().contains (lesson.plugin))
+                fail (1, "plugin \"" + lesson.plugin + "\" is not one of " + plugins().joinIntoString ("/") + "/any");
+            if (lesson.material.isNotEmpty() && ! materials().contains (lesson.material))
+                fail (1, "material \"" + lesson.material + "\" is not one of " + materials().joinIntoString ("/"));
+            if (header.containsKey ("group"))
+                fail (1, "group is only for plugin: any");
+        }
         if (header.containsKey ("minutes") && (lesson.minutes < 1 || lesson.minutes > 15))
             fail (1, "minutes " + juce::String (lesson.minutes) + " - a lesson is a few minutes, 1..15");
         if (header.containsKey ("order") && lesson.order < 1)

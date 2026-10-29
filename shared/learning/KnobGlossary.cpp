@@ -104,4 +104,37 @@ namespace KnobGlossary
         const auto i = first.indexOf (key);
         return i >= 0 ? i : 100;
     }
+
+    juce::String unitOf (const juce::String& key)
+    {
+        static const juce::StringArray dB { "threshold", "makeup", "inputgain", "eqgain", "ceiling", "range", "knee" };
+        static const juce::StringArray ms { "attack", "release", "predelay", "delaytime", "lookahead", "hold" };
+        static const juce::StringArray hz { "frequency", "hpf", "lpf", "shelf" };
+        static const juce::StringArray pct { "mix", "size", "damping", "diffusion", "width", "feedback", "earlyref" };
+
+        if (dB.contains (key))  return "dB";
+        if (ms.contains (key))  return "ms";
+        if (hz.contains (key))  return "Hz";
+        if (pct.contains (key)) return "%";
+        if (key == "decay")     return "s";
+        if (key == "ratio")     return "ratio";
+        if (key == "rate")      return "Hz";
+        if (key == "q")         return "Q";
+        return {};
+    }
+
+    juce::Range<double> rangeOf (const juce::String& key)
+    {
+        const auto unit = unitOf (key);
+        if (unit == "dB")    return key == "knee" ? juce::Range<double> (0.0, 36.0) : juce::Range<double> (-80.0, 36.0);
+        if (unit == "ms")    return key == "delaytime" ? juce::Range<double> (0.0, 5000.0)
+                                  : key == "release"   ? juce::Range<double> (1.0, 10000.0)
+                                                       : juce::Range<double> (0.0, 2000.0);
+        if (unit == "Hz")    return key == "rate" ? juce::Range<double> (0.01, 50.0) : juce::Range<double> (10.0, 22000.0);
+        if (unit == "%")     return { 0.0, 100.0 };
+        if (unit == "s")     return { 0.05, 60.0 };
+        if (unit == "ratio") return { 1.0, 100.0 };
+        if (unit == "Q")     return { 0.05, 50.0 };
+        return {};
+    }
 }

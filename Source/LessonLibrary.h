@@ -23,6 +23,11 @@ namespace LessonLibrary
     std::vector<Course> courses();
     const LessonFile::Lesson* find (const juce::String& id);
 
+    // The lessons for the player's own plugin (plugin: any, course own -
+    // ADR 068), by `order`. They are not a Studio course: courses() leaves
+    // them out, the «Свой плагин» page offers them by the plugin's knobs.
+    std::vector<const LessonFile::Lesson*> forOwnPlugins();
+
     // Every embedded file, parsed, errors included - for the test.
     std::vector<LessonFile::Result> parseEverything();
 }

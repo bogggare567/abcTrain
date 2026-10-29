@@ -1,0 +1,54 @@
+id: own-comp-parallel-mix
+course: own
+order: 3
+minutes: 3
+plugin: any
+group: dynamics
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 16 «Компрессоры», раздел «Параллельная компрессия»; M. Senior, «Mixing Secrets for the Small Studio», гл. 9.3 «Parallel Compression»; «Систематизированный гид по сведению», «Параллельная компрессия. Да или нет?»; база знаний abcTrain, COMP-004
+title.ru: Mix: параллельная компрессия одной ручкой
+title.en: Mix: parallel compression with one knob
+
+@step
+@knob threshold -40
+@knob ratio 10
+@knob mix 100
+ru: Компрессор зажат до предела: низкий порог, большой Ratio, Mix 100 %.
+    Барабаны раздавлены — громкие и плотные, но без удара и без воздуха.
+    Само по себе так не оставляют.
+en: The compressor is clamped hard: low threshold, big Ratio, Mix at 100%.
+    The drums are crushed - loud and dense, but with no punch and no air. Nobody
+    leaves it like this on its own.
+
+@step
+@knob mix 0
+ru: Mix 0 %: на выходе только необработанный сигнал. Удары живые, но
+    между ними пусто — тихие детали и комната теряются.
+en: Mix at 0%: only the untouched signal comes out. The hits are alive, but
+    between them it is empty - the quiet details and the room get lost.
+
+@step
+@knob mix 30
+ru: Mix 30 %: к живому сигналу подмешан раздавленный. Удары остались на
+    месте, а между ними поднялись хвосты, комната и призвуки. Это и есть
+    параллельная компрессия — плотность без потери атаки.
+en: Mix at 30%: the crushed signal is blended under the live one. The hits are
+    still there, and between them the tails, the room and the ghost notes have
+    come up. This is parallel compression - density without losing the attack.
+
+@step
+@knob mix 60
+ru: Mix 60 %: раздавленного стало больше, чем живого, и удар начинает
+    тонуть. Ищите точку, где луп стал плотнее, а удары ещё не потеряли
+    остроту, — обычно она между 20 и 50 %.
+en: Mix at 60%: there is more crushed than live signal and the hits start to
+    sink. Look for the point where the loop is denser but the hits are still
+    sharp - usually between 20 and 50%.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Если у компрессора есть Mix, он заменяет
+    отдельную шину для параллельной компрессии.
+en: Your setting is back. If your compressor has a Mix knob, it replaces a
+    separate bus for parallel compression.

@@ -194,6 +194,14 @@ private:
     juce::TextEditor searchBox;
     juce::String searchQuery;
     int deskScroll = 0, deskScrollMax = 0;
+
+public:
+    // Scrolls a long desktop page until `child` is inside the window, as
+    // the wheel would (ClickMap: a row below the fold is reachable, not
+    // broken). True if it is in view afterwards.
+    bool scrollToReveal (juce::Component& child);
+
+private:
     struct GroupFrame { juce::String key; juce::Rectangle<int> bounds; };
     std::vector<GroupFrame> groupFrames;
     int footerHeight() const;

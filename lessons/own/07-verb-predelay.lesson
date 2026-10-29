@@ -1,0 +1,53 @@
+id: own-verb-predelay
+course: own
+order: 7
+minutes: 3
+plugin: any
+group: space
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», гл. 23 «Реверберация», раздел «Предварительная задержка Pre-delay»; B. Owsinski, «The Mixing Engineer's Handbook», 3rd ed., ch. 8, «Timing Reverbs to the Track»; Д. Гибсон, «Искусство сведения», разд. «Ревербератор: время предварительной задержки»; база знаний abcTrain, SPACE-004
+title.ru: Pre-delay: отделить удар от хвоста
+title.en: Pre-delay: separate the hit from the tail
+
+@step
+@knob mix 35
+@knob decay 1.5
+@knob predelay 0
+ru: Ревер с заметным хвостом и Pre-delay 0 мс: хвост начинается сразу с
+    ударом. Атака барабанов немного размыта, звук сидит внутри пространства.
+en: A reverb with a clear tail and Pre-delay at 0 ms: the tail starts right
+    with the hit. The drums' attack is slightly blurred; the sound sits inside
+    the space.
+
+@step
+@knob predelay 40
+ru: Pre-delay 40 мс: между ударом и хвостом появилась щель. Удар снова
+    чёткий, а пространство осталось, только отодвинулось за него. Так ревер
+    добавляет объём, не отнимая разборчивости.
+en: Pre-delay 40 ms: there is a gap between the hit and the tail. The hit is
+    clear again and the space is still there, just moved behind it. This is how
+    reverb adds size without taking clarity.
+
+@step
+@knob predelay 150
+ru: 150 мс: щель стала слышна как отдельное эхо — хвост отрывается от
+    удара. На медленной музыке это бывает приёмом, на барабанах обычно
+    мешает.
+en: 150 ms: the gap is now heard as a separate echo - the tail comes loose
+    from the hit. On slow music it can be an effect; on drums it usually gets
+    in the way.
+
+@step
+@knob predelay 20
+ru: 20 мс: компромисс, с которого удобно начинать. Подбирайте на слух:
+    удар должен оставаться впереди, а хвост — склеиваться с ним.
+en: 20 ms: a compromise that is a good place to start. Tune it by ear: the
+    hit should stay in front and the tail should stay attached to it.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Если у вашего ревера Pre-delay стоит на нуле,
+    попробуйте 10–30 мс.
+en: Your setting is back. If your reverb's Pre-delay is at zero, try
+    10-30 ms.

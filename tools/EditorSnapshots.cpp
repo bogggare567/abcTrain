@@ -167,7 +167,7 @@ namespace
     enum class Extra { none, training, sounds, settings, results, achievements,
                        moduleShelf, moduleCheck, tourOffer, tour, screensaver, stretched,
                        answered, survivalRun, duelRun, duelResults, battleRoom3, battleRoom6, home, homeWithRecords, hint,
-                       settingsPro, settingsHearing, settingsAbout, settingsKeys, liveArchive, studioOwnLearn, settingsAppearance, hearingNotice, moduleResult,
+                       settingsPro, settingsHearing, settingsAbout, settingsKeys, liveArchive, studioOwnLearn, studioOwnLesson, settingsAppearance, hearingNotice, moduleResult,
                        studioEQ, studioComp, studioVerb, studioOwn, welcomeAccount, soundClips, eqKick, studioRevisit, companion, companionApp,
                        liveSeminar, liveBattle, liveRating, liveRoom, liveInvites, liveSignIn, settingsLive, settingsLiveSignedIn, liveBattleSignedIn, liveSearch, eqSlope,
                        liveNoInternet, liveNoLan, soundsLibrary, soundsSelect, soundsDelete, soundsTrack,
@@ -387,6 +387,9 @@ namespace
 
                 if (extra == Extra::studioOwnLearn)
                     editor.openOwnPluginForSnapshot (true);
+
+                if (extra == Extra::studioOwnLesson)
+                    editor.openOwnPluginLessonForSnapshot();
 
                 if (extra == Extra::studioComp)
                     editor.openStudioForSnapshot (StudioScreenComponent::Effect::comp);
@@ -768,6 +771,7 @@ int main (int argc, char* argv[])
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsKeys", -1, Extra::settingsKeys);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-LiveArchive", -1, Extra::liveArchive);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioOwnLearn", -1, Extra::studioOwnLearn);
+            failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-StudioOwnLesson", -1, Extra::studioOwnLesson);
             failures += renderOne<EarTrainerProcessor, EarTrainerEditor> (outputDir, "EarTrainer-SettingsAppearance", -1, Extra::settingsAppearance);
 
             if (hadSettings)

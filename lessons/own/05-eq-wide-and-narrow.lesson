@@ -1,0 +1,56 @@
+id: own-eq-wide-and-narrow
+course: own
+order: 5
+minutes: 3
+plugin: any
+group: eq
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio» (рус. пер.), гл. 14 «Эквалайзеры», «Применение различных форм»; M. Senior, «Mixing Secrets for the Small Studio», ch. 11.2, «Some Applications of Notching»; М. Ставроу, «Сведение с разумом», ч. II, «Эквалайзер — Не крутите наугад!»; база знаний abcTrain, EQ-001
+title.ru: Q: широкий подъём и узкий вырез
+title.en: Q: a wide boost and a narrow cut
+
+@step
+@knob frequency 8000
+@knob eqgain 4
+@knob q 0.7
+ru: Широкий подъём, Q 0.7, +4 дБ на 8 кГц: тарелки и воздух стали ярче,
+    но естественно, без отдельной торчащей частоты. Широкие подъёмы звучат
+    музыкально — так тембр меняют, а не чинят.
+en: A wide boost, Q 0.7, +4 dB at 8 kHz: the cymbals and the air are
+    brighter, but naturally, with no single frequency sticking out. Wide
+    boosts sound musical - this is how you shape a tone, not fix it.
+
+@step
+@knob q 8
+ru: Тот же подъём, но Q 8: вместо «ярче» появился тонкий свист. Узкий
+    подъём слышен как отдельный призвук — им ищут проблему, но редко
+    оставляют.
+en: The same boost at Q 8: instead of "brighter" there is a thin whistle. A
+    narrow boost is heard as a tone of its own - it is used to find problems,
+    rarely kept.
+
+@step
+@knob frequency 250
+@knob eqgain -6
+@knob q 6
+ru: Узкий вырез, Q 6, −6 дБ на 250 Гц. Звучит почти незаметно: узкий вырез
+    убирает одну гудящую частоту и не трогает остальное. Резать узко, а
+    поднимать широко — хорошая привычка.
+en: A narrow cut, Q 6, -6 dB at 250 Hz. It is nearly unnoticeable: a narrow
+    cut removes one ringing frequency and leaves the rest alone. Cut narrow,
+    boost wide - a good habit.
+
+@step
+@knob q 0.7
+ru: Тот же вырез шириной Q 0.7: теперь ушла вся низкая середина, барабаны
+    похудели. Широкий вырез — это уже решение про баланс, а не ремонт.
+en: The same cut at Q 0.7: now the whole low-mid range is gone and the drums
+    have thinned out. A wide cut is a decision about balance, not a repair.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Посмотрите на её полосы: какие из них
+    узкие, какие широкие, и что каждая делает.
+en: Your setting is back. Look at its bands: which are narrow, which are
+    wide, and what each one does.

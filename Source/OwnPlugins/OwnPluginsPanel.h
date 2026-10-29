@@ -4,6 +4,7 @@
 #include "shared/ui/SegmentedChoice.h"
 #include "OwnPluginPlayer.h"
 #include "OwnPluginRound.h"
+#include "OwnLesson.h"
 #include <functional>
 #include <memory>
 #include <vector>
@@ -18,8 +19,14 @@
     modulation, other) or sorted by name or vendor. One row per plugin: its
     AU and VST3 are one plugin, and the VST3 is the one loaded.
 
-    Right, for the chosen plugin: its own window above, and below it two
+    Right, for the chosen plugin: its own window above, and below it three
     steps.
+
+    0. A lesson (ADR 068). The course lessons written for "your own
+       plugin" (lessons/own, plugin: any) that this plugin has the knobs
+       for: text by steps, and the knobs travel in the plugin's own window
+       to values in its own units. The player's setting comes back when the
+       lesson ends or is left.
 
     1. Getting to know it. Every knob whose name the dictionary knows
        (KnobGlossary) gets a card: what it does, what to listen for, and
@@ -33,8 +40,10 @@
        trainer). The knobs asked about are the known ones the player has
        listened to, unless he ticks others.
 
-    The player's setting is instance A and is never touched: B is a copy.
-    Leaving the page drops both.
+    The player's setting is instance A and is never touched: B is a copy,
+    and a lesson or a knob card that turns A's knobs puts them back.
+    Leaving the page drops both; A's setting is kept in a file per plugin
+    and comes back the next time the plugin is opened.
 */
 class OwnPluginsPanel : public juce::Component,
                         private juce::ListBoxModel,
@@ -84,11 +93,32 @@ public:
         juce::String copies { "There are {{n}} knobs like this - one per band. Shown here: {{name}}." };
         juce::String watch { "Watch the knob move in the plugin's window." };
 
+        // ADR 068: course lessons on the player's own plugin.
+        juce::String lessonsStep { "1 · Lessons" };
+        juce::String lessonIntro { "A lesson turns this plugin's own knobs and says what to listen for." };
+        juce::String noLessons { "No lesson fits this plugin yet: the lessons need knobs it does not have. Get to know the knobs one by one in the next step." };
+        juce::String lessonMeta { "{{n}} [[step|steps]] · {{m}} min" };
+        juce::String lessonStart { "Start the lesson" };
+        juce::String lessonBack { "Back" };
+        juce::String lessonNext { "Next" };
+        juce::String lessonDone { "Done" };
+        juce::String lessonDry { "Bypass" };
+        juce::String lessonStepOf { "Step {{n}} of {{m}}" };
+        juce::String lessonSources { "Sources: {{s}}" };
+        juce::String lessonFinished { "Lesson done. Your setting is back." };
+        juce::String lessonReach { "This plugin cannot reach every value of the step: the knob is at the nearest." };
+        juce::String language { "en" };   // a lesson's text is Russian or English (lessons/FORMAT.md)
+
         // own.g.<key>.what / .listen, by the dictionary's key.
         std::function<juce::String (const juce::String& key)> glossary;
     };
 
     explicit OwnPluginsPanel (OwnPluginPlayer&);
+
+    // Which course lessons are done: the same list the Studio's lessons
+    // keep (LessonsPanel::doneKey), so a lesson is done once, wherever.
+    std::function<bool (const juce::String& lessonId)> isLessonDone;
+    std::function<void (const juce::String& lessonId)> markLessonDone;
     ~OwnPluginsPanel() override;
 
     void setStrings (Strings);
@@ -104,6 +134,7 @@ public:
     // EditorSnapshots: a list and a round (or the knob cards), without any
     // plugin installed.
     void showForSnapshot (bool learningStep = false);
+    void showLessonForSnapshot();
 
     // ---- the list (public for the tests) ----
     enum Category { eq = 0, dynamics, space, saturation, modulation, other, instrument };
@@ -139,6 +170,7 @@ private:
     juce::String fill (juce::String text, const juce::String& key, const juce::String& value) const;
     std::unique_ptr<OwnPluginPlayer::Rig> buildRig (const Variant&, juce::String& error);
     static juce::AudioBuffer<float> practiceLoop (double sampleRate);
+    static juce::File settingFile (const juce::String& name, const juce::String& format);
     static void readVst3Info (const juce::File& bundle, juce::String& vendor, Category& category);
 
     OwnPluginPlayer& player;
@@ -184,7 +216,9 @@ private:
     struct LearnKnob { int index = -1; juce::String name, key; bool heard = false; int copies = 1; };
     std::vector<LearnKnob> learnKnobs;   // known ones first (in KnobGlossary order), then the unknown
     int learnSelected = 0;
-    bool learning() const { return modeChoice.getValue() == 0; }
+    enum Step { lessonStepId = 0, knobsStepId = 1, guessStepId = 2 };
+    bool learning() const { return modeChoice.getValue() == knobsStepId; }
+    bool lessonMode() const { return modeChoice.getValue() == lessonStepId; }
     int knownCount() const;
     struct KnobListModel : public juce::ListBoxModel
     {
@@ -216,6 +250,39 @@ private:
     juce::String learnValueText (float normalised) const;
     static constexpr float learnLowValue = 0.15f, learnHighValue = 0.85f;
     float learnPlaying = -1.0f;               // the value B plays, or -1 (A)
+
+    // ---- a course lesson on this plugin (ADR 068) ----
+    std::vector<const LessonFile::Lesson*> lessonsHere;   // the ones this plugin has the knobs for
+    OwnLesson::KnobMap knobMap;                           // glossary key -> parameter index
+    int lessonSelected = 0;
+    int lessonStep = -1;                                  // -1: chosen, not started
+    std::map<int, float> lessonMine;                      // A as it was when the lesson began
+    bool lessonReachProblem = false;
+    bool lessonJustFinished = false;
+    struct Glide { int index = -1; float from = 0.0f, to = 0.0f; };
+    std::vector<Glide> lessonGlides;
+    double lessonGlideStartMs = 0.0;
+    static constexpr double lessonGlideMs = 700.0;        // LessonRunner::glideMs: the Studio's lessons move at this pace
+
+    struct LessonListModel : public juce::ListBoxModel
+    {
+        explicit LessonListModel (OwnPluginsPanel& o) : owner (o) {}
+        int getNumRows() override;
+        void paintListBoxItem (int, juce::Graphics&, int, int, bool) override;
+        void selectedRowsChanged (int) override;
+        OwnPluginsPanel& owner;
+    };
+    LessonListModel lessonListModel { *this };
+    juce::ListBox lessonList { "lessons", &lessonListModel };
+    juce::TextButton lessonBack, lessonNext, lessonDry;
+
+    void rebuildLessons();
+    void selectLesson (int);
+    void showLessonStep (int);
+    void endLesson (bool animated);                       // A back to the player's setting
+    void stepLessonGlides();
+    const LessonFile::Lesson* chosenLesson() const;
+    bool lessonDone (const juce::String& id) const { return isLessonDone != nullptr && isLessonDone (id); }
 
     OwnPluginRound::Round round;
     bool roundOn = false, answered = false;

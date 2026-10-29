@@ -1,0 +1,47 @@
+id: own-mod-rate-depth
+course: own
+order: 10
+minutes: 3
+plugin: any
+group: modulation
+material: loop
+author: abcTrain
+sources: R. Izhaki, «Mixing Audio», 2nd ed., гл. 22 «Другие модуляционные инструменты»; M. Senior, «Mixing Secrets for the Small Studio», ch. 18 «Stereo Enhancements»
+title.ru: Rate и Depth: скорость и глубина движения
+title.en: Rate and Depth: how fast and how deep it moves
+
+@step
+@knob depth low
+@knob rate 0.5
+ru: Ваш модулятор: медленно (0.5 Гц) и неглубоко. Звук едва заметно
+    «плывёт» — так модуляция оживляет звук, не привлекая к себе внимания.
+en: Your modulator: slow (0.5 Hz) and shallow. The sound drifts very slightly
+    - this is how modulation brings a sound to life without drawing attention.
+
+@step
+@knob depth high
+ru: Глубина почти на максимуме при той же скорости: теперь движение
+    слышно отчётливо, звук раскачивается. Depth решает, насколько сильно
+    меняется звук.
+en: Depth near its maximum at the same speed: now the movement is clearly
+    heard and the sound sways. Depth decides how much the sound changes.
+
+@step
+@knob rate 6
+ru: Rate 6 Гц: то же движение стало быстрым дрожанием, ближе к вибрато.
+    Быстрая глубокая модуляция — уже эффект, а не украшение.
+en: Rate 6 Hz: the same movement has turned into a fast wobble, closer to
+    vibrato. Fast, deep modulation is an effect, not a touch.
+
+@step
+@knob rate 1
+@knob depth pos=0.4
+ru: Медленно и в меру глубоко. Ищите точку, где звук стал шире и живее, но
+    движение ещё не слышно как отдельный эффект.
+en: Slow and moderately deep. Look for the point where the sound is wider
+    and livelier but the movement is not yet heard as an effect of its own.
+
+@step
+@mine
+ru: Ваша настройка вернулась. Rate — скорость движения, Depth — его размах.
+en: Your setting is back. Rate is the speed of the movement, Depth its size.

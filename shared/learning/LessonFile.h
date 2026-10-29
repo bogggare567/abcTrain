@@ -43,6 +43,7 @@ namespace LessonFile
     struct Lesson
     {
         juce::String id, course, plugin, material, author, sources;
+        juce::String group;   // plugin: any - eq / dynamics / space / saturation / modulation
         juce::String titleRu, titleEn;
         int order = 0, minutes = 0;
         std::vector<Step> steps;
@@ -52,6 +53,15 @@ namespace LessonFile
         // translation would read worse than an honest English one.
         juce::String title (const juce::String& languageCode) const;
         juce::String text (const Step&, const juce::String& languageCode) const;
+
+        // "plugin: any": a lesson for whatever plugin the player brings
+        // (the Studio's «Свой плагин», ADR 068). Its knobs are named by the
+        // glossary key (KnobGlossary), not by a parameter id.
+        bool forOwnPlugin() const { return plugin == "any"; }
+
+        // The glossary keys its @knob commands turn: a plugin is offered
+        // the lesson only if it has every one of them.
+        juce::StringArray knobKeys() const;
     };
 
     struct Result
@@ -65,7 +75,9 @@ namespace LessonFile
 
     // The value sets the format allows, for the parser and for the UI.
     const juce::StringArray& courses();     // eq comp verb routing channel vocal bus
-    const juce::StringArray& plugins();     // eq comp verb
+    const juce::StringArray& plugins();     // eq comp verb (the Studio's own; "any" is checked apart)
+    const juce::StringArray& ownGroups();   // eq dynamics space saturation modulation (plugin: any)
+    inline constexpr const char* ownCourse = "own";   // the course every plugin: any lesson is in
     const juce::StringArray& materials();   // vocal kick snare drums bass guitar keys mix pink chord hit
     const juce::StringArray& eqTypes();     // bell lowshelf highshelf highpass lowpass notch
     const juce::StringArray& verbTypes();   // room hall plate spring

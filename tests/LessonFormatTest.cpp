@@ -41,6 +41,9 @@ public:
                 expect (l.id.startsWith (l.course + "-"), "id should start with its course: " + l.id);
             }
 
+            expect (LessonLibrary::forOwnPlugins().size() >= 8,
+                    "lessons for your own plugin: " + juce::String ((int) LessonLibrary::forOwnPlugins().size()));
+
             for (const auto& c : LessonFile::courses())
                 expect (! std::none_of (LessonLibrary::all().begin(), LessonLibrary::all().end(),
                                         [&c] (const auto& l) { return l.course == c; }),
@@ -71,6 +74,9 @@ public:
 
             for (const auto& l : LessonLibrary::all())
             {
+                if (l.forOwnPlugin())
+                    continue;   // OwnLessonTest: no parameter ids to land on
+
                 auto& apvts = l.plugin == "eq" ? eq.apvts : l.plugin == "comp" ? comp.apvts : verb.apvts;
 
                 for (const auto& s : l.steps)
@@ -104,6 +110,29 @@ public:
             expect (all.contains ("bad.lesson:13") && all.contains ("unknown command"), all);
             expect (all.contains ("without en"), all);
             expect (all.contains ("comp plugin"), all);
+        }
+
+        beginTest ("a lesson for your own plugin: glossary keys, values in units, its own course");
+        {
+            const auto head = juce::String ("id: own-t\ncourse: own\norder: 1\nminutes: 3\nplugin: any\ngroup: dynamics\n"
+                                            "material: loop\nauthor: t\ntitle.ru: Т\ntitle.en: T\n@step\n");
+            const auto ok = LessonFile::parse (head + "@knob threshold -20\n@knob attack min\n@knob drive pos=0.7\n@mine\n"
+                                                      "@bypass on\nru: Т.\nen: T.\n", "ok.lesson");
+            expect (ok.ok(), ok.errors.joinIntoString ("\n"));
+            expect (ok.lesson.forOwnPlugin());
+            expectEquals (ok.lesson.knobKeys().joinIntoString (" "), juce::String ("threshold attack drive"));
+
+            const auto bad = LessonFile::parse (head + "@knob tresh -20\n@knob threshold -200\n@knob drive 6\n"
+                                                       "@highlight 100 200\n@comp ratio=4\nru: Т.\nen: T.\n", "bad.lesson");
+            const auto all = bad.errors.joinIntoString ("\n");
+            expect (all.contains ("not a glossary key"), all);
+            expect (all.contains ("threshold (dB) -200"), all);
+            expect (all.contains ("no unit every plugin shares"), all);
+            expect (all.contains ("no graph"), all);
+            expect (all.contains ("comp plugin"), all);
+
+            const auto wrongCourse = LessonFile::parse (head.replace ("course: own", "course: comp"), "c.lesson");
+            expect (wrongCourse.errors.joinIntoString ("\n").contains ("course: own"));
         }
 
         beginTest ("indented lines continue the text; directives map to the knobs");

@@ -245,6 +245,21 @@ full rationale.
   `BuiltInSynth` sound) and lights `@highlight` on Learner EQ
   (`LearnerEQEditor::setLessonHighlight`). `tests/LessonFormatTest` reads
   every lesson.
+- **«Свой плагин» (ADR 064, 065, 067, 068)** — `Source/OwnPlugins/`.
+  `OwnPluginsPanel` is the Studio page: the list (found without loading,
+  grouped by `moduleinfo.json` or the name, AU+VST3 as one row), the
+  plugin's own window, and three steps in one fixed band under it —
+  lessons, knob cards, guess. `OwnPluginPlayer` runs two instances (A =
+  the player's setting, B = a copy) on the practice loop, on the audio
+  thread; `OwnPluginRound.h` picks a knob and its options (pure).
+  `shared/learning/KnobGlossary` maps a parameter name to a key
+  ("Thresh" -> threshold) with the unit lessons write it in;
+  `Source/OwnPlugins/OwnLesson` plays a `plugin: any` lesson
+  (`lessons/own/`) on any plugin: it finds the knob by key and the
+  position at which the plugin *shows* the lesson's number. A's setting is
+  kept per plugin in `Application Support/abcTrain/own-plugins/`.
+  Tests: `OwnPluginRoundTest`, `OwnLessonTest`; tools: `PluginProbe`
+  (what a host reads from a plugin), `OwnPluginSmoke`.
 - `Source/SettingsScreenComponent.{h,cpp}` — a side rail with the
   **Beginner / Pro** switch at the top and five pages (Training, Hearing,
   Appearance, Background, About), each a column of rows: what it is, one
