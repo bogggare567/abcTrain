@@ -9,6 +9,8 @@
   - Исправления после проверки на симуляторе iPhone 17: вырез, рамка окна, вкладки, единицы. Все экраны проверяются на пяти размерах окна.
   - Ставятся пока своей сборкой из Xcode.
   - Как установить на телефон: [На телефоне и планшете](https://github.com/bogggare567/abcTrain/wiki/ru-Mobile).
+- **Семинар.** Коды комнаты и личные коды стали шестизначными, подбирать их ограничено: не больше 8 неверных попыток в минуту с одного телефона. Старые четырёхзначные коды из разосланных списков работают. Сервер семинара держит больше медленных телефонов одновременно, голоса не ждут друг друга.
+- **Проекты в DAW.** Плагины Learner записывают в проект номер формата своих настроек. Если параметр когда-нибудь переименуют, старый проект откроется правильно.
 - **Упражнения на частоту** спрашивают только о тех полосах, в которых в звучащем клипе есть звук.
 - **Исправлено:** на телефоне перестало перерисовываться всё окно ради одной затемнённой кнопки.
 
@@ -22,6 +24,8 @@
 - **Lessons from contributors** by pull request, the GitHub site or an issue form, checked automatically and credited: [lessons/CONTRIBUTING.md](https://github.com/bogggare567/abcTrain/blob/main/lessons/CONTRIBUTING.md).
 - **Android**: a first, experimental APK in the release assets (Android 8.0+).
 - **iPhone and iPad**: fixes from the iPhone 17 simulator; install by building with Xcode - [On a phone or tablet](https://github.com/bogggare567/abcTrain/wiki/Mobile).
+- **Seminar.** Room and personal codes have six digits and guessing is limited (8 wrong tries a minute per phone); old four-digit codes still work. The room serves more slow phones at once.
+- **DAW projects.** Learner plugins record their settings format, so a renamed parameter will not break an old project.
 - **Frequency exercises** ask only about bands the playing clip has sound in.
 
 Builds are **unsigned**: macOS and Windows will warn on first launch.
