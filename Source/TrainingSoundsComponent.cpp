@@ -1312,9 +1312,18 @@ void TrainingSoundsComponent::paintFilePane (juce::Graphics& g)
 
                 if (credit.author.isNotEmpty() || credit.license.isNotEmpty())
                 {
+                    // Licence and author on two lines where the row is tall
+                    // enough; a short or narrow row (a phone on its side)
+                    // keeps the licence and leaves the author to the clip's
+                    // own page.
                     g.setFont (AbcTrainLookAndFeel::captionFont().withHeight (11.5f));
-                    AbcTrainLookAndFeel::fitLines (g, credit.license + (credit.author.isNotEmpty() ? juce::String (juce::CharPointer_UTF8 (" \xc2\xb7\n")) + credit.author : juce::String()),
-                                      creditBox, juce::Justification::centredLeft, 2, 0.9f);
+                    // ...and wide enough for a name on one line: at 50 px
+                    // "Bogdan Korablev" broke in two and the licence lost a line.
+                    const auto twoLines = creditBox.getHeight() >= 30 && creditBox.getWidth() >= 90;
+                    const auto text = twoLines && credit.author.isNotEmpty()
+                                          ? credit.license + juce::String (juce::CharPointer_UTF8 (" \xc2\xb7\n")) + credit.author
+                                          : (credit.license.isNotEmpty() ? credit.license : credit.author);
+                    AbcTrainLookAndFeel::fitLines (g, text, creditBox, juce::Justification::centredLeft, twoLines ? 2 : 1, 0.9f);
                 }
             }
 

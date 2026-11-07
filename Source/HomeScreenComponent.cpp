@@ -266,7 +266,12 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
                                ? AbcTrainLookAndFeel::monoFont().withHeight (18.0f * AbcTrainLookAndFeel::getTextScale())
                                : AbcTrainLookAndFeel::titleFont();
     const auto levelWidth = juce::GlyphArrangement::getStringWidth (levelFont, card.levelText) + 6.0f;
-    auto right = inner.removeFromRight (juce::jlimit (170.0f, juce::jmax (170.0f, inner.getWidth() * 0.34f),
+    // A pair of names may take a little more of the row than a number,
+    // and wraps onto a second line before it shrinks past reading: at the
+    // smallest window "Tape Saturation vs Overdrive" needs 226 and had 169
+    // (tools/ClickMap, Home @ 940x620).
+    const auto levelShare = card.levelIsNumber ? 0.34f : 0.42f;
+    auto right = inner.removeFromRight (juce::jlimit (170.0f, juce::jmax (170.0f, inner.getWidth() * levelShare),
                                                       juce::jmax (levelWidth, inner.getWidth() * 0.2f)));
     {
         const auto bothLines = right.getHeight() >= 44.0f;
@@ -276,7 +281,7 @@ void HomeScreenComponent::paintRow (juce::Graphics& g, const CardInfo& card,
         g.setFont (levelFont);
         AbcTrainLookAndFeel::fitLines (g, card.levelText, numberArea.toNearestInt(),
                            bothLines ? juce::Justification::bottomRight : juce::Justification::centredRight,
-                           1, 0.75f);
+                           card.levelIsNumber ? 1 : 2, 0.75f);
 
         if (bothLines)
         {
