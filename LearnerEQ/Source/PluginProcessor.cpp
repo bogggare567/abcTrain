@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "shared/learning/PluginState.h"
 #include "PluginEditor.h"
 #include "SpectrumAnalyser.h"
 #include "shared/analysis/WaveformDisplay.h"
@@ -370,13 +371,10 @@ juce::AudioProcessorEditor* LearnerEQProcessor::createEditor()
 
 void LearnerEQProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto state = apvts.copyState(); state.isValid())
-        if (auto xml = state.createXml())
-            copyXmlToBinary (*xml, destData);
+    PluginState::save (apvts, destData);
 }
 
 void LearnerEQProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    PluginState::load (apvts, data, sizeInBytes);
 }

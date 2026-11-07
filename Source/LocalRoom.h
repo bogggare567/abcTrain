@@ -35,6 +35,9 @@
 class LocalRoom : private juce::AsyncUpdater
 {
 public:
+    // Wrong room or personal codes one phone may try in a minute (join).
+    static constexpr int maxWrongCodesPerMinute = 8;
+
     LocalRoom();
     ~LocalRoom() override;
 
@@ -175,7 +178,10 @@ private:
     Seat* seatFor (const juce::String& token);
     juce::var stateFor (const Seat*) const;
     Response json (int status, const juce::var&) const;
-    Response join (const juce::var& body);
+    Response join (const juce::var& body, const juce::String& fromAddress = {});
+
+    struct Tries { int count = 0; double windowStartMs = 0.0; };
+    std::map<juce::String, Tries> wrongCodes;   // per phone address, under lock
     Response vote (const juce::var& body);
     Response page() const;
 

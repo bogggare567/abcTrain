@@ -2,7 +2,6 @@
 #include "shared/audio/PinkNoiseGenerator.h"
 #include <cmath>
 #include <limits>
-#include <cmath>
 
 const std::array<float, DelayGame::numDelayTimes> DelayGame::delayTimesMs { 50.0f, 150.0f, 300.0f, 500.0f };
 

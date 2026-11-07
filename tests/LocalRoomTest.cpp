@@ -58,7 +58,7 @@ public:
             LocalRoom room;
             room.configure ("Test", false, {});
             const auto code = room.getRoomCode();
-            expectEquals (code.length(), 4);
+            expectEquals (code.length(), 6);
 
             expectEquals (call (room, "POST", "/api/join", "{\"name\":\"Ivan\",\"room\":\"0000\"}").status, 403);
             expectEquals (call (room, "POST", "/api/join", "{\"name\":\"  \",\"room\":\"" + code + "\"}").status, 400);
@@ -90,6 +90,30 @@ public:
             // Her second phone: the seat moves, the room does not grow.
             call (room, "POST", "/api/join", "{\"code\":\"4821\"}");
             expectEquals ((int) room.snapshot().players.size(), 2);
+        }
+
+        beginTest ("guessing codes: eight wrong ones a minute from one phone, then a pause; the others are not held up");
+        {
+            LocalRoom room;
+            room.configure ("Test", true, { { "Maria", "m@school.ru", "482113" } });
+
+            const auto from = [&room] (const juce::String& address, const juce::String& code)
+            {
+                LocalRoom::Request r;
+                int length = 0;
+                const auto body = "{\"code\":\"" + code + "\"}";
+                LocalRoom::parseHead ("POST /api/join HTTP/1.1\r\nHost: x\r\nContent-Length: "
+                                          + juce::String (body.getNumBytesAsUTF8()), r, length);
+                r.body = body;
+                r.remoteAddress = address;
+                return room.handleRequest (r).status;
+            };
+
+            for (int i = 0; i < LocalRoom::maxWrongCodesPerMinute; ++i)
+                expectEquals (from ("10.0.0.7", juce::String (100000 + i)), 403);
+
+            expectEquals (from ("10.0.0.7", "482113"), 429, "even the right code waits once the limit is hit");
+            expectEquals (from ("10.0.0.8", "482113"), 200, "another phone is not held up");
         }
 
         beginTest ("a discrete round: votes only while open, scored on reveal, changeable until then");
@@ -310,7 +334,7 @@ public:
                 codes.add (LocalRoom::makeCode (r, codes));
             expectEquals (codes.size(), 200);
             for (const auto& c : codes)
-                expect (c.length() == 4 && c[0] != '0');
+                expect (c.length() == 6 && c[0] != '0');
 
             expect (InviteListComponent::looksLikeMail ("a@b.ru"));
             expect (! InviteListComponent::looksLikeMail ("a@b"));

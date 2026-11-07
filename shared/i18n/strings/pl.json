@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "Krok {{n}} z {{m}}",
   "own.lessonSources": "Źródła: {{s}}",
   "own.lessonFinished": "Lekcja ukończona. Twoje ustawienie wróciło.",
-  "own.lessonReach": "Ta wtyczka nie sięga każdej wartości kroku: pokrętło stoi na najbliższej."
+  "own.lessonReach": "Ta wtyczka nie sięga każdej wartości kroku: pokrętło stoi na najbliższej.",
+  "phone.err.tooManyTries": "Za dużo błędnych kodów — odczekaj minutę i spróbuj ponownie."
 }

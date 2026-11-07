@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "Passo {{n}} de {{m}}",
   "own.lessonSources": "Fontes: {{s}}",
   "own.lessonFinished": "Lição concluída. Sua configuração voltou.",
-  "own.lessonReach": "Este plugin não alcança todos os valores do passo: o botão está no mais próximo."
+  "own.lessonReach": "Este plugin não alcança todos os valores do passo: o botão está no mais próximo.",
+  "phone.err.tooManyTries": "Códigos errados demais — espere um minuto e tente de novo."
 }

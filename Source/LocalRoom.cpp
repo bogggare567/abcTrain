@@ -181,7 +181,10 @@ private:
 
     LocalRoom& room;
     juce::StreamingSocket listener;
-    juce::ThreadPool pool { juce::ThreadPoolOptions{}.withNumberOfThreads (4) };
+    // Sixteen: a phone on weak Wi-Fi in a hall can hold a thread for the
+    // three-second read timeout, and with four a handful of those stalled
+    // everybody's vote behind them.
+    juce::ThreadPool pool { juce::ThreadPoolOptions{}.withNumberOfThreads (16) };
 };
 
 // ---- the room ---------------------------------------------------------
@@ -253,7 +256,12 @@ juce::String LocalRoom::makeCode (juce::Random& r, const juce::StringArray& take
 {
     for (;;)
     {
-        const auto code = juce::String (r.nextInt ({ 1000, 10000 }));
+        // Six digits: a phone in the hall can try codes as fast as it can
+        // post, and four (9000 codes) is a few minutes of trying to take
+        // somebody else's seat. Wrong guesses are also counted per phone
+        // (LocalRoom::join). Codes printed before 2.3 had four digits and
+        // still work: a code is compared as written.
+        const auto code = juce::String (r.nextInt ({ 100000, 1000000 }));
         if (! taken.contains (code))
             return code;
     }
@@ -556,13 +564,23 @@ juce::var LocalRoom::stateFor (const Seat* seat) const
     return result;
 }
 
-LocalRoom::Response LocalRoom::join (const juce::var& body)
+LocalRoom::Response LocalRoom::join (const juce::var& body, const juce::String& from)
 {
     const auto code = body.getProperty ("code", {}).toString().retainCharacters ("0123456789");
     const auto room = body.getProperty ("room", {}).toString().retainCharacters ("0123456789");
     const auto token = body.getProperty ("token", {}).toString();
 
     const juce::ScopedLock sl (lock);
+
+    // Too many wrong codes from one address in a minute: wait. A person
+    // mistypes two or three times; a script tries thousands.
+    const auto nowMs = juce::Time::getMillisecondCounterHiRes();
+    auto& tries = wrongCodes[from];
+    if (nowMs - tries.windowStartMs > 60000.0)
+        tries = { 0, nowMs };
+    if (tries.count >= maxWrongCodesPerMinute)
+        return json (429, juce::JSON::parse ("{\"error\":\"tooManyTries\"}"));
+    const auto wrong = [&tries] { ++tries.count; };
 
     // The same phone coming back (reload, a sleep) keeps its seat.
     if (auto* seat = seatFor (token))
@@ -585,7 +603,10 @@ LocalRoom::Response LocalRoom::join (const juce::var& body)
             }
 
         if (inviteCode.isEmpty())
+        {
+            wrong();
             return json (403, juce::JSON::parse ("{\"error\":\"badCode\"}"));
+        }
 
         // One seat per code: a second phone with the same code takes the
         // seat over (the first one was probably the same person).
@@ -602,7 +623,10 @@ LocalRoom::Response LocalRoom::join (const juce::var& body)
     else
     {
         if (room != roomCode)
+        {
+            wrong();
             return json (403, juce::JSON::parse ("{\"error\":\"badRoom\"}"));
+        }
 
         name = cleanName (body.getProperty ("name", {}).toString());
 
@@ -684,7 +708,7 @@ LocalRoom::Response LocalRoom::handleRequest (const Request& request)
         if (! body.isObject())
             return json (400, juce::JSON::parse ("{\"error\":\"badJson\"}"));
 
-        return request.path == "/api/join" ? join (body) : vote (body);
+        return request.path == "/api/join" ? join (body, request.remoteAddress) : vote (body);
     }
 
     if (request.path == "/favicon.ico")

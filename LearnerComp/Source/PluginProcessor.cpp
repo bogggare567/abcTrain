@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "shared/learning/PluginState.h"
 #include "PluginEditor.h"
 #include "shared/analysis/WaveformDisplay.h"
 #include "shared/analysis/SpectrumAnalyzer.h"
@@ -341,13 +342,10 @@ void LearnerCompProcessor::applyPreset (int presetIndex)
 
 void LearnerCompProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto state = apvts.copyState(); state.isValid())
-        if (auto xml = state.createXml())
-            copyXmlToBinary (*xml, destData);
+    PluginState::save (apvts, destData);
 }
 
 void LearnerCompProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    PluginState::load (apvts, data, sizeInBytes);
 }

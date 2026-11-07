@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "Schritt {{n}} von {{m}}",
   "own.lessonSources": "Quellen: {{s}}",
   "own.lessonFinished": "Lektion abgeschlossen. Ihre Einstellung ist zurück.",
-  "own.lessonReach": "Dieses Plugin erreicht nicht jeden Wert des Schritts: Der Regler steht auf dem nächstmöglichen."
+  "own.lessonReach": "Dieses Plugin erreicht nicht jeden Wert des Schritts: Der Regler steht auf dem nächstmöglichen.",
+  "phone.err.tooManyTries": "Zu viele falsche Codes – warten Sie eine Minute und versuchen Sie es erneut."
 }

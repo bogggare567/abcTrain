@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "shared/learning/PluginState.h"
 #include "PluginEditor.h"
 #include "shared/analysis/WaveformDisplay.h"
 #include "shared/analysis/SpectrumAnalyzer.h"
@@ -147,14 +148,12 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const auto numChannels = buffer.getNumChannels();
     const auto numSamples = buffer.getNumSamples();
 
-    const bool bypassed = valueOf (bypassParamId) > 0.5f;
-
     wetBuffer.makeCopyOf (buffer, true);
     juce::dsp::AudioBlock<float> wetBlock (wetBuffer);
     engine.process (wetBlock);
 
-    // Bypass forces a pure dry passthrough by zeroing the effective wet
-    // mix, rather than overwriting the Dry/Wet parameter itself, so
+    // Bypass (inside targetLevels) forces a pure dry passthrough by zeroing
+    // the effective wet mix, rather than overwriting the Dry/Wet parameter itself, so
     // un-bypassing restores whatever Dry/Wet was dialled in before. The
     // engine still runs every block regardless of bypass so its internal
     // state (the reverb tail) stays warm - no click or cold-start thump
@@ -164,7 +163,6 @@ void LearnerVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // Insert: one Mix knob crossfades dry and wet. Send in a DAW: this is
     // the return channel, so wet only. Send in the app's Studio: the dry
     // track stays at unity and Mix is the return fader.
-    juce::ignoreUnused (bypassed);
     const auto [wetTarget, dryTarget] = targetLevels();
     wetAmount.setTargetValue (wetTarget);
     dryAmount.setTargetValue (dryTarget);
@@ -234,13 +232,10 @@ void LearnerVerbProcessor::applyPreset (int presetIndex)
 
 void LearnerVerbProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto state = apvts.copyState(); state.isValid())
-        if (auto xml = state.createXml())
-            copyXmlToBinary (*xml, destData);
+    PluginState::save (apvts, destData);
 }
 
 void LearnerVerbProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
-        apvts.replaceState (juce::ValueTree::fromXml (*xml));
+    PluginState::load (apvts, data, sizeInBytes);
 }

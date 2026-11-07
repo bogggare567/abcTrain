@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "Étape {{n}} sur {{m}}",
   "own.lessonSources": "Sources : {{s}}",
   "own.lessonFinished": "Leçon terminée. Votre réglage est rétabli.",
-  "own.lessonReach": "Ce plugin n'atteint pas toutes les valeurs de l'étape : le bouton est sur la plus proche."
+  "own.lessonReach": "Ce plugin n'atteint pas toutes les valeurs de l'étape : le bouton est sur la plus proche.",
+  "phone.err.tooManyTries": "Trop de codes erronés — attendez une minute et réessayez."
 }

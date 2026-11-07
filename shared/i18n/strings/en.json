@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "Step {{n}} of {{m}}",
   "own.lessonSources": "Sources: {{s}}",
   "own.lessonFinished": "Lesson done. Your setting is back.",
-  "own.lessonReach": "This plugin cannot reach every value of the step: the knob is at the nearest one."
+  "own.lessonReach": "This plugin cannot reach every value of the step: the knob is at the nearest one.",
+  "phone.err.tooManyTries": "Too many wrong codes — wait a minute and try again."
 }

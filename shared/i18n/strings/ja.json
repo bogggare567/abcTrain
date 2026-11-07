@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "ステップ {{n}} / {{m}}",
   "own.lessonSources": "出典：{{s}}",
   "own.lessonFinished": "レッスン完了。設定は元に戻りました。",
-  "own.lessonReach": "このプラグインではステップの値に届かないものがあります。ノブは最も近い値にあります。"
+  "own.lessonReach": "このプラグインではステップの値に届かないものがあります。ノブは最も近い値にあります。",
+  "phone.err.tooManyTries": "誤ったコードが多すぎます。1分待ってからもう一度お試しください。"
 }

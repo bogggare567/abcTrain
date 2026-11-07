@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "Paso {{n}} de {{m}}",
   "own.lessonSources": "Fuentes: {{s}}",
   "own.lessonFinished": "Lección terminada. Tu ajuste ha vuelto.",
-  "own.lessonReach": "Este plugin no alcanza todos los valores del paso: la perilla está en el más cercano."
+  "own.lessonReach": "Este plugin no alcanza todos los valores del paso: la perilla está en el más cercano.",
+  "phone.err.tooManyTries": "Demasiados códigos incorrectos: espera un minuto y vuelve a intentarlo."
 }

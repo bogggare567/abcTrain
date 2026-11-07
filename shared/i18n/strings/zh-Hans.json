@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "第 {{n}} 步，共 {{m}} 步",
   "own.lessonSources": "来源：{{s}}",
   "own.lessonFinished": "课程完成，你的设置已恢复。",
-  "own.lessonReach": "这个插件达不到这一步的某些数值：旋钮停在最接近的位置。"
+  "own.lessonReach": "这个插件达不到这一步的某些数值：旋钮停在最接近的位置。",
+  "phone.err.tooManyTries": "错误代码过多，请等一分钟后再试。"
 }

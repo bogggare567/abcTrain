@@ -5512,7 +5512,7 @@ void EarTrainerEditor::refreshLiveStrings()
 
     {
         auto* phoneTexts = new juce::DynamicObject();
-        for (const auto* key : { "joinTitle", "yourName", "roomCode", "personalCode", "listHint", "join", "hello", "waiting", "headphones", "round", "tapHint", "dragHint", "sent", "answeredOf", "right", "wrong", "noVote", "answerWas", "yourVote", "points", "finished", "place", "offline", "footer", "err.badCode", "err.badRoom", "err.nameNeeded", "err.full", "err.x" })
+        for (const auto* key : { "joinTitle", "yourName", "roomCode", "personalCode", "listHint", "join", "hello", "waiting", "headphones", "round", "tapHint", "dragHint", "sent", "answeredOf", "right", "wrong", "noVote", "answerWas", "yourVote", "points", "finished", "place", "offline", "footer", "err.badCode", "err.badRoom", "err.nameNeeded", "err.full", "err.tooManyTries", "err.x" })
             phoneTexts->setProperty (key, localisation.getText (juce::String ("phone.") + key));
         s.phone = juce::var (phoneTexts);
     }

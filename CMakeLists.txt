@@ -812,6 +812,7 @@ target_sources(EarTrainerTests
         tests/LoudnessMatchTest.cpp
         tests/OwnPluginRoundTest.cpp
         tests/OwnLessonTest.cpp
+        tests/PluginStateTest.cpp
         Source/OwnPlugins/OwnLesson.cpp
         tests/RoundOracleTest.cpp
         tests/PackCatalogTest.cpp

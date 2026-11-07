@@ -1712,5 +1712,6 @@
   "own.lessonStepOf": "{{m}}단계 중 {{n}}단계",
   "own.lessonSources": "출처: {{s}}",
   "own.lessonFinished": "레슨 완료. 설정이 원래대로 돌아왔습니다.",
-  "own.lessonReach": "이 플러그인은 이 단계의 일부 값에 닿지 못합니다. 노브는 가장 가까운 값에 있습니다."
+  "own.lessonReach": "이 플러그인은 이 단계의 일부 값에 닿지 못합니다. 노브는 가장 가까운 값에 있습니다.",
+  "phone.err.tooManyTries": "잘못된 코드가 너무 많습니다. 1분 후 다시 시도하세요."
 }

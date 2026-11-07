@@ -81,6 +81,41 @@ public:
             }
         }
 
+        beginTest ("the cut, run through JUCE's own filter, is the gain it promises (an outside review asked)");
+        {
+            // makeMatchedBell's cut returns a0 = b0, not 1. That is right
+            // only if the filter divides by a0 - JUCE's Coefficients do, on
+            // assignment. Measured on the filter the plugin actually runs,
+            // not on our own magnitude formula, so a JUCE that stopped
+            // normalising would fail here.
+            for (const auto gain : { -6.0f, -9.0f, -2.5f, 6.0f })
+            {
+                const double fs = 48000.0;
+                juce::dsp::IIR::Filter<float> filter;
+                filter.coefficients = new juce::dsp::IIR::Coefficients<float> (1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+                *filter.coefficients = EQCoefficients::makeArray (EQCoefficients::BandType::bell, fs, 1000.0f, gain, 1.4f);
+                filter.prepare ({ fs, 4096, 1 });
+
+                const auto rmsAt = [&] (double hz)
+                {
+                    filter.reset();
+                    double sum = 0.0;
+                    const int n = 48000;
+                    for (int i = 0; i < n; ++i)
+                    {
+                        const auto y = filter.processSample ((float) std::sin (juce::MathConstants<double>::twoPi * hz * i / fs));
+                        if (i >= n / 2)
+                            sum += (double) y * y;
+                    }
+                    return juce::Decibels::gainToDecibels (std::sqrt (sum / (n / 2)) * std::sqrt (2.0));
+                };
+
+                expectWithinAbsoluteError (rmsAt (1000.0), (double) gain, 0.1);
+                expectWithinAbsoluteError (rmsAt (60.0), 0.0, 0.1);      // far from the bell: untouched
+                expectWithinAbsoluteError (rmsAt (15000.0), 0.0, 0.25);
+            }
+        }
+
         beginTest ("0 dB is a wire");
         {
             const auto c = EQCoefficients::makeMatchedBell (48000.0, 1000.0f, 1.0f, 0.0f);
